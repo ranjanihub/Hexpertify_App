@@ -32,9 +32,17 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const backendUrl = process.env.BACKEND_API_URL || "http://localhost:5000";
+    const backendUrl =
+      process.env.BACKEND_API_URL ||
+      (process.env.VERCEL || process.env.NODE_ENV === "production"
+        ? "https://hexpertify-backend.vercel.app"
+        : "http://localhost:5000");
+
     return {
       beforeFiles: [
+        { source: "/login", destination: "/index.html" },
+        { source: "/signin", destination: "/index.html" },
+        { source: "/auth/login", destination: "/index.html" },
         { source: "/admin", destination: "/admin/index.html" },
         { source: "/admin/:path*", destination: "/admin/index.html" },
         { source: "/consultant", destination: "/consultant/index.html" },
