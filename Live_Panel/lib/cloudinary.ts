@@ -1,20 +1,14 @@
 "use server";
 import { v2 as cloudinary } from "cloudinary";
 
-[
-  "CLOUDINARY_CLOUD_NAME",
-  "CLOUDINARY_API_KEY",
-  "CLOUDINARY_API_SECRET",
-].forEach((key) => {
-  if (!process.env[key]) {
-    throw new Error(`Missing environment variable: ${key}`);
-  }
-});
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "local_cloud";
+const apiKey = process.env.CLOUDINARY_API_KEY || "000000000000000";
+const apiSecret = process.env.CLOUDINARY_API_SECRET || "local_secret";
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
-  api_key: process.env.CLOUDINARY_API_KEY!,
-  api_secret: process.env.CLOUDINARY_API_SECRET!,
+  cloud_name: cloudName,
+  api_key: apiKey,
+  api_secret: apiSecret,
 });
 
 type CloudinaryUploadResult = { secure_url: string; public_id: string };
@@ -25,6 +19,9 @@ export const uploadToCloudinary = async (
   folder = "uploads",
 ): Promise<CloudinaryUploadResult> => {
   try {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      throw new Error("Cloudinary environment variables (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) are not set.");
+    }
     const mimeTypeMatch = base64.match(/^data:(.+);base64,/);
     if (!mimeTypeMatch) throw new Error("Invalid base64 string.");
 
