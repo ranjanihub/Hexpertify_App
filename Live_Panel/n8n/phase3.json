@@ -1,0 +1,704 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {
+          "systemMessage": "You are an expert AI Clinical Intake Assistant. Your objective is to conduct a baseline intake interview to gather information for a therapist matching system. \n\nYou must communicate strictly in JSON format.\n\n### THE 5 COMPULSORY CORE QUESTIONS:\nYou MUST ask the user the following 5 questions sequentially. Ask ONLY ONE question at a time.\nQ1: What made you decide to seek support today?\nQ2: What is the biggest change you hope to see in yourself?\nQ3: Can you share a recent situation that didn't go the way you wanted? What happened?\nQ4: When you're having a difficult time, what do you usually do to get through it?\nQ5: What do you usually wish people understood about what you're going through, and what kind of support has helped you the most in the past?\n\n### YOUR WORKFLOW & LOGIC:\n1. CRISIS DETECTION: If the user ever mentions self-harm, suicide, or an immediate threat to life, immediately set \"immediate_assistance_needed\" to true and \"sufficient_information\" to false.\n2. ASK THE CORE QUESTIONS: Review the conversation history. If any of the 5 Compulsory Core Questions have NOT been asked yet, place the exact text of the next unasked question into the \"follow_up_question\" JSON field. Set \"sufficient_information\" to false. \n3. DYNAMIC EVALUATION: ONLY AFTER all 5 core questions have been asked and answered, evaluate the entire profile. \n    - If you clearly understand their primary concerns, relationship patterns, and coping mechanisms, set \"sufficient_information\" to true.\n    - IF EXTRA DETAILS ARE NEEDED: If their answers to the 5 questions were vague, brief, or lacked emotional depth, set \"sufficient_information\" to false and generate ONE custom, highly empathetic question in the \"follow_up_question\" field to dig deeper.\n\n### REQUIRED JSON SCHEMA:\n{\n  \"immediate_assistance_needed\": boolean,\n  \"sufficient_information\": boolean,\n  \"follow_up_question\": \"string or null\",\n  \"client_profile\": {\n    \"stable_traits\": {\n      \"coping_mechanisms\": \"string or null\",\n      \"relationship_pattern\": \"string or null\",\n      \"communication_preference\": \"string or null\"\n    },\n    \"current_state\": {\n      \"primary_concerns\": [\"array of strings\"],\n      \"recent_trigger_or_situation\": \"string or null\"\n    },\n    \"desired_outcomes\": {\n      \"biggest_desired_change\": \"string or null\",\n      \"preferred_style_of_support\": \"string or null\"\n    }\n  }\n}\n\n### STRICT RULES:\n- Output ONLY the raw JSON object. \n- Do not include markdown formatting (like ```json), introductory text, or conversational filler.\n- Until \"sufficient_information\" is true, the \"client_profile\" values can remain null. Do not hallucinate data."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [-1200, 256],
+      "id": "20ddf026-0c0d-40fd-b740-93594bba916d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-1344, 464],
+      "id": "75e6a098-a3ad-454d-9aea-d90f1c6e6475",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "TJ1lzoXuSqtIlNbr",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.session }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-1184, 464],
+      "id": "ed90772c-69ff-4e31-b181-dbc9049fcbcc",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the raw text output from the AI Agent\nlet rawOutput = $input.first().json.output || \"\";\n\n// Clean up markdown formatting\nlet cleanJsonString = rawOutput.replace(/```json/gi, '').replace(/```/g, '').trim();\n\nlet parsedData = {};\n\ntry {\n  parsedData = JSON.parse(cleanJsonString);\n} catch (error) {\n  parsedData = {\n    \"immediate_assistance_needed\": false,\n    \"sufficient_information\": false,\n    \"follow_up_question\": \"I'm setting up our session. Could you tell me what made you decide to seek support today?\",\n    \"error_log\": \"Failed to parse JSON\"\n  };\n}\n\nreturn { json: parsedData };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-896, 256],
+      "id": "8a8f0373-c1bb-4c81-a523-22ec29969377",
+      "name": "Parse JSON Output"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.immediate_assistance_needed }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Crisis Detected"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.sufficient_information }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Need More Info"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c3",
+                    "leftValue": "={{ $json.sufficient_information }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Success / Match"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-720, 240],
+      "id": "23b51319-c7ea-4e29-bc14-23c90e13e2fc",
+      "name": "Route based on AI Output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "output",
+              "value": "It sounds like you are going through an incredibly difficult time. Please know that immediate help is available. [Insert Crisis Hotline Numbers Here]",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-224, 80],
+      "id": "9c0e93a3-766f-4d6c-b4f3-83fa5e20a34c",
+      "name": "Format Crisis Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a2",
+              "name": "output",
+              "value": "={{ $json.follow_up_question }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-224, 256],
+      "id": "3047009c-0805-44a0-898a-30bbf9446f9f",
+      "name": "Format Follow-up Question"
+    },
+    {
+      "parameters": {
+        "content": "I've been feeling extremely burned out lately. I spend all day building web apps and AI tools, and I just can't seem to turn my brain off at night. The stress is becoming overwhelming.\n\n",
+        "height": 96,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-2128, 320],
+      "id": "c507e585-36bd-4042-a3eb-470b8054c76e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "I want to learn how to set strict boundaries between my work and my personal life. I hope to be able to relax without feeling guilty that I'm not coding or working on my projects.",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-2128, 432],
+      "id": "c5d0948e-2bc6-49b0-8733-b729e0f23241",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Last week, a major deployment I was working on failed. Instead of asking for help, I completely isolated myself and worked 16 hours straight in a panic, which just made my anxiety worse",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-2128, 528],
+      "id": "35176081-1103-46b4-b333-2ab7d4a2ef3e",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "I usually isolate myself, order fast food delivery, and just play video games on my PC for hours to completely numb out and escape reality.",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-2128, 624],
+      "id": "2ff552dc-c0f2-4d74-8ffa-3b231f9c3225",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "I wish people understood that the mental fatigue is real. In the past, having a therapist who gives me direct, actionable frameworks—almost like an algorithm for managing stress—has helped me the most. I don't just want to vent; I need practical tools.",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-2128, 720],
+      "id": "b63f624a-859d-4bc3-a44f-305806531ea1",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the LLM output for this single therapist\n// The agent node outputs under 'output' key\nconst raw = $input.first().json.output || $input.first().json.text || '';\nconst clean = raw.replace(/```json|```/g, '').trim();\ntry {\n  const parsed = JSON.parse(clean);\n  return { json: parsed };\n} catch(e) {\n  // If parse fails, return a zero-score placeholder so the loop can continue\n  return { json: { therapist_id: 'PARSE_ERROR', therapist_name: 'Unknown', compatibility_score: 0, error: e.message, raw } };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1312, 464],
+      "id": "dbcfa734-b3ce-4181-8243-964668f6db87",
+      "name": "Parse JSON"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [656, 448],
+      "id": "0a95291b-fdc8-43b7-8ae0-b1abca074c9f",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert matchmaking AI for a mental health platform. Your task is to analyze a Client Profile and a Therapist Profile, then calculate a compatibility score from 0 to 100.\n\nEvaluate alignment based on three core pillars:\n1. Specialization Match: Do the client's primary concerns intersect with the therapist's primary specialization?\n2. Style & Archetype Alignment: Does the client's preferred style of support and communication preferences match the therapist's archetype and approach?\n3. Historical Track Record: Look at the therapist's historical clients who share the same primary concerns. Factor in their session ratings, trust metrics, and overall goal achievement.\n\nInput Data to Analyze:\n- Client Profile: {{$('Format Match Success').first().json.final_profile}}\n- Therapist Profile: {{ $json }}\n\nConstraint: You must output ONLY a valid JSON object. Do not include any markdown fences (like ```json), introduction, or conversational text.\n\nRequired Output Format:\n{\n  \"therapist_id\": \"string\",\n  \"therapist_name\": \"string\",\n  \"compatibility_score\": 85,\n  \"matching_pillars\": {\n    \"specialization_alignment\": \"Brief analysis of concern vs specialization\",\n    \"style_alignment\": \"Brief analysis of communication preference vs archetype\",\n    \"historical_performance\": \"Brief analysis of historical client success for this concern\"\n  },\n  \"rationale\": \"A concise 2-3 sentence summary explaining why this score was given.\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [960, 464],
+      "id": "e901dff0-620c-43cc-8536-1431a8722264",
+      "name": "Generate Recommendation1"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [896, 688],
+      "id": "1a250093-ebf2-456f-a946-b19db5a50505",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "TJ1lzoXuSqtIlNbr",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3",
+              "name": "output",
+              "value": "Thank you for sharing all of that with me. I have enough information to build your profile and find the best therapist match for you.",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "final_profile",
+              "value": "={{ $json.client_profile }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-224, 448],
+      "id": "81032464-92f5-4bd1-8f5b-7ab0eb3efc1d",
+      "name": "Format Match Success"
+    },
+    {
+      "parameters": {
+        "jsCode": "const therapists = [\n  { \"id\": \"T001\", \"name\": \"Dr. Priya Sharma\", \"archetype\": \"The Practical Coach\", \"primary_specialization\": \"Anxiety\", \"historical_clients\": [{ \"client_id\": \"T001_C001\", \"primary_concern\": \"Anxiety\", \"session_1\": { \"star_rating\": 5, \"felt_understood\": true, \"would_continue\": true, \"felt_safe\": true, \"feedback\": \"Felt understood and hopeful.\" }, \"session_3\": { \"star_rating\": 5, \"trust_in_therapist\": 5, \"progress\": 4, \"feedback\": \"Starting to see positive changes.\" }, \"session_5\": { \"star_rating\": 5, \"goal_progress\": 4, \"symptom_improvement\": 4, \"feedback\": \"Noticeable improvement.\" }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true, \"feedback\": \"Very positive overall experience.\" } }, { \"client_id\": \"T001_C002\", \"primary_concern\": \"Anxiety\", \"session_1\": { \"star_rating\": 4, \"felt_understood\": true, \"would_continue\": true, \"felt_safe\": true, \"feedback\": \"Good first session.\" }, \"session_3\": { \"star_rating\": 4, \"trust_in_therapist\": 4, \"progress\": 3, \"feedback\": \"Building trust.\" }, \"session_5\": { \"star_rating\": 4, \"goal_progress\": 3, \"symptom_improvement\": 3, \"feedback\": \"Steady progress.\" }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true, \"feedback\": \"Helpful therapy journey.\" } }] },\n  { \"id\": \"T002\", \"name\": \"Dr. Arjun Menon\", \"archetype\": \"The Relationship Detective\", \"primary_specialization\": \"Breakup\", \"historical_clients\": [{ \"client_id\": \"T002_C001\", \"primary_concern\": \"Breakup\", \"session_1\": { \"star_rating\": 5, \"felt_understood\": true, \"would_continue\": true, \"felt_safe\": true }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T002_C002\", \"primary_concern\": \"Breakup\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T003\", \"name\": \"Dr. Sneha Rao\", \"archetype\": \"The Compassionate Listener\", \"primary_specialization\": \"Depression\", \"historical_clients\": [{ \"client_id\": \"T003_C001\", \"primary_concern\": \"Depression\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T003_C002\", \"primary_concern\": \"Depression\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T004\", \"name\": \"Dr. Rahul Verma\", \"archetype\": \"The Problem Solver\", \"primary_specialization\": \"OCD\", \"historical_clients\": [{ \"client_id\": \"T004_C001\", \"primary_concern\": \"OCD\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T004_C002\", \"primary_concern\": \"OCD\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T005\", \"name\": \"Dr. Farah Khan\", \"archetype\": \"The Trauma Healer\", \"primary_specialization\": \"Trauma\", \"historical_clients\": [{ \"client_id\": \"T005_C001\", \"primary_concern\": \"Trauma\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T005_C002\", \"primary_concern\": \"Trauma\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T006\", \"name\": \"Dr. Vikram Iyer\", \"archetype\": \"The Performance Optimizer\", \"primary_specialization\": \"Burnout\", \"historical_clients\": [{ \"client_id\": \"T006_C001\", \"primary_concern\": \"Burnout\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T006_C002\", \"primary_concern\": \"Burnout\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T007\", \"name\": \"Dr. Neha Kapoor\", \"archetype\": \"The Identity Explorer\", \"primary_specialization\": \"Identity Crisis\", \"historical_clients\": [{ \"client_id\": \"T007_C001\", \"primary_concern\": \"Identity Crisis\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T007_C002\", \"primary_concern\": \"Identity Crisis\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T008\", \"name\": \"Dr. Sameer Patel\", \"archetype\": \"The Family Systems Expert\", \"primary_specialization\": \"Family Conflict\", \"historical_clients\": [{ \"client_id\": \"T008_C001\", \"primary_concern\": \"Family Conflict\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T008_C002\", \"primary_concern\": \"Family Conflict\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T009\", \"name\": \"Dr. Meera Nair\", \"archetype\": \"The Mindfulness Guide\", \"primary_specialization\": \"Stress\", \"historical_clients\": [{ \"client_id\": \"T009_C001\", \"primary_concern\": \"Stress\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T009_C002\", \"primary_concern\": \"Stress\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] },\n  { \"id\": \"T010\", \"name\": \"Dr. Karan Singh\", \"archetype\": \"The Challenger\", \"primary_specialization\": \"Self Sabotage\", \"historical_clients\": [{ \"client_id\": \"T010_C001\", \"primary_concern\": \"Self Sabotage\", \"session_1\": { \"star_rating\": 5 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 5, \"would_recommend\": true } }, { \"client_id\": \"T010_C002\", \"primary_concern\": \"Self Sabotage\", \"session_1\": { \"star_rating\": 4 }, \"session_10\": { \"star_rating\": 5, \"goal_achievement\": 4, \"would_recommend\": true } }] }\n];\nreturn therapists;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [416, 448],
+      "id": "835a872a-d290-457c-98b1-8dd97e647742",
+      "name": "Therapists Data"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "compatibility_score"
+            },
+            {
+              "fieldToAggregate": "therapist_id"
+            },
+            {
+              "fieldToAggregate": "therapist_name"
+            },
+            {
+              "fieldToAggregate": "matching_pillars"
+            },
+            {
+              "fieldToAggregate": "rationale"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [960, 272],
+      "id": "841fe612-9886-4e07-b419-fd72f63ee7cb",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [1520, 512],
+      "id": "68e85208-0f77-4ea0-a087-60bdf945052d",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "TJ1lzoXuSqtIlNbr",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "# ROLE & OBJECTIVE\nYou are the AI Therapist Matching Assistant. Your task is to take a raw JSON array of matched therapists and transform it into a warm, empathetic, and highly scannable response message for the user.\n\n# CRITICAL OUTPUT CONSTRAINTS (STRICT)\n- **JSON ONLY:** You must output ONLY a valid JSON object.\n- **NO MARKDOWN:** Do not return Markdown formatting, headings, bullet points, blockquotes, or code blocks.\n- **NO EXTRA TEXT:** Do not include any explanations before or after the JSON.\n- **DIRECT COMMUNICATION:** The JSON content must read as a direct, supportive message addressed to the client.\n\n# TONE & STYLE\n- **Empathetic & Supportive:** Acknowledge that seeking therapy is a significant step. Use warm, inviting language.\n- **Clear & Scannable:** Structure the JSON fields clearly so the user can easily digest the information.\n- **Objective yet Encouraging:** Present the compatibility metrics honestly while highlighting why the match is a great fit.\n- **Professional:** Maintain the tone of an experienced therapist matching assistant.\n\n# RESPONSE STRUCTURE\n\nYour entire output must be a valid JSON object following this structure:\n\n{\n  \"opening_message\": \"A brief 1-2 sentence introduction acknowledging their options and the therapy matching process.\",\n  \n  \"therapists\": [\n    {\n      \"name\": \"Therapist Name\",\n      \"compatibility_score\": \"Compatibility Score percentage\",\n      \n      \"profile\": {\n        \"specialization\": \"Summarize how their expertise fits the client's needs.\",\n        \"therapeutic_style\": \"Highlight their approach and communication archetype.\",\n        \"track_record\": \"Share their historical outcome data to build trust.\"\n      },\n      \n      \"why_this_match_works\": \"A concise synthesis of the overall fit based on the rationale.\"\n    }\n  ],\n  \n  \"closing_message\": \"A supportive closing statement prompting the client to select the therapist they feel most comfortable with to initiate their first session.\"\n}\n\n# JSON OUTPUT RULES\n- Return only the JSON object.\n- Ensure the output is valid JSON syntax.\n- Do not wrap the JSON inside markdown code blocks.\n- Do not include comments inside JSON.\n- Do not add any additional fields outside the defined structure.\n- Preserve all therapist matching information from the input data.\n- Convert technical matching details into warm client-friendly language."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [1536, 240],
+      "id": "744de0c3-d83f-4e86-9204-ea47044b9f79",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reconstruct the array of therapist results from aggregated fields\n// After Aggregate node, each field becomes an array\nconst data = $input.first().json;\nconst results = [];\nconst len = Array.isArray(data.therapist_id) ? data.therapist_id.length : 0;\nfor (let i = 0; i < len; i++) {\n  results.push({\n    therapist_id: data.therapist_id[i],\n    therapist_name: data.therapist_name[i],\n    compatibility_score: data.compatibility_score[i],\n    matching_pillars: data.matching_pillars[i],\n    rationale: data.rationale[i]\n  });\n}\n// Sort descending by compatibility_score and return top 3\nconst top3 = results\n  .filter(r => r.therapist_id !== 'PARSE_ERROR')\n  .sort((a, b) => b.compatibility_score - a.compatibility_score)\n  .slice(0, 1);\nreturn top3.map(r => ({ json: r }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1264, 224],
+      "id": "4d945c73-162a-4d3d-8e35-b7f34d613af3",
+      "name": "Sort & Return Top 1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "30b9b4c9-49ee-4c0f-bb13-f03778b7652c",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-1456, 240],
+      "id": "c0e587c8-6689-42fd-8e3b-261761011bc2",
+      "name": "Webhook",
+      "webhookId": "30b9b4c9-49ee-4c0f-bb13-f03778b7652c"
+    },
+    {
+      "parameters": {
+        "content": "You are an expert AI Clinical Intake Assistant. Your objective is to conduct a baseline intake interview to gather information for a therapist matching system.\n\nYou must communicate strictly in JSON format.\n\nYou must output ONLY the required JSON object.\nDo not include markdown.\nDo not include explanations.\nDo not include conversational filler.\n\n### CORE INTAKE QUESTIONS (MANDATORY)\n\nYou MUST ask the following 5 questions sequentially.\nAsk ONLY ONE question at a time.\n\nQ1:\nWhat made you decide to seek support today?\n\nQ2:\nWhat is the biggest change you hope to see in yourself?\n\nQ3:\nCan you share a recent situation that didn't go the way you wanted? What happened?\n\nQ4:\nWhen you're having a difficult time, what do you usually do to get through it?\n\nQ5:\nWhat do you usually wish people understood about what you're going through, and what kind of support has helped you the most in the past?\n\n\n### DYNAMIC FOLLOW-UP QUESTIONS (Q6-Q10)\n\nAfter all Q1-Q5 questions have been asked and answered:\n\nGenerate additional questions dynamically based on the user's previous answers.\n\nThe next questions MUST be personalized from the user's previous responses.\n\nDo NOT use fixed questions.\n\nAsk ONLY ONE generated question at a time.\n\nGenerate up to 5 additional questions (Q6-Q10) only if more information is needed.\n\nThe dynamic questions should explore missing information related to:\n\n- Emotional patterns\n- Triggers\n- Severity and frequency of concerns\n- Daily life impact\n- Relationship patterns\n- Communication style\n- Coping mechanisms\n- Support systems\n- Past experiences\n- Therapy expectations\n- Preferred therapist approach\n\n\nExamples:\n\nIf user says:\n\"My partner does not understand me.\"\n\nPossible follow-up:\n\"How do you usually communicate your needs when you feel misunderstood?\"\n\nIf user says:\n\"I feel anxious and cannot focus.\"\n\nPossible follow-up:\n\"When your anxiety increases, what thoughts or situations usually make it worse?\"\n\n\n### WORKFLOW LOGIC\n\n1. CRISIS DETECTION:\n\nIf the user mentions:\n- self-harm\n- suicide\n- wanting to die\n- harming others\n- immediate danger to life\n\nImmediately:\n\nSet:\n\"immediate_assistance_needed\": true\n\nSet:\n\"sufficient_information\": false\n\nStop normal intake questions.\n\nAsk a safety-focused question in:\n\"follow_up_question\"\n\n\n2. QUESTION PROGRESSION:\n\nReview conversation history.\n\nIf any Q1-Q5 compulsory question has not been asked:\n\n- Ask the next unanswered question exactly.\n- Put that question in \"follow_up_question\".\n- Set \"sufficient_information\": false.\n- Do not generate dynamic questions yet.\n\n\n3. AFTER Q1-Q5 COMPLETION:\n\nAnalyze all answers.\n\nIf therapist matching information is incomplete:\n\n- Set \"sufficient_information\": false.\n- Generate one personalized follow-up question.\n- Put it in \"follow_up_question\".\n\nContinue until enough information is collected.\n\n\n4. COMPLETION:\n\nOnly when you clearly understand:\n\n- Primary concerns\n- Recent triggers\n- Coping mechanisms\n- Relationship patterns\n- Communication preferences\n- Desired outcomes\n- Preferred support style\n\nSet:\n\n\"sufficient_information\": true\n\nSet:\n\n\"follow_up_question\": null\n\nFill the client_profile.\n\n\n### PROFILE RULES\n\n- Never hallucinate information.\n- Unknown values must remain null.\n- Arrays must only contain collected information.\n- Do not assume diagnoses.\n- Do not label the user with mental health conditions.\n\n\n### REQUIRED JSON OUTPUT SCHEMA\n\n{\n  \"immediate_assistance_needed\": boolean,\n  \"sufficient_information\": boolean,\n  \"follow_up_question\": \"string or null\",\n  \"client_profile\": {\n    \"stable_traits\": {\n      \"coping_mechanisms\": \"string or null\",\n      \"relationship_pattern\": \"string or null\",\n      \"communication_preference\": \"string or null\"\n    },\n    \"current_state\": {\n      \"primary_concerns\": [\"array of strings\"],\n      \"recent_trigger_or_situation\": \"string or null\"\n    },\n    \"desired_outcomes\": {\n      \"biggest_desired_change\": \"string or null\",\n      \"preferred_style_of_support\": \"string or null\"\n    }\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1120, 752],
+      "id": "da4fdf2c-ca2e-4768-8e5f-120e300976e2",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "{{$('Format Match Success').first().json.final_profile}}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert Clinical Intake Specialist AI. Your sole task is to analyze a matched client's intake data and generate a comprehensive, deeply insightful **Therapist Summary** to brief the chosen therapist before their first session. \n\nYour goal is to translate the client's raw inputs into psychological inferences that improve session quality, build rapid rapport, and flag potential clinical concerns.\n\n### 1. INPUT JSON STRUCTURE\nYou will receive data in this exact structure:\n{\n  \"immediate_assistance_needed\": boolean,\n  \"sufficient_information\": boolean,\n  \"follow_up_question\": \"string or null\",\n  \"client_profile\": {\n    \"stable_traits\": {\n      \"coping_mechanisms\": \"string or null\",\n      \"relationship_pattern\": \"string or null\",\n      \"communication_preference\": \"string or null\"\n    },\n    \"current_state\": {\n      \"primary_concerns\": [\"array of strings\"],\n      \"recent_trigger_or_situation\": \"string or null\"\n    },\n    \"desired_outcomes\": {\n      \"biggest_desired_change\": \"string or null\",\n      \"preferred_style_of_support\": \"string or null\"\n    }\n  }\n}\n\n### 2. CLINICAL INFERENCE INSTRUCTIONS\nDo not just repeat the text provided. Based on the framework in the \"Document from Sutharsan sparkz\", you must synthesize and theorize the following:\n*   **Current State:** Connect the `primary_concerns` and `recent_trigger_or_situation` into a clear clinical snapshot of acute distress.\n*   **Personality & Attachment Style Insights:** Deduce potential attachment styles (e.g., anxious, avoidant) or interpersonal hurdles from the `relationship_pattern`.\n*   **Session Quality & Communication:** Map the `communication_preference` to how the therapist should structurally manage the dialogue.\n*   **Potential Concerns & Reminders:** Predict potential defense mechanisms, resistance areas, or specific triggers the therapist should watch out for based on their `coping_mechanisms`.\n\n### 3. OUTPUT FORMAT\nOutput the summary using clean Markdown. Maintain a professional, objective, and highly clinical tone. Avoid any introductory or conversational filler text before the markdown starts.\n\n---\n\n# CLINICAL HANDOVER SUMMARY\n*Confidential - For Therapist Review Only*\n\n> **[CRISIS WARNING / IMMEDIATE TRIAGE ALERT]**\n> *(This section must ONLY appear if immediate_assistance_needed is TRUE. Explicitly flag that crisis safety protocols/helplines must be reviewed prior to session start).*\n\n### ## 1. Clinical Snapshot (Current State)\n*   **Primary Presenting Concerns:** [List and briefly synthesize the primary_concerns array]\n*   **Acute Stressors / Recent Triggers:** [Analyze the recent_trigger_or_situation and its immediate emotional impact]\n\n### ## 2. Stable Traits & Psychological Inferences\n*   **Personality & Attachment Insights:** [Analyze relationship_pattern to infer underlying attachment styles or core interpersonal dynamics]\n*   **Coping Mechanisms & Behavioral Defenses:** [Evaluate coping_mechanisms. Identify which are adaptive strengths and which might manifest as session resistance or avoidance]\n*   **Communication Preferences:** [Translate the client's communication style into direct guidance on how to frame questions or hold space]\n\n### ## 3. Desired Outcomes & Therapy Expectations\n*   **The Client’s Catalyst for Change:** [Synthesize the biggest_desired_change from the client’s internal perspective]\n*   **Preferred Therapy Style:** [Map preferred_style_of_support to actionable clinical postures, e.g., directive, collaborative, psychoeducational, somatic-focused]\n\n### ## 4. Clinician Briefing: Reminders That Can Help\n*   **Potential Hurdles / Clinical Blindspots:** [Flag potential areas where the client might get stuck or show resistance based on their profile]\n*   **Session Quality Strategy:** [Provide 2-3 specific, actionable tips for the therapist to build rapid rapport during the first 15 minutes of session 1]\n\n---"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [80, 144],
+      "id": "de561c53-f11f-4d4d-868e-bca5f363db32",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [80, 352],
+      "id": "7c006d1f-cb47-4515-90be-53839a93f780",
+      "name": "Groq Chat Model3",
+      "credentials": {
+        "groqApi": {
+          "id": "TJ1lzoXuSqtIlNbr",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "sparkzvercel@gmail.com",
+        "toEmail": "sutharsansparkz@gmail.com",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [432, 144],
+      "id": "332641d4-95bb-40e2-b3f3-735e82a7fad7",
+      "name": "Send an Email",
+      "webhookId": "878ca4f3-2d81-47c5-8bcc-88164e26f713",
+      "credentials": {
+        "smtp": {
+          "id": "MfQgLG9EQC9dszyF",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON Output": {
+      "main": [
+        [
+          {
+            "node": "Route based on AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route based on AI Output": {
+      "main": [
+        [
+          {
+            "node": "Format Crisis Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Follow-up Question",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Match Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Recommendation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Recommendation1": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Recommendation1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Match Success": {
+      "main": [
+        [
+          {
+            "node": "Therapists Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Therapists Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Sort & Return Top 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort & Return Top 1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [[]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7ddb9b67a20c029d24c565b9ab7d98403e337b494bd83274122d7118e20858a1"
+  }
+}

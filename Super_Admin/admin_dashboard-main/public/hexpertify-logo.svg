@@ -1,0 +1,15 @@
+<svg viewBox="0 0 540 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(10, 10) scale(0.85)">
+    <path d="M 30,55 L 70,15 L 85,30 L 55,60 L 55,140 L 85,170 L 70,185 L 30,145 Z" fill="#5e2be2" />
+    <path d="M 170,55 L 130,15 L 115,30 L 145,60 L 145,140 L 115,170 L 130,185 L 170,145 Z" fill="#5e2be2" />
+    <path d="M 55,60 L 145,140 L 125,160 L 35,80 Z" fill="#5e2be2" />
+    <path d="M 145,60 L 55,140 L 75,160 L 165,80 Z" fill="#5e2be2" />
+    <polygon points="85,15 97,32 73,32" fill="#5e2be2" />
+    <polygon points="115,15 127,32 103,32" fill="#5e2be2" />
+    <polygon points="85,185 97,168 73,168" fill="#5e2be2" />
+    <polygon points="115,185 127,168 103,168" fill="#5e2be2" />
+  </g>
+  <text x="180" y="105" font-family="'Plus Jakarta Sans', 'Arial Black', sans-serif" font-weight="900" font-size="72" fill="#5e2be2" letter-spacing="-1">EXPERTIFY</text>
+  <rect x="180" y="125" width="165" height="10" rx="5" fill="#5e2be2" />
+  <text x="355" y="136" font-family="'Plus Jakarta Sans', 'Arial Black', sans-serif" font-weight="900" font-size="18" fill="#5e2be2" letter-spacing="1">ANYTIME,ANYWHERE</text>
+</svg>

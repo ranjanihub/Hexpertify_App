@@ -1,0 +1,387 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [-1376, -16],
+      "id": "baa4f7bf-904d-4fb3-9e86-6a633288f38b",
+      "name": "When chat message received",
+      "webhookId": "16df3b25-27d3-4ec9-8d15-fc6950d34038"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an expert AI Clinical Intake Assistant. Your objective is to conduct a baseline intake interview to gather information for a therapist matching system. \n\nYou must communicate strictly in JSON format.\n\n### THE 5 COMPULSORY CORE QUESTIONS:\nYou MUST ask the user the following 5 questions sequentially. Ask ONLY ONE question at a time.\nQ1: What made you decide to seek support today?\nQ2: What is the biggest change you hope to see in yourself?\nQ3: Can you share a recent situation that didn't go the way you wanted? What happened?\nQ4: When you're having a difficult time, what do you usually do to get through it?\nQ5: What do you usually wish people understood about what you're going through, and what kind of support has helped you the most in the past?\n\n### YOUR WORKFLOW & LOGIC:\n1. CRISIS DETECTION: If the user ever mentions self-harm, suicide, or an immediate threat to life, immediately set \"immediate_assistance_needed\" to true and \"sufficient_information\" to false.\n2. ASK THE CORE QUESTIONS: Review the conversation history. If any of the 5 Compulsory Core Questions have NOT been asked yet, place the exact text of the next unasked question into the \"follow_up_question\" JSON field. Set \"sufficient_information\" to false. \n3. DYNAMIC EVALUATION: ONLY AFTER all 5 core questions have been asked and answered, evaluate the entire profile. \n    - If you clearly understand their primary concerns, relationship patterns, and coping mechanisms, set \"sufficient_information\" to true.\n    - IF EXTRA DETAILS ARE NEEDED: If their answers to the 5 questions were vague, brief, or lacked emotional depth, set \"sufficient_information\" to false and generate ONE custom, highly empathetic question in the \"follow_up_question\" field to dig deeper.\n\n### REQUIRED JSON SCHEMA:\n{\n  \"immediate_assistance_needed\": boolean,\n  \"sufficient_information\": boolean,\n  \"follow_up_question\": \"string or null\",\n  \"client_profile\": {\n    \"stable_traits\": {\n      \"coping_mechanisms\": \"string or null\",\n      \"relationship_pattern\": \"string or null\",\n      \"communication_preference\": \"string or null\"\n    },\n    \"current_state\": {\n      \"primary_concerns\": [\"array of strings\"],\n      \"recent_trigger_or_situation\": \"string or null\"\n    },\n    \"desired_outcomes\": {\n      \"biggest_desired_change\": \"string or null\",\n      \"preferred_style_of_support\": \"string or null\"\n    }\n  }\n}\n\n### STRICT RULES:\n- Output ONLY the raw JSON object. \n- Do not include markdown formatting (like ```json), introductory text, or conversational filler.\n- Until \"sufficient_information\" is true, the \"client_profile\" values can remain null. Do not hallucinate data."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [-1120, -16],
+      "id": "573b41da-6d92-45b3-bd91-230c26618c4f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-1264, 192],
+      "id": "7e542c03-205f-4a8b-90a8-31df0e7281b0",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "HyTz3dkBCZRRBOZc",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-1104, 192],
+      "id": "c75e90f3-c163-4442-9b37-0ac3ebf29be5",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the raw text output from the AI Agent\nlet rawOutput = $input.first().json.output || \"\";\n\n// Clean up markdown formatting\nlet cleanJsonString = rawOutput.replace(/```json/gi, '').replace(/```/g, '').trim();\n\nlet parsedData = {};\n\ntry {\n  parsedData = JSON.parse(cleanJsonString);\n} catch (error) {\n  parsedData = {\n    \"immediate_assistance_needed\": false,\n    \"sufficient_information\": false,\n    \"follow_up_question\": \"I'm setting up our session. Could you tell me what made you decide to seek support today?\",\n    \"error_log\": \"Failed to parse JSON\"\n  };\n}\n\nreturn { json: parsedData };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-864, -16],
+      "id": "3c02c8e7-e093-4a1f-a78a-a62152cc9106",
+      "name": "Parse JSON Output"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.immediate_assistance_needed }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Crisis Detected"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.sufficient_information }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Need More Info"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c3",
+                    "leftValue": "={{ $json.sufficient_information }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Success / Match"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-640, -16],
+      "id": "88e9c33c-3a65-4146-9614-632b0cb89e09",
+      "name": "Route based on AI Output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "output",
+              "value": "It sounds like you are going through an incredibly difficult time. Please know that immediate help is available. [Insert Crisis Hotline Numbers Here]",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-352, -160],
+      "id": "466da801-0a0e-4723-a03b-94a2f8fed7ab",
+      "name": "Format Crisis Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a2",
+              "name": "output",
+              "value": "={{ $json.follow_up_question }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-352, -16],
+      "id": "101e26c0-d4c6-4c83-8d0a-5a46daf9b9ab",
+      "name": "Format Follow-up Question"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3",
+              "name": "output",
+              "value": "Thank you for sharing all of that with me. I have enough information to build your profile and find the best therapist match for you.",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "final_profile",
+              "value": "={{ $json.client_profile }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-352, 144],
+      "id": "d6c26aa2-457e-4df7-942e-961a51e4d485",
+      "name": "Format Match Success"
+    },
+    {
+      "parameters": {
+        "content": "I've been feeling extremely burned out lately. I spend all day building web apps and AI tools, and I just can't seem to turn my brain off at night. The stress is becoming overwhelming.\n\n",
+        "height": 96,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1936, -80],
+      "id": "1a254c58-3f07-4e32-be40-23e8fc70e88f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "I want to learn how to set strict boundaries between my work and my personal life. I hope to be able to relax without feeling guilty that I'm not coding or working on my projects.",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1936, 32],
+      "id": "f96015d7-7abf-4842-83b2-c86698ef4e5f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Last week, a major deployment I was working on failed. Instead of asking for help, I completely isolated myself and worked 16 hours straight in a panic, which just made my anxiety worse",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1936, 128],
+      "id": "eca6a9aa-25fc-48e2-a962-fb1328e2c4f4",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "I usually isolate myself, order fast food delivery, and just play video games on my PC for hours to completely numb out and escape reality.",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1936, 224],
+      "id": "3b1e0b9b-9c8e-4b00-a4cf-49a14970cbbb",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "I wish people understood that the mental fatigue is real. In the past, having a therapist who gives me direct, actionable frameworks—almost like an algorithm for managing stress—has helped me the most. I don't just want to vent; I need practical tools.",
+        "height": 80,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1936, 320],
+      "id": "0623ebc7-59d6-46a5-9141-cabc1d5a2cf8",
+      "name": "Sticky Note4"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON Output": {
+      "main": [
+        [
+          {
+            "node": "Route based on AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route based on AI Output": {
+      "main": [
+        [
+          {
+            "node": "Format Crisis Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Follow-up Question",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Match Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Format Match Success": [
+      {
+        "output": "Thank you for sharing all of that with me. I have enough information to build your profile and find the best therapist match for you.",
+        "final_profile": {
+          "stable_traits": {
+            "coping_mechanisms": "Isolation, fast‑food delivery, and prolonged video‑game sessions to numb out and escape reality.",
+            "relationship_pattern": "Tends to withdraw and avoid asking for help when stressed, preferring to handle problems alone.",
+            "communication_preference": "Prefers direct, actionable, and structured guidance—like an algorithmic framework for managing stress."
+          },
+          "current_state": {
+            "primary_concerns": [
+              "Burnout from long work hours",
+              "Difficulty setting work‑life boundaries",
+              "Anxiety and mental fatigue",
+              "Isolation as a coping habit"
+            ],
+            "recent_trigger_or_situation": "A major deployment failed last week, leading to 16 hours of solo work and heightened anxiety."
+          },
+          "desired_outcomes": {
+            "biggest_desired_change": "Establish strict boundaries between work and personal life to relax without guilt.",
+            "preferred_style_of_support": "Practical, concrete tools and frameworks for stress management rather than solely venting."
+          }
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "71eb8b488edaf6e52ce8a6fa662a63720d35147f1149607d15eb4db107f37dd4"
+  }
+}

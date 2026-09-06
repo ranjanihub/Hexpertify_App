@@ -1,0 +1,29 @@
+name: Trigger Vercel Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  trigger-vercel:
+    name: Create Hexpertify deploy commit
+    runs-on: ubuntu-latest
+    if: "${{ github.actor != 'Hexpertify' && !contains(github.event.head_commit.message, 'chore: trigger vercel deploy') }}"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create deploy trigger commit
+        run: |
+          git config user.name "Hexpertify"
+          git config user.email "Hexpertify@users.noreply.github.com"
+          git commit --allow-empty --author="Hexpertify <Hexpertify@users.noreply.github.com>" -m "chore: trigger vercel deploy"
+          git push

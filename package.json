@@ -1,0 +1,16 @@
+{
+  "name": "hexpertify-ecosystem-root",
+  "version": "1.0.0",
+  "description": "Unified Hexpertify Ecosystem",
+  "scripts": {
+    "dev": "npm --prefix Backend run dev",
+    "dev:backend": "npm --prefix Backend run dev",
+    "dev:live": "npm --prefix Live_Panel run dev",
+    "dev:client": "npm --prefix Client_Panel/Client-Dashboard-Pro/artifacts/client-dashboard run dev",
+    "dev:consultant": "npm --prefix Consultant_Panel/Therapy-Flow-Design/artifacts/hexpertify-dashboard run dev",
+    "dev:admin": "npm --prefix Super_Admin/admin_dashboard-main run dev",
+    "build": "npm --prefix Backend run build:all",
+    "build:all": "npm --prefix Backend run build:all",
+    "start": "npm --prefix Backend run start"
+  }
+}

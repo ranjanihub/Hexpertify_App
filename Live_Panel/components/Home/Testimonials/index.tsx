@@ -1,0 +1,64 @@
+"use client";
+import React from "react";
+import Image from "next/image";
+import CarouselCommon from "@/components/Carousel";
+
+interface props {
+  data: {
+    feedback: string;
+    profile: any;
+    name: string;
+    position: string;
+  }[];
+}
+
+const Testimonial = ({ data }: props) => {
+  return (
+    <div className="w-full mt-10 mb-10">
+      <p className="text-3xl md:text-[48px] font-medium text-center mb-8 md:mb-[30px]">
+        Testimonials
+      </p>
+
+      <CarouselCommon
+        HeroBanner={data}
+        // Wrapper: clean, full height to ensure all cards match the tallest one
+        cardClassName="h-full"
+        type="card"
+        autoSlide={true}
+        SlideButton={false}
+      >
+        {(item: any) => (
+          // VISUAL CARD: Background, rounded corners, and padding go here
+          <div className="flex flex-col justify-between items-center h-full max-h-[300px] bg-[#F3EDF7] rounded-[16px] p-6 md:p-8 text-center min-h-[300px]">
+            {/* Feedback Text Area - Grows to fill space */}
+            <div className="flex-1 flex items-center justify-center mb-6">
+              <p className="text-lg md:text-[20px] font-normal italic leading-relaxed text-gray-800">
+                "{item?.feedback}"
+              </p>
+            </div>
+
+            {/* Profile Section - Stays at bottom */}
+            <div className="flex flex-col items-center">
+              <div className="relative w-16 h-16 mb-3">
+                <Image
+                  src={item?.profile}
+                  fill
+                  className="rounded-full object-cover"
+                  alt={item?.name || "User"}
+                />
+              </div>
+              <p className="font-semibold text-base md:text-[16px] text-black">
+                {item?.name}
+              </p>
+              <p className="font-normal text-sm md:text-[16px] text-gray-600">
+                {item?.position}
+              </p>
+            </div>
+          </div>
+        )}
+      </CarouselCommon>
+    </div>
+  );
+};
+
+export default Testimonial;

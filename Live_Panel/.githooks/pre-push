@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -e
+
+current_branch="$(git branch --show-current)"
+
+if [ -z "$current_branch" ]; then
+  echo "pre-push: detached HEAD detected; skipping git pull."
+  exit 0
+fi
+
+upstream="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+
+if [ -z "$upstream" ]; then
+  echo "pre-push: no upstream configured for $current_branch; skipping git pull."
+  exit 0
+fi
+
+echo "pre-push: pulling latest changes from $upstream..."
+git pull --rebase --autostash

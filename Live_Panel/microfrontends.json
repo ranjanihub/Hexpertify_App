@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "hexpertify-client": {
+      "development": {
+        "fallback": "localhost:3000"
+      }
+    },
+    "hexpertify-blog": {
+      "routing": [
+        {
+          "paths": ["/blogs", "/blogs/:path*"]
+        }
+      ]
+    }
+  }
+}
