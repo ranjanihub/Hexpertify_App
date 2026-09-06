@@ -2,7 +2,11 @@ import { MongoClient, Db } from 'mongodb';
 import { config } from '../config';
 import dns from 'dns';
 
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+if (!process.env.VERCEL) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch {}
+}
 
 let client: MongoClient | null = null;
 let db: Db | null = null;
