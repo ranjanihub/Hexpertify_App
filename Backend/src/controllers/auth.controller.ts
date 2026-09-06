@@ -24,28 +24,29 @@ export class AuthController {
       const cleanEmail = email.toLowerCase().trim();
       const db = getDatabase();
 
-      // 1. AUTO-DETECT ADMIN LOGIN (If email meets admin criteria or has ADMIN role in MongoDB)
-      const adminDoc = await db.collection('User').findOne({
-        email: cleanEmail,
-        role: { $in: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin'] }
-      }) || await db.collection('users').findOne({
-        email: cleanEmail,
-        role: { $in: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin'] }
-      });
-
+      // 1. AUTO-DETECT ADMIN LOGIN
+      // Strictly restrict admin access to authorized administrator emails
       const isExplicitTherapist = role === 'therapist' || role === 'consultant';
+      const isKnownAdmin = cleanEmail === 'ranjaniranjani5694@gmail.com' ||
+                           cleanEmail === 'admin@hexpertify.com' ||
+                           cleanEmail === 'admin@example.com' ||
+                           cleanEmail === 'superadmin@hexpertify.com' ||
+                           (cleanEmail.startsWith('admin@') && cleanEmail.endsWith('@hexpertify.com'));
 
-      const isAdminEmail = !isExplicitTherapist && (
-        cleanEmail === 'admin@hexpertify.com' || 
-        cleanEmail === 'admin@example.com' || 
-        cleanEmail === 'superadmin@hexpertify.com' || 
-        cleanEmail === 'ranjaniranjani5694@gmail.com' ||
-        cleanEmail.startsWith('admin@') || 
-        role === 'admin' || 
-        Boolean(adminDoc)
-      );
+      if (role === 'admin' && !isKnownAdmin) {
+        res.status(403).json({
+          success: false,
+          error: `Email "${cleanEmail}" does not have administrator privileges. Please sign in as a Client or Practitioner.`
+        });
+        return;
+      }
+
+      const isAdminEmail = !isExplicitTherapist && isKnownAdmin;
 
       if (isAdminEmail) {
+        const adminDoc = await db.collection('User').findOne({ email: cleanEmail }) ||
+                         await db.collection('users').findOne({ email: cleanEmail });
+
         const adminUser = {
           id: adminDoc ? String(adminDoc._id || adminDoc.id) : 'admin-1',
           name: adminDoc?.name || 'Super Administrator',
@@ -410,27 +411,20 @@ export class AuthController {
     const cleanEmail = profile.email.toLowerCase().trim();
     const db = getDatabase();
 
-    // 1. Check if user is Super Admin
-    const adminDoc = await db.collection('User').findOne({
-      email: cleanEmail,
-      role: { $in: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin'] }
-    }) || await db.collection('users').findOne({
-      email: cleanEmail,
-      role: { $in: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin'] }
-    });
+    // 1. Check if user is Super Admin (strictly verified against authorized admin emails)
     const isExplicitTherapist = requestedRole === 'therapist' || requestedRole === 'consultant';
+    const isKnownAdmin = cleanEmail === 'ranjaniranjani5694@gmail.com' ||
+                         cleanEmail === 'admin@hexpertify.com' ||
+                         cleanEmail === 'admin@example.com' ||
+                         cleanEmail === 'superadmin@hexpertify.com' ||
+                         (cleanEmail.startsWith('admin@') && cleanEmail.endsWith('@hexpertify.com'));
 
-    const isAdminEmail = !isExplicitTherapist && (
-      cleanEmail === 'admin@hexpertify.com' ||
-      cleanEmail === 'admin@example.com' ||
-      cleanEmail === 'superadmin@hexpertify.com' ||
-      cleanEmail === 'ranjaniranjani5694@gmail.com' ||
-      cleanEmail.startsWith('admin@') ||
-      requestedRole === 'admin' ||
-      Boolean(adminDoc)
-    );
+    const isAdminEmail = !isExplicitTherapist && isKnownAdmin;
 
     if (isAdminEmail) {
+      const adminDoc = await db.collection('User').findOne({ email: cleanEmail }) ||
+                       await db.collection('users').findOne({ email: cleanEmail });
+
       const adminUser = {
         id: adminDoc ? String(adminDoc._id || adminDoc.id) : 'admin-1',
         name: profile.name || adminDoc?.name || 'Super Administrator',

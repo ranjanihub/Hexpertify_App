@@ -93,6 +93,17 @@ export function LoginForm({
 
       toast.success(data.message || `Welcome, ${data.user?.name || "User"}!`);
 
+      // Clear lingering credentials of opposite roles to prevent cross-portal hijacking
+      if (data.role === "client") {
+        try {
+          localStorage.removeItem("hexpertify_admin_auth");
+          localStorage.removeItem("admin_user");
+          localStorage.removeItem("hexpertify_admin_token");
+          localStorage.removeItem("hexpertify_auth_user");
+          localStorage.removeItem("consultant_token");
+        } catch {}
+      }
+
       // Construct target URL for the specific panel on port 5000
       let targetUrl = data.redirectUrl;
       if (!targetUrl || targetUrl.includes("localhost:3000") || targetUrl.includes("5175") || targetUrl.includes("5173")) {
@@ -279,7 +290,15 @@ export function LoginForm({
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    window.location.href = `http://localhost:5000/api/auth/google?role=${role}`;
+                    try {
+                      localStorage.removeItem("hexpertify_admin_auth");
+                      localStorage.removeItem("admin_user");
+                      localStorage.removeItem("hexpertify_admin_token");
+                      localStorage.removeItem("hexpertify_auth_user");
+                      localStorage.removeItem("consultant_token");
+                    } catch {}
+                    const backendBase = process.env.NEXT_PUBLIC_BACKEND_API_URL || (window.location.port === "3000" ? "http://localhost:5000" : "");
+                    window.location.href = `${backendBase}/api/auth/google?role=${role}`;
                   }}
                   className="w-full h-11 border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold rounded-xl transition-all flex items-center justify-center gap-2.5 cursor-pointer text-sm shadow-xs mt-3"
                 >

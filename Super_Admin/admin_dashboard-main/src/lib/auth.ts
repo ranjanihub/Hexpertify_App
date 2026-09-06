@@ -75,15 +75,13 @@ export function isAdminAuthenticated(): boolean {
       return false;
     }
     const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_ADMIN));
-      return true;
+    if (!data || data === 'logged_out') {
+      return false;
     }
-    if (data === 'logged_out') return false;
     const parsed = JSON.parse(data);
-    return parsed.role === 'super_admin' || parsed.role === 'admin';
+    return parsed?.role === 'super_admin' || parsed?.role === 'admin';
   } catch (e) {
-    return true;
+    return false;
   }
 }
 
