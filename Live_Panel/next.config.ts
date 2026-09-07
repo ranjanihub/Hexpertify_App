@@ -54,19 +54,24 @@ const nextConfig: NextConfig = {
 
     return {
       beforeFiles: [
+        { source: "/api/:path*", destination: `${backendUrl}/api/:path*` },
+      ],
+      afterFiles: [
         { source: "/login", destination: "/index.html" },
         { source: "/signin", destination: "/index.html" },
         { source: "/auth/login", destination: "/index.html" },
         { source: "/admin", destination: "/admin/index.html" },
-        { source: "/admin/:path*", destination: "/admin/index.html" },
+        { source: "/admin/:path((?!assets|_next|favicon|.*\\..*).*)", destination: "/admin/index.html" },
         { source: "/consultant", destination: "/consultant/index.html" },
-        { source: "/consultant/:path*", destination: "/consultant/index.html" },
+        { source: "/consultant/:path((?!assets|_next|favicon|.*\\..*).*)", destination: "/consultant/index.html" },
         { source: "/client", destination: "/client/index.html" },
-        { source: "/client/:path*", destination: "/client/index.html" },
-        { source: "/api/:path*", destination: `${backendUrl}/api/:path*` },
+        { source: "/client/:path((?!assets|_next|favicon|.*\\..*).*)", destination: "/client/index.html" },
       ],
-      afterFiles: [],
-      fallback: [],
+      fallback: [
+        { source: "/admin/:path*", destination: "/admin/index.html" },
+        { source: "/consultant/:path*", destination: "/consultant/index.html" },
+        { source: "/client/:path*", destination: "/client/index.html" },
+      ],
     };
   },
 
