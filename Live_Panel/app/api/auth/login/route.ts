@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         {
           success: true,
           role: "super_admin",
-          redirectUrl: "http://localhost:5000/admin",
+          redirectUrl: "/admin",
           user: {
             id: adminUser.id,
             name: adminUser.name || "Super Administrator",
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
         {
           success: true,
           role: "therapist",
-          redirectUrl: "http://localhost:5000/consultant",
+          redirectUrl: "/consultant",
           user: therapistUser,
           message: "Therapist authenticated from MongoDB Atlas practitioner directory.",
         },
@@ -198,7 +198,7 @@ export async function POST(req: Request) {
       {
         success: true,
         role: "client",
-        redirectUrl: "http://localhost:5000/client",
+        redirectUrl: "/client",
         user: clientUser,
         message: "Client authenticated for consultation & therapy outcomes.",
       },
