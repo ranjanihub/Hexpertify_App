@@ -10,8 +10,9 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'hexpertify_jwt_super_secret_key_2026',
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback',
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || (process.env.VERCEL ? 'https://hexpertify-backend.vercel.app/api/auth/google/callback' : 'http://localhost:5000/api/auth/google/callback'),
   liveSiteUrl: process.env.LIVE_SITE_URL || 'http://localhost:3000',
+  frontendUrl: process.env.FRONTEND_URL || (process.env.VERCEL ? 'https://hexpertify-app.vercel.app' : ''),
   corsOrigins: [
     'http://localhost:5000', // Single Port Platform
     'http://localhost:5175', // Super Admin standalone

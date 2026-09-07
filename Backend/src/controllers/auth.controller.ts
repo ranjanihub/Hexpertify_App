@@ -697,7 +697,8 @@ export class AuthController {
       } else {
         redirectBase = '/client';
       }
-      res.redirect(`${redirectBase}?sso_ticket=${authResult.ssoTicket}&sso_user=${encodeURIComponent(JSON.stringify(authResult.user))}&google_auth=success`);
+      const hostPrefix = config.frontendUrl || '';
+      res.redirect(`${hostPrefix}${redirectBase}?sso_ticket=${authResult.ssoTicket}&sso_user=${encodeURIComponent(JSON.stringify(authResult.user))}&google_auth=success`);
     } catch (error: any) {
       res.redirect(`/login?google_error=callback_failed&message=${encodeURIComponent(error?.message || 'Google authentication failed')}`);
     }

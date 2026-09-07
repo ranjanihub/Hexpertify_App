@@ -32,11 +32,25 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const backendUrl =
+    let rawBackendUrl =
       process.env.BACKEND_API_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_API_URL ||
       (process.env.VERCEL || process.env.NODE_ENV === "production"
         ? "https://hexpertify-backend.vercel.app"
         : "http://localhost:5000");
+
+    // CRITICAL LOOP GUARD: If backendUrl is set to the frontend app (hexpertify-app),
+    // empty, relative, or pointing to localhost in Vercel, force to hexpertify-backend.
+    if (
+      !rawBackendUrl ||
+      rawBackendUrl.includes("hexpertify-app") ||
+      rawBackendUrl === "/" ||
+      (Boolean(process.env.VERCEL) && rawBackendUrl.includes("localhost"))
+    ) {
+      rawBackendUrl = "https://hexpertify-backend.vercel.app";
+    }
+
+    const backendUrl = rawBackendUrl.replace(/\/$/, "");
 
     return {
       beforeFiles: [
