@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import Script from "next/script";
 import { signIn, useSession } from "next-auth/react";
 
@@ -26,6 +26,8 @@ interface GoogleOneTapConfig {
   auto_select?: boolean;
   cancel_on_tap_outside?: boolean;
   context?: "signin" | "signup" | "use";
+  use_fedcm_for_prompt?: boolean;
+  itp_support?: boolean;
 }
 
 interface CredentialResponse {
@@ -40,12 +42,14 @@ interface PromptNotification {
   getNotDisplayedReason: () => string;
   getSkippedReason: () => string;
   getDismissedReason: () => string;
+  getMomentType: () => string;
 }
 
 export function GoogleOneTapNextAuth() {
   const { data: session, status } = useSession();
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const isPromptedRef = useRef(false);
 
   const handleCredentialResponse = useCallback(
     async (response: CredentialResponse) => {
@@ -85,7 +89,7 @@ export function GoogleOneTapNextAuth() {
   );
 
   const initializeOneTap = useCallback(() => {
-    if (!window.google || session || !clientId) return;
+    if (!window.google || session || !clientId || isPromptedRef.current) return;
 
     try {
       window.google.accounts.id.initialize({
@@ -94,17 +98,25 @@ export function GoogleOneTapNextAuth() {
         auto_select: false,
         cancel_on_tap_outside: true,
         context: "signin",
+        use_fedcm_for_prompt: true,
+        itp_support: true,
       });
 
-      window.google.accounts.id.prompt();
+      isPromptedRef.current = true;
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed()) {
+          isPromptedRef.current = false;
+        } else if (notification.isDismissedMoment() || notification.isSkippedMoment()) {
+          isPromptedRef.current = false;
+        }
+      });
     } catch {
-      return;
+      isPromptedRef.current = false;
     }
   }, [clientId, session, handleCredentialResponse]);
 
   useEffect(() => {
-    if (isScriptLoaded && !session && status !== "loading") {
-      // Small delay to ensure DOM is ready
+    if (isScriptLoaded && !session && status === "unauthenticated") {
       const timer = setTimeout(() => {
         initializeOneTap();
       }, 500);
@@ -114,6 +126,7 @@ export function GoogleOneTapNextAuth() {
 
   useEffect(() => {
     if (session) {
+      isPromptedRef.current = false;
       window.google?.accounts.id.cancel();
     }
   }, [session]);

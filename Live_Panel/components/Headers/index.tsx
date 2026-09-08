@@ -5,9 +5,22 @@ import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 
+const getBackendUrl = () => {
+  if (typeof window !== "undefined") {
+    if (
+      window.location.hostname.includes("vercel.app") ||
+      window.location.hostname.includes("hexpertify")
+    ) {
+      return "https://hexpertify-backend.vercel.app";
+    }
+  }
+  return process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+};
+
 const Header = () => {
   const { data: session } = useSession();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const backendUrl = getBackendUrl();
 
   const handleLogout = () => {
     signOut({ callbackUrl: "/" });
@@ -49,7 +62,7 @@ const Header = () => {
                 <Link href="/profile">My Profile</Link>
               </li>
               <li>
-                <a href="http://localhost:5000/client" className="text-purple-600 font-semibold hover:text-purple-800 transition-colors">
+                <a href={`${backendUrl}/client`} className="text-purple-600 font-semibold hover:text-purple-800 transition-colors">
                   Client Portal
                 </a>
               </li>
@@ -72,22 +85,22 @@ const Header = () => {
         <div className="flex gap-[10px]">
           {!session?.user ? (
             <>
-              <Link href="/login">
+              <a href={`${backendUrl}/login`}>
                 <Button
                   variant="default"
                   className="text-[16px] text-[#fff] cursor-pointer"
                 >
                   Login
                 </Button>
-              </Link>
-              <Link href="/signup">
+              </a>
+              <a href={`${backendUrl}/login?mode=signup`}>
                 <Button
                   variant="outline"
                   className="text-[16px] text-[#450bc8] cursor-pointer"
                 >
                   Signup
                 </Button>
-              </Link>
+              </a>
             </>
           ) : (
             <Button
@@ -193,7 +206,7 @@ const Header = () => {
                 </li>
                 <li onClick={closeMenu}>
                   <a
-                    href="http://localhost:5000/client"
+                    href={`${backendUrl}/client`}
                     className="text-[#450bc8] font-semibold hover:underline transition-colors"
                   >
                     Client Portal
@@ -240,22 +253,22 @@ const Header = () => {
           <div className="mt-8 flex flex-col gap-4">
             {!session?.user ? (
               <>
-                <Link href="/login" onClick={closeMenu} className="w-full">
+                <a href={`${backendUrl}/login`} onClick={closeMenu} className="w-full">
                   <Button
                     variant="default"
                     className="w-full text-[16px] text-[#fff] cursor-pointer"
                   >
                     Login
                   </Button>
-                </Link>
-                <Link href="/signup" onClick={closeMenu} className="w-full">
+                </a>
+                <a href={`${backendUrl}/login?mode=signup`} onClick={closeMenu} className="w-full">
                   <Button
                     variant="outline"
                     className="w-full text-[16px] text-[#450bc8] cursor-pointer"
                   >
                     Signup
                   </Button>
-                </Link>
+                </a>
               </>
             ) : (
               <Button

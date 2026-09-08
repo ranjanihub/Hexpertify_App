@@ -4,14 +4,12 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-
-const NextAuth = require("next-auth").default;
+import NextAuth, { type AuthOptions } from "next-auth";
 
 const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
-export const authConfig = {
-  adapter: PrismaAdapter(prisma),
-  allowDangerousEmailAccountLinking: true,
+export const authConfig: AuthOptions = {
+  adapter: PrismaAdapter(prisma) as any,
 
   providers: [
     // ---------------------------------------------------------
@@ -141,6 +139,7 @@ export const authConfig = {
     Google({
       clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
       clientSecret: process.env.NEXT_GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
 

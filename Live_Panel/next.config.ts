@@ -53,9 +53,6 @@ const nextConfig: NextConfig = {
     const backendUrl = rawBackendUrl.replace(/\/$/, "");
 
     return {
-      beforeFiles: [
-        { source: "/api/:path*", destination: `${backendUrl}/api/:path*` },
-      ],
       afterFiles: [
         { source: "/login", destination: "/index.html" },
         { source: "/signin", destination: "/index.html" },
@@ -68,6 +65,7 @@ const nextConfig: NextConfig = {
         { source: "/client/:path((?!assets|_next|favicon|.*\\..*).*)", destination: "/client/index.html" },
       ],
       fallback: [
+        { source: "/api/:path*", destination: `${backendUrl}/api/:path*` },
         { source: "/admin/:path*", destination: "/admin/index.html" },
         { source: "/consultant/:path*", destination: "/consultant/index.html" },
         { source: "/client/:path*", destination: "/client/index.html" },
