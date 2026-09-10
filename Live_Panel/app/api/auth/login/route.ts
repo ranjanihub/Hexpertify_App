@@ -33,26 +33,18 @@ export async function POST(req: Request) {
     // 1. SUPER ADMIN LOGIN
     // Controls all over the application (users, therapists, CMS, finance)
     // ─────────────────────────────────────────────────────────────
-    if (role === "admin" || role === "super_admin" || cleanEmail === "admin@hexpertify.com" || cleanEmail === "admin@example.com" || cleanEmail === "ranjaniranjani5694@gmail.com" || cleanEmail.startsWith("admin@")) {
-      let adminUser = await prisma.user.findUnique({
-        where: { email: cleanEmail },
-      });
+    const isMasterAdminEmail = cleanEmail === "admin@hexpertify.com" || cleanEmail === "admin@example.com" || cleanEmail === "superadmin@hexpertify.com";
 
-      // If user exists and is not ADMIN and not the master admin email
-      if (adminUser && adminUser.role !== "ADMIN" && cleanEmail !== "admin@hexpertify.com" && cleanEmail !== "admin@example.com" && cleanEmail !== "ranjaniranjani5694@gmail.com") {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Administrative access denied. This account does not possess Super Administrator privileges.",
-          },
-          {
-            status: 403,
-            headers: { "Access-Control-Allow-Origin": "*" },
-          }
-        );
-      }
+    let dbUser = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
 
-      if (!adminUser) {
+    const hasAdminRole = dbUser?.role === "ADMIN";
+
+    if (isMasterAdminEmail || (role === "admin" && hasAdminRole) || (hasAdminRole && role !== "client" && role !== "therapist")) {
+      let adminUser = dbUser;
+
+      if (!adminUser && isMasterAdminEmail) {
         adminUser = await prisma.user.create({
           data: {
             email: cleanEmail,
@@ -62,23 +54,38 @@ export async function POST(req: Request) {
         });
       }
 
+      if (adminUser) {
+        return NextResponse.json(
+          {
+            success: true,
+            role: "super_admin",
+            redirectUrl: "/admin",
+            user: {
+              id: adminUser.id,
+              name: adminUser.name || "Super Administrator",
+              email: adminUser.email,
+              role: "super_admin",
+              avatarUrl:
+                adminUser.image ||
+                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
+            },
+            message: "Super Admin authenticated with full system control.",
+          },
+          { headers: { "Access-Control-Allow-Origin": "*" } }
+        );
+      }
+    }
+
+    if (role === "admin" && !isMasterAdminEmail && !hasAdminRole) {
       return NextResponse.json(
         {
-          success: true,
-          role: "super_admin",
-          redirectUrl: "/admin",
-          user: {
-            id: adminUser.id,
-            name: adminUser.name || "Super Administrator",
-            email: adminUser.email,
-            role: "super_admin",
-            avatarUrl:
-              adminUser.image ||
-              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
-          },
-          message: "Super Admin authenticated with full system control.",
+          success: false,
+          error: "Administrative access denied. This account does not possess Super Administrator privileges in the database.",
         },
-        { headers: { "Access-Control-Allow-Origin": "*" } }
+        {
+          status: 403,
+          headers: { "Access-Control-Allow-Origin": "*" },
+        }
       );
     }
 

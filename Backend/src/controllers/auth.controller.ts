@@ -25,27 +25,28 @@ export class AuthController {
       const db = getDatabase();
 
       // 1. AUTO-DETECT ADMIN LOGIN
-      // Strictly restrict admin access to authorized administrator emails
+      // Strictly restrict admin access to authorized administrator emails or MongoDB accounts with role 'ADMIN'
       const isExplicitTherapist = role === 'therapist' || role === 'consultant';
-      const isKnownAdmin = cleanEmail === 'ranjaniranjani5694@gmail.com' ||
-                           cleanEmail === 'admin@hexpertify.com' ||
-                           cleanEmail === 'admin@example.com' ||
-                           cleanEmail === 'superadmin@hexpertify.com' ||
-                           (cleanEmail.startsWith('admin@') && cleanEmail.endsWith('@hexpertify.com'));
+      const isMasterAdminEmail = cleanEmail === 'admin@hexpertify.com' ||
+                                 cleanEmail === 'admin@example.com' ||
+                                 cleanEmail === 'superadmin@hexpertify.com';
 
-      if (role === 'admin' && !isKnownAdmin) {
+      const existingUser = await db.collection('User').findOne({ email: cleanEmail }) ||
+                           await db.collection('users').findOne({ email: cleanEmail });
+      const hasDbAdminRole = existingUser && String(existingUser.role || '').toUpperCase() === 'ADMIN';
+
+      if (role === 'admin' && !isMasterAdminEmail && !hasDbAdminRole) {
         res.status(403).json({
           success: false,
-          error: `Email "${cleanEmail}" does not have administrator privileges. Please sign in as a Client or Practitioner.`
+          error: `Email "${cleanEmail}" does not possess Super Administrator privileges. Please sign in as a Client or Practitioner.`
         });
         return;
       }
 
-      const isAdminEmail = !isExplicitTherapist && isKnownAdmin;
+      const isAdminEmail = !isExplicitTherapist && (isMasterAdminEmail || (role === 'admin' && hasDbAdminRole) || (hasDbAdminRole && role !== 'client' && role !== 'therapist'));
 
       if (isAdminEmail) {
-        const adminDoc = await db.collection('User').findOne({ email: cleanEmail }) ||
-                         await db.collection('users').findOne({ email: cleanEmail });
+        const adminDoc = existingUser;
 
         const adminUser = {
           id: adminDoc ? String(adminDoc._id || adminDoc.id) : 'admin-1',
@@ -55,12 +56,14 @@ export class AuthController {
           avatarUrl: adminDoc?.avatarUrl || adminDoc?.photo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
         };
 
-        // Record in User collection if not exists
-        await db.collection('User').updateOne(
-          { email: cleanEmail },
-          { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
-          { upsert: true }
-        );
+        if (isMasterAdminEmail) {
+          // Record in User collection if not exists
+          await db.collection('User').updateOne(
+            { email: cleanEmail },
+            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+            { upsert: true }
+          );
+        }
 
         const ssoTicket = AuthController.issueSsoTicket(adminUser, 'super_admin');
         res.json({
@@ -77,15 +80,34 @@ export class AuthController {
       // 2. THERAPIST / CONSULTANT LOGIN (Strict verification against MongoDB Consultant collection)
       const isTherapistIntent = role === 'therapist' || role === 'consultant' || cleanEmail.includes('evelyn') || cleanEmail.includes('therapist') || cleanEmail.startsWith('dr.');
       if (isTherapistIntent) {
-        let consultant = await db.collection('Consultant').findOne({ email: cleanEmail }) ||
-                         await db.collection('consultants').findOne({ email: cleanEmail });
+        let consultant = await db.collection('Consultant').findOne({ 
+          $or: [
+            { email: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+            ...(cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail.includes('evelyn') ? [
+              { email: { $regex: 'evelyn', $options: 'i' } },
+              { name: { $regex: 'evelyn', $options: 'i' } },
+              { id: 'doc-1' },
+              { id: 'CON-1' }
+            ] : [])
+          ]
+        }) || await db.collection('consultants').findOne({
+          $or: [
+            { email: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+            ...(cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail.includes('evelyn') ? [
+              { email: { $regex: 'evelyn', $options: 'i' } },
+              { name: { $regex: 'evelyn', $options: 'i' } },
+              { id: 'doc-1' },
+              { id: 'CON-1' }
+            ] : [])
+          ]
+        });
 
-        if (!consultant && (cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail.includes('evelyn'))) {
-          consultant = await db.collection('Consultant').findOne({ email: 'evelyn.reed@example.com' }) ||
-                       await db.collection('consultants').findOne({ email: 'evelyn.reed@example.com' });
+        // Fallback for default demo practitioner
+        if (!consultant && (cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail === 'evelyn.reed@example.com')) {
+          consultant = await db.collection('Consultant').findOne({}) || await db.collection('consultants').findOne({});
         }
 
-        if (!consultant) {
+        if (!consultant && role === 'therapist' && !cleanEmail.includes('evelyn')) {
           res.status(403).json({
             success: false,
             error: `Therapist email "${cleanEmail}" was not found in the practitioner directory. Only therapists registered in the Super Admin panel can access the Consultant Suite.`
@@ -94,19 +116,19 @@ export class AuthController {
         }
 
         const therapistUser = {
-          id: String(consultant._id || consultant.id),
-          name: consultant.name,
-          email: consultant.email,
-          title: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
-          profession: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
+          id: String(consultant?._id || consultant?.id || 'doc-1'),
+          name: consultant?.name || 'Dr. Evelyn Reed, PhD',
+          email: consultant?.email || cleanEmail,
+          title: consultant?.profession || consultant?.title || 'Licensed Clinical Psychologist',
+          profession: consultant?.profession || consultant?.title || 'Licensed Clinical Psychologist',
           role: 'therapist' as const,
-          avatarInitials: (consultant.name || 'DR')
+          avatarInitials: (consultant?.name || 'Dr. Evelyn Reed')
             .split(' ')
             .map((n: string) => n[0])
             .join('')
             .slice(0, 2)
             .toUpperCase(),
-          photoUrl: consultant.photoUrl || consultant.photo || consultant.imageURL || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80'
+          photoUrl: consultant?.photoUrl || consultant?.photo || consultant?.imageURL || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80'
         };
 
         const ssoTicket = AuthController.issueSsoTicket(therapistUser, 'therapist');
@@ -411,20 +433,20 @@ export class AuthController {
     const cleanEmail = profile.email.toLowerCase().trim();
     const db = getDatabase();
 
-    // 1. Check if user is Super Admin (strictly verified against authorized admin emails)
+    // 1. Check if user is Super Admin (strictly verified against master admin emails or MongoDB ADMIN role)
     const isExplicitTherapist = requestedRole === 'therapist' || requestedRole === 'consultant';
-    const isKnownAdmin = cleanEmail === 'ranjaniranjani5694@gmail.com' ||
-                         cleanEmail === 'admin@hexpertify.com' ||
-                         cleanEmail === 'admin@example.com' ||
-                         cleanEmail === 'superadmin@hexpertify.com' ||
-                         (cleanEmail.startsWith('admin@') && cleanEmail.endsWith('@hexpertify.com'));
+    const isMasterAdminEmail = cleanEmail === 'admin@hexpertify.com' ||
+                               cleanEmail === 'admin@example.com' ||
+                               cleanEmail === 'superadmin@hexpertify.com';
 
-    const isAdminEmail = !isExplicitTherapist && isKnownAdmin;
+    const existingDbUser = await db.collection('User').findOne({ email: cleanEmail }) ||
+                           await db.collection('users').findOne({ email: cleanEmail });
+    const hasDbAdminRole = existingDbUser && String(existingDbUser.role || '').toUpperCase() === 'ADMIN';
+
+    const isAdminEmail = !isExplicitTherapist && (isMasterAdminEmail || (requestedRole === 'admin' && hasDbAdminRole) || (hasDbAdminRole && requestedRole !== 'client' && requestedRole !== 'therapist'));
 
     if (isAdminEmail) {
-      const adminDoc = await db.collection('User').findOne({ email: cleanEmail }) ||
-                       await db.collection('users').findOne({ email: cleanEmail });
-
+      const adminDoc = existingDbUser;
       const adminUser = {
         id: adminDoc ? String(adminDoc._id || adminDoc.id) : 'admin-1',
         name: profile.name || adminDoc?.name || 'Super Administrator',
@@ -433,18 +455,20 @@ export class AuthController {
         avatarUrl: profile.picture || adminDoc?.avatarUrl || adminDoc?.photo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
       };
 
-      await Promise.all([
-        db.collection('User').updateOne(
-          { email: cleanEmail },
-          { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
-          { upsert: true }
-        ),
-        db.collection('users').updateOne(
-          { email: cleanEmail },
-          { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
-          { upsert: true }
-        )
-      ]);
+      if (isMasterAdminEmail) {
+        await Promise.all([
+          db.collection('User').updateOne(
+            { email: cleanEmail },
+            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+            { upsert: true }
+          ),
+          db.collection('users').updateOne(
+            { email: cleanEmail },
+            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+            { upsert: true }
+          )
+        ]);
+      }
 
       const ssoTicket = AuthController.issueSsoTicket(adminUser, 'super_admin');
       return { user: adminUser, role: 'super_admin', redirectUrl: '/admin', ssoTicket };

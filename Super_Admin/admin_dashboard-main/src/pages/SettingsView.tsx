@@ -160,7 +160,7 @@ export const SettingsView: React.FC = () => {
           const adminOnly = dataUsers.users.filter((u: any) => String(u.role).toUpperCase() === 'ADMIN');
           if (adminOnly.length > 0) {
             const liveAdmins: AdminUser[] = adminOnly.map((a: any) => ({
-              id: a.id || `ADM-${String(a._id || '').slice(-4)}`,
+              id: a.id || String(a._id || `ADM-${String(a.email || '').slice(0, 4)}`),
               name: a.name || 'Admin User',
               role: 'Super Admin',
               email: a.email,
@@ -214,17 +214,21 @@ export const SettingsView: React.FC = () => {
     setIsAdminModalOpen(true);
   };
 
-  const handleDeleteAdmin = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to remove admin user "${name}"?`)) {
-      setAdminUsers((prev) => prev.filter((usr) => usr.id !== id));
+  const handleDeleteAdmin = async (id: string, name: string, email?: string) => {
+    if (window.confirm(`Are you sure you want to remove admin access for "${name}"?`)) {
+      setAdminUsers((prev) => prev.filter((usr) => usr.id !== id && (email ? usr.email !== email : true)));
       showToast(`Admin user "${name}" removed successfully.`);
 
       try {
-        let res = await fetch(`/api/admin/users?id=${encodeURIComponent(id)}`, {
+        const queryParams = new URLSearchParams();
+        if (id) queryParams.set('id', id);
+        if (email) queryParams.set('email', email);
+
+        let res = await fetch(`/api/admin/users?${queryParams.toString()}`, {
           method: 'DELETE'
         }).catch(() => null);
         if (!res || !res.ok) {
-          await fetch(`http://localhost:5000/api/admin/users?id=${encodeURIComponent(id)}`, {
+          await fetch(`http://localhost:5000/api/admin/users?${queryParams.toString()}`, {
             method: 'DELETE'
           }).catch(() => null);
         }
@@ -232,13 +236,13 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const handleToggleAdminStatus = async (id: string) => {
-    const usr = adminUsers.find((u) => u.id === id);
+  const handleToggleAdminStatus = async (id: string, email?: string) => {
+    const usr = adminUsers.find((u) => u.id === id || (email && u.email === email));
     if (!usr) return;
     const nextStatus: AdminUser['status'] = usr.status === 'Active' ? 'Inactive' : 'Active';
 
     setAdminUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, status: nextStatus } : u))
+      prev.map((u) => (u.id === id || (email && u.email === email) ? { ...u, status: nextStatus } : u))
     );
     showToast(`Status updated to ${nextStatus} for ${usr.name}.`);
 
@@ -246,13 +250,13 @@ export const SettingsView: React.FC = () => {
       let res = await fetch('/api/admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: nextStatus })
+        body: JSON.stringify({ id, email: email || usr.email, status: nextStatus })
       }).catch(() => null);
       if (!res || !res.ok) {
         await fetch('http://localhost:5000/api/admin/users', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, status: nextStatus })
+          body: JSON.stringify({ id, email: email || usr.email, status: nextStatus })
         }).catch(() => null);
       }
     } catch (e) {}
@@ -664,7 +668,7 @@ export const SettingsView: React.FC = () => {
                     </span>
 
                     <button
-                      onClick={() => handleToggleAdminStatus(usr.id)}
+                      onClick={() => handleToggleAdminStatus(usr.id, usr.email)}
                       title="Click to toggle status"
                       className={`px-3 py-1 font-bold text-xs rounded-full transition-all cursor-pointer ${
                         usr.status === 'Active'
@@ -686,7 +690,7 @@ export const SettingsView: React.FC = () => {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteAdmin(usr.id, usr.name)}
+                        onClick={() => handleDeleteAdmin(usr.id, usr.name, usr.email)}
                         title="Delete Admin"
                         className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                       >

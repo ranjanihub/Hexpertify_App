@@ -240,24 +240,36 @@ export class UsersController {
    */
   static async update(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || req.body?.id || req.body?._id || '');
+      const id = String(req.params.id || req.body?.id || req.body?._id || req.query.id || '').trim();
+      const email = String(req.body?.email || req.query.email || '').toLowerCase().trim();
       const updates = { ...req.body, updatedAt: new Date() };
       delete updates.id;
       delete updates._id;
 
-      if (!id) {
-        res.status(400).json({ success: false, error: 'User ID is required' });
+      if (!id && !email) {
+        res.status(400).json({ success: false, error: 'User ID or email is required' });
         return;
       }
 
       const db = getDatabase();
-      let query: any = { id };
-      if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      const orClauses: any[] = [];
+      if (id) {
+        orClauses.push({ id }, { _id: id });
+        if (ObjectId.isValid(id)) {
+          try { orClauses.push({ _id: new ObjectId(id) }); } catch {}
+        }
+        if (id.includes('@')) {
+          orClauses.push({ email: id.toLowerCase().trim() });
+        }
+      }
+      if (email) {
+        orClauses.push({ email });
       }
 
-      await db.collection('User').updateOne(query, { $set: updates });
-      await db.collection('users').updateOne(query, { $set: updates });
+      const query = { $or: orClauses };
+
+      await db.collection('User').updateMany(query, { $set: updates });
+      await db.collection('users').updateMany(query, { $set: updates }).catch(() => {});
 
       res.json({
         success: true,
@@ -273,21 +285,33 @@ export class UsersController {
    */
   static async delete(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || req.query.id || '');
+      const id = String(req.params.id || req.query.id || req.body?.id || req.body?._id || '').trim();
+      const email = String(req.query.email || req.body?.email || '').toLowerCase().trim();
 
-      if (!id) {
-        res.status(400).json({ success: false, error: 'User ID is required' });
+      if (!id && !email) {
+        res.status(400).json({ success: false, error: 'User ID or email is required' });
         return;
       }
 
       const db = getDatabase();
-      let query: any = { id };
-      if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      const orClauses: any[] = [];
+      if (id) {
+        orClauses.push({ id }, { _id: id });
+        if (ObjectId.isValid(id)) {
+          try { orClauses.push({ _id: new ObjectId(id) }); } catch {}
+        }
+        if (id.includes('@')) {
+          orClauses.push({ email: id.toLowerCase().trim() });
+        }
+      }
+      if (email) {
+        orClauses.push({ email });
       }
 
-      await db.collection('User').deleteOne(query);
-      await db.collection('users').deleteOne(query);
+      const query = { $or: orClauses };
+
+      await db.collection('User').deleteMany(query);
+      await db.collection('users').deleteMany(query).catch(() => {});
 
       res.json({
         success: true,

@@ -236,25 +236,42 @@ export async function PUT(req: Request) {
   try {
     const db = await getDb();
     const body = await req.json();
-    const id = body.id || body._id;
+    const id = (body.id || body._id || "").toString().trim();
+    const email = (body.email || "").toLowerCase().trim();
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: "User ID is required for update" }, { status: 400 });
+    if (!id && !email) {
+      return NextResponse.json({ success: false, error: "User ID or email is required for update" }, { status: 400 });
     }
 
-    const query = { $or: [{ _id: id }, { id }, ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : [])] };
+    const orClauses: any[] = [];
+    if (id) {
+      orClauses.push({ _id: id }, { id });
+      if (ObjectId.isValid(id)) {
+        try { orClauses.push({ _id: new ObjectId(id) }); } catch {}
+      }
+      if (id.includes('@')) {
+        orClauses.push({ email: id.toLowerCase().trim() });
+      }
+    }
+    if (email) {
+      orClauses.push({ email });
+    }
+
+    const query = { $or: orClauses };
 
     const updateDoc: any = {
       $set: {
-        name: body.name,
-        email: body.email ? body.email.toLowerCase().trim() : undefined,
-        phoneNumber: body.phoneNumber || body.phone,
-        role: body.role,
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.email !== undefined ? { email: body.email.toLowerCase().trim() } : {}),
+        ...(body.phoneNumber || body.phone ? { phoneNumber: body.phoneNumber || body.phone } : {}),
+        ...(body.role !== undefined ? { role: body.role } : {}),
+        ...(body.status !== undefined ? { status: body.status } : {}),
         updatedAt: new Date()
       }
     };
 
-    await db.collection("User").updateOne(query, updateDoc);
+    await db.collection("User").updateMany(query, updateDoc);
+    await db.collection("users").updateMany(query, updateDoc).catch(() => {});
 
     return NextResponse.json(
       { success: true, message: "Client updated successfully in MongoDB Atlas" },
@@ -273,14 +290,30 @@ export async function DELETE(req: Request) {
   try {
     const db = await getDb();
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
+    const id = (searchParams.get("id") || "").trim();
+    const email = (searchParams.get("email") || "").toLowerCase().trim();
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: "ID parameter is required" }, { status: 400 });
+    if (!id && !email) {
+      return NextResponse.json({ success: false, error: "ID or email parameter is required" }, { status: 400 });
     }
 
-    const query = { $or: [{ _id: id }, { id }, ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : [])] };
-    await db.collection("User").deleteOne(query);
+    const orClauses: any[] = [];
+    if (id) {
+      orClauses.push({ _id: id }, { id });
+      if (ObjectId.isValid(id)) {
+        try { orClauses.push({ _id: new ObjectId(id) }); } catch {}
+      }
+      if (id.includes('@')) {
+        orClauses.push({ email: id.toLowerCase().trim() });
+      }
+    }
+    if (email) {
+      orClauses.push({ email });
+    }
+
+    const query = { $or: orClauses };
+    await db.collection("User").deleteMany(query);
+    await db.collection("users").deleteMany(query).catch(() => {});
 
     return NextResponse.json(
       { success: true, message: "Client deleted successfully from MongoDB Atlas" },
