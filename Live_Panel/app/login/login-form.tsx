@@ -104,17 +104,15 @@ export function LoginForm({
         } catch {}
       }
 
-      // Construct target URL for the specific panel
+      // Construct target URL for the specific panel on port 5000
       let targetUrl = data.redirectUrl;
-      const isLocalDev = typeof window !== "undefined" && (window.location.port === "3000" && window.location.hostname === "localhost");
-
-      if (!targetUrl || targetUrl.includes("localhost:3000") || targetUrl.includes("5175") || targetUrl.includes("5173") || targetUrl.includes("hexpertify-backend")) {
+      if (!targetUrl || targetUrl.includes("localhost:3000") || targetUrl.includes("5175") || targetUrl.includes("5173")) {
         if (data.role === "super_admin" || data.role === "admin") {
-          targetUrl = isLocalDev ? "http://localhost:5000/admin" : "/admin";
+          targetUrl = "http://localhost:5000/admin";
         } else if (data.role === "therapist") {
-          targetUrl = isLocalDev ? "http://localhost:5000/consultant" : "/consultant";
+          targetUrl = "http://localhost:5000/consultant";
         } else {
-          targetUrl = isLocalDev ? "http://localhost:5000/client" : "/client";
+          targetUrl = "http://localhost:5000/client";
         }
       }
 

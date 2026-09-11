@@ -62,9 +62,9 @@ const Header = () => {
                 <Link href="/profile">My Profile</Link>
               </li>
               <li>
-                <Link href="/client" className="text-purple-600 font-semibold hover:text-purple-800 transition-colors">
+                <a href={`${backendUrl}/client`} className="text-purple-600 font-semibold hover:text-purple-800 transition-colors">
                   Client Portal
-                </Link>
+                </a>
               </li>
             </>
           )}
@@ -85,22 +85,22 @@ const Header = () => {
         <div className="flex gap-[10px]">
           {!session?.user ? (
             <>
-              <Link href="/login">
+              <a href={`${backendUrl}/login`}>
                 <Button
                   variant="default"
                   className="text-[16px] text-[#fff] cursor-pointer"
                 >
                   Login
                 </Button>
-              </Link>
-              <Link href="/login?mode=signup">
+              </a>
+              <a href={`${backendUrl}/login?mode=signup`}>
                 <Button
                   variant="outline"
                   className="text-[16px] text-[#450bc8] cursor-pointer"
                 >
                   Signup
                 </Button>
-              </Link>
+              </a>
             </>
           ) : (
             <Button
@@ -253,22 +253,22 @@ const Header = () => {
           <div className="mt-8 flex flex-col gap-4">
             {!session?.user ? (
               <>
-                <Link href="/login" onClick={closeMenu} className="w-full">
+                <a href={`${backendUrl}/login`} onClick={closeMenu} className="w-full">
                   <Button
                     variant="default"
                     className="w-full text-[16px] text-[#fff] cursor-pointer"
                   >
                     Login
                   </Button>
-                </Link>
-                <Link href="/login?mode=signup" onClick={closeMenu} className="w-full">
+                </a>
+                <a href={`${backendUrl}/login?mode=signup`} onClick={closeMenu} className="w-full">
                   <Button
                     variant="outline"
                     className="w-full text-[16px] text-[#450bc8] cursor-pointer"
                   >
                     Signup
                   </Button>
-                </Link>
+                </a>
               </>
             ) : (
               <Button
