@@ -47,7 +47,7 @@ const TopConsultant = ({ data }: props) => {
                 </p>
               </div>
               <Link
-                href={`services/${item.profession?.identifier}/${item?.identifier}`}
+                href={`/services/${item?.profession?.identifier || "consultants"}/${item?.identifier || ""}`}
                 className="flex items-center justify-center max-w-[100px] mt-6 md:mt-0 h-[40px]  rounded-[30px] bg-primary hover:bg-white hover:text-primary border border-transparent hover:border-primary transition-all duration-300 px-2 py-0 text-white text-sm md:text-base font-medium"
               >
                 Book Now

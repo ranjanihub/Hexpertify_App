@@ -195,8 +195,8 @@ model Consultant {
   isCertified         Boolean   @default(false)
   faqs                FAQItem[]
   minPrice     Float?
-  professionId String
-  profession   Profession @relation(fields: [professionId], references: [id])
+  professionId String?
+  profession   Profession? @relation(fields: [professionId], references: [id])
 
   services Service[]
   reviews  Review[]

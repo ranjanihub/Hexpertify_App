@@ -77,6 +77,11 @@ export const getPageData = async () => {
     };
   } catch (error) {
     console.error("Error fetching home page data:", error);
-    throw new Error("Failed to fetch home page data");
+    return {
+      metaData: null,
+      professions: [],
+      topConsultants: [],
+      recentlyBookedConsultants: [],
+    };
   }
 };

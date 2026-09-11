@@ -172,19 +172,21 @@ const consultantProcessGridPositions = [
   "lg:col-start-3",
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const { metaData, professions, topConsultants, recentlyBookedConsultants } =
     await getPageData();
 
   const recentlyOnboard = recentlyBookedConsultants?.map((item) => ({
-    name: item?.name,
-    consultantType: item?.profession?.name,
-    experience: `${item?.experience} yrs + experience`,
-    amount: `₹ ${Math.min(...item?.services?.map((s) => s.price))}`,
+    name: item?.name || "Consultant",
+    consultantType: item?.profession?.name || "Specialist",
+    experience: `${item?.experience || 0} yrs + experience`,
+    amount: `₹ ${item?.services && item.services.length > 0 ? Math.min(...item.services.map((s: any) => s.price)) : 500}`,
     profilePic: item?.photoUrl,
     profileAltText: item?.photoAltText,
-    link: `/services/${item?.profession?.identifier}/${item?.identifier}`,
-  }));
+    link: `/services/${item?.profession?.identifier || "specialists"}/${item?.identifier || ""}`,
+  })) || [];
 
   const TestimonialData =
     metaData?.testimonials?.map((item: any) => ({

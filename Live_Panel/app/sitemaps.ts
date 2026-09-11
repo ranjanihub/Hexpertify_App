@@ -75,14 +75,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   });
 
-  const consultantPages: MetadataRoute.Sitemap = consultants.map(
-    (consultant) => ({
-      url: `${baseUrl}/services/${consultant.profession.identifier}/${consultant.identifier}`,
+  const consultantPages: MetadataRoute.Sitemap = consultants
+    .filter(
+      (consultant) =>
+        Boolean(consultant.profession?.identifier && consultant.identifier),
+    )
+    .map((consultant) => ({
+      url: `${baseUrl}/services/${consultant.profession!.identifier}/${consultant.identifier}`,
       lastModified: consultant.updatedAt,
       changeFrequency: "weekly",
       priority: 0.8,
-    }),
-  );
+    }));
 
   return [...staticPages, ...professionPages, ...consultantPages];
 }

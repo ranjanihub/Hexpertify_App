@@ -17,13 +17,14 @@ export async function GET() {
   const urls = consultants
     .filter(
       (consultant) =>
+        consultant.profession?.identifier &&
         consultant.profession.identifier !==
         "corporate-webinars-and-group-sessions",
     )
     .map(
       (consultant) => `
     <url>
-      <loc>${baseUrl}/services/${consultant.profession.identifier}/${consultant.identifier}</loc>
+      <loc>${baseUrl}/services/${consultant.profession!.identifier}/${consultant.identifier}</loc>
       <lastmod>${consultant.updatedAt?.toISOString() || new Date().toISOString()}</lastmod>
     </url>
   `,
