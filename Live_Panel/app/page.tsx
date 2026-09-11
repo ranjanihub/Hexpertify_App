@@ -267,12 +267,12 @@ export default async function HomePage() {
           />
           <ExploreConsultant
             data={professions?.map((value) => ({
-              title: value?.name,
+              title: value?.name || "",
               image: value?.imageUrl,
               id: value?.id,
-              identifier: value?.identifier,
+              identifier: value?.identifier || "",
               profileAltText: value?.imageAltText,
-            }))}
+            })) || []}
           />
           <RecentlyOnboarded data={recentlyOnboard} />
             <TherapistMatchHero

@@ -65,12 +65,12 @@ export default async function ServicesPage({
     <div className="p-4 md:p-6 lg:p-[50px] w-full">
       <ExploreConsultant
         data={professions?.map((value) => ({
-          title: value?.name,
+          title: value?.name || "",
           image: value?.imageUrl,
           id: value?.id,
-          identifier: value?.identifier,
+          identifier: value?.identifier || "",
           profileAltText: value?.imageAltText,
-        }))}
+        })) || []}
       />
       <div className="flex flex-col justify-center items-center my-8 md:my-[20px] px-4">
         <p className="text-3xl md:text-[48px] w-full max-w-[600px] font-semibold text-center text-[black] my-4 md:my-[20px] [text-shadow:0_2px_4px_#00000040]">

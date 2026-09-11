@@ -7,9 +7,9 @@ interface props {
   data: {
     title: string;
     image: any;
-    id: number;
+    id: number | string;
     identifier: string;
-    profileAltText: string;
+    profileAltText?: string | null;
   }[];
 }
 
