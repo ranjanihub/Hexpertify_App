@@ -360,12 +360,7 @@ export class UsersController {
       if (orClauses.length > 0) {
         query = { $or: orClauses };
       } else {
-        const jaswanth = await db.collection('User').findOne({ email: 'jaswanthjegan70585@gmail.com' });
-        if (jaswanth) {
-          query = { email: 'jaswanthjegan70585@gmail.com' };
-        } else {
-          query = { role: { $in: ['USER', 'user', 'client', 'CLIENT'] } };
-        }
+        query = { role: { $in: ['USER', 'user', 'client', 'CLIENT'] } };
       }
 
       let user = await db.collection('User').findOne(query);
@@ -384,7 +379,7 @@ export class UsersController {
         email: user.email,
         phone: user.phoneNumber || user.phone || '',
         age: user.age ? Number(user.age) : undefined,
-        gender: user.gender || 'Male',
+        gender: user.gender || '',
         preferredLanguage: user.preferredLanguage || 'English',
         avatarUrl: user.image || user.avatarUrl || ''
       });

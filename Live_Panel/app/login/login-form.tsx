@@ -30,8 +30,7 @@ import {
   Sparkles,
   Lock,
   Eye,
-  EyeOff,
-  AlertCircle
+  EyeOff
 } from "lucide-react";
 
 export function LoginForm({
@@ -198,15 +197,7 @@ export function LoginForm({
             </button>
           </div>
 
-          {/* Role-specific Notice */}
-          {role === "therapist" && (
-            <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-800 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <span>
-                <strong>Practitioner Verification:</strong> Only therapists registered in the <strong>Super Admin database</strong> can log in to the Consultant Suite.
-              </span>
-            </div>
-          )}
+
 
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2">
