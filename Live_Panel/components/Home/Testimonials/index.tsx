@@ -40,12 +40,18 @@ const Testimonial = ({ data }: props) => {
             {/* Profile Section - Stays at bottom */}
             <div className="flex flex-col items-center">
               <div className="relative w-16 h-16 mb-3">
-                <Image
-                  src={item?.profile}
-                  fill
-                  className="rounded-full object-cover"
-                  alt={item?.name || "User"}
-                />
+                {item?.profile && (typeof item.profile === "object" || (typeof item.profile === "string" && item.profile.trim() !== "")) ? (
+                  <Image
+                    src={item.profile}
+                    fill
+                    className="rounded-full object-cover"
+                    alt={item?.name || "User"}
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-purple-100 text-[#5e2be2] font-bold text-xl flex items-center justify-center border border-purple-200">
+                    {(item?.name || "U").slice(0, 1).toUpperCase()}
+                  </div>
+                )}
               </div>
               <p className="font-semibold text-base md:text-[16px] text-black">
                 {item?.name}

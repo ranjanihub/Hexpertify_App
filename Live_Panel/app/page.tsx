@@ -190,7 +190,7 @@ export default async function HomePage() {
   const TestimonialData =
     metaData?.testimonials?.map((item: any) => ({
       feedback: item.quote,
-      profile: item.authorImageUrl,
+      profile: (typeof item.authorImageUrl === "string" && item.authorImageUrl.trim() !== "") ? item.authorImageUrl : null,
       name: item.authorName,
       position: item.authorProfessional,
     })) || [];
