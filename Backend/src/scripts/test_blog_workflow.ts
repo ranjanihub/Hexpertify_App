@@ -1,4 +1,4 @@
-import process from 'process';
+/// <reference types="node" />
 
 interface BlogPostResponse {
   _id?: string;
