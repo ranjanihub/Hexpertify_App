@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   BarChart,
   Bar,
-  Line,
   ComposedChart,
   CartesianGrid,
   XAxis,
@@ -28,7 +27,7 @@ import {
   ChevronRight,
   UserCheck,
   BarChart3,
-  Layers
+  LineChart as LineChartIcon
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
@@ -46,7 +45,7 @@ export const RevenueView: React.FC = () => {
   const [therapistPage, setTherapistPage] = useState<number>(1);
   const [txPage, setTxPage] = useState<number>(1);
   const [liveRevenueData, setLiveRevenueData] = useState<any>(null);
-  const [chartMode, setChartMode] = useState<'combo' | 'bar' | 'area'>('combo');
+  const [chartMode, setChartMode] = useState<'line' | 'bar' | 'combo'>('line');
 
   useEffect(() => {
     const fetchRevenue = async () => {
@@ -433,15 +432,15 @@ interface ServiceBreakdownItem {
             <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
               <button
                 type="button"
-                onClick={() => setChartMode('combo')}
+                onClick={() => setChartMode('line')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  chartMode === 'combo'
+                  chartMode === 'line'
                     ? 'bg-white text-[#5e2be2] shadow-sm'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>Combo</span>
+                <LineChartIcon className="w-3.5 h-3.5" />
+                <span>Line</span>
               </button>
               <button
                 type="button"
@@ -457,15 +456,15 @@ interface ServiceBreakdownItem {
               </button>
               <button
                 type="button"
-                onClick={() => setChartMode('area')}
+                onClick={() => setChartMode('combo')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  chartMode === 'area'
+                  chartMode === 'combo'
                     ? 'bg-white text-[#5e2be2] shadow-sm'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Area</span>
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Combo</span>
               </button>
             </div>
           </div>
@@ -566,17 +565,7 @@ interface ServiceBreakdownItem {
                   />
                 </BarChart>
               ) : (
-                <AreaChart data={currentDataset.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRevPurpleGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#5e2be2" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#5e2be2" stopOpacity={0.0} />
-                    </linearGradient>
-                    <linearGradient id="colorPlatformEmeraldGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
+                <LineChart data={currentDataset.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} />
                   <YAxis
@@ -590,23 +579,25 @@ interface ServiceBreakdownItem {
                     contentStyle={{ borderRadius: '16px', borderColor: '#e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
                     formatter={(value: any, name: any) => [`₹${Number(value).toLocaleString()}`, name]}
                   />
-                  <Area
+                  <Line
                     type="monotone"
                     dataKey="revenue"
                     stroke="#5e2be2"
                     strokeWidth={3}
-                    fill="url(#colorRevPurpleGrad)"
+                    dot={{ r: 4, fill: '#5e2be2', stroke: '#ffffff', strokeWidth: 2 }}
+                    activeDot={{ r: 7 }}
                     name="Gross Revenue"
                   />
-                  <Area
+                  <Line
                     type="monotone"
                     dataKey="platformShare"
                     stroke="#10b981"
-                    strokeWidth={2}
-                    fill="url(#colorPlatformEmeraldGrad)"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#10b981', stroke: '#ffffff', strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
                     name="Platform Share"
                   />
-                </AreaChart>
+                </LineChart>
               )}
             </ResponsiveContainer>
           </div>
