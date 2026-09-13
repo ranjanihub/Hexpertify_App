@@ -1,3 +1,5 @@
+import process from 'process';
+
 interface BlogPostResponse {
   _id?: string;
   id: string | number;
