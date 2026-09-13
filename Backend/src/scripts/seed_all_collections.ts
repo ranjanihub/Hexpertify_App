@@ -158,8 +158,8 @@ async function seedAll() {
 
   await db.collection('Resource').deleteMany({});
   await db.collection('resources').deleteMany({});
-  await db.collection('Resource').insertMany(resourcesList);
-  await db.collection('resources').insertMany(resourcesList);
+  await db.collection('Resource').insertMany(resourcesList as any);
+  await db.collection('resources').insertMany(resourcesList as any);
   console.log(`✅ [Resources Synced] ${resourcesList.length} clinical resources.`);
 
   // ----------------------------------------------------------------
@@ -285,8 +285,8 @@ async function seedAll() {
 
   await db.collection('Activity').deleteMany({});
   await db.collection('activities').deleteMany({});
-  await db.collection('Activity').insertMany(activitiesList);
-  await db.collection('activities').insertMany(activitiesList);
+  await db.collection('Activity').insertMany(activitiesList as any);
+  await db.collection('activities').insertMany(activitiesList as any);
   console.log(`✅ [Activities Synced] ${activitiesList.length} clinical activities.`);
 
   // ----------------------------------------------------------------
@@ -568,8 +568,8 @@ async function seedAll() {
 
   await db.collection('Payout').deleteMany({});
   await db.collection('payouts').deleteMany({});
-  await db.collection('Payout').insertMany(payoutsList);
-  await db.collection('payouts').insertMany(payoutsList);
+  await db.collection('Payout').insertMany(payoutsList as any);
+  await db.collection('payouts').insertMany(payoutsList as any);
   console.log(`✅ [Payouts Synced] ${payoutsList.length} practitioner payout statements.`);
 
   // ----------------------------------------------------------------
@@ -713,8 +713,8 @@ async function seedAll() {
 
   await db.collection('Notification').deleteMany({});
   await db.collection('notifications').deleteMany({});
-  await db.collection('Notification').insertMany(notificationsList);
-  await db.collection('notifications').insertMany(notificationsList);
+  await db.collection('Notification').insertMany(notificationsList as any);
+  await db.collection('notifications').insertMany(notificationsList as any);
   console.log(`✅ [Notifications Synced] ${notificationsList.length} notifications.`);
 
   // ----------------------------------------------------------------
@@ -798,8 +798,8 @@ async function seedAll() {
 
   await db.collection('Asset').deleteMany({});
   await db.collection('assets').deleteMany({});
-  await db.collection('Asset').insertMany(assetsList);
-  await db.collection('assets').insertMany(assetsList);
+  await db.collection('Asset').insertMany(assetsList as any);
+  await db.collection('assets').insertMany(assetsList as any);
   console.log(`✅ [Assets Synced] ${assetsList.length} media assets.`);
 
   // ----------------------------------------------------------------
@@ -862,7 +862,7 @@ async function seedAll() {
   };
 
   await db.collection('userinterfaces').deleteMany({});
-  await db.collection('userinterfaces').insertOne(homepageConfig);
+  await db.collection('userinterfaces').insertOne(homepageConfig as any);
   console.log(`✅ [userinterfaces Synced] Homepage CMS configured.`);
 
   // ----------------------------------------------------------------
@@ -915,8 +915,8 @@ async function seedAll() {
 
   await db.collection('Page').deleteMany({});
   await db.collection('pages').deleteMany({});
-  await db.collection('Page').insertMany(pagesList);
-  await db.collection('pages').insertMany(pagesList);
+  await db.collection('Page').insertMany(pagesList as any);
+  await db.collection('pages').insertMany(pagesList as any);
   console.log(`✅ [Pages Synced] ${pagesList.length} CMS pages with unique SEO metadata.`);
 
   // ----------------------------------------------------------------
@@ -989,8 +989,8 @@ async function seedAll() {
 
   await db.collection('Session').deleteMany({});
   await db.collection('sessions').deleteMany({});
-  await db.collection('Session').insertMany(sessionsList);
-  await db.collection('sessions').insertMany(sessionsList);
+  await db.collection('Session').insertMany(sessionsList as any);
+  await db.collection('sessions').insertMany(sessionsList as any);
   console.log(`✅ [Sessions Synced] ${sessionsList.length} active sessions.`);
 
   // ----------------------------------------------------------------
@@ -1029,8 +1029,8 @@ async function seedAll() {
 
   await db.collection('Account').deleteMany({});
   await db.collection('accounts').deleteMany({});
-  await db.collection('Account').insertMany(accountsList);
-  await db.collection('accounts').insertMany(accountsList);
+  await db.collection('Account').insertMany(accountsList as any);
+  await db.collection('accounts').insertMany(accountsList as any);
   console.log(`✅ [Accounts Synced] ${accountsList.length} authentication accounts.`);
 
   // ----------------------------------------------------------------
@@ -1072,10 +1072,10 @@ async function seedAll() {
   ];
 
   await db.collection('VerificationToken').deleteMany({});
-  await db.collection('VerificationToken').insertMany(verTokens);
+  await db.collection('VerificationToken').insertMany(verTokens as any);
 
   await db.collection('refreshtokens').deleteMany({});
-  await db.collection('refreshtokens').insertMany(refreshTokens);
+  await db.collection('refreshtokens').insertMany(refreshTokens as any);
   console.log(`✅ [Tokens Synced] Verification & Refresh tokens populated.`);
 
   // ----------------------------------------------------------------
@@ -1112,7 +1112,7 @@ async function seedAll() {
   ];
 
   await db.collection('Authenticator').deleteMany({});
-  await db.collection('Authenticator').insertMany(authenticators);
+  await db.collection('Authenticator').insertMany(authenticators as any);
   console.log(`✅ [Authenticator Synced] ${authenticators.length} passkey authenticators.`);
 
   // ----------------------------------------------------------------
@@ -1172,8 +1172,8 @@ async function seedAll() {
 
   await db.collection('EmailLog').deleteMany({});
   await db.collection('email_logs').deleteMany({});
-  await db.collection('EmailLog').insertMany(emailLogsList);
-  await db.collection('email_logs').insertMany(emailLogsList);
+  await db.collection('EmailLog').insertMany(emailLogsList as any);
+  await db.collection('email_logs').insertMany(emailLogsList as any);
   console.log(`✅ [EmailLog Synced] ${emailLogsList.length} transactional email logs.`);
 
   console.log('====================================================');

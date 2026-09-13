@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 
 import type { PageId } from '../../types';
-import { useAppContext } from '../../context/AppContext';
 import { mockTherapists, mockClients, mockBookings, mockResources } from '../../data/mockData';
 import { getAdminAuth } from '../../lib/auth';
 
@@ -29,7 +28,6 @@ export const TopNav: React.FC<TopNavProps> = ({
   onToggleSidebar,
   onAddTherapist
 }) => {
-  const { metrics } = useAppContext();
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -53,10 +51,8 @@ export const TopNav: React.FC<TopNavProps> = ({
       .then(res => res.json())
       .then(data => {
         const list = Array.isArray(data?.notifications) ? data.notifications : [];
-        if (list.length > 0) {
-          setLiveNotifications(list);
-          setUnreadCount(list.filter((n: any) => !n.read).length);
-        }
+        setLiveNotifications(list);
+        setUnreadCount(list.filter((n: any) => !n.read).length);
       })
       .catch(() => {});
   };
@@ -78,13 +74,7 @@ export const TopNav: React.FC<TopNavProps> = ({
     }).catch(() => {});
   };
 
-  const defaultNotifications = [
-    { id: 1, title: `${metrics.pendingReportsCount} Session Reports Pending`, subtitle: 'Dr. Elena Rostova submitted new reports', time: '10m ago', type: 'warning', read: false },
-    { id: 2, title: 'New Therapist Verification', subtitle: 'Dr. Marcus Vance requested license verification', time: '1h ago', type: 'info', read: false },
-    { id: 3, title: 'Payout Released', subtitle: `₹${metrics.pendingPayoutsAmount.toLocaleString()} available for release`, time: '3h ago', type: 'success', read: true }
-  ];
-
-  const displayNotifications = liveNotifications.length > 0 ? liveNotifications : defaultNotifications;
+  const displayNotifications = liveNotifications;
 
   const filteredTherapists = mockTherapists.filter((t) =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -312,7 +302,12 @@ export const TopNav: React.FC<TopNavProps> = ({
                 </div>
 
                 <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto my-2">
-                  {displayNotifications.map((item: any, idx: number) => {
+                  {displayNotifications.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-slate-400 font-medium">
+                      No new notifications
+                    </div>
+                  ) : (
+                    displayNotifications.map((item: any, idx: number) => {
                     const timeAgo = item.time || (item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently');
                     const isNewBooking = item.type === 'NEW_BOOKING_ALERT' || item.type === 'SESSION_SCHEDULED';
 
@@ -341,7 +336,8 @@ export const TopNav: React.FC<TopNavProps> = ({
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                )}
                 </div>
 
                 <button

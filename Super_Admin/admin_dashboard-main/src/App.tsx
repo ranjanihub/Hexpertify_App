@@ -23,6 +23,7 @@ import { ResourcesView } from './pages/ResourcesView';
 import { HomepageView } from './pages/HomepageView';
 import { ZombiView } from './pages/ZombiView';
 import { SettingsView } from './pages/SettingsView';
+import { ReviewView } from './pages/ReviewView';
 import { isAdminAuthenticated } from './lib/auth';
 
 import type { PageId } from './types';
@@ -40,6 +41,7 @@ const pageToPathMap: Record<PageId, string> = {
   resources: '/resources',
   assets: '/assets',
   professions: '/professions',
+  review: '/review',
   homepage: '/homepage',
   zombi: '/zombie-pages',
   settings: '/settings',
@@ -208,6 +210,9 @@ export const App: React.FC = () => {
                 />
                 <Route path="/zombie-pages" element={<ZombiView />} />
                 <Route path="/zombi" element={<Navigate to="/zombie-pages" replace />} />
+                <Route path="/review" element={<ReviewView />} />
+                <Route path="/reviews" element={<ReviewView />} />
+                <Route path="/blog-reviews" element={<ReviewView />} />
                 <Route path="/settings" element={<SettingsView />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

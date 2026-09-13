@@ -16,6 +16,7 @@ import resourcesRoutes from './resources.routes';
 import pagesRoutes from './pages.routes';
 import payoutsRoutes from './payouts.routes';
 import activitiesRoutes from './activities.routes';
+import blogRoutes from './blog.routes';
 
 const router = Router();
 
@@ -109,6 +110,11 @@ router.use('/admin/payouts', payoutsRoutes);
 
 router.use('/activities', activitiesRoutes);
 router.use('/admin/activities', activitiesRoutes);
+
+router.use('/blog', blogRoutes);
+router.use('/admin/blog', blogRoutes);
+router.use('/blogs', blogRoutes);
+router.use('/admin/blogs', blogRoutes);
 
 router.use('/admin', pagesRoutes);
 router.use('/', pagesRoutes);

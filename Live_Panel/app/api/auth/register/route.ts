@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -19,7 +20,17 @@ export async function POST(req: Request) {
 
     if (!email || !name) {
       return NextResponse.json(
-        { success: false, message: "Name and email are required" },
+        { success: false, error: "Name and email are required" },
+        {
+          status: 400,
+          headers: { "Access-Control-Allow-Origin": "*" },
+        }
+      );
+    }
+
+    if (!password || String(password).length < 6) {
+      return NextResponse.json(
+        { success: false, error: "Password is required and must be at least 6 characters" },
         {
           status: 400,
           headers: { "Access-Control-Allow-Origin": "*" },
@@ -29,20 +40,31 @@ export async function POST(req: Request) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    let user = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email: cleanEmail },
     });
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          name,
-          email: cleanEmail,
-          phoneNumber: phone || null,
-          role: "USER",
-        },
-      });
+    if (existingUser) {
+      return NextResponse.json(
+        { success: false, error: "An account with this email address already exists. Please log in instead." },
+        {
+          status: 409,
+          headers: { "Access-Control-Allow-Origin": "*" },
+        }
+      );
     }
+
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email: cleanEmail,
+        password: hashedPassword,
+        phoneNumber: phone || null,
+        role: "USER",
+      },
+    });
 
     return NextResponse.json(
       {
@@ -59,7 +81,7 @@ export async function POST(req: Request) {
         },
         message: "User registered successfully in MongoDB Atlas.",
       },
-      { headers: { "Access-Control-Allow-Origin": "*" } }
+      { status: 201, headers: { "Access-Control-Allow-Origin": "*" } }
     );
   } catch (error: any) {
     return NextResponse.json(

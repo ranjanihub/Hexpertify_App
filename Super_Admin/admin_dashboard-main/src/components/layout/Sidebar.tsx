@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutGrid,
@@ -13,6 +13,7 @@ import {
   Folder,
   BookOpen,
   Award,
+  FileCheck,
   Globe,
   FileCode,
   Settings,
@@ -53,6 +54,7 @@ const baseWorkspaceItems: MenuItem[] = [
 ];
 
 const contentItems: MenuItem[] = [
+  { id: 'review', path: '/review', label: 'Review', icon: FileCheck },
   { id: 'homepage', path: '/homepage', label: 'Homepage', icon: Globe },
   { id: 'zombi', path: '/zombie-pages', label: 'Zombie Pages', icon: FileCode },
   { id: 'settings', path: '/settings', label: 'Settings', icon: Settings }
@@ -62,10 +64,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
   const location = useLocation();
   const navigate = useNavigate();
   const { clients } = useAppContext();
+  const [pendingReviewCount, setPendingReviewCount] = useState<number>(0);
+
+  useEffect(() => {
+    fetch('/api/blog/posts?status=pending')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setPendingReviewCount(data.length);
+        }
+      })
+      .catch(() => {});
+  }, [location.pathname]);
 
   const workspaceItems = baseWorkspaceItems.map((item) => {
     if (item.id === 'clients') {
       return { ...item, badge: clients.length };
+    }
+    return item;
+  });
+
+  const activeContentItems = contentItems.map((item) => {
+    if (item.id === 'review' && pendingReviewCount > 0) {
+      return { ...item, badge: pendingReviewCount };
     }
     return item;
   });
@@ -155,7 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
             CONTENT
           </div>
           <nav className="space-y-1">
-            {contentItems.map((item) => {
+            {activeContentItems.map((item) => {
               const Icon = item.icon;
               const isActive = isItemActive(item);
               return (
@@ -176,6 +197,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
                     />
                     <span>{item.label}</span>
                   </div>
+                  {item.badge !== undefined && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}

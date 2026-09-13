@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { MongoClient, ObjectId } from "mongodb";
+import bcrypt from "bcryptjs";
 import dns from "dns";
 
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
@@ -205,12 +206,32 @@ export async function POST(req: Request) {
     const db = await getDb();
     const body = await req.json();
 
+    const cleanEmail = (body.email || "").toLowerCase().trim();
+    if (!cleanEmail) {
+      return NextResponse.json(
+        { success: false, error: "Email is required" },
+        { status: 400, headers: { "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+
+    const existing = await db.collection("User").findOne({ email: cleanEmail }) ||
+                     await db.collection("users").findOne({ email: cleanEmail });
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: "A user with this email address already exists." },
+        { status: 409, headers: { "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+
     const newId = body.id || new ObjectId().toString();
+    const defaultPass = body.password || "password123";
+    const hashedPassword = await bcrypt.hash(defaultPass, 10);
 
     const doc = {
       _id: newId,
       name: body.name || body.username || "New Client",
-      email: (body.email || "").toLowerCase().trim(),
+      email: cleanEmail,
+      password: hashedPassword,
       phoneNumber: body.phoneNumber || body.phone || "+91 98765 43210",
       role: body.role || "USER",
       createdAt: new Date(),
@@ -218,10 +239,11 @@ export async function POST(req: Request) {
     };
 
     await db.collection("User").insertOne(doc);
+    await db.collection("users").insertOne(doc).catch(() => {});
 
     return NextResponse.json(
       { success: true, message: "Client created successfully in MongoDB Atlas", user: { ...doc, id: newId } },
-      { headers: { "Access-Control-Allow-Origin": "*" } }
+      { status: 201, headers: { "Access-Control-Allow-Origin": "*" } }
     );
   } catch (error: any) {
     return NextResponse.json(

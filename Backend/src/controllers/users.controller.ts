@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
+import bcrypt from 'bcryptjs';
 import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
+import { AuthController } from './auth.controller';
 
 export class UsersController {
   /**
@@ -165,14 +167,34 @@ export class UsersController {
   static async create(req: Request, res: Response): Promise<void> {
     try {
       const body = req.body || {};
-      const { name, email, role } = body;
+      const { name, email, role, password } = body;
 
       if (!name || !email) {
         res.status(400).json({ success: false, error: 'Name and email are required' });
         return;
       }
 
+      if (!password || String(password).length < 6) {
+        res.status(400).json({ success: false, error: 'Password is required and must be at least 6 characters' });
+        return;
+      }
+
+      const cleanEmail = email.toLowerCase().trim();
       const db = getDatabase();
+
+      // Check if user with this email already exists in User or users collection
+      const existingUser = await db.collection('User').findOne({ email: cleanEmail }) ||
+                           await db.collection('users').findOne({ email: cleanEmail });
+
+      if (existingUser) {
+        res.status(409).json({
+          success: false,
+          error: 'An account with this email address already exists. Please log in instead.'
+        });
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(String(password), 10);
       const isUserRole = (role !== 'ADMIN' && role !== 'Super Admin');
       let assignedTherapistId = body.assignedTherapistId || '';
       let assignedTherapistName = body.assignedTherapistName || body.therapist || '';
@@ -205,7 +227,8 @@ export class UsersController {
       const newUser: any = {
         id: body.id || `USR-${Date.now().toString().slice(-4)}`,
         name: name.trim(),
-        email: email.toLowerCase().trim(),
+        email: cleanEmail,
+        password: hashedPassword,
         role: isUserRole ? 'USER' : 'ADMIN',
         status: body.status || 'Active',
         image: body.image || body.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
@@ -225,10 +248,29 @@ export class UsersController {
       const result = await db.collection('User').insertOne(newUser);
       await db.collection('users').insertOne({ ...newUser, _id: result.insertedId }).catch(() => {});
 
+      const safeUser = {
+        id: String(result.insertedId || newUser.id),
+        name: newUser.name,
+        email: newUser.email,
+        role: isUserRole ? 'client' as const : 'admin' as const,
+        phone: newUser.phone,
+        avatarUrl: newUser.image,
+        assignedTherapistId: newUser.assignedTherapistId,
+        assignedTherapistName: newUser.assignedTherapistName,
+        assignedTherapistEmail: newUser.assignedTherapistEmail,
+        assignedTherapistPhoto: newUser.assignedTherapistPhoto,
+        firstConsultationCompleted: true
+      };
+
+      const ssoTicket = AuthController.issueSsoTicket(safeUser, isUserRole ? 'client' : 'super_admin');
+
       res.status(201).json({
         success: true,
-        user: { ...newUser, _id: result.insertedId },
-        message: 'User created successfully in MongoDB Atlas'
+        user: safeUser,
+        role: safeUser.role,
+        redirectUrl: isUserRole ? '/client' : '/admin',
+        ssoTicket,
+        message: 'Client registered successfully in MongoDB Atlas'
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to create user' });

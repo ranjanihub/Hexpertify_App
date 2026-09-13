@@ -11,6 +11,7 @@ export type PageId =
   | 'assets'
   | 'professions'
   | 'resources'
+  | 'review'
   | 'homepage'
   | 'zombi'
   | 'settings';
