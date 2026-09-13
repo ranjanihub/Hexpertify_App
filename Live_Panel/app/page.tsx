@@ -190,7 +190,14 @@ export default async function HomePage() {
   const TestimonialData =
     metaData?.testimonials?.map((item: any) => ({
       feedback: item.quote,
-      profile: (typeof item.authorImageUrl === "string" && item.authorImageUrl.trim() !== "") ? item.authorImageUrl : null,
+      profile:
+        typeof item.authorImageUrl === "string" && item.authorImageUrl.trim() !== ""
+          ? item.authorImageUrl.trim()
+          : typeof item.authorImageUrl === "object" && item.authorImageUrl?.url
+          ? item.authorImageUrl.url
+          : typeof item.authorImageUrl === "object" && item.authorImageUrl?.src
+          ? item.authorImageUrl.src
+          : null,
       name: item.authorName,
       position: item.authorProfessional,
     })) || [];
