@@ -128,7 +128,38 @@ export const RevenueView: React.FC = () => {
   const avgRevenuePerSession = currentDataset.sessionsTotal > 0
     ? Math.round(currentDataset.periodTotal / currentDataset.sessionsTotal)
     : 0;
-  const platformCommissionRetained = Math.round(currentDataset.periodTotal * 0.20); // 20% platform share
+
+  // Map each therapist's configured platform fee rate
+  const therapistFeeMap = React.useMemo(() => {
+    const map = new Map<string, { type: string; value: number }>();
+    therapists.forEach((t) => {
+      let type = (t as any).platformFeeType || 'Percentage';
+      let val = (t as any).platformFeePerSession;
+      if (!val || (val > 99 && type === 'Percentage') || (type === 'Fixed' && val >= 1000)) {
+        type = 'Percentage';
+        val = (t as any).commissionRate ?? 20;
+      }
+      map.set(t.id, { type, value: val });
+      if (t.name) map.set(t.name.toLowerCase(), { type, value: val });
+    });
+    return map;
+  }, [therapists]);
+
+  // Compute platform commission retained dynamically using consultant-specific rates
+  const platformCommissionRetained = React.useMemo(() => {
+    if (liveRevenueData?.summary?.platformCommission) {
+      return liveRevenueData.summary.platformCommission;
+    }
+    const fromBookings = bookings.reduce((sum, b) => {
+      const therapistKey = (b as any).therapistId || (b as any).consultantId || (b.therapistName || '').toLowerCase();
+      const feeConfig = therapistFeeMap.get(therapistKey) || { type: 'Percentage', value: 20 };
+      const fee = feeConfig.type === 'Fixed'
+        ? feeConfig.value
+        : Math.round((b.amount || 0) * (feeConfig.value / 100));
+      return sum + fee;
+    }, 0);
+    return fromBookings > 0 ? fromBookings : Math.round(currentDataset.periodTotal * 0.20);
+  }, [bookings, liveRevenueData, therapistFeeMap, currentDataset.periodTotal]);
 
   const revenueTodayComputed = bookings
     .filter((b) => b.date === 'Today' || b.date === new Date().toISOString().split('T')[0])
@@ -158,7 +189,7 @@ interface ServiceBreakdownItem {
 
   const totalServiceValue = serviceBreakdown.reduce((acc: number, s: ServiceBreakdownItem) => acc + s.value, 0);
 
-  // Therapist Revenue & Performance calculated strictly from real database bookings
+  // Therapist Revenue & Performance calculated strictly from real database bookings with consultant-specific fees
   const therapistRevenueData = React.useMemo(() => {
     return therapists.map((t) => {
       const tBookings = bookings.filter(
@@ -169,14 +200,27 @@ interface ServiceBreakdownItem {
       );
       const totalSessions = tBookings.length;
       const gross = tBookings.reduce((sum, b) => sum + (b.amount || 0), 0);
-      const platformFee = Math.round(gross * 0.20);
+      let feeType = (t as any).platformFeeType || 'Percentage';
+      let feeValue = (t as any).platformFeePerSession;
+
+      // Sanitize: If feeValue equals full session fee (seed artifact) or invalid percentage, use commissionRate or 20%
+      if (!feeValue || (feeValue > 99 && feeType === 'Percentage') || (feeType === 'Fixed' && totalSessions > 0 && feeValue >= gross / totalSessions)) {
+        feeType = 'Percentage';
+        feeValue = (t as any).commissionRate ?? 20;
+      }
+
+      const platformFee = feeType === 'Fixed'
+        ? totalSessions * feeValue
+        : Math.round(gross * (feeValue / 100));
       const payout = gross - platformFee;
       return {
         ...t,
         computedSessions: totalSessions,
         computedGross: gross,
         computedFee: platformFee,
-        computedPayout: payout
+        computedPayout: payout,
+        feeType,
+        feeValue
       };
     }).sort((a, b) => b.computedGross - a.computedGross || b.computedSessions - a.computedSessions);
   }, [therapists, bookings]);
@@ -318,18 +362,18 @@ interface ServiceBreakdownItem {
           </div>
         </div>
 
-        {/* Card 3: Platform Share Retained (20%) */}
+        {/* Card 3: Platform Share Retained */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:border-purple-200 transition-colors">
           <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <span className="text-xs font-extrabold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-              20% Fee
+              Platform Share
             </span>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 mb-0.5 truncate">Platform Share (20%)</p>
+            <p className="text-xs font-semibold text-slate-500 mb-0.5 truncate">Platform Share</p>
             <h3 className="text-2xl font-extrabold text-emerald-600">₹{platformCommissionRetained.toLocaleString()}</h3>
           </div>
         </div>
@@ -477,8 +521,8 @@ interface ServiceBreakdownItem {
                 <th className="py-3 px-4">Profession</th>
                 <th className="py-3 px-4">Sessions</th>
                 <th className="py-3 px-4">Gross Revenue</th>
-                <th className="py-3 px-4">Platform Fee (20%)</th>
-                <th className="py-3 px-4 rounded-r-xl">Therapist Payout (80%)</th>
+                <th className="py-3 px-4">Platform Fee</th>
+                <th className="py-3 px-4 rounded-r-xl">Therapist Payout</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -511,7 +555,12 @@ interface ServiceBreakdownItem {
                       <td className="py-3.5 px-4 text-slate-600">{t.profession}</td>
                       <td className="py-3.5 px-4 font-bold text-slate-800">{t.computedSessions} sessions</td>
                       <td className="py-3.5 px-4 font-extrabold text-[#5e2be2]">₹{t.computedGross.toLocaleString()}</td>
-                      <td className="py-3.5 px-4 font-bold text-emerald-600">₹{t.computedFee.toLocaleString()}</td>
+                      <td className="py-3.5 px-4 font-bold text-emerald-600">
+                        ₹{t.computedFee.toLocaleString()}
+                        <span className="text-[10px] text-slate-400 font-normal ml-1">
+                          ({t.feeType === 'Fixed' ? `₹${t.feeValue}` : `${t.feeValue}%`})
+                        </span>
+                      </td>
                       <td className="py-3.5 px-4 font-bold text-slate-700">₹{t.computedPayout.toLocaleString()}</td>
                     </tr>
                   );
