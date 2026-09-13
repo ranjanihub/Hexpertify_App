@@ -3,6 +3,11 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
+  Line,
+  ComposedChart,
+  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
@@ -21,7 +26,9 @@ import {
   CreditCard,
   ChevronLeft,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  BarChart3,
+  Layers
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
@@ -39,6 +46,7 @@ export const RevenueView: React.FC = () => {
   const [therapistPage, setTherapistPage] = useState<number>(1);
   const [txPage, setTxPage] = useState<number>(1);
   const [liveRevenueData, setLiveRevenueData] = useState<any>(null);
+  const [chartMode, setChartMode] = useState<'combo' | 'bar' | 'area'>('combo');
 
   useEffect(() => {
     const fetchRevenue = async () => {
@@ -60,27 +68,54 @@ export const RevenueView: React.FC = () => {
     fetchRevenue();
   }, []);
 
-  // Dynamic Revenue Dataset calculated from bookings
+  // Map each therapist's configured platform fee rate
+  const therapistFeeMap = React.useMemo(() => {
+    const map = new Map<string, { type: string; value: number }>();
+    therapists.forEach((t) => {
+      let type = (t as any).platformFeeType || 'Percentage';
+      let val = (t as any).platformFeePerSession;
+      if (!val || (val > 99 && type === 'Percentage') || (type === 'Fixed' && val >= 1000)) {
+        type = 'Percentage';
+        val = (t as any).commissionRate ?? 20;
+      }
+      map.set(t.id, { type, value: val });
+      if (t.name) map.set(t.name.toLowerCase(), { type, value: val });
+    });
+    return map;
+  }, [therapists]);
+
+  // Dynamic Revenue Dataset calculated from bookings with consultant-specific shares
   const dynamicRevenueDatasets = React.useMemo(() => {
+    const getBookingCommission = (b: any) => {
+      const therapistKey = (b as any).therapistId || (b as any).consultantId || (b.therapistName || '').toLowerCase();
+      const feeConfig = therapistFeeMap.get(therapistKey) || { type: 'Percentage', value: 20 };
+      return feeConfig.type === 'Fixed'
+        ? feeConfig.value
+        : Math.round((b.amount || 0) * (feeConfig.value / 100));
+    };
+
     const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const weekData = weekDays.map((day, idx) => {
       const bks = bookings.filter((_, bIdx) => bIdx % 7 === idx);
       const rev = bks.reduce((sum, b) => sum + (b.amount || 0), 0);
-      return { label: day, revenue: rev, sessions: bks.length };
+      const platFee = bks.reduce((sum, b) => sum + getBookingCommission(b), 0);
+      return { label: day, revenue: rev, platformShare: platFee, sessions: bks.length };
     });
 
     const monthWeeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
     const monthData = monthWeeks.map((w, idx) => {
       const bks = bookings.filter((_, bIdx) => Math.floor(bIdx / 4) % 4 === idx);
       const rev = bks.reduce((sum, b) => sum + (b.amount || 0), 0);
-      return { label: w, revenue: rev, sessions: bks.length };
+      const platFee = bks.reduce((sum, b) => sum + getBookingCommission(b), 0);
+      return { label: w, revenue: rev, platformShare: platFee, sessions: bks.length };
     });
 
     const yearMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const yearData = yearMonths.map((m, idx) => {
       const bks = bookings.filter((_, bIdx) => bIdx % 12 === idx);
       const rev = bks.reduce((sum, b) => sum + (b.amount || 0), 0);
-      return { label: m, revenue: rev, sessions: bks.length };
+      const platFee = bks.reduce((sum, b) => sum + getBookingCommission(b), 0);
+      return { label: m, revenue: rev, platformShare: platFee, sessions: bks.length };
     });
 
     const computeGrowth = (data: { revenue: number }[]) => {
@@ -122,28 +157,12 @@ export const RevenueView: React.FC = () => {
         growthPercentage: computeGrowth(yearData)
       }
     };
-  }, [bookings]);
+  }, [bookings, therapistFeeMap]);
 
   const currentDataset = dynamicRevenueDatasets[timeRange];
   const avgRevenuePerSession = currentDataset.sessionsTotal > 0
     ? Math.round(currentDataset.periodTotal / currentDataset.sessionsTotal)
     : 0;
-
-  // Map each therapist's configured platform fee rate
-  const therapistFeeMap = React.useMemo(() => {
-    const map = new Map<string, { type: string; value: number }>();
-    therapists.forEach((t) => {
-      let type = (t as any).platformFeeType || 'Percentage';
-      let val = (t as any).platformFeePerSession;
-      if (!val || (val > 99 && type === 'Percentage') || (type === 'Fixed' && val >= 1000)) {
-        type = 'Percentage';
-        val = (t as any).commissionRate ?? 20;
-      }
-      map.set(t.id, { type, value: val });
-      if (t.name) map.set(t.name.toLowerCase(), { type, value: val });
-    });
-    return map;
-  }, [therapists]);
 
   // Compute platform commission retained dynamically using consultant-specific rates
   const platformCommissionRetained = React.useMemo(() => {
@@ -399,33 +418,196 @@ interface ServiceBreakdownItem {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Revenue Growth Trend Chart */}
         <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="font-extrabold text-lg text-slate-900">Revenue & Session Growth ({timeRange})</h3>
-              <p className="text-xs text-slate-400">Progression of platform gross revenue and session count</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-lg text-slate-900">Revenue & Session Growth</h3>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5e2be2] font-mono font-bold border border-purple-100">
+                  {timeRange}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">Progression of platform gross earnings and completed session volume</p>
             </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-              <span className="inline-block w-3 h-3 rounded-full bg-emerald-500" />
-              <span>Revenue (₹)</span>
+
+            {/* Chart Type Selector */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setChartMode('combo')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  chartMode === 'combo'
+                    ? 'bg-white text-[#5e2be2] shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Combo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMode('bar')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  chartMode === 'bar'
+                    ? 'bg-white text-[#5e2be2] shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Bars</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMode('area')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  chartMode === 'area'
+                    ? 'bg-white text-[#5e2be2] shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Area</span>
+              </button>
             </div>
           </div>
 
           <div className="h-72 pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={currentDataset.chartData}>
-                <defs>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '16px', borderColor: '#e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fill="url(#colorRev)" />
-              </AreaChart>
+              {chartMode === 'combo' ? (
+                <ComposedChart data={currentDataset.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="barGradientRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#5e2be2" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis
+                    yAxisId="left"
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#10b981"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${v}`}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '16px', borderColor: '#e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
+                    formatter={(value: any, name: any) => [
+                      name === 'Completed Sessions' ? `${value} sessions` : `₹${Number(value).toLocaleString()}`,
+                      name
+                    ]}
+                  />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="revenue"
+                    fill="url(#barGradientRev)"
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={44}
+                    name="Gross Revenue"
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="sessions"
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: '#10b981', stroke: '#ffffff', strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                    name="Completed Sessions"
+                  />
+                </ComposedChart>
+              ) : chartMode === 'bar' ? (
+                <BarChart data={currentDataset.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="barGrossGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#5e2be2" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.7} />
+                    </linearGradient>
+                    <linearGradient id="barPlatformGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#059669" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '16px', borderColor: '#e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
+                    formatter={(value: any, name: any) => [`₹${Number(value).toLocaleString()}`, name]}
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    fill="url(#barGrossGradient)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={32}
+                    name="Gross Revenue"
+                  />
+                  <Bar
+                    dataKey="platformShare"
+                    fill="url(#barPlatformGradient)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={32}
+                    name="Platform Share"
+                  />
+                </BarChart>
+              ) : (
+                <AreaChart data={currentDataset.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevPurpleGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#5e2be2" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#5e2be2" stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="colorPlatformEmeraldGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '16px', borderColor: '#e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
+                    formatter={(value: any, name: any) => [`₹${Number(value).toLocaleString()}`, name]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#5e2be2"
+                    strokeWidth={3}
+                    fill="url(#colorRevPurpleGrad)"
+                    name="Gross Revenue"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="platformShare"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#colorPlatformEmeraldGrad)"
+                    name="Platform Share"
+                  />
+                </AreaChart>
+              )}
             </ResponsiveContainer>
           </div>
         </div>
