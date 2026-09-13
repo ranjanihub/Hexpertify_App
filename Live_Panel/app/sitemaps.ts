@@ -44,48 +44,53 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Fetch all professions for service pages
-  const professions = await prisma.profession.findMany({
-    select: {
-      identifier: true,
-      createdAt: true,
-    },
-  });
+  let professionPages: MetadataRoute.Sitemap = [];
+  let consultantPages: MetadataRoute.Sitemap = [];
 
-  const professionPages: MetadataRoute.Sitemap = professions.map(
-    (profession) => ({
+  try {
+    // Fetch all professions for service pages
+    const professions = await prisma.profession.findMany({
+      select: {
+        identifier: true,
+        createdAt: true,
+      },
+    });
+
+    professionPages = professions.map((profession) => ({
       url: `${baseUrl}/services/${profession.identifier}`,
       lastModified: profession.createdAt,
       changeFrequency: "weekly",
       priority: 0.9,
-    }),
-  );
+    }));
 
-  // Fetch all consultants for consultant pages
-  const consultants = await prisma.consultant.findMany({
-    select: {
-      identifier: true,
-      professionId: true,
-      updatedAt: true,
-      profession: {
-        select: {
-          identifier: true,
+    // Fetch all consultants for consultant pages
+    const consultants = await prisma.consultant.findMany({
+      select: {
+        identifier: true,
+        professionId: true,
+        updatedAt: true,
+        profession: {
+          select: {
+            identifier: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  const consultantPages: MetadataRoute.Sitemap = consultants
-    .filter(
-      (consultant) =>
-        Boolean(consultant.profession?.identifier && consultant.identifier),
-    )
-    .map((consultant) => ({
-      url: `${baseUrl}/services/${consultant.profession!.identifier}/${consultant.identifier}`,
-      lastModified: consultant.updatedAt,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    }));
+    consultantPages = consultants
+      .filter(
+        (consultant) =>
+          Boolean(consultant.profession?.identifier && consultant.identifier),
+      )
+      .map((consultant) => ({
+        url: `${baseUrl}/services/${consultant.profession!.identifier}/${consultant.identifier}`,
+        lastModified: consultant.updatedAt,
+        changeFrequency: "weekly",
+        priority: 0.8,
+      }));
+  } catch (err) {
+    console.warn("Could not load dynamic sitemaps during build, using static pages fallback:", err);
+  }
 
   return [...staticPages, ...professionPages, ...consultantPages];
 }

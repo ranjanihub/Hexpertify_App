@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://hexpertify.com";
 
-  const professions = await prisma.profession.findMany({
-    select: {
-      identifier: true,
-      createdAt: true,
-    },
-  });
+  let professions: any[] = [];
+  try {
+    professions = await prisma.profession.findMany({
+      select: {
+        identifier: true,
+        createdAt: true,
+      },
+    });
+  } catch (err) {
+    console.warn("Could not fetch professions for sitemap-services.xml:", err);
+  }
 
   const urls = professions
     .filter(

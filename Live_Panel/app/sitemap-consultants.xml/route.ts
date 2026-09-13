@@ -1,18 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://hexpertify.com";
 
-  const consultants = await prisma.consultant.findMany({
-    select: {
-      identifier: true,
-      updatedAt: true,
-      profession: {
-        select: { identifier: true },
+  let consultants: any[] = [];
+  try {
+    consultants = await prisma.consultant.findMany({
+      select: {
+        identifier: true,
+        updatedAt: true,
+        profession: {
+          select: { identifier: true },
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.warn("Could not fetch consultants for sitemap-consultants.xml:", err);
+  }
 
   const urls = consultants
     .filter(
