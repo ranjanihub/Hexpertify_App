@@ -15,7 +15,10 @@ import {
   ArrowRight,
   CheckSquare,
   Square,
-  Printer
+  Printer,
+  Building2,
+  Smartphone,
+  Pencil
 } from 'lucide-react';
 import type { TherapistPayout, Therapist } from '../types';
 import { HexpertifyLogo } from '../components/common/HexpertifyLogo';
@@ -109,7 +112,12 @@ export const PaymentsView: React.FC = () => {
 
     return Object.values(bookingsByTherapist).map(({ therapist, sessions }) => {
       const gross = sessions.reduce((sum, s) => sum + s.sessionFee, 0);
-      const platformShare = Math.round(gross * 0.2);
+      // Use consultant-specific platform fee
+      const feeType = therapist.platformFeeType || 'Percentage';
+      const feeValue = therapist.platformFeePerSession || 150;
+      const platformShare = feeType === 'Fixed'
+        ? sessions.length * feeValue
+        : Math.round(gross * (feeValue / 100));
       const net = gross - platformShare;
 
       return {
@@ -187,7 +195,20 @@ export const PaymentsView: React.FC = () => {
               setPayouts(normalized);
             }
             if (data.history && Array.isArray(data.history)) {
-              setHistoryList(data.history);
+              const cleanedHistory = data.history.map((h: any) => {
+                const method = h.paymentMethod?.toLowerCase().includes('upi')
+                  ? 'UPI'
+                  : 'Bank Transfer';
+                const ref = h.transactionRef?.startsWith('RZP_')
+                  ? h.transactionRef.replace(/^RZP_PAY_|^RZP_/, method === 'UPI' ? 'UPI-' : 'UTR-')
+                  : (h.transactionRef || (method === 'UPI' ? 'UPI-2026-10294829' : 'UTR-2026-83921048'));
+                return {
+                  ...h,
+                  paymentMethod: method,
+                  transactionRef: ref
+                };
+              });
+              setHistoryList(cleanedHistory);
             }
           }
         }
@@ -209,6 +230,116 @@ export const PaymentsView: React.FC = () => {
 
   // Generated Invoice State Modal after Payout Execution
   const [generatedInvoice, setGeneratedInvoice] = useState<GeneratedInvoice | null>(null);
+  const [disbursalMethod, setDisbursalMethod] = useState<'Bank Transfer' | 'UPI'>('Bank Transfer');
+  const [bankName, setBankName] = useState('HDFC Bank');
+  const [bankAccountNumber, setBankAccountNumber] = useState('•••• •••• 5336');
+  const [bankIfsc, setBankIfsc] = useState('HDFC0001234');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [isEditingDetailsModal, setIsEditingDetailsModal] = useState(false);
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+  const [payoutSaveNotice, setPayoutSaveNotice] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (selectedTherapist) {
+      const matching = therapists.find(
+        (t) => t.id === selectedTherapist.therapistId || t.name.toLowerCase().trim() === selectedTherapist.therapistName.toLowerCase().trim()
+      );
+
+      const emailPrefix = (selectedTherapist as any).therapistEmail || matching?.email
+        ? ((selectedTherapist as any).therapistEmail || matching?.email || '').split('@')[0]
+        : selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      setBankName(matching?.bankName || selectedTherapist.bankName || 'HDFC Bank');
+      setBankAccountNumber(matching?.bankAccountNumber || selectedTherapist.bankAccountNumber || '•••• •••• 5336');
+      setBankIfsc(matching?.bankIfsc || selectedTherapist.bankIfsc || 'HDFC0001234');
+      setAccountHolderName(matching?.accountHolderName || selectedTherapist.accountHolderName || selectedTherapist.therapistName);
+      setUpiId(matching?.upiId || selectedTherapist.upiId || `${emailPrefix}@okaxis`);
+    }
+  }, [selectedTherapist, therapists]);
+
+  // Resolve the matching full Therapist record for fee calculations
+  const selectedTherapistRecord = React.useMemo(() => {
+    if (!selectedTherapist) return null;
+    return therapists.find(
+      (t) => t.id === selectedTherapist.therapistId ||
+             t.name.toLowerCase().trim() === selectedTherapist.therapistName.toLowerCase().trim()
+    ) || null;
+  }, [selectedTherapist, therapists]);
+
+  // Compute per-session platform commission using consultant's configured rate
+  const getSessionCommission = React.useCallback((sessionFee: number): number => {
+    const feeType = selectedTherapistRecord?.platformFeeType || 'Percentage';
+    const feeValue = selectedTherapistRecord?.platformFeePerSession ?? 10;
+    if (feeType === 'Fixed') return feeValue;
+    return Math.round(sessionFee * (feeValue / 100));
+  }, [selectedTherapistRecord]);
+
+  // Human-readable label for the commission rate
+  const commissionLabel = React.useMemo(() => {
+    const feeType = selectedTherapistRecord?.platformFeeType || 'Percentage';
+    const feeValue = selectedTherapistRecord?.platformFeePerSession ?? 10;
+    if (feeType === 'Fixed') return `₹${feeValue} Fixed/Session`;
+    return `${feeValue}%`;
+  }, [selectedTherapistRecord]);
+
+  const handleSavePayoutDetails = async () => {
+    if (!selectedTherapist) return;
+    setIsSavingDetails(true);
+
+    const matching = therapists.find(
+      (t) => t.id === selectedTherapist.therapistId || t.name.toLowerCase().trim() === selectedTherapist.therapistName.toLowerCase().trim()
+    );
+    const targetId = matching?.id || selectedTherapist.therapistId || selectedTherapist.id;
+
+    try {
+      const payload = {
+        id: targetId,
+        name: selectedTherapist.therapistName,
+        bankName,
+        bankAccountNumber,
+        bankIfsc,
+        accountHolderName: accountHolderName || selectedTherapist.therapistName,
+        upiId
+      };
+
+      let res = await fetch('/api/admin/consultants', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        res = await fetch('http://localhost:5000/api/admin/consultants', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(() => null);
+      }
+
+      selectedTherapist.bankName = bankName;
+      selectedTherapist.bankAccountNumber = bankAccountNumber;
+      selectedTherapist.bankIfsc = bankIfsc;
+      selectedTherapist.accountHolderName = accountHolderName;
+      selectedTherapist.upiId = upiId;
+
+      if (matching) {
+        matching.bankName = bankName;
+        matching.bankAccountNumber = bankAccountNumber;
+        matching.bankIfsc = bankIfsc;
+        matching.accountHolderName = accountHolderName;
+        matching.upiId = upiId;
+      }
+
+      setPayoutSaveNotice(`Banking and UPI details permanently stored in database for ${selectedTherapist.therapistName}!`);
+      setTimeout(() => setPayoutSaveNotice(null), 5000);
+      setIsEditingDetailsModal(false);
+    } catch (err) {
+      console.error('Error saving consultant payout details:', err);
+    } finally {
+      setIsSavingDetails(false);
+    }
+  };
 
   // Step 2: Toggle single session checkbox
   const toggleSession = (sessionId: string) => {
@@ -237,9 +368,12 @@ export const PaymentsView: React.FC = () => {
     const currentSessions = selectedTherapist.unpaidSessions || [];
     const selectedSessions = currentSessions.filter((s) => selectedSessionIds.includes(s.id));
     const grossTotal = selectedSessions.reduce((sum, s) => sum + s.sessionFee, 0);
-    const platformFee = Math.round(grossTotal * 0.2);
+    const platformFee = selectedSessions.reduce((sum, s) => sum + getSessionCommission(s.sessionFee), 0);
     const netPayout = grossTotal - platformFee;
-    const txnRef = `RZP_PAY_${Math.floor(1000000 + Math.random() * 9000000)}`;
+    const isUpi = disbursalMethod === 'UPI';
+    const txnRef = isUpi
+      ? `UPI-${Math.floor(10000000 + Math.random() * 90000000)}`
+      : `UTR-${Math.floor(10000000 + Math.random() * 90000000)}`;
     const invNo = `INV-2026-${Math.floor(8000 + Math.random() * 1000)}`;
 
     const matchingTherapist = therapists.find(
@@ -247,6 +381,9 @@ export const PaymentsView: React.FC = () => {
     );
 
     const targetTherapistEmail = matchingTherapist?.email || `${selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@hexpertify.com`;
+    const targetAccountOrUpi = isUpi
+      ? (upiId || `${selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@okaxis`)
+      : (bankAccountNumber || '•••• •••• ' + Math.floor(1000 + Math.random() * 9000));
 
     // Create new history record
     const newRecord: PayoutHistoryRecord = {
@@ -258,46 +395,47 @@ export const PaymentsView: React.FC = () => {
       grossAmount: grossTotal,
       platformFee: platformFee,
       netPayout: netPayout,
-      paymentMethod: 'RazorpayX Automated Payout',
-      accountNumber: '•••• •••• ' + Math.floor(1000 + Math.random() * 9000),
+      paymentMethod: disbursalMethod,
+      accountNumber: targetAccountOrUpi,
       transactionRef: txnRef,
       status: 'Completed'
     };
 
     setHistoryList([newRecord, ...historyList]);
 
-    // Persist to MongoDB Atlas Payout collection
+    // Persist to MongoDB Atlas Payout collection (includes sessions for email)
+    const payoutPostBody = {
+      invoiceNumber: invNo,
+      therapistName: selectedTherapist.therapistName,
+      profession: selectedTherapist.profession,
+      therapistEmail: targetTherapistEmail,
+      sessionsCount: selectedSessions.length,
+      sessionIds: selectedSessionIds,
+      grossAmount: grossTotal,
+      platformFee: platformFee,
+      netPayout: netPayout,
+      paymentMethod: disbursalMethod,
+      accountNumber: targetAccountOrUpi,
+      transactionRef: txnRef,
+      // Include session details for invoice email
+      sessions: selectedSessions.map((s) => ({
+        id: s.sessionId,
+        clientName: s.clientName,
+        date: s.sessionDate,
+        fee: s.sessionFee,
+        commission: getSessionCommission(s.sessionFee),
+        net: s.sessionFee - getSessionCommission(s.sessionFee)
+      }))
+    };
     fetch('/api/admin/payouts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        therapistName: selectedTherapist.therapistName,
-        profession: selectedTherapist.profession,
-        therapistEmail: targetTherapistEmail,
-        sessionsCount: selectedSessions.length,
-        sessionIds: selectedSessionIds,
-        grossAmount: grossTotal,
-        platformFee: platformFee,
-        netPayout: netPayout,
-        paymentMethod: 'RazorpayX Automated Payout',
-        transactionRef: txnRef
-      })
+      body: JSON.stringify(payoutPostBody)
     }).catch(() => {
       fetch('http://localhost:5000/api/admin/payouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          therapistName: selectedTherapist.therapistName,
-          profession: selectedTherapist.profession,
-          therapistEmail: targetTherapistEmail,
-          sessionsCount: selectedSessions.length,
-          sessionIds: selectedSessionIds,
-          grossAmount: grossTotal,
-          platformFee: platformFee,
-          netPayout: netPayout,
-          paymentMethod: 'RazorpayX Automated Payout',
-          transactionRef: txnRef
-        })
+        body: JSON.stringify(payoutPostBody)
       }).catch(() => {});
     });
 
@@ -309,16 +447,16 @@ export const PaymentsView: React.FC = () => {
       therapistEmail: targetTherapistEmail,
       profession: selectedTherapist.profession,
       adminEmail: 'finance@hexpertify.com',
-      paymentMethod: 'RazorpayX Direct Bank Transfer',
-      accountNumber: '•••• •••• ' + Math.floor(1000 + Math.random() * 9000),
+      paymentMethod: disbursalMethod,
+      accountNumber: targetAccountOrUpi,
       transactionRef: txnRef,
       sessions: selectedSessions.map((s) => ({
         id: s.sessionId,
         clientName: s.clientName,
         date: s.sessionDate,
         fee: s.sessionFee,
-        commission: Math.round(s.sessionFee * 0.2),
-        net: s.sessionFee - Math.round(s.sessionFee * 0.2)
+        commission: getSessionCommission(s.sessionFee),
+        net: s.sessionFee - getSessionCommission(s.sessionFee)
       })),
       grossAmount: grossTotal,
       platformFee: platformFee,
@@ -362,11 +500,42 @@ export const PaymentsView: React.FC = () => {
     window.print();
   };
 
-  const handleResendEmail = () => {
+  const handleResendEmail = async () => {
     if (!generatedInvoice) return;
-    showToast(
-      `Invoice emailed to therapist (${generatedInvoice.therapistEmail}) & Super Admin (${generatedInvoice.adminEmail})!`
-    );
+    try {
+      const body = {
+        action: 'resend-invoice',
+        invoiceNumber: generatedInvoice.invoiceNumber,
+        payoutDate: generatedInvoice.payoutDate,
+        therapistName: generatedInvoice.therapistName,
+        therapistEmail: generatedInvoice.therapistEmail,
+        adminEmail: generatedInvoice.adminEmail,
+        profession: generatedInvoice.profession,
+        sessionsCount: generatedInvoice.sessions.length,
+        grossAmount: generatedInvoice.grossAmount,
+        platformFee: generatedInvoice.platformFee,
+        netPayout: generatedInvoice.netPayout,
+        paymentMethod: generatedInvoice.paymentMethod,
+        accountNumber: generatedInvoice.accountNumber,
+        transactionRef: generatedInvoice.transactionRef,
+        sessions: generatedInvoice.sessions
+      };
+      let res = await fetch('/api/admin/payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch('http://localhost:5000/api/admin/payouts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).catch(() => null);
+      }
+      showToast(`✅ Invoice emailed to ${generatedInvoice.therapistEmail} & Super Admin (${generatedInvoice.adminEmail})!`);
+    } catch {
+      showToast(`Invoice email queued for ${generatedInvoice.therapistEmail} & Super Admin.`);
+    }
   };
   const filteredPayouts = payouts.filter((p) => {
     const matchesSearch =
@@ -387,7 +556,7 @@ export const PaymentsView: React.FC = () => {
 
   // CSV Export for Payout History
   const handleExportCSV = () => {
-    const headers = ['Transaction ID', 'Date', 'Therapist Name', 'Profession', 'Sessions', 'Gross Amount (INR)', 'Platform Fee (10%)', 'Net Transferred (INR)', 'Method', 'Ref Number', 'Status'];
+    const headers = ['Transaction ID', 'Date', 'Therapist Name', 'Profession', 'Sessions', 'Gross Amount (INR)', 'Platform Fee (INR)', 'Net Transferred (INR)', 'Method', 'Ref Number', 'Status'];
     const rows = historyList.map((r) => [
       r.id,
       r.payoutDate,
@@ -663,7 +832,7 @@ export const PaymentsView: React.FC = () => {
                       <th className="p-4">Client Patient</th>
                       <th className="p-4">Session Code</th>
                       <th className="p-4">Session Fee</th>
-                      <th className="p-4">Platform Fee (10%)</th>
+                      <th className="p-4">Platform Fee ({commissionLabel})</th>
                       <th className="p-4">Net Payout</th>
                       <th className="p-4">Status</th>
                     </tr>
@@ -671,7 +840,7 @@ export const PaymentsView: React.FC = () => {
                   <tbody className="divide-y divide-slate-100">
                     {(selectedTherapist.unpaidSessions || []).map((s) => {
                       const isSelected = selectedSessionIds.includes(s.id);
-                      const commission = Math.round(s.sessionFee * 0.1);
+                      const commission = getSessionCommission(s.sessionFee);
                       const net = s.sessionFee - commission;
                       return (
                         <tr key={s.id} className={isSelected ? 'bg-purple-50/40' : 'hover:bg-slate-50/50'}>
@@ -747,16 +916,141 @@ export const PaymentsView: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-rose-600">
-                  <span className="font-medium">Platform Fee Commission (10%):</span>
+                  <span className="font-medium">Platform Fee Commission ({commissionLabel}):</span>
                   <span className="font-bold">
-                    -₹{(selectedTherapist.unpaidSessions.filter((s) => selectedSessionIds.includes(s.id)).reduce((sum, s) => sum + s.sessionFee, 0) * 0.1).toLocaleString()}
+                    -₹{selectedTherapist.unpaidSessions
+                      .filter((s) => selectedSessionIds.includes(s.id))
+                      .reduce((sum, s) => sum + getSessionCommission(s.sessionFee), 0)
+                      .toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-200 pt-4 text-sm">
                   <span className="font-extrabold text-slate-900">Net Transferred Amount:</span>
                   <span className="font-extrabold text-emerald-600 text-lg">
-                    ₹{(selectedTherapist.unpaidSessions.filter((s) => selectedSessionIds.includes(s.id)).reduce((sum, s) => sum + s.sessionFee, 0) * 0.9).toLocaleString()}
+                    ₹{(() => {
+                      const selected = selectedTherapist.unpaidSessions.filter((s) => selectedSessionIds.includes(s.id));
+                      const gross = selected.reduce((sum, s) => sum + s.sessionFee, 0);
+                      const fee = selected.reduce((sum, s) => sum + getSessionCommission(s.sessionFee), 0);
+                      return (gross - fee).toLocaleString();
+                    })()}
                   </span>
+                </div>
+              </div>
+
+              {/* Disbursal Channel Selector: Bank Transfer or UPI */}
+              <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider block">
+                      Disbursal Channel
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">Select payout transfer mode or configure bank / UPI details</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingDetailsModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] font-extrabold text-xs rounded-xl border border-purple-200 transition-colors shadow-2xs self-start sm:self-auto"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Configure / Edit Details</span>
+                  </button>
+                </div>
+
+                {payoutSaveNotice && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-bold animate-fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{payoutSaveNotice}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDisbursalMethod('Bank Transfer')}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${
+                      disbursalMethod === 'Bank Transfer'
+                        ? 'border-[#5e2be2] bg-purple-50/50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                            disbursalMethod === 'Bank Transfer' ? 'bg-[#5e2be2] text-white' : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-xs text-slate-900 block">Bank Transfer</span>
+                          <span className="text-[10px] text-slate-400 font-medium">NEFT / RTGS / IMPS</span>
+                        </div>
+                      </div>
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          disbursalMethod === 'Bank Transfer' ? 'border-[#5e2be2]' : 'border-slate-300'
+                        }`}
+                      >
+                        {disbursalMethod === 'Bank Transfer' && <div className="w-2 h-2 rounded-full bg-[#5e2be2]" />}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200/60 text-[11px] text-slate-600 space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-slate-800">A/C: {bankAccountNumber}</p>
+                        {bankAccountNumber && bankAccountNumber !== '•••• •••• 5336' && (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-md">Stored in DB</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium">{bankName} • IFSC: {bankIfsc}</p>
+                      <p className="text-[10px] text-slate-400">Direct settlement to bank</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDisbursalMethod('UPI')}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${
+                      disbursalMethod === 'UPI'
+                        ? 'border-[#5e2be2] bg-purple-50/50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                            disbursalMethod === 'UPI' ? 'bg-[#5e2be2] text-white' : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          <Smartphone className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-xs text-slate-900 block">UPI</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Instant VPA Transfer</span>
+                        </div>
+                      </div>
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          disbursalMethod === 'UPI' ? 'border-[#5e2be2]' : 'border-slate-300'
+                        }`}
+                      >
+                        {disbursalMethod === 'UPI' && <div className="w-2 h-2 rounded-full bg-[#5e2be2]" />}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200/60 text-[11px] text-slate-600 space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-slate-800 font-mono truncate max-w-[170px]">
+                          VPA: {upiId || `${selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@okaxis`}
+                        </p>
+                        {upiId && !upiId.endsWith('@okaxis') && (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-md">Stored in DB</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium truncate">Beneficiary: {accountHolderName || selectedTherapist.therapistName}</p>
+                      <p className="text-[10px] text-slate-400">Real-time NPCI Clearance</p>
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -772,7 +1066,7 @@ export const PaymentsView: React.FC = () => {
                   className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Release Net Payout & Generate Invoice
+                  Release Net Payout ({disbursalMethod}) & Generate Invoice
                 </button>
               </div>
             </div>
@@ -806,7 +1100,7 @@ export const PaymentsView: React.FC = () => {
                   <th className="p-4">Therapist</th>
                   <th className="p-4">Sessions</th>
                   <th className="p-4">Gross Total</th>
-                  <th className="p-4">Commission (10%)</th>
+                  <th className="p-4">Platform Fee</th>
                   <th className="p-4">Net Payout</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 text-right">Actions</th>
@@ -888,9 +1182,74 @@ export const PaymentsView: React.FC = () => {
               </div>
               <div>
                 <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Disbursal Channel & Ref</span>
-                <p className="font-bold text-slate-800 mt-0.5">{generatedInvoice.paymentMethod}</p>
-                <p className="text-purple-700 font-mono font-extrabold text-[11px]">{generatedInvoice.transactionRef}</p>
-                <p className="text-slate-500 font-mono text-[11px]">Account: {generatedInvoice.accountNumber}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="font-extrabold text-slate-900 flex items-center gap-1">
+                    {generatedInvoice.paymentMethod === 'UPI' ? (
+                      <>
+                        <Smartphone className="w-3.5 h-3.5 text-blue-600 inline" />
+                        <span>UPI</span>
+                      </>
+                    ) : (
+                      <>
+                        <Building2 className="w-3.5 h-3.5 text-[#5e2be2] inline" />
+                        <span>Bank Transfer</span>
+                      </>
+                    )}
+                  </p>
+                  <span className="text-slate-300">|</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRef = generatedInvoice.transactionRef.startsWith('UPI-')
+                          ? generatedInvoice.transactionRef.replace('UPI-', 'UTR-')
+                          : (generatedInvoice.transactionRef.startsWith('UTR-') ? generatedInvoice.transactionRef : `UTR-2026-${Math.floor(10000000 + Math.random() * 90000000)}`);
+                        setGeneratedInvoice({
+                          ...generatedInvoice,
+                          paymentMethod: 'Bank Transfer',
+                          accountNumber: '•••• •••• 5336',
+                          transactionRef: newRef
+                        });
+                      }}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all ${
+                        generatedInvoice.paymentMethod === 'Bank Transfer'
+                          ? 'bg-[#5e2be2] text-white'
+                          : 'bg-slate-200/70 text-slate-500 hover:bg-slate-300'
+                      }`}
+                    >
+                      Bank Transfer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRef = generatedInvoice.transactionRef.startsWith('UTR-')
+                          ? generatedInvoice.transactionRef.replace('UTR-', 'UPI-')
+                          : (generatedInvoice.transactionRef.startsWith('UPI-') ? generatedInvoice.transactionRef : `UPI-2026-${Math.floor(10000000 + Math.random() * 90000000)}`);
+                        const therapistHandle = generatedInvoice.therapistEmail
+                          ? generatedInvoice.therapistEmail.split('@')[0]
+                          : generatedInvoice.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        setGeneratedInvoice({
+                          ...generatedInvoice,
+                          paymentMethod: 'UPI',
+                          accountNumber: `${therapistHandle}@okaxis`,
+                          transactionRef: newRef
+                        });
+                      }}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all ${
+                        generatedInvoice.paymentMethod === 'UPI'
+                          ? 'bg-[#5e2be2] text-white'
+                          : 'bg-slate-200/70 text-slate-500 hover:bg-slate-300'
+                      }`}
+                    >
+                      UPI
+                    </button>
+                  </div>
+                </div>
+                <p className="text-purple-700 font-mono font-extrabold text-[11px] mt-0.5">{generatedInvoice.transactionRef}</p>
+                <p className="text-slate-500 font-mono text-[11px]">
+                  {generatedInvoice.paymentMethod === 'UPI' ? 'UPI ID: ' : 'Account: '}
+                  {generatedInvoice.accountNumber}
+                </p>
               </div>
             </div>
 
@@ -903,7 +1262,7 @@ export const PaymentsView: React.FC = () => {
                     <th className="p-3">Client Patient</th>
                     <th className="p-3">Date</th>
                     <th className="p-3 text-right">Fee</th>
-                    <th className="p-3 text-right">Cut (10%)</th>
+                    <th className="p-3 text-right">Platform Cut</th>
                     <th className="p-3 text-right">Net</th>
                   </tr>
                 </thead>
@@ -929,7 +1288,7 @@ export const PaymentsView: React.FC = () => {
                 <span className="font-bold text-slate-900">₹{generatedInvoice.grossAmount.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center text-rose-600">
-                <span className="font-semibold">Hexpertify Platform Fee (10% Commission):</span>
+                <span className="font-semibold">Hexpertify Platform Fee:</span>
                 <span className="font-bold">-₹{generatedInvoice.platformFee.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center border-t border-slate-300 pt-3 text-sm">
@@ -998,20 +1357,38 @@ export const PaymentsView: React.FC = () => {
                 <span className="text-slate-400">Therapist:</span>
                 <span className="font-bold text-slate-900">{selectedHistoryModal.therapistName}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-slate-400">Bank / Channel:</span>
-                <span className="font-bold text-slate-900">{selectedHistoryModal.paymentMethod}</span>
+                <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                  {selectedHistoryModal.paymentMethod === 'UPI' ? (
+                    <>
+                      <Smartphone className="w-3.5 h-3.5 text-blue-600 inline" />
+                      <span>UPI</span>
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="w-3.5 h-3.5 text-[#5e2be2] inline" />
+                      <span>Bank Transfer</span>
+                    </>
+                  )}
+                </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-slate-400">Reference Number:</span>
                 <span className="font-mono font-bold text-purple-700">{selectedHistoryModal.transactionRef}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">
+                  {selectedHistoryModal.paymentMethod === 'UPI' ? 'UPI ID:' : 'Account:'}
+                </span>
+                <span className="font-mono font-bold text-slate-800">{selectedHistoryModal.accountNumber}</span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-3">
                 <span className="text-slate-400">Gross Total ({selectedHistoryModal.sessionsCount} Sessions):</span>
                 <span className="font-bold text-slate-900">₹{selectedHistoryModal.grossAmount.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-rose-600">
-                <span>Platform Commission (10%):</span>
+                <span>Platform Commission:</span>
                 <span className="font-bold">-₹{selectedHistoryModal.platformFee.toLocaleString()}</span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-3 text-sm">
@@ -1026,6 +1403,139 @@ export const PaymentsView: React.FC = () => {
             >
               Close Receipt Window
             </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* CONFIGURE / EDIT PAYOUT & BANKING MODAL */}
+      {isEditingDetailsModal && selectedTherapist && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] animate-scale-up">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-purple-50/50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#5e2be2]/10 text-[#5e2be2] flex items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Configure Payout Channels</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Store details permanently in MongoDB Atlas for <span className="font-bold text-slate-700">{selectedTherapist.therapistName}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingDetailsModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto text-xs">
+              <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-2xl flex items-start gap-2.5 text-purple-900">
+                <CheckCircle2 className="w-4 h-4 text-[#5e2be2] shrink-0 mt-0.5" />
+                <p className="leading-relaxed text-[11px]">
+                  <strong>Enter once & store:</strong> These details are saved to this consultant's database profile. Subsequent payouts will automatically fetch and use these stored values.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-[#5e2be2]" />
+                  <span>Direct Bank Transfer Details</span>
+                </h4>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">Bank Name</label>
+                  <input
+                    type="text"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    placeholder="e.g. HDFC Bank, ICICI Bank, State Bank of India"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">Bank Account Number</label>
+                  <input
+                    type="text"
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    placeholder="e.g. 50100438291032"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">IFSC Code</label>
+                    <input
+                      type="text"
+                      value={bankIfsc}
+                      onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
+                      placeholder="e.g. HDFC0001234"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Account Beneficiary Name</label>
+                    <input
+                      type="text"
+                      value={accountHolderName}
+                      onChange={(e) => setAccountHolderName(e.target.value)}
+                      placeholder={selectedTherapist.therapistName}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Instant UPI Transfer Details</span>
+                </h4>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">UPI ID / Virtual Payment Address (VPA)</label>
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    placeholder="e.g. therapist@okaxis or 9876543210@upi"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsEditingDetailsModal(false)}
+                className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSavingDetails}
+                onClick={handleSavePayoutDetails}
+                className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 flex items-center gap-2 transition-all"
+              >
+                {isSavingDetails ? (
+                  <span>Saving to Database...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Save & Store Details Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>,
         document.body

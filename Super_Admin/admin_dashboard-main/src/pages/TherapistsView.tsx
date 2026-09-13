@@ -42,7 +42,8 @@ import {
   Archive,
   CalendarOff,
   Pencil,
-  ExternalLink
+  ExternalLink,
+  Building2
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { launchConsultantPanel } from '../lib/auth';
@@ -288,7 +289,7 @@ interface TherapistsViewProps {
   onCloseAddModal?: () => void;
 }
 
-type SectionKey = 'basic' | 'details' | 'credentials' | 'services' | 'reviews' | 'faqs' | 'seo';
+type SectionKey = 'basic' | 'details' | 'credentials' | 'services' | 'reviews' | 'faqs' | 'banking' | 'seo';
 
 export const TherapistsView: React.FC<TherapistsViewProps> = ({
   isAddModalOpen: isAddModalProp = false,
@@ -340,6 +341,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
     services: [] as TherapistServiceItem[],
     reviews: [] as TherapistReviewItem[],
     faqs: [] as TherapistFAQItem[],
+    bankName: 'HDFC Bank',
+    bankAccountNumber: '',
+    bankIfsc: 'HDFC0001234',
+    accountHolderName: '',
+    upiId: '',
     seo: {
       metaTitle: '',
       metaDescription: '',
@@ -379,6 +385,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       services: [],
       reviews: [],
       faqs: [],
+      bankName: 'HDFC Bank',
+      bankAccountNumber: '',
+      bankIfsc: 'HDFC0001234',
+      accountHolderName: '',
+      upiId: '',
       seo: {
         metaTitle: '',
         metaDescription: '',
@@ -437,6 +448,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       ],
       reviews: t.reviews || [],
       faqs: t.faqs || [],
+      bankName: t.bankName || 'HDFC Bank',
+      bankAccountNumber: t.bankAccountNumber || '',
+      bankIfsc: t.bankIfsc || 'HDFC0001234',
+      accountHolderName: t.accountHolderName || t.name || '',
+      upiId: t.upiId || '',
       seo: {
         metaTitle: t.seo?.metaTitle || '',
         metaDescription: t.seo?.metaDescription || '',
@@ -499,7 +515,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   };
 
   const handleNextStep = () => {
-    const steps: SectionKey[] = ['basic', 'details', 'credentials', 'services', 'reviews', 'faqs', 'seo'];
+    const steps: SectionKey[] = ['basic', 'details', 'credentials', 'services', 'reviews', 'faqs', 'banking', 'seo'];
     const currentIndex = steps.indexOf(activeSection);
     
     // Simple validation on step change
@@ -523,7 +539,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   };
 
   const handlePrevStep = () => {
-    const steps: SectionKey[] = ['basic', 'details', 'credentials', 'services', 'reviews', 'faqs', 'seo'];
+    const steps: SectionKey[] = ['basic', 'details', 'credentials', 'services', 'reviews', 'faqs', 'banking', 'seo'];
     const currentIndex = steps.indexOf(activeSection);
     setValidationError(null);
     if (currentIndex > 0) {
@@ -854,6 +870,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
         structuredData: formData.seo.structuredData,
         htmlChunk: formData.seo.htmlChunk
       },
+      bankName: formData.bankName.trim() || 'HDFC Bank',
+      bankAccountNumber: formData.bankAccountNumber.trim() || '•••• •••• 5336',
+      bankIfsc: formData.bankIfsc.trim().toUpperCase() || 'HDFC0001234',
+      accountHolderName: formData.accountHolderName.trim() || formattedName,
+      upiId: formData.upiId.trim() || `${slug}@okaxis`,
       outcomes: {
         clientImprovementScore: 95,
         goalAchievementRate: 92,
@@ -954,6 +975,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       services: [],
       reviews: [],
       faqs: [],
+      bankName: 'HDFC Bank',
+      bankAccountNumber: '',
+      bankIfsc: 'HDFC0001234',
+      accountHolderName: '',
+      upiId: '',
       seo: {
         metaTitle: '',
         metaDescription: '',
@@ -1091,6 +1117,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
     { key: 'services', label: 'Services', sectionId: 'sec-services' },
     { key: 'reviews', label: 'Reviews', sectionId: 'sec-reviews' },
     { key: 'faqs', label: 'FAQs', sectionId: 'sec-faqs' },
+    { key: 'banking', label: 'Banking & Payout', sectionId: 'sec-banking' },
     { key: 'seo', label: 'SEO', sectionId: 'sec-seo' }
   ];
 
@@ -2736,6 +2763,89 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* SECTION: BANKING & PAYOUT */}
+              {activeSection === 'banking' && (
+                <div id="sec-banking" className="space-y-6 pt-2 pb-8 animate-slide-in">
+                  <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                    <Building2 className="w-5 h-5" />
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-900">Banking & Payout Details</h3>
+                      <p className="text-xs text-slate-500 font-medium">Configure bank transfer and UPI credentials for consultant disbursals</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-purple-50/70 border border-purple-150 rounded-2xl flex items-start gap-3 text-purple-950">
+                    <CheckCircle2 className="w-5 h-5 text-[#5e2be2] shrink-0 mt-0.5" />
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-extrabold text-slate-900">Persistent Disbursal Configuration</p>
+                      <p className="text-purple-700 mt-0.5">
+                        These details only need to be entered once and are stored permanently in MongoDB Atlas. Whenever this consultant is selected for payout release, these bank and UPI coordinates are automatically pre-filled.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold text-slate-700">Bank Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HDFC Bank, State Bank of India, ICICI Bank"
+                        value={formData.bankName}
+                        onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold text-slate-700">Account Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 50100429182371"
+                        value={formData.bankAccountNumber}
+                        onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold text-slate-700">IFSC Code</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HDFC0001234"
+                        value={formData.bankIfsc}
+                        onChange={(e) => setFormData({ ...formData, bankIfsc: e.target.value.toUpperCase() })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold uppercase outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold text-slate-700">Beneficiary / Account Holder Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Dr. Marcus Vance"
+                        value={formData.accountHolderName}
+                        onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-xs font-extrabold text-slate-700">UPI ID / Virtual Payment Address (VPA)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. drmarcusvance@okaxis or 9876543210@upi"
+                        value={formData.upiId}
+                        onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                      />
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        Used for instant real-time transfers via NPCI clearance when UPI disbursal mode is selected.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 

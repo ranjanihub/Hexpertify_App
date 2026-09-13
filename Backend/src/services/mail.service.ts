@@ -563,6 +563,189 @@ export class MailService {
     }
   }
 
+  /**
+   * 6. Send Payout Invoice — to Therapist (payment receipt) & Admin (financial audit copy)
+   */
+  static async sendPayoutInvoice(payload: {
+    invoiceNumber: string;
+    payoutDate: string;
+    therapistName: string;
+    therapistEmail: string;
+    adminEmail?: string;
+    profession: string;
+    sessionsCount: number;
+    grossAmount: number;
+    platformFee: number;
+    netPayout: number;
+    paymentMethod: string;
+    accountNumber: string;
+    transactionRef: string;
+    sessions?: Array<{ id: string; clientName: string; date: string; fee: number; commission: number; net: number }>;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const transporter = this.getTransporter();
+      const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Finance" <finance@hexpertify.com>';
+      const adminRecipient = payload.adminEmail || process.env.ADMIN_ALERT_EMAIL || process.env.SMTP_USER || 'admin@hexpertify.com';
+      const therapistRecipient = payload.therapistEmail;
+
+      const sessionRows = (payload.sessions || []).map(s => `
+        <tr>
+          <td style="padding:10px 12px; font-family:monospace; font-weight:700; color:#5e2be2; font-size:12px;">${s.id}</td>
+          <td style="padding:10px 12px; font-weight:600; color:#1e293b; font-size:12px;">${s.clientName}</td>
+          <td style="padding:10px 12px; color:#64748b; font-size:12px;">${s.date}</td>
+          <td style="padding:10px 12px; font-weight:700; color:#1e293b; font-size:12px; text-align:right;">₹${s.fee.toLocaleString('en-IN')}</td>
+          <td style="padding:10px 12px; color:#e11d48; font-size:12px; text-align:right;">-₹${s.commission.toLocaleString('en-IN')}</td>
+          <td style="padding:10px 12px; font-weight:800; color:#059669; font-size:12px; text-align:right;">₹${s.net.toLocaleString('en-IN')}</td>
+        </tr>`).join('');
+
+      const buildHtml = (recipientRole: 'therapist' | 'admin') => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hexpertify Payout Invoice ${payload.invoiceNumber}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f1f5f9; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width:640px; margin:24px auto; background:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg, #1e1b4b 0%, #5e2be2 60%, #7c3aed 100%); padding:36px 32px; text-align:center;">
+      <div style="display:inline-block; background:rgba(255,255,255,0.12); border-radius:12px; padding:6px 16px; margin-bottom:12px;">
+        <span style="color:#c4b5fd; font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase;">Hexpertify Finance</span>
+      </div>
+      <h1 style="margin:0 0 6px; font-size:26px; font-weight:900; color:#ffffff;">Payout Invoice</h1>
+      <p style="margin:0; font-size:13px; color:rgba(255,255,255,0.75);">
+        ${recipientRole === 'admin' ? '📋 Admin Audit Copy — Financial Records' : '✅ Payment Successfully Disbursed'}
+      </p>
+    </div>
+
+    <!-- Invoice Meta -->
+    <div style="background:#f8fafc; padding:20px 32px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between;">
+      <div>
+        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px;">Invoice No.</div>
+        <div style="font-size:15px; font-weight:800; color:#5e2be2; margin-top:2px;">${payload.invoiceNumber}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px;">Payout Date</div>
+        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-top:2px;">${payload.payoutDate}</div>
+      </div>
+    </div>
+
+    <!-- Consultant Info -->
+    <div style="padding:28px 32px;">
+      <div style="background:linear-gradient(135deg, #ede9fe, #f5f3ff); border:1px solid #ddd6fe; border-radius:16px; padding:20px; margin-bottom:24px;">
+        <div style="font-size:10px; font-weight:800; color:#7c3aed; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Consultant Details</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:13px; color:#6b7280; font-weight:600;">Name:</span>
+          <span style="font-size:13px; font-weight:800; color:#1e293b;">${payload.therapistName}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:13px; color:#6b7280; font-weight:600;">Profession:</span>
+          <span style="font-size:13px; font-weight:700; color:#374151;">${payload.profession}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:13px; color:#6b7280; font-weight:600;">Payment Method:</span>
+          <span style="font-size:13px; font-weight:700; color:#374151;">${payload.paymentMethod}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:13px; color:#6b7280; font-weight:600;">${payload.paymentMethod === 'UPI' ? 'UPI ID' : 'Account'}:</span>
+          <span style="font-size:13px; font-weight:700; color:#374151; font-family:monospace;">${payload.accountNumber}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="font-size:13px; color:#6b7280; font-weight:600;">Transaction Ref:</span>
+          <span style="font-size:13px; font-weight:800; color:#5e2be2; font-family:monospace;">${payload.transactionRef}</span>
+        </div>
+      </div>
+
+      ${sessionRows ? `
+      <!-- Session Breakdown Table -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Session Breakdown</div>
+        <table style="width:100%; border-collapse:collapse; border-radius:12px; overflow:hidden; border:1px solid #e2e8f0;">
+          <thead>
+            <tr style="background:#f1f5f9;">
+              <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Session Code</th>
+              <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Client</th>
+              <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Date</th>
+              <th style="padding:10px 12px; text-align:right; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Fee</th>
+              <th style="padding:10px 12px; text-align:right; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Platform</th>
+              <th style="padding:10px 12px; text-align:right; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sessionRows}
+          </tbody>
+        </table>
+      </div>` : ''}
+
+      <!-- Financial Summary -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:20px;">
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="font-size:13px; color:#64748b; font-weight:600;">Gross Sessions Total (${payload.sessionsCount} sessions):</span>
+          <span style="font-size:13px; font-weight:700; color:#0f172a;">₹${payload.grossAmount.toLocaleString('en-IN')}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="font-size:13px; color:#e11d48; font-weight:600;">Hexpertify Platform Fee:</span>
+          <span style="font-size:13px; font-weight:700; color:#e11d48;">-₹${payload.platformFee.toLocaleString('en-IN')}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:12px 0 4px; margin-top:4px; border-top:2px solid #e2e8f0;">
+          <span style="font-size:15px; font-weight:900; color:#0f172a;">Net Amount Disbursed:</span>
+          <span style="font-size:18px; font-weight:900; color:#059669;">₹${payload.netPayout.toLocaleString('en-IN')}</span>
+        </div>
+      </div>
+
+      <!-- Status Badge -->
+      <div style="text-align:center; margin-top:24px;">
+        <span style="display:inline-block; background:#dcfce7; color:#166534; font-size:12px; font-weight:800; padding:8px 20px; border-radius:50px; letter-spacing:0.5px;">
+          ✅ PAYMENT COMPLETED — ${payload.transactionRef}
+        </span>
+      </div>
+
+      ${recipientRole === 'admin' ? `
+      <div style="margin-top:20px; text-align:center;">
+        <a href="http://localhost:5000/admin/payments" style="display:inline-block; background:#5e2be2; color:#ffffff; font-size:13px; font-weight:700; padding:12px 28px; border-radius:12px; text-decoration:none;">
+          View in Super Admin Panel
+        </a>
+      </div>` : `
+      <div style="margin-top:20px; text-align:center;">
+        <p style="font-size:12px; color:#94a3b8; margin:0;">This invoice has been automatically generated by the Hexpertify Finance system.<br>Please retain this for your accounting records.</p>
+      </div>`}
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:20px 32px; text-align:center;">
+      <p style="margin:0; font-size:11px; color:#94a3b8;">© 2026 Hexpertify Healthcare. All rights reserved. | finance@hexpertify.com</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+      const therapistSubject = `✅ Payout Confirmed: ₹${payload.netPayout.toLocaleString('en-IN')} | ${payload.invoiceNumber}`;
+      const adminSubject = `📋 Payout Invoice [Admin Copy]: ${payload.therapistName} — ₹${payload.netPayout.toLocaleString('en-IN')} | ${payload.invoiceNumber}`;
+
+      const sendEmail = async (to: string, subject: string, html: string, role: 'therapist' | 'admin') => {
+        if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
+          const info = await transporter.sendMail({ from: fromAddress, to, subject, html });
+          await this.logEmail(to, role === 'therapist' ? payload.therapistName : 'Super Administrator', subject, payload.invoiceNumber, info.messageId);
+        } else {
+          await this.logEmail(to, role === 'therapist' ? payload.therapistName : 'Super Administrator', subject, payload.invoiceNumber, `mock-${Date.now()}`);
+        }
+      };
+
+      // Send both emails in parallel (fire-and-forget; don't fail payout if email fails)
+      await Promise.allSettled([
+        therapistRecipient ? sendEmail(therapistRecipient, therapistSubject, buildHtml('therapist'), 'therapist') : Promise.resolve(),
+        sendEmail(adminRecipient, adminSubject, buildHtml('admin'), 'admin')
+      ]);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ [MailService] sendPayoutInvoice failed:', error);
+      return { success: false, error: error?.message || 'Mail dispatch failed' };
+    }
+  }
+
   private static async logEmail(to: string, clientName: string, subject: string, bookingId?: string, messageId?: string) {
     try {
       const db = getDatabase();

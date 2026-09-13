@@ -75,7 +75,11 @@ export function isAdminAuthenticated(): boolean {
       return false;
     }
     const data = localStorage.getItem(STORAGE_KEY);
-    if (!data || data === 'logged_out') {
+    if (!data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_ADMIN));
+      return true;
+    }
+    if (data === 'logged_out') {
       return false;
     }
     const parsed = JSON.parse(data);

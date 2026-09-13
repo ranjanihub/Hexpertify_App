@@ -98,6 +98,11 @@ export async function GET() {
         verificationStatus: "Verified",
         accountStatus: "Active",
         licenseNumber: `LIC-${String(c._id).slice(0, 6).toUpperCase()}`,
+        bankName: c.bankName || "HDFC Bank",
+        bankAccountNumber: c.bankAccountNumber || c.accountNumber || "•••• •••• 5336",
+        bankIfsc: c.bankIfsc || c.ifscCode || "HDFC0001234",
+        accountHolderName: c.accountHolderName || name,
+        upiId: c.upiId || `${(c.identifier || name).toLowerCase().replace(/[^a-z0-9]/g, "")}@okaxis`,
         faqs: Array.isArray(c.faqs) ? c.faqs : [],
         services: Array.isArray(c.services) ? c.services : [
           {
@@ -160,6 +165,11 @@ export async function POST(req: Request) {
       certificateUrls: Array.isArray(body.certificates) ? body.certificates.map((c: any) => typeof c === 'string' ? c : c.url) : [],
       certificateAltTexts: Array.isArray(body.certificates) ? body.certificates.map((c: any) => typeof c === 'string' ? c : c.name) : [],
       about: body.about || body.bio || "",
+      bankName: body.bankName || "HDFC Bank",
+      bankAccountNumber: body.bankAccountNumber || "•••• •••• 5336",
+      bankIfsc: body.bankIfsc || "HDFC0001234",
+      accountHolderName: body.accountHolderName || body.name,
+      upiId: body.upiId || `${(body.name || "therapist").toLowerCase().replace(/[^a-z0-9]/g, "")}@okaxis`,
       faqs: body.faqs || [],
       services: body.services || [],
       createdAt: new Date(),
@@ -191,7 +201,14 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: "Consultant ID is required for update" }, { status: 400 });
     }
 
-    const query = { $or: [{ _id: id }, { id }] };
+    let query: any = { id };
+    try {
+      if (ObjectId.isValid(id)) {
+        query = { $or: [{ _id: new ObjectId(id) }, { _id: id }, { id }] };
+      }
+    } catch {
+      query = { $or: [{ _id: id }, { id }] };
+    }
 
     const updateDoc: any = {
       $set: {
@@ -215,6 +232,11 @@ export async function PUT(req: Request) {
         certificateUrls: Array.isArray(body.certificates) ? body.certificates.map((c: any) => typeof c === 'string' ? c : c.url) : undefined,
         certificateAltTexts: Array.isArray(body.certificates) ? body.certificates.map((c: any) => typeof c === 'string' ? c : c.name) : undefined,
         about: body.about || body.bio,
+        bankName: body.bankName,
+        bankAccountNumber: body.bankAccountNumber,
+        bankIfsc: body.bankIfsc,
+        accountHolderName: body.accountHolderName,
+        upiId: body.upiId,
         faqs: body.faqs,
         services: body.services,
         updatedAt: new Date()

@@ -116,12 +116,10 @@ export const ClientsView: React.FC = () => {
           <table className="w-full min-w-[800px] text-center border-collapse text-xs whitespace-nowrap">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                <th className="py-4 px-6 text-center">Client Code & Name</th>
+                <th className="py-4 px-6 text-center">Client Name</th>
                 <th className="py-4 px-6 text-center">Contact Info</th>
                 <th className="py-4 px-6 text-center">Assigned Therapist</th>
-                <th className="py-4 px-6 text-center">Service Modality</th>
-                <th className="py-4 px-6 text-center">Last Session</th>
-                <th className="py-4 px-6 text-center">Next Session</th>
+                <th className="py-4 px-6 text-center">Service</th>
                 <th className="py-4 px-6 text-center">Status</th>
                 <th className="py-4 px-6 text-center">Action</th>
               </tr>
@@ -129,21 +127,15 @@ export const ClientsView: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium">
               {paginatedClients.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
                     No client records match your search filters
                   </td>
                 </tr>
               ) : (
                 paginatedClients.map((c) => {
-                  const nextSess = c.nextSession || 'Tomorrow, 10:00 AM';
                   return (
                     <tr key={c.id} className="hover:bg-purple-50/30 transition-colors whitespace-nowrap">
-                      <td className="py-4 px-6 whitespace-nowrap space-y-0.5 text-center">
-                        <div className="flex justify-center">
-                          <span className="text-[10px] text-purple-600 font-mono font-bold bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100">
-                            #{c.id ? c.id.slice(0, 8) : 'USER'}
-                          </span>
-                        </div>
+                      <td className="py-4 px-6 whitespace-nowrap text-center">
                         <div className="font-bold text-slate-900 text-sm">
                           {c.name || 'Client User'}
                         </div>
@@ -160,21 +152,6 @@ export const ClientsView: React.FC = () => {
                       </td>
                       <td className="py-4 px-6 font-bold text-slate-800 whitespace-nowrap text-center">{c.assignedTherapistName || 'Dr. Evelyn Reed'}</td>
                       <td className="py-4 px-6 font-medium text-slate-600 whitespace-nowrap text-center">{c.service || 'Individual Therapy Consultation'}</td>
-                      <td className="py-4 px-6 text-slate-500 font-medium whitespace-nowrap text-center">{c.lastSession || 'Yesterday'}</td>
-                      <td className="py-4 px-6 whitespace-nowrap space-y-0.5 text-center">
-                        {nextSess.includes(' ') ? (
-                          <>
-                            <div className="font-bold text-[#5e2be2] text-xs">
-                              {nextSess.split(' ')[0]}
-                            </div>
-                            <div className="text-[11px] font-semibold text-slate-500">
-                              {nextSess.substring(nextSess.indexOf(' ') + 1)}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="font-bold text-[#5e2be2] text-xs">{nextSess}</div>
-                        )}
-                      </td>
                       <td className="py-4 px-6 whitespace-nowrap text-center">
                         <span
                           className={`text-[11px] px-3 py-1 font-bold rounded-full inline-block ${

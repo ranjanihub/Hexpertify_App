@@ -6,6 +6,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { TopNav } from './components/layout/TopNav';
 import { GlobalSearchModal } from './components/common/GlobalSearchModal';
 import { AppProvider } from './context/AppContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 import { DashboardView } from './pages/DashboardView';
 import { BookingsView } from './pages/BookingsView';
@@ -172,43 +173,45 @@ export const App: React.FC = () => {
 
           {/* Dynamic Page Views */}
           <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
-            <Routes>
-              <Route path="/" element={<DashboardView onSelectPage={handleSelectPage} />} />
-              <Route path="/dashboard" element={<DashboardView onSelectPage={handleSelectPage} />} />
-              <Route path="/bookings" element={<BookingsView />} />
-              <Route path="/payments" element={<PaymentsView />} />
-              <Route path="/revenue" element={<RevenueView />} />
-              <Route
-                path="/therapists"
-                element={
-                  <TherapistsRouteWrapper
-                    isAddModalOpen={isAddTherapistModalOpen}
-                    onCloseAddModal={() => setIsAddTherapistModalOpen(false)}
-                  />
-                }
-              />
-              <Route path="/availability" element={<AvailabilityView />} />
-              <Route path="/clients" element={<ClientsView />} />
-              <Route path="/activities" element={<ActivitiesView />} />
-              <Route path="/assessments" element={<AssessmentsView />} />
-              <Route path="/resources" element={<ResourcesView />} />
-              <Route path="/assets" element={<AssetsView />} />
-              <Route path="/professions" element={<ProfessionsView />} />
-              <Route
-                path="/homepage"
-                element={
-                  <HomepageView
-                    onUnsavedChangesChange={(unsaved) => setHasUnsavedChanges(unsaved)}
-                    onRegisterSaveHandler={(fn) => setSaveHandler(() => fn)}
-                    onRegisterDiscardHandler={(fn) => setDiscardHandler(() => fn)}
-                  />
-                }
-              />
-              <Route path="/zombie-pages" element={<ZombiView />} />
-              <Route path="/zombi" element={<Navigate to="/zombie-pages" replace />} />
-              <Route path="/settings" element={<SettingsView />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <ErrorBoundary fallbackTitle="View Rendering Issue">
+              <Routes>
+                <Route path="/" element={<DashboardView onSelectPage={handleSelectPage} />} />
+                <Route path="/dashboard" element={<DashboardView onSelectPage={handleSelectPage} />} />
+                <Route path="/bookings" element={<BookingsView />} />
+                <Route path="/payments" element={<PaymentsView />} />
+                <Route path="/revenue" element={<RevenueView />} />
+                <Route
+                  path="/therapists"
+                  element={
+                    <TherapistsRouteWrapper
+                      isAddModalOpen={isAddTherapistModalOpen}
+                      onCloseAddModal={() => setIsAddTherapistModalOpen(false)}
+                    />
+                  }
+                />
+                <Route path="/availability" element={<AvailabilityView />} />
+                <Route path="/clients" element={<ClientsView />} />
+                <Route path="/activities" element={<ActivitiesView />} />
+                <Route path="/assessments" element={<AssessmentsView />} />
+                <Route path="/resources" element={<ResourcesView />} />
+                <Route path="/assets" element={<AssetsView />} />
+                <Route path="/professions" element={<ProfessionsView />} />
+                <Route
+                  path="/homepage"
+                  element={
+                    <HomepageView
+                      onUnsavedChangesChange={(unsaved) => setHasUnsavedChanges(unsaved)}
+                      onRegisterSaveHandler={(fn) => setSaveHandler(() => fn)}
+                      onRegisterDiscardHandler={(fn) => setDiscardHandler(() => fn)}
+                    />
+                  }
+                />
+                <Route path="/zombie-pages" element={<ZombiView />} />
+                <Route path="/zombi" element={<Navigate to="/zombie-pages" replace />} />
+                <Route path="/settings" element={<SettingsView />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </ErrorBoundary>
           </main>
         </div>
 

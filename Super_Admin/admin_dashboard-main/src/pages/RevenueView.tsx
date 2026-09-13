@@ -602,7 +602,7 @@ interface ServiceBreakdownItem {
                 <th className="py-3 px-4 rounded-l-xl">Booking Code</th>
                 <th className="py-3 px-4">Client</th>
                 <th className="py-3 px-4">Therapist</th>
-                <th className="py-3 px-4">Service Modality</th>
+                <th className="py-3 px-4">Service</th>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Amount</th>
                 <th className="py-3 px-4 rounded-r-xl">Status</th>

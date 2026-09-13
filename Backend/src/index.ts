@@ -42,7 +42,11 @@ const consultantIndexPath = path.join(publicDir, 'consultant', 'index.html');
 
 // Serve static assets
 app.use(express.static(publicDir));
-app.use('/admin', express.static(path.join(publicDir, 'admin')));
+app.use('/admin', express.static(path.join(publicDir, 'admin'), {
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  }
+}));
 app.use('/consultant', express.static(path.join(publicDir, 'consultant')));
 
 // 3. Central Login Redirects (Enforcing http://localhost:5000/login as the ONLY login gateway)
@@ -55,6 +59,7 @@ app.get(['/admin/login', '/consultant/login', '/client/login', '/signin', '/auth
 
 // 3a. Super Admin Panel (/admin, /admin/*)
 app.get(['/admin', '/admin/*'], (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   if (fs.existsSync(adminIndexPath)) {
     res.sendFile(adminIndexPath);
   } else if (fs.existsSync(unifiedIndexPath)) {

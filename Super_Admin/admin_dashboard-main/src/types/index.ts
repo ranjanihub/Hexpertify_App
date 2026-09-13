@@ -84,6 +84,11 @@ export interface TherapistPayout {
   lastSessionDate: string;
   pendingAmount: number;
   unpaidSessions: SessionReport[];
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
+  accountHolderName?: string;
+  upiId?: string;
 }
 
 export interface TherapistServiceItem {
@@ -166,6 +171,11 @@ export interface Therapist {
   reviews?: TherapistReviewItem[];
   faqs?: TherapistFAQItem[];
   seo?: TherapistSEO;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
+  accountHolderName?: string;
+  upiId?: string;
   outcomes: {
     clientImprovementScore: number;
     goalAchievementRate: number;

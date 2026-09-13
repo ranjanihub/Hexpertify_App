@@ -26,11 +26,58 @@ import {
 } from 'lucide-react';
 import type { ZombiPage } from '../types';
 
+const normalizeZombiePage = (p: any, index: number = 0): ZombiPage => {
+  const id = String(p?.id || p?._id || `ZMB-${101 + index}`);
+  const pageTitle = String(p?.pageTitle || p?.notificationTitle || p?.title || 'Untitled Zombie Page');
+  const slug = String(p?.slug || (p?.identifier ? `/${p.identifier}` : `/${id.toLowerCase()}`));
+  const targetUrl = String(p?.targetUrl || `https://hexpertify.com${slug.startsWith('/') ? slug : '/' + slug}`);
+  const htmlChunk = typeof p?.htmlChunk === 'string' ? p.htmlChunk : '';
+  const status: 'Active' | 'Draft' | 'Archived' =
+    p?.status === 'Draft' || p?.status === 'Archived' ? p.status : 'Active';
+  const createdAt = String(p?.createdAt || new Date().toISOString().split('T')[0]).slice(0, 10);
+  const updatedAt = String(p?.updatedAt || new Date().toISOString().split('T')[0]).slice(0, 10);
+  const viewsCount = typeof p?.viewsCount === 'number' ? p.viewsCount : 0;
+
+  const rawSeo = p?.seo || {};
+  const seo = {
+    metaTitle: String(rawSeo.metaTitle || `${pageTitle} | Hexpertify`),
+    metaDescription: String(rawSeo.metaDescription || `Book sessions for ${pageTitle} on Hexpertify. Certified clinical psychologists & counselors.`),
+    keywords: String(rawSeo.keywords || 'mental health, therapy, psychologist, counseling'),
+    canonicalUrl: String(rawSeo.canonicalUrl || targetUrl),
+    ogTitle: String(rawSeo.ogTitle || rawSeo.metaTitle || pageTitle),
+    ogDescription: String(rawSeo.ogDescription || rawSeo.metaDescription || ''),
+    ogImageUrl: String(rawSeo.ogImageUrl || ''),
+    ogImageAltText: String(rawSeo.ogImageAltText || ''),
+    structuredData: String(rawSeo.structuredData || '')
+  };
+
+  return {
+    id,
+    pageTitle,
+    slug,
+    targetUrl,
+    htmlChunk,
+    status,
+    createdAt,
+    updatedAt,
+    viewsCount,
+    seo
+  };
+};
+
 export const ZombiView: React.FC = () => {
   // Main Pages State from MongoDB Atlas (100% dynamic)
   const [zombiPagesList, setZombiPagesList] = useState<ZombiPage[]>(() => {
-    const saved = localStorage.getItem('hexpertify_zombie_pages');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('hexpertify_zombie_pages');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p, i) => normalizeZombiePage(p, i));
+        }
+      }
+    } catch {}
+    return [];
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -48,13 +95,16 @@ export const ZombiView: React.FC = () => {
           const data = await res.json();
           const pagesList = Array.isArray(data?.zombiePages) ? data.zombiePages : Array.isArray(data?.pages) ? data.pages : [];
           if (pagesList.length > 0) {
-            setZombiPagesList(pagesList);
+            const normalized = pagesList.map((p: any, i: number) => normalizeZombiePage(p, i));
+            setZombiPagesList(normalized);
             try {
-              localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(pagesList));
+              localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(normalized));
             } catch {}
           }
         }
-      } catch {}
+      } catch (err) {
+        console.error('[ZombiView] Failed to fetch zombie pages:', err);
+      }
     };
     fetchZombiePages();
   }, []);
@@ -428,18 +478,18 @@ export const ZombiView: React.FC = () => {
       headers.join(','),
       ...dataToExport.map((p) =>
         [
-          `"${p.id}"`,
-          `"${p.pageTitle.replace(/"/g, '""')}"`,
-          `"${p.slug}"`,
-          `"${p.targetUrl}"`,
-          `"${p.status}"`,
-          `"${(p.seo.metaTitle || '').replace(/"/g, '""')}"`,
-          `"${(p.seo.metaDescription || '').replace(/"/g, '""')}"`,
-          `"${(p.seo.keywords || '').replace(/"/g, '""')}"`,
-          `"${p.seo.canonicalUrl || ''}"`,
+          `"${p.id || ''}"`,
+          `"${(p.pageTitle || '').replace(/"/g, '""')}"`,
+          `"${p.slug || ''}"`,
+          `"${p.targetUrl || ''}"`,
+          `"${p.status || 'Active'}"`,
+          `"${(p.seo?.metaTitle || '').replace(/"/g, '""')}"`,
+          `"${(p.seo?.metaDescription || '').replace(/"/g, '""')}"`,
+          `"${(p.seo?.keywords || '').replace(/"/g, '""')}"`,
+          `"${p.seo?.canonicalUrl || ''}"`,
           `"${p.viewsCount || 0}"`,
-          `"${p.createdAt}"`,
-          `"${p.updatedAt}"`
+          `"${p.createdAt || ''}"`,
+          `"${p.updatedAt || ''}"`
         ].join(',')
       )
     ];
@@ -457,11 +507,17 @@ export const ZombiView: React.FC = () => {
   };
 
   const filteredPages = zombiPagesList.filter((p) => {
+    const title = (p.pageTitle || '').toLowerCase();
+    const slug = (p.slug || '').toLowerCase();
+    const targetUrl = (p.targetUrl || '').toLowerCase();
+    const keywords = (p.seo?.keywords || '').toLowerCase();
+    const term = (searchTerm || '').trim().toLowerCase();
     const matchesSearch =
-      p.pageTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.targetUrl.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.seo.keywords.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      title.includes(term) ||
+      slug.includes(term) ||
+      targetUrl.includes(term) ||
+      keywords.includes(term);
     const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -639,10 +695,10 @@ export const ZombiView: React.FC = () => {
                     </tr>
                   ) : (
                     filteredPages.map((p) => {
-                      const hasMetaTitle = Boolean(p.seo.metaTitle);
-                      const hasMetaDesc = Boolean(p.seo.metaDescription);
+                      const hasMetaTitle = Boolean(p.seo?.metaTitle);
+                      const hasMetaDesc = Boolean(p.seo?.metaDescription);
                       const hasHtml = Boolean(p.htmlChunk);
-                      const seoScore = [hasMetaTitle, hasMetaDesc, hasHtml, Boolean(p.seo.canonicalUrl)].filter(Boolean).length;
+                      const seoScore = [hasMetaTitle, hasMetaDesc, hasHtml, Boolean(p.seo?.canonicalUrl)].filter(Boolean).length;
 
                       return (
                         <tr key={p.id} className="hover:bg-purple-50/40 transition-colors duration-150 group">
@@ -694,7 +750,7 @@ export const ZombiView: React.FC = () => {
                             <div className="space-y-1">
                               <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
                                 <Code className="w-3 h-3 text-purple-600" />
-                                {p.htmlChunk.length.toLocaleString()} chars
+                                {(p.htmlChunk || '').length.toLocaleString()} chars
                               </span>
                               <p className="text-[10px] text-slate-400 font-medium">
                                 {p.htmlChunk ? 'Raw HTML Embedded' : 'Empty Chunk'}
@@ -1316,8 +1372,8 @@ export const ZombiView: React.FC = () => {
               <span className="font-extrabold text-slate-800 uppercase tracking-wider text-xs block">Google SERP Snippet Preview</span>
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-1.5">
                 <span className="text-xs text-emerald-700 font-mono font-semibold block">{inspectingPage.targetUrl}</span>
-                <h3 className="text-lg font-bold text-blue-700 leading-tight">{inspectingPage.seo.metaTitle}</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">{inspectingPage.seo.metaDescription}</p>
+                <h3 className="text-lg font-bold text-blue-700 leading-tight">{inspectingPage.seo?.metaTitle || inspectingPage.pageTitle}</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">{inspectingPage.seo?.metaDescription || 'No meta description provided.'}</p>
               </div>
             </div>
 
