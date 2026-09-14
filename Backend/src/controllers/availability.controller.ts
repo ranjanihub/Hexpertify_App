@@ -262,7 +262,7 @@ export class AvailabilityController {
   static async delete(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const id = String(req.query.id || req.body?.id || '');
+      const id = String(req.params.id || req.query.id || req.body?.id || '');
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Slot ID is required' });
@@ -276,7 +276,8 @@ export class AvailabilityController {
 
       await Promise.all([
         db.collection('Availability').deleteOne(query),
-        db.collection('Booking').deleteOne(query)
+        db.collection('Booking').deleteOne(query),
+        db.collection('bookings').deleteOne(query)
       ]);
 
       res.json({

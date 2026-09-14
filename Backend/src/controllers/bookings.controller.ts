@@ -75,10 +75,30 @@ export class BookingsController {
         };
       });
 
+      let filtered = enriched;
+      const { clientEmail, clientId, consultantId, status } = req.query;
+
+      if (clientEmail) {
+        const cEmail = String(clientEmail).toLowerCase().trim();
+        filtered = filtered.filter((b: any) => (b.clientEmail || '').toLowerCase().trim() === cEmail);
+      }
+      if (clientId) {
+        const cId = String(clientId);
+        filtered = filtered.filter((b: any) => String(b.clientId || b.userId) === cId);
+      }
+      if (consultantId) {
+        const consId = String(consultantId);
+        filtered = filtered.filter((b: any) => String(b.consultantId || b.therapistId) === consId);
+      }
+      if (status) {
+        const st = String(status).toUpperCase();
+        filtered = filtered.filter((b: any) => (b.status || '').toUpperCase() === st);
+      }
+
       res.json({
         success: true,
-        count: enriched.length,
-        bookings: enriched
+        count: filtered.length,
+        bookings: filtered
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch bookings' });
@@ -379,7 +399,7 @@ export class BookingsController {
    */
   static async delete(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || req.query.id || '');
+      const id = String(req.params.id || req.query.id || req.body?.id || '');
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Booking ID is required' });
@@ -393,8 +413,11 @@ export class BookingsController {
       }
 
       const existing = await db.collection('Booking').findOne(query);
-      await db.collection('Booking').deleteOne(query);
-      await db.collection('bookings').deleteOne(query);
+      await Promise.all([
+        db.collection('Booking').deleteOne(query),
+        db.collection('bookings').deleteOne(query),
+        db.collection('Availability').deleteOne(query).catch(() => {})
+      ]);
 
       // If a scheduled client booking was deleted/cancelled, send cancellation email
       if (existing && existing.clientEmail && existing.clientName !== 'Open Consultation Slot' && existing.clientName !== 'Blocked Time Slot') {
