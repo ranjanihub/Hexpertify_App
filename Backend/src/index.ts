@@ -40,14 +40,20 @@ const unifiedIndexPath = path.join(publicDir, 'index.html');
 const adminIndexPath = path.join(publicDir, 'admin', 'index.html');
 const consultantIndexPath = path.join(publicDir, 'consultant', 'index.html');
 
-// Serve static assets
-app.use(express.static(publicDir));
+// Serve static assets (prevent serving index.html automatically for route directories)
+app.use(express.static(publicDir, { index: false }));
 app.use('/admin', express.static(path.join(publicDir, 'admin'), {
+  index: false,
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   }
 }));
-app.use('/consultant', express.static(path.join(publicDir, 'consultant')));
+app.use('/consultant', express.static(path.join(publicDir, 'consultant'), { 
+  index: false,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  }
+}));
 
 // 3. Central Login Redirects (Enforcing http://localhost:5000/login as the ONLY login gateway)
 app.get(['/admin/login', '/consultant/login', '/client/login', '/signin', '/auth/login'], (req: Request, res: Response) => {
@@ -71,6 +77,7 @@ app.get(['/admin', '/admin/*'], (_req: Request, res: Response) => {
 
 // 3b. Consultant / Therapist Suite (/consultant, /consultant/*)
 app.get(['/consultant', '/consultant/*'], (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   if (fs.existsSync(consultantIndexPath)) {
     res.sendFile(consultantIndexPath);
   } else if (fs.existsSync(unifiedIndexPath)) {
@@ -95,8 +102,7 @@ app.get([
   '/assessments',
   '/progress',
   '/resources',
-  '/profile',
-  '/popup'
+  '/profile'
 ], (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   if (fs.existsSync(unifiedIndexPath)) {
