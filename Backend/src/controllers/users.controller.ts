@@ -701,8 +701,10 @@ export class UsersController {
         homeworkAssigned: user?.homeworkAssigned || user?.homework || [],
         sessionHistory: user?.sessionHistory || [],
         primaryGoal: user?.primaryGoal || user?.primaryConcern || 'Emotional Wellness',
-        totalSessionsCount: user?.totalSessionsCount || confirmedBookings.length,
-        completedSessionsCount: user?.completedSessionsCount || confirmedBookings.filter((b: any) => b.status === 'COMPLETED').length
+        totalSessionsCount: typeof user?.totalSessionsCount === 'number' ? user.totalSessionsCount : confirmedBookings.length,
+        completedSessionsCount: typeof user?.completedSessionsCount === 'number'
+          ? user.completedSessionsCount
+          : confirmedBookings.filter((b: any) => b.status === 'COMPLETED' || (b.scheduledAt && new Date(b.scheduledAt).getTime() < Date.now())).length
       };
 
       res.status(200).json({
