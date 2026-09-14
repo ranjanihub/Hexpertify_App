@@ -212,6 +212,99 @@ export class ActivitiesController {
   }
 
   /**
+   * POST /api/activities/assign
+   * Assign activity to clients and dispatch notifications to client panels
+   */
+  static async assign(req: Request, res: Response): Promise<void> {
+    try {
+      const db = getDatabase();
+      const body = req.body || {};
+
+      const activityId = String(body.activityId || body.id || '');
+      const activityTitle = body.activityTitle || body.title || 'Therapeutic Activity';
+      const consultantId = String(body.consultantId || '');
+      const consultantName = body.consultantName || body.therapistName || 'Your Consultant';
+      const clients = Array.isArray(body.clients) ? body.clients : [];
+      const assignedToNames = Array.isArray(body.assignedTo) 
+        ? body.assignedTo 
+        : clients.map((c: any) => c.clientName || c.name).filter(Boolean);
+
+      if (!activityId) {
+        res.status(400).json({ success: false, error: 'Activity ID is required' });
+        return;
+      }
+
+      let query: any = { id: activityId };
+      if (ObjectId.isValid(activityId)) {
+        query = { $or: [{ _id: new ObjectId(activityId) }, { id: activityId }] };
+      }
+
+      // Update the activity in MongoDB Atlas
+      await db.collection('Activity').updateOne(
+        query,
+        {
+          $set: {
+            assignedTo: assignedToNames,
+            clientAssignments: clients,
+            assignedTherapistId: consultantId,
+            assignedTherapistName: consultantName,
+            updatedAt: new Date()
+          }
+        },
+        { upsert: false }
+      );
+
+      // Create in-app notifications for each assigned client
+      const notificationsToInsert: any[] = [];
+      for (const client of clients) {
+        const clientEmail = String(client.clientEmail || client.email || '').toLowerCase().trim();
+        const clientId = String(client.clientId || client.id || '');
+        const clientName = client.clientName || client.name || 'Client';
+        const freq = client.frequency || 'Daily';
+        const timeSlot = client.timeOfDay || 'Morning (8:00 AM)';
+
+        const notifDoc = {
+          id: `NOTIF-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          recipientId: clientId,
+          recipientEmail: clientEmail,
+          clientEmail: clientEmail,
+          clientName: clientName,
+          recipientRole: 'CLIENT',
+          type: 'ACTIVITY_ASSIGNED',
+          title: `New Activity Assigned: ${activityTitle} ⚡`,
+          message: `Your consultant ${consultantName} assigned you "${activityTitle}" (${freq} • ${timeSlot}). Tap to start your therapeutic exercise.`,
+          link: '/activities',
+          activityId: activityId,
+          activityTitle: activityTitle,
+          frequency: freq,
+          timeOfDay: timeSlot,
+          consultantId: consultantId,
+          consultantName: consultantName,
+          read: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        notificationsToInsert.push(notifDoc);
+      }
+
+      if (notificationsToInsert.length > 0) {
+        await db.collection('Notification').insertMany(notificationsToInsert).catch(() => {});
+        await db.collection('notifications').insertMany(notificationsToInsert).catch(() => {});
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Activity assigned and ${notificationsToInsert.length} client notification(s) dispatched.`,
+        assignedCount: notificationsToInsert.length,
+        notifications: notificationsToInsert
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Failed to assign activity' });
+    }
+  }
+
+  /**
    * DELETE /api/activities and DELETE /api/activities/:id
    */
   static async delete(req: Request, res: Response): Promise<void> {

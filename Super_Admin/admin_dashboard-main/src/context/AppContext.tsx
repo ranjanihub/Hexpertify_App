@@ -42,6 +42,7 @@ export interface AppContextType {
   releasePayout: (payoutId: string) => void;
   verifyTherapist: (therapistId: string) => void;
   deleteTherapist: (therapistId: string) => Promise<void>;
+  assignClientTherapist: (clientId: string, therapistId: string, therapistName: string, therapistEmail?: string, therapistPhoto?: string) => Promise<void>;
   addAuditLog: (action: string, moduleName: string, role?: string) => void;
   refreshAllData: () => Promise<void>;
 }
@@ -400,6 +401,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const assignClientTherapist = async (
+    clientId: string,
+    therapistId: string,
+    therapistName: string,
+    therapistEmail?: string,
+    therapistPhoto?: string
+  ) => {
+    // 1. Immediately update state so client is assigned exclusively to this single therapist
+    setClients((prev) =>
+      prev.map((c) =>
+        c.id === clientId
+          ? {
+              ...c,
+              assignedTherapistId: therapistId,
+              assignedTherapistName: therapistName,
+            }
+          : c
+      )
+    );
+
+    addAuditLog(`Assigned Client #${clientId} exclusively to Consultant ${therapistName}`, 'Clients');
+
+    // 2. Persist to MongoDB Atlas via Backend API
+    try {
+      await api.put(`/api/admin/users/${clientId}`, {
+        assignedTherapistId: therapistId,
+        assignedTherapistName: therapistName,
+        assignedTherapistEmail: therapistEmail,
+        assignedTherapistPhoto: therapistPhoto,
+      });
+    } catch (err) {
+      console.error('Error assigning client therapist in DB:', err);
+      try {
+        await api.put(`/api/users/${clientId}`, {
+          assignedTherapistId: therapistId,
+          assignedTherapistName: therapistName,
+          assignedTherapistEmail: therapistEmail,
+          assignedTherapistPhoto: therapistPhoto,
+        });
+      } catch {}
+    }
+
+    // Refresh data in background to sync state across panels
+    refreshAllData();
+  };
+
   const addAuditLog = (action: string, moduleName: string, role = 'Super Admin') => {
     const newLog: AuditLog = {
       id: `LOG-${Date.now()}`,
@@ -428,6 +475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         releasePayout,
         verifyTherapist,
         deleteTherapist,
+        assignClientTherapist,
         addAuditLog,
         refreshAllData
       }}

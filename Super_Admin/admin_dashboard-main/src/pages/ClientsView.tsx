@@ -14,22 +14,28 @@ import {
   CheckSquare,
   Download,
   UserCheck,
+  ArrowRightLeft,
   Award,
   Sparkles,
   ClipboardList,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  ShieldCheck
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import type { Client } from '../types';
 
 export const ClientsView: React.FC = () => {
-  const { clients } = useAppContext();
+  const { clients, therapists, assignClientTherapist } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [assigningClient, setAssigningClient] = useState<Client | null>(null);
+  const [selectedTherapistId, setSelectedTherapistId] = useState<string>('');
+  const [therapistSearch, setTherapistSearch] = useState<string>('');
+  const [isAssigning, setIsAssigning] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'intake' | 'assessments' | 'goals_mood' | 'sessions_hw' | 'documents'>('intake');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
@@ -150,7 +156,12 @@ export const ClientsView: React.FC = () => {
                           <span>{c.phone || '+1 555-019-2834'}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 font-bold text-slate-800 whitespace-nowrap text-center">{c.assignedTherapistName || 'Dr. Evelyn Reed'}</td>
+                      <td className="py-4 px-6 font-bold text-slate-800 whitespace-nowrap text-center">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 font-bold text-slate-800 text-xs">
+                          <UserCheck className="w-3.5 h-3.5 text-[#5e2be2] shrink-0" />
+                          <span>{c.assignedTherapistName || 'Dr. Evelyn Reed'}</span>
+                        </div>
+                      </td>
                       <td className="py-4 px-6 font-medium text-slate-600 whitespace-nowrap text-center">{c.service || 'Individual Therapy Consultation'}</td>
                       <td className="py-4 px-6 whitespace-nowrap text-center">
                         <span
@@ -166,15 +177,29 @@ export const ClientsView: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => {
-                            setSelectedClient(c);
-                            setActiveTab('intake');
-                          }}
-                          className="px-4 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 transition-all active:scale-95 cursor-pointer"
-                        >
-                          View Full Record
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedClient(c);
+                              setActiveTab('intake');
+                            }}
+                            className="px-3.5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-sm shadow-[#5e2be2]/20 transition-all active:scale-95 cursor-pointer"
+                          >
+                            View Record
+                          </button>
+                          <button
+                            onClick={() => {
+                              setAssigningClient(c);
+                              const currentMatch = therapists.find(t => t.name.toLowerCase().includes((c.assignedTherapistName || '').toLowerCase()) || t.id === c.assignedTherapistId);
+                              setSelectedTherapistId(currentMatch?.id || therapists[0]?.id || '');
+                            }}
+                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] hover:text-[#4f28d9] font-bold text-xs rounded-xl border border-purple-200 transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                            title="Assign or Change Exclusive Consultant"
+                          >
+                            <ArrowRightLeft className="w-3 h-3" />
+                            <span>Assign</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -307,7 +332,19 @@ export const ClientsView: React.FC = () => {
                   </span>
                   <span className="flex items-center gap-1">
                     <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>Therapist: <strong className="text-slate-800">{selectedClient.assignedTherapistName}</strong></span>
+                    <span>Therapist: <strong className="text-slate-800">{selectedClient.assignedTherapistName || 'Dr. Evelyn Reed'}</strong></span>
+                    <button
+                      onClick={() => {
+                        setAssigningClient(selectedClient);
+                        const currentMatch = therapists.find(t => t.name.toLowerCase().includes((selectedClient.assignedTherapistName || '').toLowerCase()) || t.id === selectedClient.assignedTherapistId);
+                        setSelectedTherapistId(currentMatch?.id || therapists[0]?.id || '');
+                      }}
+                      className="ml-2 px-2 py-0.5 text-[10px] bg-purple-100 hover:bg-purple-200 text-[#5e2be2] rounded-lg font-bold border border-purple-200 cursor-pointer inline-flex items-center gap-1 transition-colors"
+                      title="Reassign to another single consultant"
+                    >
+                      <ArrowRightLeft className="w-2.5 h-2.5" />
+                      <span>Change</span>
+                    </button>
                   </span>
                 </p>
               </div>
@@ -573,6 +610,156 @@ export const ClientsView: React.FC = () => {
                 )}
               </div>
             )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Exclusive Single Consultant Assignment Modal */}
+      {assigningClient && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-5 animate-scale-up">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#5e2be2] uppercase tracking-wider">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Consultant Assignment Hub</span>
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900">
+                  Assign Consultant to {assigningClient.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setAssigningClient(null);
+                  setTherapistSearch('');
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Strict Policy Notice */}
+            <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs text-purple-900 space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#5e2be2]" />
+                <span>Strict 1:1 Consultant Assignment Rule</span>
+              </p>
+              <p className="text-[11px] text-purple-700 leading-relaxed">
+                Each client is assigned to exactly one consultant. Assigning <strong>{assigningClient.name}</strong> to a new consultant will automatically transfer their profile and care exclusively to the selected specialist.
+              </p>
+            </div>
+
+            {/* Search Therapists */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 block">Select Exclusive Consultant ({therapists.length} available)</label>
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Filter consultants by name or profession..."
+                  value={therapistSearch}
+                  onChange={(e) => setTherapistSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-[#5e2be2]"
+                />
+              </div>
+            </div>
+
+            {/* Consultant List */}
+            <div className="max-h-56 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+              {therapists
+                .filter(t => !therapistSearch || t.name.toLowerCase().includes(therapistSearch.toLowerCase()) || (t.profession || '').toLowerCase().includes(therapistSearch.toLowerCase()))
+                .map((t) => {
+                  const isSelected = selectedTherapistId === t.id;
+                  const isCurrent = (assigningClient.assignedTherapistId === t.id) || (t.name.toLowerCase().includes((assigningClient.assignedTherapistName || '').toLowerCase()));
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => setSelectedTherapistId(t.id)}
+                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-[#5e2be2] bg-purple-50/50 shadow-sm'
+                          : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={t.photo || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80'}
+                          alt={t.name}
+                          className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-900 text-xs truncate flex items-center gap-1.5">
+                            <span>{t.name}</span>
+                            {isCurrent && (
+                              <span className="text-[10px] px-1.5 py-0.2 bg-slate-200 text-slate-700 font-bold rounded">Current</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">{t.profession || 'Clinical Specialist'}</div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          isSelected ? 'border-[#5e2be2] bg-[#5e2be2]' : 'border-slate-300'
+                        }`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  setAssigningClient(null);
+                  setTherapistSearch('');
+                }}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!selectedTherapistId || isAssigning}
+                onClick={async () => {
+                  const chosen = therapists.find(t => t.id === selectedTherapistId);
+                  if (!chosen || !assigningClient) return;
+                  setIsAssigning(true);
+                  try {
+                    await assignClientTherapist(
+                      assigningClient.id,
+                      chosen.id,
+                      chosen.name,
+                      chosen.email,
+                      chosen.photo
+                    );
+                    if (selectedClient && selectedClient.id === assigningClient.id) {
+                      setSelectedClient(prev => prev ? { ...prev, assignedTherapistId: chosen.id, assignedTherapistName: chosen.name } : null);
+                    }
+                    setAssigningClient(null);
+                    setTherapistSearch('');
+                  } catch (err) {
+                    console.error('Failed to assign consultant:', err);
+                  } finally {
+                    setIsAssigning(false);
+                  }
+                }}
+                className="px-5 py-2 text-xs font-bold text-white bg-[#5e2be2] hover:bg-[#4f28d9] rounded-xl shadow-md shadow-[#5e2be2]/25 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isAssigning ? (
+                  <span>Saving Assignment...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Confirm Exclusive Assignment</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>,
         document.body

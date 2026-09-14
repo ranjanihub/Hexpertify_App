@@ -26,23 +26,39 @@ export class NotificationsController {
             { type: 'ADMIN_ALERT' }
           ]
         };
-      } else if (role === 'CLIENT' || recipientEmail || recipientId) {
-        const conditions: any[] = [];
-        if (role === 'CLIENT') {
-          conditions.push({ recipientRole: 'CLIENT' });
-          conditions.push({ role: 'CLIENT' });
-        }
+      } else if (recipientEmail || recipientId) {
+        const clientConditions: any[] = [];
         if (recipientEmail) {
-          conditions.push({ recipientEmail: recipientEmail });
-          conditions.push({ userEmail: recipientEmail });
+          const emailRegex = new RegExp(`^${recipientEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+          clientConditions.push({ recipientEmail: emailRegex });
+          clientConditions.push({ userEmail: emailRegex });
+          clientConditions.push({ clientEmail: emailRegex });
         }
         if (recipientId) {
-          conditions.push({ recipientId: recipientId });
-          conditions.push({ userId: recipientId });
+          clientConditions.push({ recipientId: recipientId });
+          clientConditions.push({ userId: recipientId });
+          clientConditions.push({ clientId: recipientId });
         }
-        if (conditions.length > 0) {
-          query = { $or: conditions };
-        }
+        // Also allow general broadcast notifications marked for ALL clients
+        clientConditions.push({ recipientRole: 'CLIENT', recipientEmail: { $in: ['', null, 'all', 'ALL'] } });
+
+        query = { $or: clientConditions };
+      } else if (role === 'CLIENT') {
+        query = {
+          $or: [
+            { recipientRole: 'CLIENT' },
+            { role: 'CLIENT' }
+          ]
+        };
+      } else if (role === 'CONSULTANT' || role === 'THERAPIST') {
+        query = {
+          $or: [
+            { recipientRole: 'CONSULTANT' },
+            { recipientRole: 'THERAPIST' },
+            { role: 'CONSULTANT' },
+            { role: 'THERAPIST' }
+          ]
+        };
       }
 
       const primaryList = await db.collection('Notification').find(query).sort({ createdAt: -1 }).toArray();
@@ -72,13 +88,21 @@ export class NotificationsController {
 
       const newNotification = {
         id: body.id || `NOTIF-${Date.now().toString().slice(-6)}`,
-        recipientId: body.recipientId || body.userId || '',
-        recipientEmail: body.recipientEmail || body.userEmail || '',
+        recipientId: body.recipientId || body.userId || body.clientId || '',
+        recipientEmail: (body.recipientEmail || body.userEmail || body.clientEmail || '').toLowerCase(),
+        clientEmail: (body.clientEmail || body.recipientEmail || '').toLowerCase(),
+        clientName: body.clientName || '',
         recipientRole: (body.recipientRole || body.role || 'ADMIN').toUpperCase(),
         type: body.type || 'ALERT',
         title: body.title || 'Notification',
         message: body.message || '',
+        link: body.link || (body.type === 'ACTIVITY_ASSIGNED' ? '/activities' : body.type === 'ASSESSMENT_ASSIGNED' ? '/assessments' : '/progress'),
         bookingId: body.bookingId || '',
+        activityId: body.activityId || '',
+        activityTitle: body.activityTitle || '',
+        assessmentId: body.assessmentId || '',
+        assessmentTitle: body.assessmentTitle || '',
+        consultantName: body.consultantName || '',
         read: false,
         createdAt: new Date(),
         updatedAt: new Date()

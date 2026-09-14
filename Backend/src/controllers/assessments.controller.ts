@@ -187,10 +187,38 @@ export class AssessmentsController {
 
       await db.collection('AssessmentAssignment').insertOne(newAssignment);
 
+      // In-app notification for the assigned client
+      try {
+        const notifDoc = {
+          id: `NOTIF-${Date.now().toString().slice(-6)}-ASN`,
+          recipientId: newAssignment.clientId,
+          recipientEmail: newAssignment.clientEmail,
+          clientEmail: newAssignment.clientEmail,
+          clientName: newAssignment.clientName,
+          recipientRole: 'CLIENT',
+          type: 'ASSESSMENT_ASSIGNED',
+          title: `New Assessment Assigned: ${newAssignment.assessmentAcronym || newAssignment.assessmentTitle} 📋`,
+          message: `Your consultant ${newAssignment.consultantName} assigned you "${newAssignment.assessmentTitle}". Tap to begin your clinical check-in.`,
+          link: '/assessments',
+          assessmentId: newAssignment.assessmentId,
+          assessmentTitle: newAssignment.assessmentTitle,
+          consultantId: newAssignment.consultantId,
+          consultantName: newAssignment.consultantName,
+          read: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        await db.collection('Notification').insertOne(notifDoc);
+        await db.collection('notifications').insertOne(notifDoc).catch(() => {});
+      } catch (err) {
+        console.error('Failed to create assessment assignment notification:', err);
+      }
+
       res.status(201).json({
         success: true,
         assignment: newAssignment,
-        message: 'Assessment assigned successfully.'
+        message: 'Assessment assigned and client notified successfully.'
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to assign assessment' });

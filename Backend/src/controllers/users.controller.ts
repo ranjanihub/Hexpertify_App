@@ -28,91 +28,98 @@ export class UsersController {
         });
       }
 
+      // Load all registered consultants for canonical assignment matching
+      const allConsultants = await db.collection('Consultant').find({}).toArray();
+      const fallbackCons = allConsultants.length === 0 ? await db.collection('consultants').find({}).toArray() : [];
+      const consList = allConsultants.length > 0 ? allConsultants : fallbackCons;
+      const defaultConsultant: any = consList[0] || {
+        id: 'doc-1',
+        name: 'Dr. Evelyn Reed',
+        email: 'dr.evelyn@hexpertify.com',
+        photoUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80'
+      };
+
+      // Load bookings for orphan/fallback discovery
+      const allBookings = await db.collection('Booking').find({}).toArray();
+      const fallbackBookings = allBookings.length === 0 ? await db.collection('bookings').find({}).toArray() : [];
+      const bookingsList = allBookings.length > 0 ? allBookings : fallbackBookings;
+
+      // Ensure every client has exactly ONE assigned consultant (auto-heal unassigned clients)
+      for (const u of users) {
+        if (!u.assignedTherapistId && !u.assignedTherapistName) {
+          const uEmail = String(u.email || '').toLowerCase().trim();
+          const uId = String(u.id || u._id || '').toLowerCase().trim();
+          
+          // Look up latest booking for this client
+          const userBooking = bookingsList.find((b: any) => {
+            const bEmail = String(b.clientEmail || '').toLowerCase().trim();
+            const bId = String(b.clientId || b.userId || '').toLowerCase().trim();
+            return (uEmail && bEmail === uEmail) || (uId && bId === uId);
+          });
+
+          let assignedC: any = defaultConsultant;
+          if (userBooking && (userBooking.consultantId || userBooking.consultantName || userBooking.therapistId || userBooking.therapistName)) {
+            const bCid = String(userBooking.consultantId || userBooking.therapistId || '').toLowerCase();
+            const bCname = String(userBooking.consultantName || userBooking.therapistName || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+            const matched = consList.find((c: any) => {
+              const cId = String(c.id || c._id || '').toLowerCase();
+              const cName = String(c.name || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+              return (bCid && cId === bCid) || (bCname && cName.includes(bCname));
+            });
+            if (matched) assignedC = matched;
+          }
+
+          u.assignedTherapistId = assignedC.id || String(assignedC._id || 'doc-1');
+          u.assignedTherapistName = assignedC.name;
+          u.assignedTherapistEmail = assignedC.email || '';
+          u.assignedTherapistPhoto = assignedC.photoUrl || assignedC.photo || assignedC.avatarUrl || '';
+
+          // Persist assignment lock to DB in background
+          const queryUser = { $or: [{ email: u.email }, { id: u.id }, { _id: u._id }] };
+          const updateDoc = {
+            $set: {
+              assignedTherapistId: u.assignedTherapistId,
+              assignedTherapistName: u.assignedTherapistName,
+              assignedTherapistEmail: u.assignedTherapistEmail,
+              assignedTherapistPhoto: u.assignedTherapistPhoto,
+              updatedAt: new Date()
+            }
+          };
+          db.collection('User').updateOne(queryUser, updateDoc).catch(() => {});
+          db.collection('users').updateOne(queryUser, updateDoc).catch(() => {});
+        }
+      }
+
+      // If filtering by consultant, strictly match only clients assigned to this consultant
       if (therapistId || therapistName) {
         const cleanName = therapistName.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
-
-        // 1. Find all matching consultant IDs
-        const allConsultants = await db.collection('Consultant').find({}).toArray();
-        const fallbackCons = allConsultants.length === 0 ? await db.collection('consultants').find({}).toArray() : [];
-        const consList = allConsultants.length > 0 ? allConsultants : fallbackCons;
 
         const matchedConsultantIds = new Set<string>();
         if (therapistId) matchedConsultantIds.add(therapistId.toLowerCase());
 
         consList.forEach((c: any) => {
           const cId = String(c.id || c._id || '').toLowerCase();
-          const cName = String(c.name || '').toLowerCase();
+          const cName = String(c.name || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
           if ((therapistId && cId === therapistId.toLowerCase()) ||
               (cleanName && cName.includes(cleanName)) ||
-              (therapistName && cName.includes(therapistName.toLowerCase()))) {
+              (cleanName && cleanName.includes(cName) && cName.length > 2)) {
             matchedConsultantIds.add(cId);
             if (c.id) matchedConsultantIds.add(String(c.id).toLowerCase());
             if (c._id) matchedConsultantIds.add(String(c._id).toLowerCase());
           }
         });
 
-        // 2. Query bookings for this consultant
-        const allBookings = await db.collection('Booking').find({}).toArray();
-        const fallbackBookings = allBookings.length === 0 ? await db.collection('bookings').find({}).toArray() : [];
-        const bookingsList = allBookings.length > 0 ? allBookings : fallbackBookings;
-
-        const matchedBookings = bookingsList.filter((b: any) => {
-          const bCid = String(b.consultantId || b.therapistId || '').toLowerCase();
-          const bCname = String(b.consultantName || b.therapistName || '').toLowerCase();
-          return matchedConsultantIds.has(bCid) ||
-                 (cleanName && bCname.includes(cleanName)) ||
-                 (therapistName && bCname.includes(therapistName.toLowerCase()));
-        });
-
-        const clientEmails = new Set<string>();
-        const clientNames = new Set<string>();
-        const clientIds = new Set<string>();
-
-        matchedBookings.forEach((b: any) => {
-          if (b.clientEmail) clientEmails.add(b.clientEmail.toLowerCase().trim());
-          if (b.clientName) clientNames.add(b.clientName.toLowerCase().trim());
-          if (b.clientId) clientIds.add(String(b.clientId).toLowerCase().trim());
-          if (b.userId) clientIds.add(String(b.userId).toLowerCase().trim());
-        });
-
+        // Strict 1:1 match: client's assignedTherapistId must match this consultant or assignedTherapistName match
         const matchedUsers = users.filter((u: any) => {
-          const uEmail = String(u.email || '').toLowerCase().trim();
-          const uName = String(u.name || '').toLowerCase().trim();
-          const uId = String(u.id || u._id || '').toLowerCase().trim();
-          const uAssigned = String(u.assignedTherapistName || u.therapist || '').toLowerCase().trim();
+          const uAssigned = String(u.assignedTherapistName || u.therapist || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
           const uAssignedId = String(u.assignedTherapistId || '').toLowerCase().trim();
 
           const isAssigned = (therapistId && uAssignedId === therapistId.toLowerCase()) ||
                              matchedConsultantIds.has(uAssignedId) ||
                              (cleanName && uAssigned.includes(cleanName)) ||
-                             (therapistName && uAssigned.includes(therapistName.toLowerCase()));
+                             (cleanName && cleanName.includes(uAssigned) && uAssigned.length > 2);
 
-          const hasBooking = clientEmails.has(uEmail) || clientNames.has(uName) || clientIds.has(uId);
-
-          return isAssigned || hasBooking;
-        });
-
-        // Also create client objects for any booking clients not in the User collection
-        matchedBookings.forEach((b: any, idx: number) => {
-          const bEmail = String(b.clientEmail || '').toLowerCase().trim();
-          const bName = String(b.clientName || '').toLowerCase().trim();
-          const exists = matchedUsers.some((u: any) => 
-            (bEmail && String(u.email || '').toLowerCase().trim() === bEmail) ||
-            (bName && String(u.name || '').toLowerCase().trim() === bName)
-          );
-          if (!exists && (b.clientName || b.clientEmail)) {
-            matchedUsers.push({
-              _id: new ObjectId(),
-              id: b.clientId || b.userId || `BK-CLI-${idx + 1}`,
-              name: b.clientName || 'Client User',
-              email: b.clientEmail || 'client@example.com',
-              phone: b.clientPhone || '+91 98765 43210',
-              role: 'USER',
-              assignedTherapistName: b.consultantName || b.therapistName || therapistName,
-              assignedTherapistId: b.consultantId || therapistId,
-              createdAt: b.scheduledAt ? new Date(b.scheduledAt) : (b.date ? new Date(b.date) : new Date())
-            });
-          }
+          return isAssigned;
         });
 
         users = matchedUsers;
@@ -308,13 +315,44 @@ export class UsersController {
         orClauses.push({ email });
       }
 
+      // If assigning or reassigning a consultant, resolve full canonical consultant info
+      if (updates.assignedTherapistId || updates.assignedTherapistName) {
+        const tId = String(updates.assignedTherapistId || '').trim();
+        const tName = String(updates.assignedTherapistName || '').replace(/^dr\.?\s*/i, '').trim();
+
+        const consQuery: any[] = [];
+        if (tId) {
+          consQuery.push({ id: tId }, { _id: tId });
+          if (ObjectId.isValid(tId)) {
+            try { consQuery.push({ _id: new ObjectId(tId) }); } catch {}
+          }
+        }
+        if (tName) {
+          consQuery.push({ name: { $regex: tName, $options: 'i' } });
+        }
+
+        if (consQuery.length > 0) {
+          const consDoc = await db.collection('Consultant').findOne({ $or: consQuery }) ||
+                          await db.collection('consultants').findOne({ $or: consQuery });
+          if (consDoc) {
+            updates.assignedTherapistId = consDoc.id || String(consDoc._id);
+            updates.assignedTherapistName = consDoc.name;
+            updates.assignedTherapistEmail = consDoc.email || updates.assignedTherapistEmail || '';
+            updates.assignedTherapistPhoto = consDoc.photoUrl || consDoc.photo || consDoc.avatarUrl || updates.assignedTherapistPhoto || '';
+          }
+        }
+      }
+
       const query = { $or: orClauses };
 
       await db.collection('User').updateMany(query, { $set: updates });
       await db.collection('users').updateMany(query, { $set: updates }).catch(() => {});
 
+      const updatedUser = await db.collection('User').findOne(query) || await db.collection('users').findOne(query);
+
       res.json({
         success: true,
+        user: updatedUser ? { ...updatedUser, id: updatedUser.id || String(updatedUser._id) } : undefined,
         message: 'User updated successfully in MongoDB Atlas'
       });
     } catch (error: any) {

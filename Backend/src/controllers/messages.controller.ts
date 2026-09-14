@@ -602,4 +602,34 @@ export class MessagesController {
       res.status(500).json({ success: false, error: error?.message || 'Failed to mark messages as read' });
     }
   }
+
+  /**
+   * DELETE /api/messages/cleanup-greetings
+   * Remove artificial mock / hardcoded greeting messages from MongoDB collections
+   */
+  static async deleteHardcodedGreetings(_req: Request, res: Response): Promise<void> {
+    try {
+      const db = getDatabase();
+      const filter = {
+        $or: [
+          { content: { $regex: /looking forward to our upcoming/i } },
+          { content: { $regex: /grounding exercise has been really helpful/i } },
+          { content: { $regex: /welcome to your personalized care portal/i } }
+        ]
+      };
+
+      const [res1, res2] = await Promise.all([
+        db.collection('Message').deleteMany(filter),
+        db.collection('messages').deleteMany(filter)
+      ]);
+
+      res.json({
+        success: true,
+        deletedCount: (res1.deletedCount || 0) + (res2.deletedCount || 0),
+        message: 'Hardcoded greetings deleted from MongoDB Atlas.'
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Failed to delete hardcoded greetings' });
+    }
+  }
 }

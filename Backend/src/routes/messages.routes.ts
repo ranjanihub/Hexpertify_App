@@ -7,6 +7,7 @@ router.get('/stream', MessagesController.stream);
 router.get('/presence', MessagesController.getPresence);
 router.get('/consultant', MessagesController.getAssignedConsultant);
 router.post('/typing', MessagesController.setTyping);
+router.delete('/cleanup-greetings', MessagesController.deleteHardcodedGreetings);
 router.get('/', MessagesController.getAll);
 router.post('/', MessagesController.create);
 router.put('/read', MessagesController.markRead);

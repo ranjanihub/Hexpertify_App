@@ -87,8 +87,18 @@ app.get([
   '/signin', 
   '/auth/login',
   '/client', 
-  '/client/*'
+  '/client/*',
+  '/therapist',
+  '/sessions',
+  '/messages',
+  '/activities',
+  '/assessments',
+  '/progress',
+  '/resources',
+  '/profile',
+  '/popup'
 ], (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   if (fs.existsSync(unifiedIndexPath)) {
     res.sendFile(unifiedIndexPath);
   } else {
@@ -101,6 +111,7 @@ app.get('*', (req: Request, res: Response, next) => {
   if (req.path.startsWith('/api')) {
     return next();
   }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   if (req.path.startsWith('/admin') && fs.existsSync(adminIndexPath)) {
     return res.sendFile(adminIndexPath);
   }

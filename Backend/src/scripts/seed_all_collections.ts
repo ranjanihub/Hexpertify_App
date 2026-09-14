@@ -577,61 +577,23 @@ async function seedAll() {
   // ----------------------------------------------------------------
   console.log('💬 Populating Messages & Conversation Threads...');
   const messagesList: any[] = [];
-  
-  // Create realistic conversations between first 15 clients and their assigned consultants
-  clients.slice(0, 15).forEach((client: any, idx: number) => {
-    const c = consultants.find((con: any) => con.id === client.assignedTherapistId) || consultants[0];
-    const m1Id = `MSG-${100 + idx * 2}`;
-    const m2Id = `MSG-${101 + idx * 2}`;
-    const pastTime1 = new Date(Date.now() - (idx + 1) * 3600000 * 6);
-    const pastTime2 = new Date(Date.now() - (idx + 1) * 3600000 * 2);
-
-    messagesList.push({
-      _id: m1Id,
-      id: m1Id,
-      senderRole: 'therapist',
-      senderName: c.name,
-      senderEmail: c.email,
-      recipientRole: 'client',
-      recipientName: client.name,
-      recipientEmail: client.email,
-      consultantId: c.id,
-      consultantName: c.name,
-      clientId: client.id,
-      clientName: client.name,
-      clientEmail: client.email,
-      content: `Hello ${client.name}! Looking forward to our upcoming consultation session. Please take a couple of minutes to review your latest activity worksheet when you have time.`,
-      read: true,
-      createdAt: pastTime1,
-      updatedAt: pastTime1
-    });
-
-    messagesList.push({
-      _id: m2Id,
-      id: m2Id,
-      senderRole: 'client',
-      senderName: client.name,
-      senderEmail: client.email,
-      recipientRole: 'therapist',
-      recipientName: c.name,
-      recipientEmail: c.email,
-      consultantId: c.id,
-      consultantName: c.name,
-      clientId: client.id,
-      clientName: client.name,
-      clientEmail: client.email,
-      content: `Hi ${c.name}, thank you! The 5-4-3-2-1 grounding exercise has been really helpful this week. Looking forward to speaking soon.`,
-      read: true,
-      createdAt: pastTime2,
-      updatedAt: pastTime2
-    });
+  // 7. REAL-TIME MESSAGES (`Message` / `messages`)
+  console.log('💬 Initializing Messages collection...');
+  await db.collection('Message').deleteMany({
+    $or: [
+      { content: { $regex: /looking forward to our upcoming/i } },
+      { content: { $regex: /grounding exercise has been really helpful/i } },
+      { content: { $regex: /welcome to your personalized care portal/i } }
+    ]
   });
-
-  await db.collection('Message').deleteMany({});
-  await db.collection('messages').deleteMany({});
-  await db.collection('Message').insertMany(messagesList);
-  await db.collection('messages').insertMany(messagesList);
-  console.log(`✅ [Messages Synced] ${messagesList.length} chat messages.`);
+  await db.collection('messages').deleteMany({
+    $or: [
+      { content: { $regex: /looking forward to our upcoming/i } },
+      { content: { $regex: /grounding exercise has been really helpful/i } },
+      { content: { $regex: /welcome to your personalized care portal/i } }
+    ]
+  });
+  console.log(`✅ [Messages Ready] Genuine messages preserved, mock greetings cleared.`);
 
   // ----------------------------------------------------------------
   // 8. NOTIFICATIONS (`Notification` / `notifications`)
