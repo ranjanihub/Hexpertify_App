@@ -2,6 +2,20 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 
+export function normalizeImageUrl(url?: string): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (trimmed.includes('google.com/imgres') || trimmed.includes('imgurl=')) {
+    try {
+      const match = trimmed.match(/[?&]imgurl=([^&]+)/i);
+      if (match && match[1]) {
+        return decodeURIComponent(match[1]);
+      }
+    } catch {}
+  }
+  return trimmed;
+}
+
 export class ConsultantsController {
   /**
    * GET /api/consultants and GET /api/admin/consultants
@@ -88,7 +102,7 @@ export class ConsultantsController {
           : (c.activeClientsCount !== undefined ? Number(c.activeClientsCount) : (c.clientCount !== undefined ? Number(c.clientCount) : 0));
 
         const resolvedProfession = c.profession || c.title || (c.professionId ? profMap.get(c.professionId) : null) || 'Licensed Clinical Psychologist';
-        const photoUrl = c.photo || c.photoUrl || c.image || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
+        const photoUrl = normalizeImageUrl(c.photo || c.photoUrl || c.image || c.avatarUrl) || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
         const primaryServiceFee = Number(
           c.services?.[0]?.sessionFee || 
           c.services?.[0]?.price || 
@@ -461,7 +475,8 @@ export class ConsultantsController {
         return;
       }
 
-      const consultantAvatar = consultant.photoUrl || consultant.photo || consultant.image || consultant.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
+      const rawAvatar = consultant.photo || consultant.photoUrl || consultant.image || consultant.avatarUrl;
+      const consultantAvatar = normalizeImageUrl(rawAvatar) || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
       const consultantTitle = consultant.profession || consultant.title || consultant.specialty || 'Licensed Clinical Psychologist';
       const consultantBio = consultant.about || consultant.bio || `${consultant.name} is a dedicated mental health specialist with extensive clinical experience.`;
       const consultantEducation = (Array.isArray(consultant.education) && consultant.education.length > 0)

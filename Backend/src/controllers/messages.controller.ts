@@ -132,7 +132,22 @@ export class MessagesController {
     const name = consultant?.name || 'Dr. Evelyn Reed';
     const email = consultant?.email || 'dr.evelyn@hexpertify.com';
     const title = consultant?.title || consultant?.profession || 'Licensed Clinical Psychologist';
-    const avatarUrl = consultant?.photoUrl || consultant?.avatarUrl || consultant?.image || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
+    
+    // Normalize Google search URLs and check all photo properties
+    const normalizeImg = (u?: string) => {
+      if (!u || typeof u !== 'string') return '';
+      const t = u.trim();
+      if (t.includes('google.com/imgres') || t.includes('imgurl=')) {
+        try {
+          const m = t.match(/[?&]imgurl=([^&]+)/i);
+          if (m && m[1]) return decodeURIComponent(m[1]);
+        } catch {}
+      }
+      return t;
+    };
+
+    const rawPhoto = consultant?.photo || consultant?.photoUrl || consultant?.avatarUrl || consultant?.image;
+    const avatarUrl = normalizeImg(rawPhoto) || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
 
     // 5. Persist to User table if not already present, ensuring permanent lock for any new client
     if (resolvedClientEmail || resolvedClientId) {

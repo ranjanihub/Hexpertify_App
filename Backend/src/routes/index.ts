@@ -17,6 +17,7 @@ import pagesRoutes from './pages.routes';
 import payoutsRoutes from './payouts.routes';
 import activitiesRoutes from './activities.routes';
 import blogRoutes from './blog.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const router = Router();
 
@@ -115,6 +116,9 @@ router.use('/blog', blogRoutes);
 router.use('/admin/blog', blogRoutes);
 router.use('/blogs', blogRoutes);
 router.use('/admin/blogs', blogRoutes);
+
+router.use('/dashboard', dashboardRoutes);
+router.use('/admin/dashboard', dashboardRoutes);
 
 router.use('/admin', pagesRoutes);
 router.use('/', pagesRoutes);
