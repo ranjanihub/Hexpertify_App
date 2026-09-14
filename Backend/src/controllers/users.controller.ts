@@ -231,8 +231,10 @@ export class UsersController {
         }
       }
 
+      const userId = body.id || `USR-${Date.now().toString().slice(-4)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       const newUser: any = {
-        id: body.id || `USR-${Date.now().toString().slice(-4)}`,
+        _id: userId,
+        id: userId,
         name: name.trim(),
         email: cleanEmail,
         password: hashedPassword,
@@ -252,11 +254,11 @@ export class UsersController {
         newUser.firstConsultationCompleted = true;
       }
 
-      const result = await db.collection('User').insertOne(newUser);
-      await db.collection('users').insertOne({ ...newUser, _id: result.insertedId }).catch(() => {});
+      await db.collection('User').insertOne(newUser);
+      await db.collection('users').insertOne(newUser).catch(() => {});
 
       const safeUser = {
-        id: String(result.insertedId || newUser.id),
+        id: String(newUser._id || newUser.id),
         name: newUser.name,
         email: newUser.email,
         role: isUserRole ? 'client' as const : 'admin' as const,

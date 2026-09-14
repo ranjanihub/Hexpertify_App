@@ -29,9 +29,12 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
       };
     }
 
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanName = name.trim();
+
     // --- 2. Check for existing user ---
     const existingUser = await prisma.user.findUnique({
-      where: { email: email },
+      where: { email: cleanEmail },
     });
 
     if (existingUser) {
@@ -43,10 +46,11 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
 
     await prisma.user.create({
       data: {
-        email,
-        name,
-        phoneNumber: phoneNumber || null,
+        email: cleanEmail,
+        name: cleanName,
+        phoneNumber: phoneNumber?.trim() || null,
         password: hashedPassword,
+        role: "USER",
       },
     });
 

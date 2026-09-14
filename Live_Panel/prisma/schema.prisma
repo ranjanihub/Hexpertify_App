@@ -40,6 +40,10 @@ enum BookingStatus {
 enum Role {
   USER
   ADMIN
+  CONSULTANT
+  THERAPIST
+  CLIENT
+  SUPER_ADMIN
 }
 
 // -----------------------------------------------------

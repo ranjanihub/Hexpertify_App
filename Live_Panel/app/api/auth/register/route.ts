@@ -84,8 +84,9 @@ export async function POST(req: Request) {
       { status: 201, headers: { "Access-Control-Allow-Origin": "*" } }
     );
   } catch (error: any) {
+    console.error("REGISTER_ROUTE_ERROR:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error?.message || "Internal Server Error" },
       {
         status: 500,
         headers: { "Access-Control-Allow-Origin": "*" },
