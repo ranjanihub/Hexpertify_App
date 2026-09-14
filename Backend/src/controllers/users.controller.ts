@@ -583,12 +583,18 @@ export class UsersController {
         (!bearerToken.includes('@') ? bearerToken : '')
       ).trim();
 
+      const reqOrigin = String(req.headers.origin || (req.headers.referer ? new URL(String(req.headers.referer)).origin : '') || '').trim();
+      const isLocalReq = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
+      const liveSiteFallback = (config.liveSiteUrl && !config.liveSiteUrl.includes('localhost'))
+        ? config.liveSiteUrl
+        : (isLocalReq ? 'http://localhost:3000' : (reqOrigin || '/'));
+
       if (!email && !id) {
         res.status(403).json({
           success: false,
           hasConfirmedBooking: false,
           error: "Access denied: User email or client ID is required to verify consultation booking.",
-          redirectUrl: config.liveSiteUrl || 'http://localhost:3000'
+          redirectUrl: liveSiteFallback
         });
         return;
       }
@@ -654,7 +660,7 @@ export class UsersController {
           success: false,
           hasConfirmedBooking: false,
           error: "Access denied: You do not have a confirmed consultation booking. Please schedule and confirm a consultation session on the live site to access your Client Dashboard.",
-          redirectUrl: config.liveSiteUrl || 'http://localhost:3000'
+          redirectUrl: liveSiteFallback
         });
         return;
       }
@@ -685,7 +691,18 @@ export class UsersController {
         assignedTherapistEmail: consultant?.email || user?.assignedTherapistEmail || 'dr.evelyn@hexpertify.com',
         assignedTherapistPhoto: consultant?.photoUrl || consultant?.photo || consultant?.avatarUrl || user?.assignedTherapistPhoto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80',
         assignedTherapistProfession: consultant?.profession || consultant?.title || 'Licensed Clinical Psychologist',
-        firstConsultationCompleted: true
+        firstConsultationCompleted: true,
+        goals: user?.goals || [],
+        therapyGoals: user?.therapyGoals || [],
+        assessmentScores: user?.assessmentScores || [],
+        moodScores: user?.moodScores || [],
+        moodLogs: user?.moodLogs || [],
+        homework: user?.homework || user?.homeworkAssigned || [],
+        homeworkAssigned: user?.homeworkAssigned || user?.homework || [],
+        sessionHistory: user?.sessionHistory || [],
+        primaryGoal: user?.primaryGoal || user?.primaryConcern || 'Emotional Wellness',
+        totalSessionsCount: user?.totalSessionsCount || confirmedBookings.length,
+        completedSessionsCount: user?.completedSessionsCount || confirmedBookings.filter((b: any) => b.status === 'COMPLETED').length
       };
 
       res.status(200).json({

@@ -293,7 +293,15 @@ export class AuthController {
         assignedTherapistName: user.assignedTherapistName || assignedName,
         assignedTherapistEmail: user.assignedTherapistEmail || assignedEmail,
         assignedTherapistPhoto: user.assignedTherapistPhoto || assignedPhoto,
-        firstConsultationCompleted: true
+        firstConsultationCompleted: true,
+        goals: user.goals || [],
+        therapyGoals: user.therapyGoals || [],
+        assessmentScores: user.assessmentScores || [],
+        moodScores: user.moodScores || [],
+        moodLogs: user.moodLogs || [],
+        homework: user.homework || user.homeworkAssigned || [],
+        sessionHistory: user.sessionHistory || [],
+        primaryGoal: user.primaryGoal || user.primaryConcern || 'Emotional Wellness'
       };
 
       const ssoTicket = AuthController.issueSsoTicket(clientUser, 'client');
@@ -659,7 +667,15 @@ export class AuthController {
       assignedTherapistName: user.assignedTherapistName || assignedName,
       assignedTherapistEmail: user.assignedTherapistEmail || assignedEmail,
       assignedTherapistPhoto: user.assignedTherapistPhoto || assignedPhoto,
-      firstConsultationCompleted: true
+      firstConsultationCompleted: true,
+      goals: user.goals || [],
+      therapyGoals: user.therapyGoals || [],
+      assessmentScores: user.assessmentScores || [],
+      moodScores: user.moodScores || [],
+      moodLogs: user.moodLogs || [],
+      homework: user.homework || user.homeworkAssigned || [],
+      sessionHistory: user.sessionHistory || [],
+      primaryGoal: user.primaryGoal || user.primaryConcern || 'Emotional Wellness'
     };
 
     const ssoTicket = AuthController.issueSsoTicket(clientUser, 'client');
