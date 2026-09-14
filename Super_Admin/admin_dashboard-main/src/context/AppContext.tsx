@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../lib/apiClient';
 import type {
   Booking,
   TherapistPayout,
@@ -40,6 +41,7 @@ export interface AppContextType {
   updateBookingStatus: (bookingId: string, status: Booking['status']) => void;
   releasePayout: (payoutId: string) => void;
   verifyTherapist: (therapistId: string) => void;
+  deleteTherapist: (therapistId: string) => Promise<void>;
   addAuditLog: (action: string, moduleName: string, role?: string) => void;
   refreshAllData: () => Promise<void>;
 }
@@ -109,15 +111,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchWithFallback = async (endpoint: string) => {
     try {
-      let res = await fetch(endpoint).catch(() => null);
-      if (!res || !res.ok) {
-        res = await fetch(`http://localhost:5000${endpoint}`).catch(() => null);
-      }
-      if (res && res.ok) {
-        return await res.json();
-      }
-    } catch {}
-    return null;
+      return await api.get(endpoint);
+    } catch {
+      return null;
+    }
   };
 
   const refreshAllData = async () => {
@@ -349,16 +346,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog(`Booking #${bookingId} set to ${status}`, 'Bookings');
 
     // Persist to MongoDB Atlas
-    fetch(`/api/admin/bookings/${bookingId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: status.toUpperCase() })
-    }).catch(() => {
-      fetch(`http://localhost:5000/api/admin/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: status.toUpperCase() })
-      }).catch(() => {});
+    api.put(`/api/admin/bookings/${bookingId}`, { status: status.toUpperCase() }).catch((err) => {
+      console.error('Error updating booking status in DB:', err);
     });
   };
 
@@ -371,16 +360,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog(`Released Payout ID #${payoutId}`, 'Payments');
 
     // Persist to MongoDB Atlas
-    fetch(`/api/admin/payouts/${payoutId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'RELEASED', pendingAmount: 0, pendingReportsCount: 0 })
-    }).catch(() => {
-      fetch(`http://localhost:5000/api/admin/payouts/${payoutId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'RELEASED', pendingAmount: 0, pendingReportsCount: 0 })
-      }).catch(() => {});
+    api.put(`/api/admin/payouts/${payoutId}`, { status: 'RELEASED', pendingAmount: 0, pendingReportsCount: 0 }).catch((err) => {
+      console.error('Error releasing payout in DB:', err);
     });
   };
 
@@ -393,17 +374,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog(`Verified Therapist ID #${therapistId}`, 'Therapists');
 
     // Persist to MongoDB Atlas
-    fetch(`/api/admin/consultants/${therapistId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ verificationStatus: 'Verified', isCertified: true })
-    }).catch(() => {
-      fetch(`http://localhost:5000/api/admin/consultants/${therapistId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verificationStatus: 'Verified', isCertified: true })
-      }).catch(() => {});
+    api.put(`/api/admin/consultants/${therapistId}`, { verificationStatus: 'Verified', isCertified: true }).catch((err) => {
+      console.error('Error verifying therapist in DB:', err);
     });
+  };
+
+  const deleteTherapist = async (therapistId: string) => {
+    const target = therapists.find((t) => t.id === therapistId);
+    const updated = therapists.filter((t) => t.id !== therapistId);
+    setTherapists(updated);
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_therapists`, JSON.stringify(updated));
+    } catch {}
+
+    if (target) {
+      addAuditLog(`Deleted Consultant ${target.name} (ID: ${therapistId})`, 'Therapists');
+    }
+
+    try {
+      await api.delete(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`);
+    } catch (err) {
+      console.error('Error deleting therapist from DB:', err);
+      // Fallback try /api/consultants
+      await api.delete(`/api/consultants?id=${encodeURIComponent(therapistId)}`).catch(() => {});
+    }
   };
 
   const addAuditLog = (action: string, moduleName: string, role = 'Super Admin') => {
@@ -433,6 +427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateBookingStatus,
         releasePayout,
         verifyTherapist,
+        deleteTherapist,
         addAuditLog,
         refreshAllData
       }}

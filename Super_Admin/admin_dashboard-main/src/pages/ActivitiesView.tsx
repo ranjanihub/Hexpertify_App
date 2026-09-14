@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../lib/apiClient';
 import { createPortal } from 'react-dom';
 import {
   Play,
@@ -148,15 +149,9 @@ export const ActivitiesView: React.FC = () => {
   // Fetch live activities from MongoDB Atlas
   const fetchActivities = async () => {
     try {
-      let res = await fetch('/api/admin/activities').catch(() => null);
-      if (!res || !res.ok) {
-        res = await fetch('http://localhost:5000/api/admin/activities').catch(() => null);
-      }
-      if (res && res.ok) {
-        const data = await res.json();
-        if (data?.activities && Array.isArray(data.activities) && data.activities.length > 0) {
-          setActivitiesList(data.activities);
-        }
+      const data = await api.get('/api/admin/activities');
+      if (data?.activities && Array.isArray(data.activities) && data.activities.length > 0) {
+        setActivitiesList(data.activities);
       }
     } catch (err) {
       console.error('Error fetching activities:', err);
@@ -205,20 +200,10 @@ export const ActivitiesView: React.FC = () => {
 
     // Persist to MongoDB Atlas
     try {
-      let res = await fetch(`/api/admin/activities/${activityId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isVisible: nextState })
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch(`http://localhost:5000/api/admin/activities/${activityId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isVisible: nextState })
-        }).catch(() => null);
-      }
-    } catch {}
+      await api.put(`/api/admin/activities/${activityId}`, { isVisible: nextState });
+    } catch (err) {
+      console.error('Error toggling activity visibility in DB:', err);
+    }
   };
 
   const handleDeleteActivity = async (activityId: string, e: React.MouseEvent) => {
@@ -231,16 +216,10 @@ export const ActivitiesView: React.FC = () => {
 
     // Delete from MongoDB Atlas
     try {
-      let res = await fetch(`/api/admin/activities/${activityId}`, {
-        method: 'DELETE'
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch(`http://localhost:5000/api/admin/activities/${activityId}`, {
-          method: 'DELETE'
-        }).catch(() => null);
-      }
-    } catch {}
+      await api.delete(`/api/admin/activities/${activityId}`);
+    } catch (err) {
+      console.error('Error deleting activity from DB:', err);
+    }
   };
 
   const handleCopyFilePath = (filePath: string, e: React.MouseEvent) => {
@@ -283,20 +262,10 @@ export const ActivitiesView: React.FC = () => {
 
     // Persist to MongoDB Atlas
     try {
-      let res = await fetch('/api/admin/activities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newActivityItem)
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch('http://localhost:5000/api/admin/activities', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newActivityItem)
-        }).catch(() => null);
-      }
-    } catch {}
+      await api.post('/api/admin/activities', newActivityItem);
+    } catch (err) {
+      console.error('Error creating activity in DB:', err);
+    }
 
     setNewActivityData({
       title: '',

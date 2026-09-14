@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { launchConsultantPanel } from '../lib/auth';
+import { api } from '../lib/apiClient';
 import { mockProfessions } from '../data/mockData';
 import type {
   Therapist,
@@ -295,7 +296,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   isAddModalOpen: isAddModalProp = false,
   onCloseAddModal
 }) => {
-  const { therapists, clients } = useAppContext();
+  const { therapists, clients, deleteTherapist } = useAppContext();
   const [therapistsList, setTherapistsList] = useState<Therapist[]>(therapists);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProfession, setSelectedProfession] = useState<string>('All');
@@ -886,21 +887,12 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
     if (editingTherapistId) {
       // Persist Update to MongoDB Atlas
-      let res = await fetch("/api/admin/consultants", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newTherapist, id: editingTherapistId })
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        res = await fetch("http://localhost:5000/api/admin/consultants", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...newTherapist, id: editingTherapistId })
-        }).catch((err) => {
-          console.error("Error updating consultant in DB:", err);
-          return null;
-        });
+      try {
+        await api.put('/api/admin/consultants', { ...newTherapist, id: editingTherapistId });
+        setSuccessToast(`Consultant ${formattedName} updated successfully in MongoDB!`);
+      } catch (err) {
+        console.error('Error updating consultant in DB:', err);
+        setSuccessToast(`Warning: ${formattedName} updated locally but may not have saved to database.`);
       }
 
       setTherapistsList((prev) =>
@@ -920,34 +912,18 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
           outcomes: t.outcomes
         } : t))
       );
-      setSuccessToast(`Consultant ${formattedName} updated successfully in MongoDB!`);
     } else {
       // Persist Create to MongoDB Atlas
-      let res = await fetch("/api/admin/consultants", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTherapist)
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        res = await fetch("http://localhost:5000/api/admin/consultants", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newTherapist)
-        }).catch((err) => {
-          console.error("Error creating consultant in DB:", err);
-          return null;
-        });
-      }
-
-      if (res && res.ok) {
-        const data = await res.json();
+      try {
+        const data = await api.post('/api/admin/consultants', newTherapist);
         const saved = data.consultant || newTherapist;
         setTherapistsList((prev) => [saved, ...prev.filter(t => t.id !== saved.id)]);
-      } else {
+        setSuccessToast(`Consultant ${formattedName} created successfully in MongoDB!`);
+      } catch (err) {
+        console.error('Error creating consultant in DB:', err);
         setTherapistsList([newTherapist, ...therapistsList]);
+        setSuccessToast(`Warning: ${formattedName} added locally but may not have saved to database.`);
       }
-      setSuccessToast(`Consultant ${formattedName} created successfully in MongoDB!`);
     }
     setTimeout(() => setSuccessToast(null), 5000);
 
@@ -1013,14 +989,29 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   });
 
   const handleToggleHideFromLive = (therapistId: string) => {
+    const target = therapistsList.find((t) => t.id === therapistId);
+    const nextState = target ? !target.isHiddenFromLive : true;
+
     setTherapistsList((prev) =>
       prev.map((t) =>
-        t.id === therapistId ? { ...t, isHiddenFromLive: !t.isHiddenFromLive } : t
+        t.id === therapistId ? { ...t, isHiddenFromLive: nextState } : t
       )
     );
-    const target = therapistsList.find((t) => t.id === therapistId);
+
+    // Persist to MongoDB Atlas
+    api.put('/api/admin/consultants', { id: therapistId, isHiddenFromLive: nextState }).catch((err) => {
+      console.error('Error persisting hide-from-live toggle:', err);
+      setSuccessToast(`Failed to save hide-from-live change. Please retry.`);
+      setTimeout(() => setSuccessToast(null), 4000);
+      // Revert optimistic update
+      setTherapistsList((prev) =>
+        prev.map((t) =>
+          t.id === therapistId ? { ...t, isHiddenFromLive: !nextState } : t
+        )
+      );
+    });
+
     if (target) {
-      const nextState = !target.isHiddenFromLive;
       setSuccessToast(
         nextState
           ? `${target.name}'s profile is now hidden from live.`
@@ -1034,14 +1025,29 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   };
 
   const handleToggleBookingGreyOut = (therapistId: string) => {
+    const target = therapistsList.find((t) => t.id === therapistId);
+    const nextState = target ? !target.isBookingGreyedOut : true;
+
     setTherapistsList((prev) =>
       prev.map((t) =>
-        t.id === therapistId ? { ...t, isBookingGreyedOut: !t.isBookingGreyedOut } : t
+        t.id === therapistId ? { ...t, isBookingGreyedOut: nextState } : t
       )
     );
-    const target = therapistsList.find((t) => t.id === therapistId);
+
+    // Persist to MongoDB Atlas
+    api.put('/api/admin/consultants', { id: therapistId, isBookingGreyedOut: nextState }).catch((err) => {
+      console.error('Error persisting booking grey-out toggle:', err);
+      setSuccessToast(`Failed to save booking grey-out change. Please retry.`);
+      setTimeout(() => setSuccessToast(null), 4000);
+      // Revert optimistic update
+      setTherapistsList((prev) =>
+        prev.map((t) =>
+          t.id === therapistId ? { ...t, isBookingGreyedOut: !nextState } : t
+        )
+      );
+    });
+
     if (target) {
-      const nextState = !target.isBookingGreyedOut;
       setSuccessToast(
         nextState
           ? `Booking grey out enabled for ${target.name}.`
@@ -1055,14 +1061,29 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   };
 
   const handleToggleArchive = (therapistId: string) => {
+    const target = therapistsList.find((t) => t.id === therapistId);
+    const nextState = target ? !target.isArchived : true;
+
     setTherapistsList((prev) =>
       prev.map((t) =>
-        t.id === therapistId ? { ...t, isArchived: !t.isArchived } : t
+        t.id === therapistId ? { ...t, isArchived: nextState } : t
       )
     );
-    const target = therapistsList.find((t) => t.id === therapistId);
+
+    // Persist to MongoDB Atlas
+    api.put('/api/admin/consultants', { id: therapistId, isArchived: nextState }).catch((err) => {
+      console.error('Error persisting archive toggle:', err);
+      setSuccessToast(`Failed to save archive change. Please retry.`);
+      setTimeout(() => setSuccessToast(null), 4000);
+      // Revert optimistic update
+      setTherapistsList((prev) =>
+        prev.map((t) =>
+          t.id === therapistId ? { ...t, isArchived: !nextState } : t
+        )
+      );
+    });
+
     if (target) {
-      const nextState = !target.isArchived;
       setSuccessToast(
         nextState
           ? `${target.name}'s profile has been archived.`
@@ -1075,24 +1096,31 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
     }
   };
 
-  const handleDeleteTherapist = (therapistId: string) => {
-    const target = therapistsList.find((t) => t.id === therapistId);
-    
-    // Persist Delete to MongoDB Atlas
-    fetch(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`, {
-      method: "DELETE"
-    }).catch(() => {
-      fetch(`http://localhost:5000/api/admin/consultants?id=${encodeURIComponent(therapistId)}`, {
-        method: "DELETE"
-      }).catch((err) => console.error("Error deleting consultant from DB:", err));
-    });
+  const handleDeleteTherapist = async (therapistId: string) => {
+    const target = therapistsList.find((t) => t.id === therapistId) || therapists?.find((t) => t.id === therapistId);
+    const targetName = target?.name || 'Therapist';
 
+    // Optimistic UI update
     setTherapistsList((prev) => prev.filter((t) => t.id !== therapistId));
-    if (target) {
-      setSuccessToast(`Therapist ${target.name} permanently deleted from MongoDB.`);
+    if (selectedTherapist?.id === therapistId) {
+      setSelectedTherapist(null);
+    }
+
+    try {
+      if (deleteTherapist) {
+        await deleteTherapist(therapistId);
+      } else {
+        await api.delete(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`);
+      }
+      setSuccessToast(`Therapist ${targetName} permanently deleted from database.`);
       setTimeout(() => setSuccessToast(null), 4000);
-      if (selectedTherapist?.id === therapistId) {
-        setSelectedTherapist(null);
+    } catch (err: any) {
+      console.error('Error deleting consultant from DB:', err);
+      // Revert optimistic update
+      if (target) {
+        setTherapistsList((prev) => [target, ...prev]);
+        setSuccessToast(`Failed to delete ${targetName}: ${err?.message || 'Database error'}`);
+        setTimeout(() => setSuccessToast(null), 5000);
       }
     }
   };
@@ -1366,12 +1394,14 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveDropdownId(null);
-                              handleDeleteTherapist(t.id);
+                              if (window.confirm(`Are you sure you want to delete ${t.name}? This will permanently remove the therapist from MongoDB.`)) {
+                                handleDeleteTherapist(t.id);
+                              }
                             }}
-                            className="w-full px-3.5 py-2 text-left hover:bg-rose-50 flex items-center gap-2.5 text-rose-600 transition-colors"
+                            className="w-full px-3.5 py-2 text-left hover:bg-rose-50 flex items-center gap-2.5 text-rose-600 transition-colors cursor-pointer font-bold"
                           >
                             <Trash2 className="w-4 h-4 text-rose-600" />
-                            <span>Delete</span>
+                            <span>Delete Therapist</span>
                           </button>
                         </div>
                       </>
@@ -1476,6 +1506,20 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   <Users className="w-4 h-4" />
                   Therapist's Clients ({assignedClients.length})
                 </button>
+
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Are you sure you want to permanently delete ${selectedTherapist.name}? This will remove their record from MongoDB.`)) {
+                      handleDeleteTherapist(selectedTherapist.id);
+                    }
+                  }}
+                  className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Delete therapist permanently"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Profile</span>
+                </button>
+
                 <button onClick={() => setSelectedTherapist(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl">
                   <X className="w-5 h-5" />
                 </button>

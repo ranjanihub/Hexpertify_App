@@ -266,7 +266,7 @@ export class ConsultantsController {
    */
   static async delete(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || req.query.id || '');
+      const id = String(req.params.id || req.query.id || req.query.therapistId || req.body?.id || req.body?.therapistId || '').trim();
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Consultant ID is required' });
@@ -274,16 +274,29 @@ export class ConsultantsController {
       }
 
       const db = getDatabase();
-      let query: any = { id };
+      const orConditions: any[] = [
+        { id: id },
+        { _id: id }
+      ];
+
       if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+        try {
+          orConditions.push({ _id: new ObjectId(id) });
+        } catch {}
       }
 
-      await db.collection('Consultant').deleteOne(query);
-      await db.collection('consultants').deleteOne(query);
+      const query = { $or: orConditions };
+
+      const [res1, res2] = await Promise.all([
+        db.collection('Consultant').deleteMany(query).catch(() => ({ deletedCount: 0 })),
+        db.collection('consultants').deleteMany(query).catch(() => ({ deletedCount: 0 }))
+      ]);
+
+      const deletedTotal = ((res1 as any)?.deletedCount || 0) + ((res2 as any)?.deletedCount || 0);
 
       res.json({
         success: true,
+        deletedCount: deletedTotal,
         message: 'Consultant removed successfully from MongoDB Atlas'
       });
     } catch (error: any) {

@@ -23,6 +23,7 @@ import {
   Edit3
 } from 'lucide-react';
 import type { ResourceItem, ResourceType } from '../types';
+import { api } from '../lib/apiClient';
 
 const categories = [
   'All Resources',
@@ -74,19 +75,13 @@ export const ResourcesView: React.FC = () => {
   useEffect(() => {
     const fetchResources = async () => {
       try {
-        let res = await fetch('/api/admin/resources').catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch('http://localhost:5000/api/admin/resources').catch(() => null);
-        }
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data?.resources && Array.isArray(data.resources)) {
-            setResources(data.resources);
-            setBookmarkedIds(data.resources.filter((r: any) => r.isSaved).map((r: any) => r.id));
-            try {
-              localStorage.setItem('hexpertify_admin_resources', JSON.stringify(data.resources));
-            } catch {}
-          }
+        const data = await api.get('/api/admin/resources');
+        if (data?.resources && Array.isArray(data.resources)) {
+          setResources(data.resources);
+          setBookmarkedIds(data.resources.filter((r: any) => r.isSaved).map((r: any) => r.id));
+          try {
+            localStorage.setItem('hexpertify_admin_resources', JSON.stringify(data.resources));
+          } catch {}
         }
       } catch (err) {
         console.error('Error fetching resources:', err);
@@ -97,24 +92,18 @@ export const ResourcesView: React.FC = () => {
     // Fetch live users for context selection
     const fetchUsers = async () => {
       try {
-        let res = await fetch('/api/admin/users').catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch('http://localhost:5000/api/admin/users').catch(() => null);
-        }
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data?.users && Array.isArray(data.users) && data.users.length > 0) {
-            const clientOpts = data.users.map((u: any) => ({
-              id: u.id || String(u._id),
-              name: u.name || u.email || 'Client',
-              type: 'Client'
-            }));
-            setContextOptions([
-              ...clientOpts,
-              { id: 'g-1', name: 'Anxiety Support Group', type: 'Group' },
-              { id: 'g-2', name: 'CBT Skills Group', type: 'Group' }
-            ]);
-          }
+        const data = await api.get('/api/admin/users');
+        if (data?.users && Array.isArray(data.users) && data.users.length > 0) {
+          const clientOpts = data.users.map((u: any) => ({
+            id: u.id || String(u._id),
+            name: u.name || u.email || 'Client',
+            type: 'Client'
+          }));
+          setContextOptions([
+            ...clientOpts,
+            { id: 'g-1', name: 'Anxiety Support Group', type: 'Group' },
+            { id: 'g-2', name: 'CBT Skills Group', type: 'Group' }
+          ]);
         }
       } catch {}
     };
@@ -148,16 +137,8 @@ export const ResourcesView: React.FC = () => {
     saveToLocalStorage(updatedResources);
 
     // Persist to MongoDB Atlas
-    fetch('/api/admin/resources', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, isSaved: willBeSaved })
-    }).catch(() => {
-      fetch('http://localhost:5000/api/admin/resources', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, isSaved: willBeSaved })
-      }).catch(() => {});
+    api.put('/api/admin/resources', { id, isSaved: willBeSaved }).catch((err) => {
+      console.error('Error toggling bookmark in DB:', err);
     });
 
     const targetRes = resources.find((r) => r.id === id);
@@ -178,12 +159,8 @@ export const ResourcesView: React.FC = () => {
     if (selectedResource?.id === id) setSelectedResource(null);
 
     // Delete from MongoDB Atlas
-    fetch(`/api/admin/resources?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE'
-    }).catch(() => {
-      fetch(`http://localhost:5000/api/admin/resources?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE'
-      }).catch(() => {});
+    api.delete(`/api/admin/resources?id=${encodeURIComponent(id)}`).catch((err) => {
+      console.error('Error deleting resource from DB:', err);
     });
 
     showToast(`Deleted resource "${target?.title || id}" from MongoDB Atlas.`);
@@ -281,16 +258,8 @@ export const ResourcesView: React.FC = () => {
     saveToLocalStorage(updatedList);
 
     // Persist to MongoDB Atlas
-    fetch('/api/admin/resources', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(createdResource)
-    }).catch(() => {
-      fetch('http://localhost:5000/api/admin/resources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createdResource)
-      }).catch(() => {});
+    api.post('/api/admin/resources', createdResource).catch((err) => {
+      console.error('Error creating resource in DB:', err);
     });
 
     // Reset Form
@@ -313,16 +282,8 @@ export const ResourcesView: React.FC = () => {
     saveToLocalStorage(updatedList);
 
     // Persist to MongoDB Atlas
-    fetch('/api/admin/resources', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editingResource)
-    }).catch(() => {
-      fetch('http://localhost:5000/api/admin/resources', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingResource)
-      }).catch(() => {});
+    api.put('/api/admin/resources', editingResource).catch((err) => {
+      console.error('Error updating resource in DB:', err);
     });
 
     if (selectedResource?.id === editingResource.id) {

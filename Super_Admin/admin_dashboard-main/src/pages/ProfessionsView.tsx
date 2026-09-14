@@ -32,6 +32,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { KeywordsTagInput } from '../components/common/KeywordsTagInput';
+import { api } from '../lib/apiClient';
 import type { ProfessionService } from '../types';
 
 interface RichCodeEditorProps {
@@ -466,23 +467,20 @@ export const ProfessionsView: React.FC = () => {
       return;
     }
 
-    // Persist to MongoDB Atlas backend
-    fetch("/api/admin/professions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editingProf),
-    }).catch(() => {
-      fetch("http://localhost:5000/api/admin/professions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingProf),
-      }).catch((err) => console.error("Error saving profession to DB:", err));
-    });
-
     if (isNewModalOpen) {
+      // Create new profession — use POST
+      api.post('/api/admin/professions', editingProf).catch((err) => {
+        console.error('Error creating profession in DB:', err);
+        showToast(`Error saving new profession to database.`);
+      });
       setProfessions((prev) => [editingProf, ...prev]);
       showToast(`Added new profession "${editingProf.serviceName}" to MongoDB`);
     } else {
+      // Update existing profession — use PUT
+      api.put('/api/admin/professions', { ...editingProf, id: editingProf.id }).catch((err) => {
+        console.error('Error updating profession in DB:', err);
+        showToast(`Error saving changes for "${editingProf.serviceName}" to database.`);
+      });
       setProfessions((prev) => prev.map((p) => (p.id === editingProf.id ? editingProf : p)));
       showToast(`Saved changes for "${editingProf.serviceName}" to MongoDB`);
     }
@@ -494,14 +492,7 @@ export const ProfessionsView: React.FC = () => {
     const target = professions.find((p) => p.id === id);
     try {
       // Direct live deletion from MongoDB Atlas
-      let res = await fetch(`/api/admin/professions?id=${encodeURIComponent(id)}`, {
-        method: "DELETE"
-      }).catch(() => null);
-      if (!res || !res.ok) {
-        await fetch(`http://localhost:5000/api/admin/professions?id=${encodeURIComponent(id)}`, {
-          method: "DELETE"
-        }).catch(() => null);
-      }
+      await api.delete(`/api/admin/professions?id=${encodeURIComponent(id)}`);
       setProfessions((prev) => prev.filter((p) => p.id !== id));
       if (editingProf?.id === id) {
         setEditingProf(null);
@@ -509,8 +500,9 @@ export const ProfessionsView: React.FC = () => {
       setDeletingId(null);
       showToast(`Deleted "${target?.serviceName || id}" from MongoDB Atlas`);
     } catch (err) {
-      console.error("Error deleting profession from DB:", err);
-      showToast(`Error deleting "${target?.serviceName || id}"`);
+      console.error('Error deleting profession from DB:', err);
+      showToast(`Error deleting "${target?.serviceName || id}" from database.`);
+      setDeletingId(null);
     }
   };
 

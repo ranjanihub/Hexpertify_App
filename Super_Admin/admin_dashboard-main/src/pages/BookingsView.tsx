@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../lib/apiClient';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -43,15 +44,9 @@ export const BookingsView: React.FC = () => {
   React.useEffect(() => {
     const fetchProfessions = async () => {
       try {
-        let res = await fetch('/api/admin/professions').catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch('http://localhost:5000/api/admin/professions').catch(() => null);
-        }
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data?.professions && Array.isArray(data.professions)) {
-            setProfessionsList(data.professions);
-          }
+        const data = await api.get('/api/admin/professions');
+        if (data?.professions && Array.isArray(data.professions)) {
+          setProfessionsList(data.professions);
         }
       } catch {}
     };
@@ -183,20 +178,10 @@ export const BookingsView: React.FC = () => {
 
     // Persist to MongoDB Atlas
     try {
-      let res = await fetch(`/api/admin/bookings/${editBookingData.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editBookingData)
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch(`http://localhost:5000/api/admin/bookings/${editBookingData.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editBookingData)
-        }).catch(() => null);
-      }
-    } catch {}
+      await api.put(`/api/admin/bookings/${editBookingData.id}`, editBookingData);
+    } catch (err) {
+      console.error('Error saving booking edit to DB:', err);
+    }
   };
 
   const handleCopyCode = (code: string, e: React.MouseEvent) => {
@@ -276,30 +261,15 @@ export const BookingsView: React.FC = () => {
 
     // Persist to MongoDB Atlas
     try {
-      let res = await fetch(`/api/admin/bookings/${rescheduleBooking.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: newDate,
-          time: newTime,
-          status: 'RESCHEDULED',
-          scheduledAt: `${newDate}T${newTime}`
-        })
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch(`http://localhost:5000/api/admin/bookings/${rescheduleBooking.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: newDate,
-            time: newTime,
-            status: 'RESCHEDULED',
-            scheduledAt: `${newDate}T${newTime}`
-          })
-        }).catch(() => null);
-      }
-    } catch {}
+      await api.put(`/api/admin/bookings/${rescheduleBooking.id}`, {
+        date: newDate,
+        time: newTime,
+        status: 'RESCHEDULED',
+        scheduledAt: `${newDate}T${newTime}`
+      });
+    } catch (err) {
+      console.error('Error rescheduling booking in DB:', err);
+    }
   };
 
   const handleOpenCancel = (booking: Booking, e?: React.MouseEvent) => {
@@ -332,28 +302,14 @@ export const BookingsView: React.FC = () => {
 
     // Persist to MongoDB Atlas
     try {
-      let res = await fetch(`/api/admin/bookings/${cancelBookingTarget.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'CANCELLED',
-          paymentStatus: 'REFUNDED',
-          cancelReason
-        })
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch(`http://localhost:5000/api/admin/bookings/${cancelBookingTarget.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: 'CANCELLED',
-            paymentStatus: 'REFUNDED',
-            cancelReason
-          })
-        }).catch(() => null);
-      }
-    } catch {}
+      await api.put(`/api/admin/bookings/${cancelBookingTarget.id}`, {
+        status: 'CANCELLED',
+        paymentStatus: 'REFUNDED',
+        cancelReason
+      });
+    } catch (err) {
+      console.error('Error cancelling booking in DB:', err);
+    }
   };
 
   const handleConfirmDeleteBooking = async (bookingId: string) => {
@@ -367,16 +323,10 @@ export const BookingsView: React.FC = () => {
 
     // Delete from MongoDB Atlas
     try {
-      let res = await fetch(`/api/admin/bookings/${bookingId}`, {
-        method: 'DELETE'
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch(`http://localhost:5000/api/admin/bookings/${bookingId}`, {
-          method: 'DELETE'
-        }).catch(() => null);
-      }
-    } catch {}
+      await api.delete(`/api/admin/bookings/${bookingId}`);
+    } catch (err) {
+      console.error('Error deleting booking from DB:', err);
+    }
   };
 
   const handleCreateManualBooking = async (e: React.FormEvent) => {
@@ -385,50 +335,24 @@ export const BookingsView: React.FC = () => {
     const selectedClient = clients.find((c) => c.name.toLowerCase() === newBooking.clientName.toLowerCase());
 
     try {
-      let res = await fetch('/api/admin/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientName: newBooking.clientName || 'New Client',
-          userId: selectedClient?.id,
-          therapistName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
-          consultantId: selectedTherapist?.id,
-          service: newBooking.service || 'Individual Therapy',
-          date: newBooking.date,
-          time: newBooking.time,
-          amount: Number(newBooking.amount) || 150,
-          paymentStatus: newBooking.paymentStatus,
-          status: newBooking.status
-        })
-      }).catch(() => null);
+      const data = await api.post('/api/admin/bookings', {
+        clientName: newBooking.clientName || 'New Client',
+        userId: selectedClient?.id,
+        therapistName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
+        consultantId: selectedTherapist?.id,
+        service: newBooking.service || 'Individual Therapy',
+        date: newBooking.date,
+        time: newBooking.time,
+        amount: Number(newBooking.amount) || 150,
+        paymentStatus: newBooking.paymentStatus,
+        status: newBooking.status
+      });
 
-      if (!res || !res.ok) {
-        res = await fetch('http://localhost:5000/api/admin/bookings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clientName: newBooking.clientName || 'New Client',
-            userId: selectedClient?.id,
-            therapistName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
-            consultantId: selectedTherapist?.id,
-            service: newBooking.service || 'Individual Therapy',
-            date: newBooking.date,
-            time: newBooking.time,
-            amount: Number(newBooking.amount) || 150,
-            paymentStatus: newBooking.paymentStatus,
-            status: newBooking.status
-          })
-        }).catch(() => null);
-      }
-
-      if (res && res.ok) {
-        const data = await res.json();
-        if (data.success && data.booking) {
-          setBookingsList((prev) => [data.booking, ...prev]);
-          showToast(`Booking ${data.booking.bookingCode} created and saved in MongoDB Atlas!`, 'success');
-          setIsNewBookingModalOpen(false);
-          return;
-        }
+      if (data.success && data.booking) {
+        setBookingsList((prev) => [data.booking, ...prev]);
+        showToast(`Booking ${data.booking.bookingCode} created and saved in MongoDB Atlas!`, 'success');
+        setIsNewBookingModalOpen(false);
+        return;
       }
 
       const nextNum = 9020 + bookingsList.length + 1;
