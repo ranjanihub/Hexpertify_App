@@ -4,92 +4,140 @@ import { getDatabase } from '../db/mongodb';
 
 const DEFAULT_SEED_ACTIVITIES = [
   {
-    id: 'ACT-01',
-    name: '5-4-3-2-1 Grounding Technique',
-    description: '10-minute guided breathing session focusing on awareness of breath, sensory details, and body sensations.',
-    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
-    isVisible: true,
+    id: '1',
+    name: 'Morning Mindfulness Meditation',
+    title: 'Morning Mindfulness Meditation',
+    description: '10-minute guided breathing session focusing on awareness of breath and body sensations.',
     categoryTag: 'MINDFULNESS',
+    category: 'MINDFULNESS',
     duration: '10 min',
     difficulty: 'Easy',
     repeat: 'Daily',
-    assignedClientName: 'Sarah Jenkins',
-    assignedTherapistName: 'Dr. Alex Harrison',
-    assignedInfo: '2 Clients (Sarah Jenkins, +1) • Daily',
-    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600',
-    templateId: 'ACT-01',
+    frequency: 'Daily',
+    dueDate: 'Today',
+    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Sit in a comfortable position with your spine upright but relaxed.\n2. Gently close your eyes and bring awareness to your breath.\n3. Observe the sensation of air flowing in through your nose and out through your mouth.\n4. Whenever your mind drifts to thoughts, acknowledge them without judgment and return to the breath.',
+    isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    id: 'ACT-02',
-    name: 'CBT Automatic Thought Record',
-    description: 'Document recent anxiety trigger and write a balanced, rational reframe using Beck 5-column technique.',
-    filePath: 'src/activities/templates/CBTThoughtRecord.tsx',
-    isVisible: true,
+    id: '2',
+    name: 'CBT Thought Record Entry',
+    title: 'CBT Thought Record Entry',
+    description: 'Document recent anxiety trigger and write a balanced, rational reframe using the 5-column technique.',
     categoryTag: 'CBT',
+    category: 'CBT',
     duration: '15 min',
     difficulty: 'Medium',
     repeat: '2-3 Times / Week',
-    assignedClientName: 'Emily Rodriguez',
-    assignedTherapistName: 'Dr. Elena Rostova',
-    assignedInfo: 'Emily Rodriguez • 2-3 Times / Week',
-    imageUrl: 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=600',
-    templateId: 'ACT-02',
+    frequency: '2-3 Times / Week',
+    dueDate: 'Today',
+    imageUrl: 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Record the triggering situation (Where were you? Who was there?).\n2. Catch your automatic thought and rate how strongly you believed it (0-100%).\n3. Note down the emotional response and physical sensations.\n4. Challenge the thought by listing objective evidence for and against.\n5. Formulate a balanced, realistic replacement thought.',
+    isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    id: 'ACT-03',
-    name: 'Progressive Muscle Relaxation (PMR)',
-    description: 'Guided audio session with pre/post somatic tension sliders to reduce physical stress and muscle tightness.',
-    filePath: 'src/activities/templates/ProgressiveMuscleRelaxation.tsx',
-    isVisible: true,
-    categoryTag: 'SOMATIC',
+    id: '3',
+    name: 'Evening Gratitude Journaling',
+    title: 'Evening Gratitude Journaling',
+    description: 'Write down 3 things you felt grateful for today and reflect on why they mattered.',
+    categoryTag: 'GRATITUDE',
+    category: 'GRATITUDE',
     duration: '8 min',
     difficulty: 'Easy',
     repeat: 'Daily',
-    assignedClientName: 'Amanda Miller',
-    assignedTherapistName: 'Marcus Vance',
-    assignedInfo: 'Amanda Miller • Daily',
-    imageUrl: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=600',
-    templateId: 'ACT-03',
+    frequency: 'Daily',
+    dueDate: 'Today',
+    imageUrl: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Take 2 slow abdominal breaths.\n2. Write down 3 specific things from today that brought you warmth, joy, or relief.\n3. For each item, write 1-2 sentences about *why* it was meaningful.\n4. Rest quietly for a moment to absorb the positive emotions.',
+    isVisible: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '4',
+    name: '4-7-8 Parasympathetic Breathing',
+    title: '4-7-8 Parasympathetic Breathing',
+    description: 'Calm your nervous system using rhythmic 4-second inhale, 7-second hold, and 8-second exhale.',
+    categoryTag: 'BREATHING',
+    category: 'BREATHING',
+    duration: '5 min',
+    difficulty: 'Easy',
+    repeat: 'As Needed (PRN)',
+    frequency: 'As Needed (PRN)',
+    dueDate: 'Tomorrow',
+    imageUrl: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Place tip of tongue against ridge behind upper front teeth.\n2. Exhale completely through mouth with a gentle whoosh sound.\n3. Inhale silently through nose for 4 seconds.\n4. Hold breath for 7 seconds.\n5. Exhale through mouth for 8 seconds. Repeat 4 cycles.',
+    isVisible: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '5',
+    name: 'Progressive Muscle Relaxation (PMR)',
+    title: 'Progressive Muscle Relaxation (PMR)',
+    description: 'Systematically tense and release muscle groups from toes to head to dissolve physical anxiety.',
+    categoryTag: 'SOMATIC',
+    category: 'SOMATIC',
+    duration: '12 min',
+    difficulty: 'Medium',
+    repeat: 'Weekly',
+    frequency: 'Weekly',
+    dueDate: 'Completed',
+    imageUrl: 'https://images.unsplash.com/photo-1511295742362-92c96b124e52?auto=format&fit=crop&w=800&q=80',
+    instructions: 'Tense each muscle group firmly for 5s, then release completely.',
+    isVisible: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'ACT-01',
+    name: '5-4-3-2-1 Grounding Technique',
+    title: '5-4-3-2-1 Grounding Technique',
+    description: '10-minute guided breathing session focusing on awareness of breath, sensory details, and body sensations.',
+    categoryTag: 'MINDFULNESS',
+    category: 'MINDFULNESS',
+    duration: '10 min',
+    difficulty: 'Easy',
+    repeat: 'Daily',
+    frequency: 'Daily',
+    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600',
+    isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
     id: 'ACT-04',
     name: 'Fear Hierarchy & Exposure Ladder',
+    title: 'Fear Hierarchy & Exposure Ladder',
     description: 'Hierarchy ladder for anxiety triggers using SUDS 0-100 graded exposure steps and habituation tracking.',
-    filePath: 'src/activities/templates/ExposureHierarchyLadder.tsx',
-    isVisible: true,
     categoryTag: 'EXPOSURE',
+    category: 'EXPOSURE',
     duration: '25 min',
     difficulty: 'Advanced',
     repeat: 'Weekly',
-    assignedClientName: 'Robert Garcia',
-    assignedTherapistName: 'Dr. Sophia Bennett',
-    assignedInfo: '3 Clients (Robert Garcia, +2) • Weekly',
+    frequency: 'Weekly',
     imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600',
-    templateId: 'ACT-04',
+    isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
     id: 'ACT-05',
     name: 'Behavioral Activation Tracker',
+    title: 'Behavioral Activation Tracker',
     description: 'Schedule rewarding daily activities, track mood changes, and monitor Pleasure & Mastery scores.',
-    filePath: 'src/activities/templates/BehavioralActivationTracker.tsx',
-    isVisible: true,
     categoryTag: 'BEHAVIORAL',
+    category: 'BEHAVIORAL',
     duration: '12 min',
     difficulty: 'Medium',
     repeat: 'Daily',
-    assignedClientName: 'Michael Chen',
-    assignedTherapistName: 'Dr. Alex Harrison',
-    assignedInfo: 'Michael Chen • Daily',
+    frequency: 'Daily',
     imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=600',
-    templateId: 'ACT-05',
+    isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
   }
@@ -115,7 +163,9 @@ export class ActivitiesController {
         count: activities.length,
         activities: activities.map((a) => ({
           ...a,
-          id: a.id || String(a._id)
+          id: a.id || String(a._id),
+          title: a.title || a.name || 'Therapeutic Activity',
+          category: (a.categoryTag || a.category || 'MINDFULNESS').toUpperCase()
         }))
       });
     } catch (error: any) {
@@ -221,7 +271,8 @@ export class ActivitiesController {
       const body = req.body || {};
 
       const activityId = String(body.activityId || body.id || '');
-      const activityTitle = body.activityTitle || body.title || 'Therapeutic Activity';
+      const activityTitle = body.activityTitle || body.title || 'Morning Mindfulness Meditation';
+      const activityCategory = body.activityCategory || body.category || 'MINDFULNESS';
       const consultantId = String(body.consultantId || '');
       const consultantName = body.consultantName || body.therapistName || 'Your Consultant';
       const clients = Array.isArray(body.clients) ? body.clients : [];
@@ -229,30 +280,79 @@ export class ActivitiesController {
         ? body.assignedTo 
         : clients.map((c: any) => c.clientName || c.name).filter(Boolean);
 
-      if (!activityId) {
-        res.status(400).json({ success: false, error: 'Activity ID is required' });
+      if (!activityId && !activityTitle) {
+        res.status(400).json({ success: false, error: 'Activity ID or Title is required' });
         return;
       }
 
-      let query: any = { id: activityId };
-      if (ObjectId.isValid(activityId)) {
-        query = { $or: [{ _id: new ObjectId(activityId) }, { id: activityId }] };
+      const searchConditions: any[] = [];
+      if (activityId) {
+        searchConditions.push({ id: activityId });
+        searchConditions.push({ id: Number(activityId) || -1 });
+        searchConditions.push({ id: `ACT-0${activityId}` });
+        if (ObjectId.isValid(activityId)) {
+          searchConditions.push({ _id: new ObjectId(activityId) });
+        }
+      }
+      if (activityTitle) {
+        const safeRegex = new RegExp(`^${activityTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        searchConditions.push({ name: activityTitle });
+        searchConditions.push({ title: activityTitle });
+        searchConditions.push({ name: { $regex: safeRegex } });
+        searchConditions.push({ title: { $regex: safeRegex } });
       }
 
-      // Update the activity in MongoDB Atlas
-      await db.collection('Activity').updateOne(
-        query,
-        {
-          $set: {
-            assignedTo: assignedToNames,
-            clientAssignments: clients,
-            assignedTherapistId: consultantId,
-            assignedTherapistName: consultantName,
-            updatedAt: new Date()
-          }
-        },
-        { upsert: false }
-      );
+      const query = searchConditions.length > 0 ? { $or: searchConditions } : { id: activityId };
+
+      const updateFields: any = {
+        id: activityId || '1',
+        name: activityTitle,
+        title: activityTitle,
+        categoryTag: activityCategory,
+        category: activityCategory,
+        assignedTo: assignedToNames,
+        clientAssignments: clients,
+        assignedTherapistId: consultantId,
+        assignedTherapistName: consultantName,
+        frequency: clients[0]?.frequency || body.frequency || 'Daily',
+        timeOfDay: clients[0]?.timeOfDay || body.timeOfDay || 'Morning (8:00 AM)',
+        updatedAt: new Date()
+      };
+
+      if (body.description) updateFields.description = body.description;
+      if (body.duration) updateFields.duration = body.duration;
+      if (body.difficulty) updateFields.difficulty = body.difficulty;
+      if (body.imageUrl) updateFields.imageUrl = body.imageUrl;
+      if (body.instructions) updateFields.instructions = body.instructions;
+      if (body.dueDate) updateFields.dueDate = body.dueDate;
+
+      // Update or upsert the activity in MongoDB Atlas
+      await Promise.all([
+        db.collection('Activity').updateMany(
+          query,
+          {
+            $set: updateFields,
+            $setOnInsert: {
+              createdAt: new Date(),
+              status: 'pending',
+              isVisible: true
+            }
+          },
+          { upsert: true }
+        ),
+        db.collection('activities').updateMany(
+          query,
+          {
+            $set: updateFields,
+            $setOnInsert: {
+              createdAt: new Date(),
+              status: 'pending',
+              isVisible: true
+            }
+          },
+          { upsert: true }
+        ).catch(() => {})
+      ]);
 
       // Create in-app notifications for each assigned client
       const notificationsToInsert: any[] = [];
