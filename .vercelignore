@@ -1,0 +1,10 @@
+Backend/dist/
+Backend/node_modules/
+node_modules/
+.git
+.vscode
+backups
+Client_Panel
+Consultant_Panel
+Live_Panel
+Super_Admin

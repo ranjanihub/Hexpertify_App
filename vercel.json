@@ -1,8 +1,8 @@
 {
   "version": 2,
   "functions": {
-    "api/index.ts": {
-      "includeFiles": "public/**",
+    "Backend/api/index.ts": {
+      "includeFiles": "Backend/public/**",
       "maxDuration": 60,
       "memory": 1024
     }
@@ -10,23 +10,23 @@
   "routes": [
     {
       "src": "/assets/(.*)",
-      "dest": "/public/assets/$1"
+      "dest": "/Backend/public/assets/$1"
     },
     {
       "src": "/admin/assets/(.*)",
-      "dest": "/public/admin/assets/$1"
+      "dest": "/Backend/public/admin/assets/$1"
     },
     {
       "src": "/consultant/assets/(.*)",
-      "dest": "/public/consultant/assets/$1"
+      "dest": "/Backend/public/consultant/assets/$1"
     },
     {
       "src": "/favicon.svg",
-      "dest": "/public/favicon.svg"
+      "dest": "/Backend/public/favicon.svg"
     },
     {
       "src": "/(.*)",
-      "dest": "/api/index.ts"
+      "dest": "/Backend/api/index.ts"
     }
   ]
 }
