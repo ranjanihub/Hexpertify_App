@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "framework": null,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "functions": {
     "Backend/api/index.ts": {
       "includeFiles": "Backend/public/**/*.html",

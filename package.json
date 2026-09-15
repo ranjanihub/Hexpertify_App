@@ -9,7 +9,8 @@
     "dev:client": "npm --prefix Client_Panel/Client-Dashboard-Pro/artifacts/client-dashboard run dev",
     "dev:consultant": "npm --prefix Consultant_Panel/Therapy-Flow-Design/artifacts/hexpertify-dashboard run dev",
     "dev:admin": "npm --prefix Super_Admin/admin_dashboard-main run dev",
-    "build": "npm --prefix Backend run build:all",
+    "build": "npm --prefix Backend run build",
+    "vercel-build": "npm --prefix Backend run build",
     "build:all": "npm --prefix Backend run build:all",
     "start": "npm --prefix Backend run start"
   }
