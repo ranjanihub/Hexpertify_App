@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: path.resolve(__dirname),
   // ───── Next 15 SAFE PERFORMANCE SETUP ─────
   // Browserslist file will control SWC output.
   // No experimental flags needed in this version.
