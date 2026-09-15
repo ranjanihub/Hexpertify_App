@@ -35,7 +35,14 @@ app.use(async (_req, _res, next) => {
 app.use('/api', router);
 
 // 2. Static Assets for Unified Frontend & Panels
-const publicDir = path.resolve(__dirname, '../public');
+const publicDir = fs.existsSync(path.resolve(__dirname, '../public'))
+  ? path.resolve(__dirname, '../public')
+  : fs.existsSync(path.resolve(__dirname, '../../public'))
+  ? path.resolve(__dirname, '../../public')
+  : fs.existsSync(path.resolve(process.cwd(), 'Backend/public'))
+  ? path.resolve(process.cwd(), 'Backend/public')
+  : path.resolve(process.cwd(), 'public');
+
 const unifiedIndexPath = path.join(publicDir, 'index.html');
 const adminIndexPath = path.join(publicDir, 'admin', 'index.html');
 const consultantIndexPath = path.join(publicDir, 'consultant', 'index.html');
@@ -112,10 +119,14 @@ app.get([
   }
 });
 
-// SPA Catch-All Fallback for deep links (excluding /api)
+// SPA Catch-All Fallback for deep links (excluding /api and static files with extensions)
 app.get('*', (req: Request, res: Response, next) => {
   if (req.path.startsWith('/api')) {
     return next();
+  }
+  // If the request is for a missing static file with an extension, return 404 instead of index.html
+  if (/\.[a-zA-Z0-9]+$/.test(req.path)) {
+    return res.status(404).send('File Not Found');
   }
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   if (req.path.startsWith('/admin') && fs.existsSync(adminIndexPath)) {
