@@ -160,10 +160,16 @@ export class ResourcesController {
       const db = getDatabase();
       let resources = await db.collection('Resource').find({}).toArray();
 
-      // If database collection is empty, seed defaults
-      if (!resources || resources.length === 0) {
+      const meta = await db.collection('SystemMeta').findOne({ key: 'resources_seeded' });
+      if (!meta && (!resources || resources.length === 0)) {
         try {
           await db.collection('Resource').insertMany(DEFAULT_RESOURCES as any);
+          await db.collection('resources').insertMany(DEFAULT_RESOURCES as any);
+          await db.collection('SystemMeta').updateOne(
+            { key: 'resources_seeded' },
+            { $set: { key: 'resources_seeded', seededAt: new Date() } },
+            { upsert: true }
+          );
           resources = await db.collection('Resource').find({}).toArray();
         } catch {
           resources = DEFAULT_RESOURCES as any;
@@ -180,11 +186,10 @@ export class ResourcesController {
         }))
       });
     } catch (error: any) {
-      // Fallback to default resources on error
       res.json({
         success: true,
-        count: DEFAULT_RESOURCES.length,
-        resources: DEFAULT_RESOURCES
+        count: 0,
+        resources: []
       });
     }
   }
@@ -202,15 +207,10 @@ export class ResourcesController {
         query = { $or: [{ _id: new ObjectId(id) }, { id }] };
       }
 
-      let resource = await db.collection('Resource').findOne(query);
+      const resource = await db.collection('Resource').findOne(query);
       if (!resource) {
-        const found = DEFAULT_RESOURCES.find((r) => r.id === id);
-        if (found) {
-          resource = found as any;
-        } else {
-          res.status(404).json({ success: false, error: 'Resource not found' });
-          return;
-        }
+        res.status(404).json({ success: false, error: 'Resource not found' });
+        return;
       }
 
       res.json({
@@ -218,12 +218,7 @@ export class ResourcesController {
         resource: { ...resource, id: resource.id || String(resource._id) }
       });
     } catch (error: any) {
-      const found = DEFAULT_RESOURCES.find((r) => r.id === req.params.id);
-      if (found) {
-        res.json({ success: true, resource: found });
-      } else {
-        res.status(500).json({ success: false, error: error?.message || 'Failed to fetch resource' });
-      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch resource' });
     }
   }
 
@@ -243,6 +238,7 @@ export class ResourcesController {
       };
 
       const result = await db.collection('Resource').insertOne(newResource);
+      await db.collection('resources').insertOne(newResource).catch(() => {});
 
       res.status(201).json({
         success: true,
@@ -276,6 +272,7 @@ export class ResourcesController {
       }
 
       await db.collection('Resource').updateOne(query, { $set: updates }, { upsert: true });
+      await db.collection('resources').updateOne(query, { $set: updates }, { upsert: true }).catch(() => {});
 
       res.json({
         success: true,
@@ -304,7 +301,8 @@ export class ResourcesController {
         query = { $or: [{ _id: new ObjectId(id) }, { id }] };
       }
 
-      await db.collection('Resource').deleteOne(query);
+      await db.collection('Resource').deleteMany(query);
+      await db.collection('resources').deleteMany(query);
 
       res.json({
         success: true,
