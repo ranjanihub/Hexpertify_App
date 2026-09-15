@@ -35,32 +35,45 @@ app.use(async (_req, _res, next) => {
 app.use('/api', router);
 
 // 2. Static Assets for Unified Frontend & Panels
-const publicDir = fs.existsSync(path.resolve(__dirname, '../public'))
-  ? path.resolve(__dirname, '../public')
-  : fs.existsSync(path.resolve(__dirname, '../../public'))
-  ? path.resolve(__dirname, '../../public')
-  : fs.existsSync(path.resolve(process.cwd(), 'Backend/public'))
-  ? path.resolve(process.cwd(), 'Backend/public')
-  : path.resolve(process.cwd(), 'public');
+const candidateDirs = [
+  path.resolve(__dirname, '../public'),
+  path.resolve(__dirname, '../../public'),
+  path.resolve(__dirname, 'public'),
+  path.resolve(process.cwd(), 'Backend/public'),
+  path.resolve(process.cwd(), 'public'),
+  path.resolve(process.cwd(), 'dist/public')
+];
+const publicDir = candidateDirs.find((d) => fs.existsSync(d)) || path.resolve(process.cwd(), 'Backend/public');
 
 const unifiedIndexPath = path.join(publicDir, 'index.html');
 const adminIndexPath = path.join(publicDir, 'admin', 'index.html');
 const consultantIndexPath = path.join(publicDir, 'consultant', 'index.html');
 
-// Serve static assets (prevent serving index.html automatically for route directories)
+// Serve static assets with explicit route bindings
+app.use('/assets', express.static(path.join(publicDir, 'assets'), {
+  immutable: true,
+  maxAge: '1y'
+}));
+app.use('/admin/assets', express.static(path.join(publicDir, 'admin/assets'), {
+  immutable: true,
+  maxAge: '1y'
+}));
+app.use('/consultant/assets', express.static(path.join(publicDir, 'consultant/assets'), {
+  immutable: true,
+  maxAge: '1y'
+}));
 app.use(express.static(publicDir, { index: false }));
-app.use('/admin', express.static(path.join(publicDir, 'admin'), {
-  index: false,
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+app.use('/admin', express.static(path.join(publicDir, 'admin'), { index: false }));
+app.use('/consultant', express.static(path.join(publicDir, 'consultant'), { index: false }));
+
+// Direct asset resolution fallback
+app.get(['/assets/*', '/admin/assets/*', '/consultant/assets/*'], (req: Request, res: Response) => {
+  const targetPath = path.join(publicDir, req.path);
+  if (fs.existsSync(targetPath)) {
+    return res.sendFile(targetPath);
   }
-}));
-app.use('/consultant', express.static(path.join(publicDir, 'consultant'), { 
-  index: false,
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  }
-}));
+  res.status(404).send('Asset Not Found');
+});
 
 // 3. Central Login Redirects (Enforcing http://localhost:5000/login as the ONLY login gateway)
 app.get(['/admin/login', '/consultant/login', '/client/login', '/signin', '/auth/login'], (req: Request, res: Response) => {
