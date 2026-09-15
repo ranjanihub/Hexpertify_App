@@ -4,33 +4,6 @@ import { getDatabase } from '../db/mongodb';
 
 export const DEFAULT_RESOURCES = [
   {
-    id: 'res-1',
-    title: 'Understanding Panic & Somatic Grounding Techniques',
-    type: 'article',
-    typeLabel: 'ARTICLE',
-    category: 'Articles',
-    isRecommended: true,
-    isSaved: true,
-    isSharedByTherapist: true,
-    description: 'Practical step-by-step physical grounding tools to de-escalate panic attacks and physical hyperarousal.',
-    fullContent: `Panic attacks can feel overwhelming, but somatic grounding techniques leverage your nervous system's natural calming pathways to restore emotional balance.
-
-### 1. The 5-4-3-2-1 Sensory Grounding Technique
-- **5 things you can SEE:** Look around and notice 5 specific visual details.
-- **4 things you can TOUCH:** Feel the physical texture of your chair, clothes, or ground.
-- **3 things you can HEAR:** Listen closely for subtle ambient sounds.
-- **2 things you can SMELL:** Notice any aromas or fresh air.
-- **1 thing you can TASTE:** Focus on the taste in your mouth or sip cool water.
-
-### 2. Box Breathing (4-4-4-4)
-Inhale for 4 seconds, hold for 4 seconds, exhale for 4 seconds, and pause for 4 seconds. Repeat 4 cycles to stimulate the vagus nerve and slow elevated heart rate.`,
-    duration: '5 min read',
-    readingMinutes: 5,
-    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
-    tags: ['Grounding', 'Panic De-escalation', 'Somatic', 'CBT']
-  },
-  {
     id: 'res-2',
     title: 'Cognitive Distortions Reference Guide & Worksheet',
     type: 'worksheet',
