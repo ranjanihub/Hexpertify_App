@@ -710,6 +710,14 @@ export const ResourcesView: React.FC = () => {
                 </button>
 
                 <button
+                  onClick={(e) => handleDeleteResource(selectedResource.id, e)}
+                  className="px-4 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+
+                <button
                   onClick={() => {
                     navigator.clipboard?.writeText(window.location.href);
                     showToast('Resource reference link copied to clipboard!');
