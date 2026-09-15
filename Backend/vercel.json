@@ -10,26 +10,26 @@
       "memory": 1024
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/assets/(.*)",
-      "dest": "/public/assets/$1"
+      "source": "/api/(.*)",
+      "destination": "/api/index.ts"
     },
     {
-      "src": "/admin/assets/(.*)",
-      "dest": "/public/admin/assets/$1"
+      "source": "/api",
+      "destination": "/api/index.ts"
     },
     {
-      "src": "/consultant/assets/(.*)",
-      "dest": "/public/consultant/assets/$1"
+      "source": "/admin/:match*",
+      "destination": "/admin/index.html"
     },
     {
-      "src": "/favicon.svg",
-      "dest": "/public/favicon.svg"
+      "source": "/consultant/:match*",
+      "destination": "/consultant/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/api/index.ts"
+      "source": "/((?!assets|admin/assets|consultant/assets|favicon.svg|hexpertify-logo.*|dr_sarah_jenkins.jpg|expertify-logo.png|icons.svg|logo.png|.*\\..*).*)",
+      "destination": "/index.html"
     }
   ]
 }
