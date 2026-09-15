@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "Backend/api/index.ts": {
-      "includeFiles": "Backend/public/**",
+      "includeFiles": "Backend/public/**/*.html",
       "maxDuration": 60,
       "memory": 1024
     }

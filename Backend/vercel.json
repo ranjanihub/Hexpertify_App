@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.ts": {
-      "includeFiles": "public/**",
+      "includeFiles": "public/**/*.html",
       "maxDuration": 60,
       "memory": 1024
     }
