@@ -158,12 +158,36 @@ export const ResourcesView: React.FC = () => {
     saveToLocalStorage(updated);
     if (selectedResource?.id === id) setSelectedResource(null);
 
+    // Synchronize and remove from Client and Therapist local caches
+    try {
+      const clientResources = localStorage.getItem('hexpertify_client_resources');
+      if (clientResources) {
+        const parsed = JSON.parse(clientResources);
+        localStorage.setItem('hexpertify_client_resources', JSON.stringify(parsed.filter((r: any) => String(r.id) !== String(id))));
+      }
+      const consultantResources = localStorage.getItem('hexpertify_consultant_resources');
+      if (consultantResources) {
+        const parsed = JSON.parse(consultantResources);
+        localStorage.setItem('hexpertify_consultant_resources', JSON.stringify(parsed.filter((r: any) => String(r.id) !== String(id))));
+      }
+      const deletedIds = JSON.parse(localStorage.getItem('hexpertify_deleted_resource_ids') || '[]');
+      if (!deletedIds.includes(String(id))) {
+        deletedIds.push(String(id));
+        localStorage.setItem('hexpertify_deleted_resource_ids', JSON.stringify(deletedIds));
+      }
+    } catch {}
+
+    // Dispatch real-time global event across browser tabs and components
+    window.dispatchEvent(new CustomEvent('resource_deleted', { detail: { id } }));
+    window.dispatchEvent(new CustomEvent('resource_data_updated'));
+
     // Delete from MongoDB Atlas
     api.delete(`/api/admin/resources?id=${encodeURIComponent(id)}`).catch((err) => {
       console.error('Error deleting resource from DB:', err);
     });
+    fetch(`/api/resources?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
 
-    showToast(`Deleted resource "${target?.title || id}" from MongoDB Atlas.`);
+    showToast(`Deleted resource "${target?.title || id}" across all platform panels.`);
   };
 
   const handleAddResourceSubmit = (e: React.FormEvent) => {
