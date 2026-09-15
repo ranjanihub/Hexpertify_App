@@ -11,7 +11,11 @@
     "dev:admin": "npm --prefix Super_Admin/admin_dashboard-main run dev",
     "build": "npm --prefix Backend run build",
     "vercel-build": "npm --prefix Backend run build",
+    "postinstall": "npm --prefix Backend install",
     "build:all": "npm --prefix Backend run build:all",
     "start": "npm --prefix Backend run start"
+  },
+  "dependencies": {
+    "typescript": "^5.8.2"
   }
 }
