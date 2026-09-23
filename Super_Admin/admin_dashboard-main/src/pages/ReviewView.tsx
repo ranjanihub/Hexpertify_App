@@ -12,7 +12,10 @@ import {
   Sparkles,
   RefreshCw,
   X,
-  MessageSquare
+  MessageSquare,
+  FileText,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 
 export interface BlogPostItem {
@@ -23,6 +26,11 @@ export interface BlogPostItem {
   tags?: string[];
   content: string;
   featuredImage?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
+  isPdf?: boolean;
   status: 'pending' | 'submitted' | 'published' | 'approved' | 'rejected' | 'draft' | string;
   author: string;
   authorEmail: string;
@@ -44,12 +52,62 @@ export interface BlogOutlineItem {
   targetAudience: string;
   keywords: string[];
   notes?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
+  isPdf?: boolean;
   status: 'pending' | 'approved' | 'rejected';
   author: string;
   authorEmail: string;
   authorRole: string;
   reviewNotes?: string;
   createdAt: string;
+}
+
+// ── PDF Utilities for Secure Cross-Browser Viewing & Downloading ──────────────
+export function getPdfBlobUrl(urlOrDataUrl?: string | null): string {
+  if (!urlOrDataUrl) return '';
+  if (!urlOrDataUrl.startsWith('data:')) return urlOrDataUrl;
+  try {
+    const parts = urlOrDataUrl.split(',');
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+    const base64Data = parts[1] || '';
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Uint8Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const blob = new Blob([byteNumbers], { type: mime });
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.error('Failed to convert Data URL to Blob URL:', err);
+    return urlOrDataUrl;
+  }
+}
+
+export function openPdfWindow(urlOrDataUrl?: string | null) {
+  if (!urlOrDataUrl) return;
+  const blobUrl = getPdfBlobUrl(urlOrDataUrl);
+  if (blobUrl) {
+    const win = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    if (win) {
+      win.focus();
+    }
+  }
+}
+
+export function downloadPdfFile(urlOrDataUrl?: string | null, fileName: string = 'Document.pdf') {
+  if (!urlOrDataUrl) return;
+  const blobUrl = getPdfBlobUrl(urlOrDataUrl);
+  if (!blobUrl) return;
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export const ReviewView: React.FC = () => {
@@ -62,12 +120,29 @@ export const ReviewView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | number | null>(null);
 
-  // Modals
+  // Modals & Active PDF Blob
   const [selectedPost, setSelectedPost] = useState<BlogPostItem | null>(null);
+  const [activeBlobUrl, setActiveBlobUrl] = useState<string | null>(null);
   const [rejectModalPost, setRejectModalPost] = useState<BlogPostItem | null>(null);
   const [rejectionNotes, setRejectionNotes] = useState('');
 
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    if (selectedPost?.fileUrl) {
+      const bUrl = getPdfBlobUrl(selectedPost.fileUrl);
+      setActiveBlobUrl(bUrl);
+      cleanup = () => {
+        if (bUrl && bUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(bUrl);
+        }
+      };
+    } else {
+      setActiveBlobUrl(null);
+    }
+    return cleanup;
+  }, [selectedPost?.fileUrl]);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
@@ -109,28 +184,28 @@ export const ReviewView: React.FC = () => {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'published',
-          reviewNotes: 'Approved by Platform Editorial Admin. Post is now published.',
+          status: 'approved',
+          reviewNotes: 'Approved by Platform Editorial Admin.',
           reviewedBy: 'Super Admin'
         })
       });
 
       if (res.ok) {
-        showToast(`"${post.title}" approved and published successfully!`);
+        showToast(`"${post.title}" approved successfully!`);
         setPosts((prev) =>
           prev.map((p) =>
             p.id === post.id
               ? {
                   ...p,
-                  status: 'published',
-                  reviewNotes: 'Approved by Platform Editorial Admin. Post is now published.',
+                  status: 'approved',
+                  reviewNotes: 'Approved by Platform Editorial Admin.',
                   reviewedAt: new Date().toISOString()
                 }
               : p
           )
         );
         if (selectedPost && selectedPost.id === post.id) {
-          setSelectedPost((prev) => prev ? { ...prev, status: 'published' } : null);
+          setSelectedPost((prev) => prev ? { ...prev, status: 'approved' } : null);
         }
       } else {
         showToast('Failed to approve post', 'error');
@@ -292,7 +367,7 @@ export const ReviewView: React.FC = () => {
             </h1>
             <p className="text-sm text-purple-100/90 max-w-2xl leading-relaxed">
               Review psychoeducational articles and outline pitches submitted by licensed therapists.
-              Approve verified content to publish live across the Hexpertify patient portal.
+              Verify and approve submissions for consultant clinical records.
             </p>
           </div>
 
@@ -347,14 +422,14 @@ export const ReviewView: React.FC = () => {
         <div className="p-5 bg-white rounded-2xl border border-emerald-200 shadow-xs hover:border-emerald-400 transition-all bg-gradient-to-br from-white to-emerald-50/30">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Approved / Published
+              Approved
             </span>
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
           <p className="text-3xl font-extrabold text-emerald-900 mt-2">{publishedCount}</p>
-          <p className="text-xs text-emerald-800/80 font-medium mt-1">Live on Hexpertify</p>
+          <p className="text-xs text-emerald-800/80 font-medium mt-1">Verified submissions</p>
         </div>
 
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-rose-300 transition-all">
@@ -412,7 +487,7 @@ export const ReviewView: React.FC = () => {
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Approved & Live ({publishedCount})</span>
+            <span>Approved ({publishedCount})</span>
           </button>
           <button
             onClick={() => setStatusFilter('rejected')}
@@ -520,13 +595,26 @@ export const ReviewView: React.FC = () => {
                         {isPublished && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            Approved & Live
+                            Approved
                           </span>
                         )}
                         {isRejected && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
                             <XCircle className="w-3.5 h-3.5 text-rose-600" />
                             Rejected / Revision
+                          </span>
+                        )}
+
+                        {Boolean(
+                          post.isPdf ||
+                          post.fileType === 'application/pdf' ||
+                          post.fileName?.toLowerCase().endsWith('.pdf') ||
+                          post.content?.toLowerCase().endsWith('.pdf') ||
+                          post.fileUrl?.startsWith('data:application/pdf')
+                        ) && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
+                            <FileText className="w-3 h-3 text-rose-600" />
+                            PDF Document
                           </span>
                         )}
 
@@ -547,10 +635,26 @@ export const ReviewView: React.FC = () => {
                         {post.title}
                       </h3>
 
-                      {/* Excerpt */}
-                      <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed">
-                        {post.content.replace(/[#*`_]/g, '')}
-                      </p>
+                      {/* Excerpt or PDF indicator */}
+                      {Boolean(
+                        post.isPdf ||
+                        post.fileType === 'application/pdf' ||
+                        post.fileName?.toLowerCase().endsWith('.pdf') ||
+                        post.content?.toLowerCase().endsWith('.pdf') ||
+                        post.fileUrl?.startsWith('data:application/pdf')
+                      ) ? (
+                        <p className="text-xs text-rose-700 font-semibold flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span className="truncate">Attached File: {post.fileName || (post.content.endsWith('.pdf') ? post.content : 'Document.pdf')}</span>
+                          {post.fileSize && (
+                            <span className="text-slate-400 font-normal">({(post.fileSize / 1024).toFixed(1)} KB)</span>
+                          )}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed">
+                          {post.content.replace(/[#*`_]/g, '')}
+                        </p>
+                      )}
 
                       {/* Author row & Tags */}
                       <div className="flex flex-wrap items-center gap-4 pt-1">
@@ -612,7 +716,7 @@ export const ReviewView: React.FC = () => {
                           className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Approve & Publish</span>
+                          <span>Approve</span>
                         </button>
 
                         <button
@@ -637,7 +741,7 @@ export const ReviewView: React.FC = () => {
                         }}
                         className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-semibold transition-all"
                       >
-                        Revoke / Unpublish
+                        Revoke Approval
                       </button>
                     )}
 
@@ -680,95 +784,123 @@ export const ReviewView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {outlines.map((outline) => (
-              <div
-                key={outline.id}
-                className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-[#5e2be2]/40 transition-all space-y-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-[#5e2be2] uppercase">
-                      Outline Pitch
+            {outlines.map((outline) => {
+              const isOutlinePdf = Boolean(
+                outline.isPdf ||
+                outline.fileType === 'application/pdf' ||
+                outline.fileName?.toLowerCase().endsWith('.pdf') ||
+                outline.fileUrl ||
+                outline.keyPoints?.some((kp) => kp.toLowerCase().includes('.pdf'))
+              );
+              return (
+                <div
+                  key={outline.id}
+                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-[#5e2be2]/40 transition-all space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-[#5e2be2] uppercase">
+                          Outline Pitch
+                        </span>
+                        {isOutlinePdf && (
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
+                            <FileText className="w-2.5 h-2.5" /> PDF Attached
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900">{outline.proposedTitle}</h4>
+                    </div>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      {outline.status}
                     </span>
-                    <h4 className="text-sm font-bold text-slate-900">{outline.proposedTitle}</h4>
                   </div>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                    {outline.status}
-                  </span>
-                </div>
 
-                <div className="text-xs text-slate-600 space-y-1">
-                  <p className="font-semibold text-slate-700">Target Audience: <span className="font-normal">{outline.targetAudience}</span></p>
-                  <div className="space-y-1 pt-1">
-                    <p className="font-semibold text-slate-700">Key Points:</p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 text-slate-500">
-                      {outline.keyPoints?.map((p, i) => (
-                        <li key={i} className="truncate">{p}</li>
-                      ))}
-                    </ul>
+                  <div className="text-xs text-slate-600 space-y-1">
+                    <p className="font-semibold text-slate-700">Target Audience: <span className="font-normal">{outline.targetAudience}</span></p>
+                    <div className="space-y-1 pt-1">
+                      <p className="font-semibold text-slate-700">Key Points:</p>
+                      <ul className="list-disc list-inside space-y-0.5 pl-1 text-slate-500">
+                        {outline.keyPoints?.map((p, i) => (
+                          <li key={i} className="truncate">{p}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {outline.fileUrl && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => openPdfWindow(outline.fileUrl!)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-rose-600" />
+                        <span>View Pitch PDF</span>
+                        <ExternalLink className="w-3 h-3 ml-0.5 text-rose-500" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400 font-medium">{outline.author}</span>
+                    <span className="text-[11px] text-slate-400">{formatRelativeTime(outline.createdAt)}</span>
                   </div>
                 </div>
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">{outline.author}</span>
-                  <span className="text-[11px] text-slate-400">{formatRelativeTime(outline.createdAt)}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-      )}
-
-      {/* ── FULL ARTICLE PREVIEW MODAL ───────────────────────── */}
+      )}      {/* ── FULL ARTICLE PREVIEW MODAL ───────────────────────── */}
       {selectedPost && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[78vh] sm:max-h-[80vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#5e2be2]/10 text-[#5e2be2]">
+            <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#5e2be2]/10 text-[#5e2be2]">
                   {selectedPost.category}
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-[11px] text-slate-400">
                   Submitted {formatRelativeTime(selectedPost.createdAt)}
                 </span>
               </div>
               <button
                 onClick={() => setSelectedPost(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+            {/* Modal Body with explicit min-h-0 to force internal scrolling */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 overscroll-contain">
               {selectedPost.featuredImage && (
                 <img
                   src={selectedPost.featuredImage}
                   alt={selectedPost.title}
-                  className="w-full h-64 object-cover rounded-2xl shadow-sm border border-slate-100"
+                  className="w-full h-36 sm:h-44 object-cover rounded-2xl shadow-sm border border-slate-100"
                 />
               )}
 
               <div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight">
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug">
                   {selectedPost.title}
                 </h2>
 
                 {/* Author Card */}
-                <div className="flex items-center gap-3 mt-4 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2.5 mt-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <img
                     src={
                       selectedPost.authorAvatar ||
                       'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=100'
                     }
                     alt={selectedPost.author}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-200"
+                    className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-200 shrink-0"
                   />
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">{selectedPost.author}</p>
-                    <p className="text-[11px] text-slate-500 font-medium">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">{selectedPost.author}</p>
+                    <p className="text-[10px] text-slate-500 font-medium truncate">
                       {selectedPost.authorRole} • {selectedPost.authorEmail}
                     </p>
                   </div>
@@ -781,7 +913,7 @@ export const ReviewView: React.FC = () => {
                   {selectedPost.tags.map((t) => (
                     <span
                       key={t}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700"
+                      className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700"
                     >
                       #{t}
                     </span>
@@ -789,17 +921,108 @@ export const ReviewView: React.FC = () => {
                 </div>
               )}
 
-              {/* Full Content */}
-              <div className="prose prose-slate max-w-none text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-serif border-t border-slate-100 pt-6">
-                {selectedPost.content}
-              </div>
+              {/* Full Content or PDF Document Viewer */}
+              {(() => {
+                const isPdf = Boolean(
+                  selectedPost.isPdf ||
+                  selectedPost.fileType === 'application/pdf' ||
+                  selectedPost.fileName?.toLowerCase().endsWith('.pdf') ||
+                  selectedPost.content?.toLowerCase().endsWith('.pdf') ||
+                  selectedPost.fileUrl?.startsWith('data:application/pdf') ||
+                  selectedPost.fileUrl?.toLowerCase().endsWith('.pdf')
+                );
+                const pdfName = selectedPost.fileName || (selectedPost.content?.endsWith('.pdf') ? selectedPost.content : 'Document.pdf');
+
+                if (isPdf) {
+                  return (
+                    <div className="space-y-4 pt-2 border-t border-slate-100">
+                      {/* PDF Header Card */}
+                      <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-200 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-rose-500/20">
+                            <FileText className="w-6 h-6" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-rose-200 text-rose-800 uppercase tracking-wider">
+                                PDF Document Uploaded
+                              </span>
+                              {selectedPost.fileSize ? (
+                                <span className="text-xs text-rose-700 font-medium">
+                                  {(selectedPost.fileSize / 1024).toFixed(1)} KB
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-sm font-bold text-slate-900 truncate mt-0.5">
+                              {pdfName}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedPost.fileUrl && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openPdfWindow(selectedPost.fileUrl!)}
+                              className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Open in New Tab</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => downloadPdfFile(selectedPost.fileUrl!, pdfName)}
+                              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-rose-600/20 cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download PDF</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Interactive PDF frame with Blob URL */}
+                      {activeBlobUrl ? (
+                        <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
+                          <object
+                            data={`${activeBlobUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+                            type="application/pdf"
+                            className="w-full h-[380px] sm:h-[460px] border-none"
+                          >
+                            <iframe
+                              src={`${activeBlobUrl}#toolbar=1`}
+                              className="w-full h-[380px] sm:h-[460px] border-none"
+                              title={pdfName}
+                            />
+                          </object>
+                        </div>
+                      ) : (
+                        <div className="p-6 rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 text-center space-y-1.5">
+                          <p className="text-xs font-bold text-rose-800">
+                            Attached PDF Document: {pdfName}
+                          </p>
+                          <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                            The consultant submitted this article as a PDF file. Future uploads will stream interactive inline preview and direct download.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="prose prose-slate max-w-none text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-serif border-t border-slate-100 pt-4">
+                    {selectedPost.content}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+            <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-slate-100 bg-slate-50/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
               <button
                 onClick={() => setSelectedPost(null)}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-200/50 transition-all"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-200/50 transition-all cursor-pointer"
               >
                 Close Preview
               </button>
@@ -812,7 +1035,7 @@ export const ReviewView: React.FC = () => {
                     setRejectModalPost(post);
                     setRejectionNotes('');
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all border border-rose-200"
+                  className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all border border-rose-200 cursor-pointer"
                 >
                   Reject with Feedback
                 </button>
@@ -820,10 +1043,10 @@ export const ReviewView: React.FC = () => {
                 <button
                   onClick={() => handleApprove(selectedPost)}
                   disabled={actionLoadingId === selectedPost.id}
-                  className="px-5 py-2.5 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold shadow-md shadow-[#5e2be2]/25 transition-all active:scale-95 flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold shadow-md shadow-[#5e2be2]/25 transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Approve & Publish Article</span>
+                  <span>Approve Article</span>
                 </button>
               </div>
             </div>
@@ -833,8 +1056,8 @@ export const ReviewView: React.FC = () => {
 
       {/* ── REJECTION / FEEDBACK MODAL ───────────────────────── */}
       {rejectModalPost && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-3.5 shadow-2xl border border-slate-200 my-auto max-h-[80vh] overflow-y-auto animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                 <AlertCircle className="w-5 h-5" />
@@ -864,7 +1087,7 @@ export const ReviewView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setRejectModalPost(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -872,7 +1095,7 @@ export const ReviewView: React.FC = () => {
                 type="button"
                 onClick={handleRejectConfirm}
                 disabled={actionLoadingId === rejectModalPost.id}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
               >
                 Confirm Rejection
               </button>

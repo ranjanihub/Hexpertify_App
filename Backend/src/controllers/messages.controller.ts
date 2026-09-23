@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
+import { cacheService } from '../services/cache.service';
 
 interface SSEClient {
   id: string;
@@ -599,17 +600,78 @@ export class MessagesController {
   static async markRead(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const { clientEmail, consultantId } = req.body || {};
+      const { clientEmail, clientId, consultantId, messageIds } = req.body || {};
 
-      const query: any = {};
-      if (clientEmail) query.clientEmail = String(clientEmail).toLowerCase();
-      if (consultantId) query.consultantId = String(consultantId);
+      const conditions: any[] = [];
 
-      await db.collection<any>('Message').updateMany(query, { $set: { read: true, updatedAt: new Date() } });
+      if (Array.isArray(messageIds) && messageIds.length > 0) {
+        const idMatches: any[] = [];
+        for (const mid of messageIds) {
+          idMatches.push({ id: mid }, { id: String(mid) });
+          if (ObjectId.isValid(mid)) {
+            idMatches.push({ _id: new ObjectId(mid) });
+          }
+        }
+        conditions.push({ $or: idMatches });
+      }
+
+      if (clientEmail) {
+        const cEmail = String(clientEmail).toLowerCase().trim();
+        conditions.push({
+          $or: [
+            { clientEmail: cEmail },
+            { recipientEmail: cEmail },
+            { senderEmail: cEmail }
+          ]
+        });
+      }
+
+      if (clientId) {
+        const cId = String(clientId).trim();
+        conditions.push({
+          $or: [
+            { clientId: cId },
+            { recipientId: cId },
+            { receiverId: cId },
+            { senderId: cId },
+            { userId: cId }
+          ]
+        });
+      }
+
+      if (consultantId) {
+        const docId = String(consultantId).trim();
+        conditions.push({
+          $or: [
+            { consultantId: docId },
+            { recipientId: docId },
+            { receiverId: docId },
+            { senderId: docId }
+          ]
+        });
+      }
+
+      let finalFilter: any = {};
+      if (conditions.length === 1) {
+        finalFilter = conditions[0];
+      } else if (conditions.length > 1) {
+        finalFilter = { $and: conditions };
+      }
+
+      await Promise.all([
+        db.collection<any>('Message').updateMany(finalFilter, {
+          $set: { read: true, isRead: true, readAt: new Date(), updatedAt: new Date() }
+        }),
+        db.collection<any>('messages').updateMany(finalFilter, {
+          $set: { read: true, isRead: true, readAt: new Date(), updatedAt: new Date() }
+        })
+      ]);
+
+      cacheService.invalidateTag('messages');
 
       MessagesController.broadcast({
         type: 'MESSAGES_READ',
-        data: { clientEmail, consultantId }
+        data: { clientEmail, clientId, consultantId }
       });
 
       res.json({ success: true, message: 'Messages marked as read' });

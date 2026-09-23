@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import * as yup from "yup";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
@@ -9,7 +10,7 @@ import {
   BookingConfirmationToCustomerHtml,
 } from "@/lib/email-templates";
 
-export const getConsultantByIdentifier = async (
+export const getConsultantByIdentifier = cache(async (
   professionIdentifier: string,
   identifier: string,
 ) => {
@@ -51,13 +52,15 @@ export const getConsultantByIdentifier = async (
   //         consultant.reviews.length
   //         : 0;
   const averageRating = consultant.reviews.length
-    ? (
-        consultant.reviews.reduce(
-          (sum, review) => sum + (review.rating || 0),
-          0,
-        ) / consultant.reviews.length
-      ).toFixed(1)
-    : "0";
+    ? Number(
+        (
+          consultant.reviews.reduce(
+            (sum, review) => sum + (review.rating || 0),
+            0,
+          ) / consultant.reviews.length
+        ).toFixed(1)
+      )
+    : 0;
   const lowestPrice =
     consultant.services.length > 0
       ? Math.min(...consultant.services.map((s) => s.price))
@@ -115,7 +118,7 @@ export const getConsultantByIdentifier = async (
     profession: consultant.profession,
     faqs: consultant.faqs,
   };
-};
+});
 
 const bookingSchema = yup.object({
   userId: yup.string().required("User ID is required"),

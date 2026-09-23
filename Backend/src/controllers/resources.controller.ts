@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
+import { cacheService } from '../services/cache.service';
 
 export const DEFAULT_RESOURCES = [
   {
@@ -130,34 +131,38 @@ export class ResourcesController {
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
-      let resources = await db.collection('Resource').find({}).toArray();
+      const responseData = await cacheService.wrap('resources:all', ['resources'], 60, async () => {
+        const db = getDatabase();
+        let resources = await db.collection('Resource').find({}).toArray();
 
-      const meta = await db.collection('SystemMeta').findOne({ key: 'resources_seeded' });
-      if (!meta && (!resources || resources.length === 0)) {
-        try {
-          await db.collection('Resource').insertMany(DEFAULT_RESOURCES as any);
-          await db.collection('resources').insertMany(DEFAULT_RESOURCES as any);
-          await db.collection('SystemMeta').updateOne(
-            { key: 'resources_seeded' },
-            { $set: { key: 'resources_seeded', seededAt: new Date() } },
-            { upsert: true }
-          );
-          resources = await db.collection('Resource').find({}).toArray();
-        } catch {
-          resources = DEFAULT_RESOURCES as any;
+        const meta = await db.collection('SystemMeta').findOne({ key: 'resources_seeded' });
+        if (!meta && (!resources || resources.length === 0)) {
+          try {
+            await db.collection('Resource').insertMany(DEFAULT_RESOURCES as any);
+            await db.collection('resources').insertMany(DEFAULT_RESOURCES as any);
+            await db.collection('SystemMeta').updateOne(
+              { key: 'resources_seeded' },
+              { $set: { key: 'resources_seeded', seededAt: new Date() } },
+              { upsert: true }
+            );
+            resources = await db.collection('Resource').find({}).toArray();
+          } catch {
+            resources = DEFAULT_RESOURCES as any;
+          }
         }
-      }
 
-      res.json({
-        success: true,
-        count: resources.length,
-        resources: resources.map((r) => ({
-          ...r,
-          id: r.id || String(r._id),
-          category: r.category || (r.type ? r.type.charAt(0).toUpperCase() + r.type.slice(1) + 's' : 'Articles')
-        }))
+        return {
+          success: true,
+          count: resources.length,
+          resources: resources.map((r) => ({
+            ...r,
+            id: r.id || String(r._id),
+            category: r.category || (r.type ? r.type.charAt(0).toUpperCase() + r.type.slice(1) + 's' : 'Articles')
+          }))
+        };
       });
+
+      res.json(responseData);
     } catch (error: any) {
       res.json({
         success: true,
@@ -173,23 +178,33 @@ export class ResourcesController {
   static async getById(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || req.query.id || '');
-      const db = getDatabase();
+      const cacheKey = `resource:${id}`;
 
-      let query: any = { id };
-      if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
-      }
+      const responseData = await cacheService.wrap(cacheKey, ['resources'], 60, async () => {
+        const db = getDatabase();
 
-      const resource = await db.collection('Resource').findOne(query);
-      if (!resource) {
+        let query: any = { id };
+        if (ObjectId.isValid(id)) {
+          query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+        }
+
+        const resource = await db.collection('Resource').findOne(query);
+        if (!resource) {
+          return null;
+        }
+
+        return {
+          success: true,
+          resource: { ...resource, id: resource.id || String(resource._id) }
+        };
+      });
+
+      if (!responseData) {
         res.status(404).json({ success: false, error: 'Resource not found' });
         return;
       }
 
-      res.json({
-        success: true,
-        resource: { ...resource, id: resource.id || String(resource._id) }
-      });
+      res.json(responseData);
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch resource' });
     }
@@ -212,6 +227,8 @@ export class ResourcesController {
 
       const result = await db.collection('Resource').insertOne(newResource);
       await db.collection('resources').insertOne(newResource).catch(() => {});
+
+      cacheService.invalidateTags(['resources']);
 
       res.status(201).json({
         success: true,
@@ -247,6 +264,8 @@ export class ResourcesController {
       await db.collection('Resource').updateOne(query, { $set: updates }, { upsert: true });
       await db.collection('resources').updateOne(query, { $set: updates }, { upsert: true }).catch(() => {});
 
+      cacheService.invalidateTags(['resources']);
+
       res.json({
         success: true,
         message: 'Resource updated successfully'
@@ -276,6 +295,8 @@ export class ResourcesController {
 
       await db.collection('Resource').deleteMany(query);
       await db.collection('resources').deleteMany(query);
+
+      cacheService.invalidateTags(['resources']);
 
       res.json({
         success: true,

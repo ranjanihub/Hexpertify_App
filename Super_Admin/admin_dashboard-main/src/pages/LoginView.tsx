@@ -51,7 +51,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
     setIsLoading(true);
 
     try {
-      const endpoints = ['http://localhost:3000/api/auth/login', 'http://localhost:5000/api/auth/login', '/api/auth/login'];
+      const endpoints = ['http://localhost:5000/api/auth/login', '/api/auth/login'];
       let res: Response | null = null;
       let data: any = null;
 
@@ -61,7 +61,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: adminEmail, password: adminPassword, role: 'admin' }),
-            signal: AbortSignal.timeout(1500),
+            signal: AbortSignal.timeout(3000),
           });
           if (r) {
             res = r;
@@ -110,7 +110,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
     setIsLoading(true);
 
     try {
-      const endpoints = ['http://localhost:3000/api/auth/login', 'http://localhost:5000/api/auth/login', '/api/auth/login'];
+      const endpoints = ['http://localhost:5000/api/auth/login', '/api/auth/login'];
       let res: Response | null = null;
       let data: any = null;
 
@@ -120,7 +120,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: therapistEmail, password: therapistPassword, role: 'therapist' }),
-            signal: AbortSignal.timeout(1500),
+            signal: AbortSignal.timeout(3000),
           });
           if (r) {
             res = r;
@@ -170,7 +170,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
     setIsLoading(true);
 
     try {
-      const endpoints = ['http://localhost:3000/api/auth/login', 'http://localhost:5000/api/auth/login', '/api/auth/login'];
+      const endpoints = ['http://localhost:5000/api/auth/login', '/api/auth/login'];
       let res: Response | null = null;
       let data: any = null;
 
@@ -180,7 +180,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: clientEmail, password: clientPassword, role: 'client' }),
-            signal: AbortSignal.timeout(1500),
+            signal: AbortSignal.timeout(3000),
           });
           if (r) {
             res = r;

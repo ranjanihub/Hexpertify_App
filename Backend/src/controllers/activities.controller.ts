@@ -143,31 +143,37 @@ const DEFAULT_SEED_ACTIVITIES = [
   }
 ];
 
+import { cacheService } from '../services/cache.service';
+
 export class ActivitiesController {
   /**
    * GET /api/activities and GET /api/admin/activities
    */
   static async getAll(_req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
-      let activities = await db.collection('Activity').find({}).toArray();
+      const responseData = await cacheService.wrap('activities:all', ['activities'], 30, async () => {
+        const db = getDatabase();
+        let activities = await db.collection('Activity').find({}).toArray();
 
-      if (activities.length === 0) {
-        // Auto-seed default clinical activities in MongoDB Atlas
-        await db.collection('Activity').insertMany(DEFAULT_SEED_ACTIVITIES).catch(() => {});
-        activities = await db.collection('Activity').find({}).toArray();
-      }
+        if (activities.length === 0) {
+          // Auto-seed default clinical activities in MongoDB Atlas
+          await db.collection('Activity').insertMany(DEFAULT_SEED_ACTIVITIES).catch(() => {});
+          activities = await db.collection('Activity').find({}).toArray();
+        }
 
-      res.json({
-        success: true,
-        count: activities.length,
-        activities: activities.map((a) => ({
-          ...a,
-          id: a.id || String(a._id),
-          title: a.title || a.name || 'Therapeutic Activity',
-          category: (a.categoryTag || a.category || 'MINDFULNESS').toUpperCase()
-        }))
+        return {
+          success: true,
+          count: activities.length,
+          activities: activities.map((a) => ({
+            ...a,
+            id: a.id || String(a._id),
+            title: a.title || a.name || 'Therapeutic Activity',
+            category: (a.categoryTag || a.category || 'MINDFULNESS').toUpperCase()
+          }))
+        };
       });
+
+      res.json(responseData);
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch activities' });
     }
@@ -218,6 +224,7 @@ export class ActivitiesController {
       };
 
       const result = await db.collection('Activity').insertOne(newActivity);
+      cacheService.invalidateTags(['activities', 'stats']);
 
       res.status(201).json({
         success: true,
@@ -251,6 +258,7 @@ export class ActivitiesController {
       }
 
       await db.collection('Activity').updateOne(query, { $set: updates }, { upsert: true });
+      cacheService.invalidateTags(['activities', 'stats']);
 
       res.json({
         success: true,
@@ -393,6 +401,8 @@ export class ActivitiesController {
         await db.collection('notifications').insertMany(notificationsToInsert).catch(() => {});
       }
 
+      cacheService.invalidateTags(['activities', 'stats', 'users']);
+
       res.status(200).json({
         success: true,
         message: `Activity assigned and ${notificationsToInsert.length} client notification(s) dispatched.`,
@@ -423,6 +433,7 @@ export class ActivitiesController {
       }
 
       await db.collection('Activity').deleteOne(query);
+      cacheService.invalidateTags(['activities', 'stats']);
 
       res.json({
         success: true,

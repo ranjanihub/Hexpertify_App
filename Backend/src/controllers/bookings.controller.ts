@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { MailService } from '../services/mail.service';
+import { cacheService } from '../services/cache.service';
 
 export class BookingsController {
   /**
@@ -9,97 +10,110 @@ export class BookingsController {
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
-      const [primaryBookings, users, consultants, services] = await Promise.all([
-        db.collection('Booking').find({}).toArray(),
-        db.collection('User').find({}).toArray(),
-        db.collection('Consultant').find({}).toArray(),
-        db.collection('Service').find({}).toArray()
-      ]);
+      const { clientEmail, clientId, consultantId, status } = req.query;
+      const isConsultantQuery = Boolean(consultantId || req.query.therapistId);
+      const cacheKey = `bookings:all:${clientEmail || ''}:${clientId || ''}:${consultantId || ''}:${status || ''}`;
 
-      const userMap = new Map();
-      users.forEach((u: any) => {
-        userMap.set(String(u._id), u);
-        if (u.id) userMap.set(String(u.id), u);
-      });
+      const responseData = await cacheService.wrap(cacheKey, ['bookings', 'users', 'consultants'], 15, async () => {
+        const db = getDatabase();
+        const [primaryBookings, users, consultants, services] = await Promise.all([
+          db.collection('Booking').find({}).toArray().catch(() => db.collection('bookings').find({}).toArray().catch(() => [])),
+          db.collection('User').find({}).toArray().catch(() => db.collection('users').find({}).toArray().catch(() => [])),
+          db.collection('Consultant').find({}).toArray().catch(() => db.collection('consultants').find({}).toArray().catch(() => [])),
+          db.collection('Service').find({}).toArray().catch(() => db.collection('services').find({}).toArray().catch(() => []))
+        ]);
 
-      const consultantMap = new Map();
-      consultants.forEach((c: any) => {
-        consultantMap.set(String(c._id), c);
-        if (c.id) consultantMap.set(String(c.id), c);
-      });
+        const userMap = new Map();
+        users.forEach((u: any) => {
+          userMap.set(String(u._id), u);
+          if (u.id) userMap.set(String(u.id), u);
+        });
 
-      const serviceMap = new Map();
-      services.forEach((s: any) => {
-        serviceMap.set(String(s._id), s);
-        if (s.id) serviceMap.set(String(s.id), s);
-      });
+        const consultantMap = new Map();
+        consultants.forEach((c: any) => {
+          consultantMap.set(String(c._id), c);
+          if (c.id) consultantMap.set(String(c.id), c);
+        });
 
-      const enriched = primaryBookings.map((b: any) => {
-        const u = userMap.get(String(b.userId || b.clientId));
-        const c = consultantMap.get(String(b.consultantId || b.therapistId));
-        const s = serviceMap.get(String(b.serviceId));
+        const serviceMap = new Map();
+        services.forEach((s: any) => {
+          serviceMap.set(String(s._id), s);
+          if (s.id) serviceMap.set(String(s.id), s);
+        });
 
-        const bookingDate = b.scheduledAt || b.date || b.createdAt;
-        const dObj = new Date(bookingDate || Date.now());
-        const timeStr = b.time || dObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        const dateStr = dObj.toISOString().split('T')[0];
+        const enriched = primaryBookings.map((b: any) => {
+          const u = userMap.get(String(b.userId || b.clientId));
+          const c = consultantMap.get(String(b.consultantId || b.therapistId));
+          const s = serviceMap.get(String(b.serviceId));
 
-        let rawConsultantName = b.consultantName || c?.name;
-        let consultantName = 'Assigned Therapist';
-        let inferredService = b.serviceTitle || s?.title;
+          const bookingDate = b.scheduledAt || b.date || b.createdAt;
+          const dObj = new Date(bookingDate || Date.now());
+          const timeStr = b.time || dObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          const dateStr = dObj.toISOString().split('T')[0];
 
-        if (rawConsultantName) {
-          if (rawConsultantName.includes(' - By ')) {
-            const parts = rawConsultantName.split(' - By ');
-            inferredService = inferredService || parts[0].trim();
-            consultantName = parts[1]?.trim() || rawConsultantName;
-          } else {
-            consultantName = rawConsultantName;
+          let rawConsultantName = b.consultantName || c?.name;
+          let consultantName = 'Assigned Therapist';
+          let inferredService = b.serviceTitle || s?.title;
+
+          if (rawConsultantName) {
+            if (rawConsultantName.includes(' - By ')) {
+              const parts = rawConsultantName.split(' - By ');
+              inferredService = inferredService || parts[0].trim();
+              consultantName = parts[1]?.trim() || rawConsultantName;
+            } else {
+              consultantName = rawConsultantName;
+            }
           }
+
+          const rawClientEmail = b.clientEmail || u?.email || '';
+          const rawClientPhone = b.clientPhone || u?.phoneNumber || u?.phone || '';
+
+          return {
+            ...b,
+            id: b.id || String(b._id),
+            clientName: b.clientName || u?.name || u?.email?.split('@')[0] || 'Client',
+            clientEmail: isConsultantQuery ? undefined : rawClientEmail,
+            clientPhone: isConsultantQuery ? undefined : rawClientPhone,
+            consultantName,
+            consultantAvatar: b.consultantAvatar || c?.photoUrl || c?.photo || '',
+            serviceTitle: inferredService || 'Individual Clinical Psychology',
+            duration: b.durationMinutes || s?.duration || 50,
+            date: dateStr,
+            time: timeStr,
+            status: (b.status || 'CONFIRMED').toUpperCase()
+          };
+        });
+
+        let filtered = enriched;
+
+        if (clientEmail) {
+          const cEmail = String(clientEmail).toLowerCase().trim();
+          filtered = filtered.filter((b: any) => (b.clientEmail || '').toLowerCase().trim() === cEmail);
+        }
+        if (clientId) {
+          const cId = String(clientId);
+          filtered = filtered.filter((b: any) => String(b.clientId || b.userId) === cId);
+        }
+        if (consultantId) {
+          const consId = String(consultantId).toLowerCase().trim();
+          filtered = filtered.filter((b: any) => {
+            const bCid = String(b.consultantId || b.therapistId || '').toLowerCase().trim();
+            return bCid === consId;
+          });
+        }
+        if (status) {
+          const st = String(status).toUpperCase();
+          filtered = filtered.filter((b: any) => (b.status || '').toUpperCase() === st);
         }
 
         return {
-          ...b,
-          id: b.id || String(b._id),
-          clientName: b.clientName || u?.name || u?.email?.split('@')[0] || 'Client',
-          clientEmail: b.clientEmail || u?.email || '',
-          clientPhone: b.clientPhone || u?.phoneNumber || u?.phone || '',
-          consultantName,
-          consultantAvatar: b.consultantAvatar || c?.photoUrl || c?.photo || '',
-          serviceTitle: inferredService || 'Individual Clinical Psychology',
-          duration: b.durationMinutes || s?.duration || 50,
-          date: dateStr,
-          time: timeStr,
-          status: (b.status || 'CONFIRMED').toUpperCase()
+          success: true,
+          count: filtered.length,
+          bookings: filtered
         };
       });
 
-      let filtered = enriched;
-      const { clientEmail, clientId, consultantId, status } = req.query;
-
-      if (clientEmail) {
-        const cEmail = String(clientEmail).toLowerCase().trim();
-        filtered = filtered.filter((b: any) => (b.clientEmail || '').toLowerCase().trim() === cEmail);
-      }
-      if (clientId) {
-        const cId = String(clientId);
-        filtered = filtered.filter((b: any) => String(b.clientId || b.userId) === cId);
-      }
-      if (consultantId) {
-        const consId = String(consultantId);
-        filtered = filtered.filter((b: any) => String(b.consultantId || b.therapistId) === consId);
-      }
-      if (status) {
-        const st = String(status).toUpperCase();
-        filtered = filtered.filter((b: any) => (b.status || '').toUpperCase() === st);
-      }
-
-      res.json({
-        success: true,
-        count: filtered.length,
-        bookings: filtered
-      });
+      res.json(responseData);
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch bookings' });
     }
@@ -118,15 +132,22 @@ export class BookingsController {
         clientId: body.clientId,
         clientName: body.clientName || 'Client',
         clientEmail: body.clientEmail,
+        clientPhone: body.clientPhone || '',
         consultantId: body.consultantId || body.therapistId,
         consultantName: body.consultantName || body.therapistName,
-        serviceTitle: body.serviceTitle || 'Individual Clinical Consultation',
-        scheduledAt: body.scheduledAt || body.date || new Date().toISOString(),
+        consultantAvatar: body.consultantAvatar || body.therapistAvatar,
+        serviceId: body.serviceId,
+        serviceTitle: body.serviceTitle || body.service || 'Individual Clinical Consultation',
+        date: body.date,
+        time: body.time,
+        scheduledAt: body.scheduledAt || (body.date ? new Date(body.date) : new Date()),
         durationMinutes: body.durationMinutes || 50,
-        status: body.status || 'CONFIRMED',
+        amount: Number(body.amount) || 1500,
         paymentStatus: body.paymentStatus || 'PAID',
-        amount: body.amount || 1500,
-        meetingLink: body.meetingLink || 'https://meet.google.com/hex-pert-ify',
+        status: (body.status || 'CONFIRMED').toUpperCase(),
+        meetingLink: body.meetingLink || body.meetingUrl || 'https://meet.google.com/hex-pert-ify',
+        channel: body.channel || 'Video Call (Google Meet)',
+        notes: body.notes || '',
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -134,70 +155,45 @@ export class BookingsController {
       const result = await db.collection('Booking').insertOne(newBooking);
       await db.collection('bookings').insertOne(newBooking).catch(() => {});
 
-      // Automatically dispatch notifications to Client and Super Admin
+      // Invalidate cache tags
+      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
+
+      // Send notifications and emails
       try {
-        const scheduledDateObj = new Date(newBooking.scheduledAt);
-        const formattedDate = !isNaN(scheduledDateObj.getTime())
-          ? scheduledDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-          : (body.date || 'upcoming session');
-        const formattedTime = body.time || (!isNaN(scheduledDateObj.getTime())
-          ? scheduledDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-          : '10:00 AM');
+        let consultantEmail = body.consultantEmail || '';
+        let consultantName = newBooking.consultantName;
 
-        // Look up consultant details in database
-        let consultantEmail = '';
-        let consultantPhoto = '';
-        try {
-          const consultantDoc = await db.collection<any>('Consultant').findOne({
-            $or: [
-              { id: newBooking.consultantId },
-              { name: new RegExp(newBooking.consultantName, 'i') }
-            ]
-          }) || await db.collection<any>('consultants').findOne({
-            $or: [
-              { id: newBooking.consultantId },
-              { name: new RegExp(newBooking.consultantName, 'i') }
-            ]
-          });
-          if (consultantDoc?.email) consultantEmail = consultantDoc.email;
-          if (consultantDoc?.photoUrl || consultantDoc?.photo || consultantDoc?.avatarUrl) {
-            consultantPhoto = consultantDoc.photoUrl || consultantDoc.photo || consultantDoc.avatarUrl;
+        if (!consultantEmail && newBooking.consultantId) {
+          const consDoc = await db.collection('Consultant').findOne({ id: newBooking.consultantId }) ||
+                          await db.collection('consultants').findOne({ id: newBooking.consultantId });
+          if (consDoc) {
+            consultantEmail = consDoc.email || 'therapist@hexpertify.com';
+            consultantName = consultantName || consDoc.name;
           }
-        } catch {}
+        }
 
-        // Bind client to this booked consultant for messaging lock
+        if (!consultantEmail) {
+          consultantEmail = 'therapist@hexpertify.com';
+        }
+
+        const formattedDate = newBooking.date || new Date(newBooking.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const formattedTime = newBooking.time || '10:00 AM';
+
+        // Auto-assign user to this consultant if not assigned yet
         try {
-          const cEmailClean = (newBooking.clientEmail || '').toLowerCase().trim();
-          if (cEmailClean) {
-            const userUpdateDoc = {
+          if (newBooking.clientEmail && newBooking.consultantId) {
+            const updateAssignment = {
               $set: {
                 assignedTherapistId: newBooking.consultantId,
-                assignedTherapistName: newBooking.consultantName,
+                assignedTherapistName: consultantName,
                 assignedTherapistEmail: consultantEmail,
-                assignedTherapistPhoto: consultantPhoto,
+                assignedTherapistPhoto: newBooking.consultantAvatar || '',
                 updatedAt: new Date()
-              },
-              $setOnInsert: {
-                id: newBooking.clientId || `USR-${Date.now().toString().slice(-4)}`,
-                name: newBooking.clientName || 'Client User',
-                email: cEmailClean,
-                role: 'USER',
-                status: 'Active',
-                firstConsultationCompleted: true,
-                createdAt: new Date()
               }
             };
             await Promise.all([
-              db.collection<any>('User').updateOne(
-                { email: cEmailClean },
-                userUpdateDoc,
-                { upsert: true }
-              ),
-              db.collection<any>('users').updateOne(
-                { email: cEmailClean },
-                userUpdateDoc,
-                { upsert: true }
-              )
+              db.collection('User').updateOne({ email: newBooking.clientEmail.toLowerCase() }, updateAssignment).catch(() => {}),
+              db.collection('users').updateOne({ email: newBooking.clientEmail.toLowerCase() }, updateAssignment).catch(() => {})
             ]);
           }
         } catch {}
@@ -225,7 +221,7 @@ export class BookingsController {
           recipientRole: 'CONSULTANT',
           type: 'NEW_CLIENT_BOOKING',
           title: 'New Client Appointment Booked 🩺',
-          message: `${newBooking.clientName || 'A client'} (${newBooking.clientEmail || ''}) booked a "${newBooking.serviceTitle}" consultation with you on ${formattedDate} at ${formattedTime}.`,
+          message: `${newBooking.clientName || 'A client'} booked a "${newBooking.serviceTitle}" consultation with you on ${formattedDate} at ${formattedTime}.`,
           bookingId: newBooking.id,
           read: false,
           createdAt: new Date(),
@@ -237,8 +233,8 @@ export class BookingsController {
           id: `NOTIF-${Date.now().toString().slice(-6)}-AD`,
           recipientRole: 'ADMIN',
           type: 'NEW_BOOKING_ALERT',
-          title: 'New Session Booking ',
-          message: `Client ${newBooking.clientName || 'Client'} (${newBooking.clientEmail || ''}) booked a session with Therapist ${newBooking.consultantName || 'Therapist'} on ${formattedDate} at ${formattedTime}.`,
+          title: 'New Session Booking',
+          message: `Client ${newBooking.clientName || 'Client'} booked a session with Therapist ${newBooking.consultantName || 'Therapist'} on ${formattedDate} at ${formattedTime}.`,
           bookingId: newBooking.id,
           read: false,
           createdAt: new Date(),
@@ -266,11 +262,8 @@ export class BookingsController {
 
         // Dispatch all 3 emails asynchronously
         Promise.all([
-          // A) Email to Client
           newBooking.clientEmail ? MailService.sendBookingConfirmation(emailPayload) : Promise.resolve(),
-          // B) Email to Therapist
           MailService.sendTherapistNewBookingAlert(emailPayload),
-          // C) Email to Super Admin
           MailService.sendAdminNewBookingAlert(emailPayload)
         ]).catch((mailErr) => {
           console.error('Error in multi-recipient email dispatch:', mailErr);
@@ -294,7 +287,7 @@ export class BookingsController {
    */
   static async update(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || req.body?.id || req.body?._id || '');
+      const id = String(req.params.id || req.body?.id || req.body?._id || req.body?.bookingId || req.body?.bookingCode || '');
       const updates = { ...req.body, updatedAt: new Date() };
       delete updates.id;
       delete updates._id;
@@ -304,15 +297,29 @@ export class BookingsController {
         return;
       }
 
-      const db = getDatabase();
-      let query: any = { id };
-      if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
-      }
+      // Sync field aliases
+      if (updates.service && !updates.serviceTitle) updates.serviceTitle = updates.service;
+      if (updates.serviceTitle && !updates.service) updates.service = updates.serviceTitle;
+      if (updates.therapistName && !updates.consultantName) updates.consultantName = updates.therapistName;
+      if (updates.consultantName && !updates.therapistName) updates.therapistName = updates.consultantName;
+      if (updates.amount) updates.amount = Number(updates.amount);
+      if (updates.status) updates.status = String(updates.status).toUpperCase();
 
-      const existing = await db.collection('Booking').findOne(query);
-      await db.collection('Booking').updateOne(query, { $set: updates });
-      await db.collection('bookings').updateOne(query, { $set: updates });
+      const db = getDatabase();
+      const orConditions: any[] = [{ id }, { _id: id }, { bookingId: id }, { bookingCode: id }];
+      if (ObjectId.isValid(id)) {
+        orConditions.push({ _id: new ObjectId(id) });
+      }
+      const query = { $or: orConditions };
+
+      const existing = await db.collection('Booking').findOne(query) || await db.collection('bookings').findOne(query);
+      await Promise.all([
+        db.collection('Booking').updateMany(query, { $set: updates }),
+        db.collection('bookings').updateMany(query, { $set: updates })
+      ]);
+
+      // Invalidate cache
+      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
 
       // Automatically dispatch cancellation or reschedule email and in-app notifications
       if (existing && existing.clientEmail && existing.clientName !== 'Open Consultation Slot' && existing.clientName !== 'Blocked Time Slot') {
@@ -399,7 +406,7 @@ export class BookingsController {
    */
   static async delete(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || req.query.id || req.body?.id || '');
+      const id = String(req.params.id || req.query.id || req.body?.id || req.body?._id || req.body?.bookingId || req.body?.bookingCode || '');
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Booking ID is required' });
@@ -407,17 +414,21 @@ export class BookingsController {
       }
 
       const db = getDatabase();
-      let query: any = { id };
+      const orConditions: any[] = [{ id }, { _id: id }, { bookingId: id }, { bookingCode: id }];
       if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+        orConditions.push({ _id: new ObjectId(id) });
       }
+      const query = { $or: orConditions };
 
-      const existing = await db.collection('Booking').findOne(query);
+      const existing = await db.collection('Booking').findOne(query) || await db.collection('bookings').findOne(query);
       await Promise.all([
-        db.collection('Booking').deleteOne(query),
-        db.collection('bookings').deleteOne(query),
-        db.collection('Availability').deleteOne(query).catch(() => {})
+        db.collection('Booking').deleteMany(query),
+        db.collection('bookings').deleteMany(query),
+        db.collection('Availability').deleteMany(query).catch(() => {})
       ]);
+
+      // Invalidate cache
+      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
 
       // If a scheduled client booking was deleted/cancelled, send cancellation email
       if (existing && existing.clientEmail && existing.clientName !== 'Open Consultation Slot' && existing.clientName !== 'Blocked Time Slot') {

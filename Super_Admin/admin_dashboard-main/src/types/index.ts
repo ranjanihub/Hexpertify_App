@@ -7,6 +7,7 @@ export type PageId =
   | 'availability'
   | 'clients'
   | 'activities'
+  | 'logs'
   | 'assessments'
   | 'assets'
   | 'professions'
@@ -184,6 +185,8 @@ export interface Therapist {
     attendanceRate: number;
   };
   assignedClientIds: string[];
+  title?: string;
+  availability?: Record<string, { enabled: boolean; start: string; end: string; slots?: any[] }> | any;
   isHiddenFromLive?: boolean;
   isBookingGreyedOut?: boolean;
   isArchived?: boolean;
@@ -433,8 +436,12 @@ export interface AuditLog {
   role: string;
   action: string;
   module: string;
+  severity?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'CRITICAL';
   timestamp: string;
   ipAddress: string;
+  details?: Record<string, any> | string;
+  userAgent?: string;
+  createdAt?: string | Date;
 }
 
 export interface ZombiPageSEO {

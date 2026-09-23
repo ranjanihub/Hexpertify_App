@@ -4,6 +4,41 @@ import { getDatabase } from '../db/mongodb';
 
 const DAYS_MAP = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+function parseTimeToMinutes(t: string): number {
+  if (!t) return 0;
+  const match = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const meridiem = (match[3] || '').toUpperCase();
+  if (meridiem === 'PM' && hours < 12) hours += 12;
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+function minutesToTimeString(totalMinutes: number): string {
+  let hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  const hh = String(hours).padStart(2, '0');
+  const mm = String(minutes).padStart(2, '0');
+  return `${hh}:${mm} ${meridiem}`;
+}
+
+function generateHourlySlots(startStr: string, endStr: string, stepMinutes = 60): string[] {
+  const startMin = parseTimeToMinutes(startStr || '09:00 AM');
+  const endMin = parseTimeToMinutes(endStr || '05:00 PM');
+  if (startMin >= endMin) return [startStr || '09:00 AM'];
+
+  const slots: string[] = [];
+  for (let m = startMin; m <= endMin; m += stepMinutes) {
+    slots.push(minutesToTimeString(m));
+  }
+  return slots;
+}
+
 export class AvailabilityController {
   /**
    * GET /api/admin/availability and GET /api/availability
@@ -82,16 +117,20 @@ export class AvailabilityController {
 
         if (cSchedule && typeof cSchedule === 'object') {
           Object.entries(cSchedule).forEach(([dayKey, dayVal]: [string, any]) => {
-            if (dayVal?.enabled && Array.isArray(dayVal.slots)) {
+            if (dayVal?.enabled) {
               const capDay = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
-              dayVal.slots.forEach((ts: any, sIdx: number) => {
+              const timeSlotsList = Array.isArray(dayVal.slots) && dayVal.slots.length > 0
+                ? dayVal.slots.map((s: any) => s.start || s)
+                : generateHourlySlots(dayVal.start || '09:00 AM', dayVal.end || '05:00 PM');
+
+              timeSlotsList.forEach((startTime: string, sIdx: number) => {
                 slots.push({
                   id: `SLOT-${therapistId.slice(0, 6)}-${dayKey}-${sIdx}`,
                   therapistId,
                   therapistName: c.name,
                   dayOfWeek: capDay,
-                  startTime: ts.start || '09:00 AM',
-                  endTime: ts.end || '05:00 PM',
+                  startTime: startTime,
+                  endTime: minutesToTimeString(parseTimeToMinutes(startTime) + 50),
                   durationMinutes: 50,
                   status: 'Available',
                   clientName: 'Open Consultation Slot',

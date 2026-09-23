@@ -23,6 +23,9 @@ const Header = () => {
   const backendUrl = getBackendUrl();
 
   const handleLogout = () => {
+    fetch(`${backendUrl}/api/auth/logout`, { method: "POST" }).catch(() => {
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    });
     signOut({ callbackUrl: "/" });
     setIsMobileMenuOpen(false);
   };

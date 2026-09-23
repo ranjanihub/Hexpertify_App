@@ -307,8 +307,8 @@ export const ClientsView: React.FC = () => {
 
       {/* Comprehensive Client Medical Profile Modal */}
       {selectedClient && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 max-h-[94vh] sm:max-h-[92vh] my-auto overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 max-h-[85vh] my-auto overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 sm:pb-5 border-b border-slate-100 gap-3">
               <div className="space-y-1.5 min-w-0 flex-1">
@@ -617,8 +617,8 @@ export const ClientsView: React.FC = () => {
 
       {/* Exclusive Single Consultant Assignment Modal */}
       {assigningClient && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-5 animate-scale-up">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-5 animate-scale-up my-auto max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#5e2be2] uppercase tracking-wider">

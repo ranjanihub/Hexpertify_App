@@ -52,7 +52,7 @@ function TherapySectionCard({ item, index }: TherapySectionCardProps) {
           <div className="rounded-[18px] bg-white p-3 shadow-[0_8px_24px_rgba(45,34,72,0.09)] lg:rounded-[22px] lg:p-4 w-full mx-auto sm:max-w-md lg:max-w-none">
             <Image
               src={item?.image}
-              alt={item?.imageAlt}
+              alt={item?.imageAlt || item?.title || "Therapy Section"}
               width={item.width ?? item.image.width}
               height={item.height ?? item.image.height}
               className="h-auto w-full rounded-[14px] object-cover"

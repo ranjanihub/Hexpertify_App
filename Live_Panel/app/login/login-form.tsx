@@ -70,20 +70,32 @@ export function LoginForm({
     }
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          role,
-        }),
-      });
+      const endpoints = ["http://localhost:5000/api/auth/login", "/api/auth/login"];
+      let res: Response | null = null;
+      let data: any = null;
 
-      const data = await res.json();
+      for (const ep of endpoints) {
+        try {
+          const r = await fetch(ep, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              password,
+              role,
+            }),
+            signal: AbortSignal.timeout(3500),
+          });
+          if (r) {
+            res = r;
+            data = await r.json().catch(() => null);
+            break;
+          }
+        } catch {}
+      }
 
-      if (!res.ok || !data.success) {
-        const message = data.error || "Authentication failed. Please check your credentials.";
+      if (!res || !res.ok || !data?.success) {
+        const message = data?.error || "Authentication failed. Please check your credentials.";
         setErrorMsg(message);
         toast.error(message);
         setLoading(false);

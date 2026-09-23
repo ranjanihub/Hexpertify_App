@@ -30,7 +30,7 @@ import { useAppContext } from '../context/AppContext';
 import type { Booking } from '../types';
 
 export const BookingsView: React.FC = () => {
-  const { bookings, therapists, clients } = useAppContext();
+  const { bookings, therapists, clients, refreshAllData } = useAppContext();
   const [bookingsList, setBookingsList] = useState<Booking[]>(bookings);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -168,19 +168,26 @@ export const BookingsView: React.FC = () => {
     e.preventDefault();
     if (!editBookingData) return;
 
-    setBookingsList((prev) =>
-      prev.map((b) => (b.id === editBookingData.id ? editBookingData : b))
-    );
-
-    setSelectedBooking(editBookingData);
-    setIsEditingSelectedBooking(false);
-    showToast(`Booking ${editBookingData.bookingCode} updated successfully in MongoDB!`, 'success');
-
-    // Persist to MongoDB Atlas
     try {
-      await api.put(`/api/admin/bookings/${editBookingData.id}`, editBookingData);
+      await api.put(`/api/admin/bookings/${editBookingData.id}`, {
+        ...editBookingData,
+        serviceTitle: editBookingData.service,
+        consultantName: editBookingData.therapistName,
+        amount: Number(editBookingData.amount) || 1500,
+        status: (editBookingData.status || 'Scheduled').toUpperCase()
+      });
+
+      setBookingsList((prev) =>
+        prev.map((b) => (b.id === editBookingData.id ? editBookingData : b))
+      );
+      setSelectedBooking(editBookingData);
+      setIsEditingSelectedBooking(false);
+      showToast(`Booking ${editBookingData.bookingCode} updated successfully in database!`, 'success');
+
+      await refreshAllData();
     } catch (err) {
       console.error('Error saving booking edit to DB:', err);
+      showToast('Failed to save booking changes to database', 'warning');
     }
   };
 
@@ -241,25 +248,13 @@ export const BookingsView: React.FC = () => {
     e.preventDefault();
     if (!rescheduleBooking) return;
 
-    const updatedBooking = {
+    const updatedBooking: Booking = {
       ...rescheduleBooking,
       date: newDate,
       time: newTime,
       status: 'Rescheduled' as const
     };
 
-    setBookingsList((prev) =>
-      prev.map((b) => (b.id === rescheduleBooking.id ? updatedBooking : b))
-    );
-
-    if (selectedBooking && selectedBooking.id === rescheduleBooking.id) {
-      setSelectedBooking(updatedBooking);
-    }
-
-    showToast(`Booking ${rescheduleBooking.bookingCode} successfully rescheduled to ${newDate} at ${newTime}!`, 'success');
-    setRescheduleBooking(null);
-
-    // Persist to MongoDB Atlas
     try {
       await api.put(`/api/admin/bookings/${rescheduleBooking.id}`, {
         date: newDate,
@@ -267,8 +262,22 @@ export const BookingsView: React.FC = () => {
         status: 'RESCHEDULED',
         scheduledAt: `${newDate}T${newTime}`
       });
+
+      setBookingsList((prev) =>
+        prev.map((b) => (b.id === rescheduleBooking.id ? updatedBooking : b))
+      );
+
+      if (selectedBooking && selectedBooking.id === rescheduleBooking.id) {
+        setSelectedBooking(updatedBooking);
+      }
+
+      showToast(`Booking ${rescheduleBooking.bookingCode} successfully rescheduled to ${newDate} at ${newTime}!`, 'success');
+      setRescheduleBooking(null);
+
+      await refreshAllData();
     } catch (err) {
       console.error('Error rescheduling booking in DB:', err);
+      showToast('Failed to reschedule booking in database', 'warning');
     }
   };
 
@@ -289,43 +298,47 @@ export const BookingsView: React.FC = () => {
       paymentStatus: 'Refunded'
     };
 
-    setBookingsList((prev) =>
-      prev.map((b) => (b.id === cancelBookingTarget.id ? cancelledBooking : b))
-    );
-
-    if (selectedBooking && selectedBooking.id === cancelBookingTarget.id) {
-      setSelectedBooking(cancelledBooking);
-    }
-
-    showToast(`Booking ${cancelBookingTarget.bookingCode} cancelled in database. (${cancelReason} - ${refundOption})`, 'warning');
-    setCancelBookingTarget(null);
-
-    // Persist to MongoDB Atlas
     try {
       await api.put(`/api/admin/bookings/${cancelBookingTarget.id}`, {
         status: 'CANCELLED',
         paymentStatus: 'REFUNDED',
         cancelReason
       });
+
+      setBookingsList((prev) =>
+        prev.map((b) => (b.id === cancelBookingTarget.id ? cancelledBooking : b))
+      );
+
+      if (selectedBooking && selectedBooking.id === cancelBookingTarget.id) {
+        setSelectedBooking(cancelledBooking);
+      }
+
+      showToast(`Booking ${cancelBookingTarget.bookingCode} cancelled in database. (${cancelReason} - ${refundOption})`, 'warning');
+      setCancelBookingTarget(null);
+
+      await refreshAllData();
     } catch (err) {
       console.error('Error cancelling booking in DB:', err);
+      showToast('Failed to cancel booking in database', 'warning');
     }
   };
 
   const handleConfirmDeleteBooking = async (bookingId: string) => {
     const target = bookingsList.find((b) => b.id === bookingId);
-    setBookingsList((prev) => prev.filter((b) => b.id !== bookingId));
-    if (selectedBooking && selectedBooking.id === bookingId) {
-      setSelectedBooking(null);
-    }
-    setDeletingBookingTarget(null);
-    showToast(`Booking ${target?.bookingCode || bookingId} permanently deleted from MongoDB Atlas.`, 'warning');
-
-    // Delete from MongoDB Atlas
     try {
       await api.delete(`/api/admin/bookings/${bookingId}`);
+
+      setBookingsList((prev) => prev.filter((b) => b.id !== bookingId));
+      if (selectedBooking && selectedBooking.id === bookingId) {
+        setSelectedBooking(null);
+      }
+      setDeletingBookingTarget(null);
+      showToast(`Booking ${target?.bookingCode || bookingId} permanently deleted from MongoDB Atlas.`, 'warning');
+
+      await refreshAllData();
     } catch (err) {
       console.error('Error deleting booking from DB:', err);
+      showToast('Failed to delete booking from database', 'warning');
     }
   };
 
@@ -338,45 +351,30 @@ export const BookingsView: React.FC = () => {
       const data = await api.post('/api/admin/bookings', {
         clientName: newBooking.clientName || 'New Client',
         userId: selectedClient?.id,
+        clientId: selectedClient?.id,
+        clientEmail: selectedClient?.email,
         therapistName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
+        consultantName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
         consultantId: selectedTherapist?.id,
         service: newBooking.service || 'Individual Therapy',
+        serviceTitle: newBooking.service || 'Individual Therapy',
         date: newBooking.date,
         time: newBooking.time,
-        amount: Number(newBooking.amount) || 150,
+        amount: Number(newBooking.amount) || 1500,
         paymentStatus: newBooking.paymentStatus,
-        status: newBooking.status
+        status: (newBooking.status || 'SCHEDULED').toUpperCase()
       });
 
-      if (data.success && data.booking) {
+      if (data?.booking) {
         setBookingsList((prev) => [data.booking, ...prev]);
-        showToast(`Booking ${data.booking.bookingCode} created and saved in MongoDB Atlas!`, 'success');
-        setIsNewBookingModalOpen(false);
-        return;
       }
+      showToast(`Booking created and saved in MongoDB Atlas!`, 'success');
+      setIsNewBookingModalOpen(false);
 
-      const nextNum = 9020 + bookingsList.length + 1;
-      const bookingCode = `HEX-${nextNum}`;
-      const created: Booking = {
-        id: `BK-${nextNum}`,
-        bookingCode,
-        clientName: newBooking.clientName || 'New Client',
-        clientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        therapistName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
-        therapistAvatar: selectedTherapist?.photo || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-        service: newBooking.service || 'Individual Therapy',
-        date: newBooking.date,
-        time: newBooking.time,
-        duration: '50 mins',
-        sessionType: 'Individual',
-        status: newBooking.status as any,
-        amount: Number(newBooking.amount) || 150,
-        paymentStatus: newBooking.paymentStatus as any
-      };
-      setBookingsList((prev) => [created, ...prev]);
-      showToast(`Booking ${bookingCode} created successfully!`, 'success');
-    } catch {
-      showToast('Error creating booking', 'warning');
+      await refreshAllData();
+    } catch (err) {
+      console.error('Error creating booking:', err);
+      showToast('Failed to create booking in database', 'warning');
     }
 
     setIsNewBookingModalOpen(false);
@@ -387,7 +385,7 @@ export const BookingsView: React.FC = () => {
       service: professionsList[0]?.serviceName || 'Individual Therapy',
       date: new Date().toISOString().split('T')[0],
       time: '09:00 AM - 10:00 AM',
-      amount: 150,
+      amount: 1500,
       paymentStatus: 'Paid',
       status: 'Scheduled'
     });

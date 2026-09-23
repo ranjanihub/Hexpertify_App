@@ -12,7 +12,7 @@ const RegisteredCertificate = ({ data }: { data: any }) => {
         type="heroBanner"
         isCleanMeta
         SlideButton={true}
-        ImageclassName="object-contain w-[80%] mb-3"
+        ImageclassName="w-full max-h-[380px] object-contain rounded-2xl bg-slate-50/50 p-2"
       />
     </div>
   );

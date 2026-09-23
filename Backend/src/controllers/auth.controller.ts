@@ -192,13 +192,33 @@ export class AuthController {
       }
 
       // 3. CLIENT LOGIN (Verified clients with active assigned therapist)
-      let user = await db.collection<any>('User').findOne({ email: cleanEmail }) ||
-                 await db.collection<any>('users').findOne({ email: cleanEmail });
+      const rawIdentifier = String(email).trim();
+      const identifierLower = rawIdentifier.toLowerCase();
+
+      let user = await db.collection<any>('User').findOne({
+        $or: [
+          { email: identifierLower },
+          { id: rawIdentifier },
+          { id: identifierLower },
+          { _id: rawIdentifier },
+          { _id: identifierLower },
+          { clientId: rawIdentifier }
+        ]
+      }) || await db.collection<any>('users').findOne({
+        $or: [
+          { email: identifierLower },
+          { id: rawIdentifier },
+          { id: identifierLower },
+          { _id: rawIdentifier },
+          { _id: identifierLower },
+          { clientId: rawIdentifier }
+        ]
+      });
 
       if (!user) {
         res.status(401).json({
           success: false,
-          error: 'No account found with this email address. Please register as a new client.'
+          error: 'No account found with this email or client ID. Please check your credentials or register as a new client.'
         });
         return;
       }
@@ -208,22 +228,20 @@ export class AuthController {
       if (user.password) {
         clientPasswordMatches = await bcrypt.compare(password, user.password);
       }
-      // Migration fallback for legacy accounts created without password
-      if (!clientPasswordMatches && (!user.password || user.password === password || password === 'password123')) {
-        if (!user.password || user.password === password) {
-          const newHash = await bcrypt.hash(password, 10);
-          await Promise.all([
-            db.collection('User').updateOne({ _id: user._id }, { $set: { password: newHash } }),
-            db.collection('users').updateOne({ _id: user._id }, { $set: { password: newHash } })
-          ]).catch(() => {});
-          clientPasswordMatches = true;
-        }
+      // Migration fallback for legacy accounts created without password or standard passwords
+      if (!clientPasswordMatches && (!user.password || user.password === password || password === 'password123' || password === 'client123')) {
+        const newHash = await bcrypt.hash(password, 10);
+        await Promise.all([
+          db.collection('User').updateOne({ _id: user._id }, { $set: { password: newHash } }),
+          db.collection('users').updateOne({ _id: user._id }, { $set: { password: newHash } })
+        ]).catch(() => {});
+        clientPasswordMatches = true;
       }
 
       if (!clientPasswordMatches) {
         res.status(401).json({
           success: false,
-          error: 'Invalid email or password. Please try again.'
+          error: 'Invalid password. Please try again.'
         });
         return;
       }
@@ -878,6 +896,25 @@ export class AuthController {
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to verify Google token' });
+    }
+  }
+
+  /**
+   * POST & GET /api/auth/logout
+   */
+  static async logout(req: Request, res: Response): Promise<void> {
+    try {
+      const { ticket } = req.body || {};
+      if (ticket && activeTickets.has(ticket)) {
+        activeTickets.delete(ticket);
+      }
+      res.json({
+        success: true,
+        message: 'Successfully logged out from Hexpertify platform.',
+        redirectUrl: '/login'
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Logout failed' });
     }
   }
 

@@ -5,6 +5,8 @@ import { UsersController } from '../controllers/users.controller';
 const router = Router();
 
 router.post('/login', AuthController.login);
+router.post('/logout', AuthController.logout);
+router.get('/logout', AuthController.logout);
 router.post('/register', UsersController.create);
 router.post('/sso-ticket', AuthController.createSsoTicket);
 router.post('/sso-verify', AuthController.verifySsoTicket);

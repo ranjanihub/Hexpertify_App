@@ -193,7 +193,7 @@ model Consultant {
   certificateAltTexts String[]
   qualifications      String[]
   specialties         String[]
-  experience          Int
+  experience          Int       @default(0)
   languages           String[]
   about               String?
   isCertified         Boolean   @default(false)

@@ -17,7 +17,8 @@ import {
   Globe,
   FileCode,
   Settings,
-  LogOut
+  LogOut,
+  Shield
 } from 'lucide-react';
 import { HexpertifyLogo } from '../common/HexpertifyLogo';
 import type { PageId } from '../../types';
@@ -86,7 +87,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
           items: [
             { id: 'bookings', path: '/bookings', label: 'Bookings', icon: CalendarCheck },
             { id: 'availability', path: '/availability', label: 'Availability', icon: Clock },
-            { id: 'activities', path: '/activities', label: 'Activities', icon: Activity }
+            { id: 'activities', path: '/activities', label: 'Activities', icon: Activity },
+            { id: 'logs', path: '/logs', label: 'Audit Logs', icon: Shield }
           ]
         },
         {

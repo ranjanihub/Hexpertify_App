@@ -16,6 +16,7 @@ import { TherapistsView } from './pages/TherapistsView';
 import { AvailabilityView } from './pages/AvailabilityView';
 import { ClientsView } from './pages/ClientsView';
 import { ActivitiesView } from './pages/ActivitiesView';
+import { LogsView } from './pages/LogsView';
 import { AssessmentsView } from './pages/AssessmentsView';
 import { AssetsView } from './pages/AssetsView';
 import { ProfessionsView } from './pages/ProfessionsView';
@@ -37,6 +38,7 @@ const pageToPathMap: Record<PageId, string> = {
   availability: '/availability',
   clients: '/clients',
   activities: '/activities',
+  logs: '/logs',
   assessments: '/assessments',
   resources: '/resources',
   assets: '/assets',
@@ -194,6 +196,8 @@ export const App: React.FC = () => {
                 <Route path="/availability" element={<AvailabilityView />} />
                 <Route path="/clients" element={<ClientsView />} />
                 <Route path="/activities" element={<ActivitiesView />} />
+                <Route path="/logs" element={<LogsView />} />
+                <Route path="/audit-logs" element={<LogsView />} />
                 <Route path="/assessments" element={<AssessmentsView />} />
                 <Route path="/resources" element={<ResourcesView />} />
                 <Route path="/assets" element={<AssetsView />} />

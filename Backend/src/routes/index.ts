@@ -18,6 +18,7 @@ import payoutsRoutes from './payouts.routes';
 import activitiesRoutes from './activities.routes';
 import blogRoutes from './blog.routes';
 import dashboardRoutes from './dashboard.routes';
+import logsRoutes from './logs.routes';
 
 const router = Router();
 
@@ -119,6 +120,11 @@ router.use('/admin/blogs', blogRoutes);
 
 router.use('/dashboard', dashboardRoutes);
 router.use('/admin/dashboard', dashboardRoutes);
+
+router.use('/logs', logsRoutes);
+router.use('/admin/logs', logsRoutes);
+router.use('/audit-logs', logsRoutes);
+router.use('/admin/audit-logs', logsRoutes);
 
 router.use('/admin', pagesRoutes);
 router.use('/', pagesRoutes);

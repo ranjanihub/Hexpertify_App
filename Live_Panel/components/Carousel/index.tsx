@@ -84,13 +84,13 @@ const CarouselCommon = ({
           api.on("select", () => setIndex(api.selectedScrollSnap()));
           if (!autoSlide) autoplayRef.stop();
         }}
-        className="flex justify-center items-center w-full relative group"
+        className="w-full relative group"
       >
         <CarouselContent className="-ml-4">
           {type === "heroBanner"
             ? heroBanner?.map((item: any, index: number) => (
-                <CarouselItem key={index} className="pl-4 basis-full">
-                  <div className="relative w-full flex items-center justify-center">
+                <CarouselItem key={index} className="pl-4 basis-full w-full">
+                  <div className="relative w-full overflow-hidden rounded-[20px] flex items-center justify-center">
                     {counter && (
                       <div
                         className="absolute top-3 right-3 z-20
@@ -105,17 +105,15 @@ const CarouselCommon = ({
 
                     <Image
                       src={item.url}
-                      width={width || 1200}
+                      width={width || 1400}
                       height={height || 600}
-                      alt={item.alt}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
-                      className={`w-full h-auto object-cover rounded-[20px] ${
-                        ImageclassName || ""
-                      }`}
-                      style={{
-                        width: "100%",
-                        height: "auto",
-                      }}
+                      alt={item.alt || "Banner image"}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1400px"
+                      className={
+                        ImageclassName ||
+                        "w-full h-[220px] sm:h-[320px] md:h-[400px] lg:h-[480px] object-cover rounded-[20px]"
+                      }
+                      style={{ width: "100%", ...style }}
                       priority={index === 0}
                       fetchPriority={index === 0 ? "high" : "auto"}
                     />
@@ -124,21 +122,19 @@ const CarouselCommon = ({
               ))
             : type === "banner"
               ? HeroBanner?.map((item: any, index: number) => (
-                  <CarouselItem key={index} className="pl-4 basis-full">
-                    <div className="relative w-full flex items-center justify-center">
+                  <CarouselItem key={index} className="pl-4 basis-full w-full">
+                    <div className="relative w-full overflow-hidden rounded-[20px] flex items-center justify-center">
                       <Image
                         src={item}
-                        width={width || 1200}
+                        width={width || 1400}
                         height={height || 600}
-                        alt={item}
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
-                        className={`w-full h-auto object-cover rounded-[20px] ${
-                          ImageclassName || ""
-                        }`}
-                        style={{
-                          width: "100%",
-                          height: "auto",
-                        }}
+                        alt={typeof item === "string" ? item : "Banner"}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1400px"
+                        className={
+                          ImageclassName ||
+                          "w-full h-[220px] sm:h-[320px] md:h-[400px] lg:h-[480px] object-cover rounded-[20px]"
+                        }
+                        style={{ width: "100%", ...style }}
                         priority={index === 0}
                         fetchPriority={index === 0 ? "high" : "auto"}
                       />

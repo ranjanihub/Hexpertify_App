@@ -34,6 +34,41 @@ function dotColor(count: number) {
   return 'bg-[#5e2be2]/30';
 }
 
+function parseTimeToMinutes(t: string): number {
+  if (!t) return 0;
+  const match = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const meridiem = (match[3] || '').toUpperCase();
+  if (meridiem === 'PM' && hours < 12) hours += 12;
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+function minutesToTimeString(totalMinutes: number): string {
+  let hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  const hh = String(hours).padStart(2, '0');
+  const mm = String(minutes).padStart(2, '0');
+  return `${hh}:${mm} ${meridiem}`;
+}
+
+function generateHourlySlots(startStr: string, endStr: string, stepMinutes = 60): string[] {
+  const startMin = parseTimeToMinutes(startStr || '09:00 AM');
+  const endMin = parseTimeToMinutes(endStr || '05:00 PM');
+  if (startMin >= endMin) return [startStr || '09:00 AM'];
+
+  const slots: string[] = [];
+  for (let m = startMin; m <= endMin; m += stepMinutes) {
+    slots.push(minutesToTimeString(m));
+  }
+  return slots;
+}
+
 export type SessionStatus = 'booked' | 'available' | 'blocked';
 
 export interface SessionSlot {
@@ -106,6 +141,16 @@ export const AvailabilityView: React.FC = () => {
     return dbTherapists.find((t) => t.id === selectedConsultantId) || dbTherapists[0];
   }, [dbTherapists, selectedConsultantId]);
 
+  // Sync working hours when active consultant changes
+  useEffect(() => {
+    if (activeConsultant?.availability && typeof activeConsultant.availability === 'object') {
+      setWorkingHours((prev) => ({
+        ...prev,
+        ...activeConsultant.availability
+      }));
+    }
+  }, [activeConsultant]);
+
   // Fetch live real data from MongoDB Atlas API
   const fetchLiveScheduleData = async () => {
     try {
@@ -145,74 +190,161 @@ export const AvailabilityView: React.FC = () => {
     const aCid = String(activeConsultant.id || '').toLowerCase();
     const aCname = String(activeConsultant.name || '').toLowerCase();
 
-    // 1. Add real bookings from MongoDB Booking collection
+    // 1. Consultant's real bookings from MongoDB
     const consultantBookings = allRawBookings.filter((b) => {
       const bCid = String(b.consultantId || b.therapistId || '').toLowerCase();
       const bCname = String(b.consultantName || b.therapistName || '').toLowerCase();
       return (bCid && bCid === aCid) || (bCname && aCname && (bCname === aCname || aCname.includes(bCname) || bCname.includes(aCname)));
     });
 
-    consultantBookings.forEach((b) => {
-      const dObj = new Date(b.scheduledAt || b.date || b.createdAt || Date.now());
-      if (isNaN(dObj.getTime())) return;
-
-      const key = `${dObj.getFullYear()}-${dObj.getMonth() + 1}-${dObj.getDate()}`;
-      if (!map[key]) map[key] = [];
-
-      const isBlocked = String(b.status || '').toUpperCase() === 'BLOCKED';
-      const isAvailable = String(b.status || '').toUpperCase() === 'AVAILABLE' || b.clientName === 'Open Consultation Slot';
-
-      map[key].push({
-        client: isBlocked ? 'Blocked Time Slot' : isAvailable ? 'Open Consultation Slot' : (b.clientName || 'Patient Consultation'),
-        initials: (b.clientName || 'PT').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-        time: b.time || dObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-        type: b.serviceTitle || 'Individual Clinical Psychology',
-        duration: b.duration || `${b.durationMinutes || 50} min`,
-        status: isBlocked ? 'blocked' : isAvailable ? 'available' : 'booked',
-        bookingId: b.id || String(b._id),
-        consultantId: activeConsultant.id,
-        consultantName: activeConsultant.name
-      });
-    });
-
-    // 2. Add real custom slots from MongoDB Availability collection
+    // 2. Consultant's custom slots / blocks from MongoDB
     const consultantSlots = allRawSlots.filter((s) => {
       const sCid = String(s.therapistId || s.consultantId || '').toLowerCase();
       const sCname = String(s.therapistName || s.consultantName || '').toLowerCase();
       return (sCid && sCid === aCid) || (sCname && aCname && (sCname === aCname || aCname.includes(sCname) || sCname.includes(aCname)));
     });
 
-    consultantSlots.forEach((s) => {
-      if (s.date) {
-        const dObj = new Date(s.date);
-        if (!isNaN(dObj.getTime())) {
-          const key = `${dObj.getFullYear()}-${dObj.getMonth() + 1}-${dObj.getDate()}`;
-          if (!map[key]) map[key] = [];
+    const activeSchedule = (activeConsultant.availability && typeof activeConsultant.availability === 'object')
+      ? { ...workingHours, ...activeConsultant.availability }
+      : workingHours;
 
-          // Prevent duplicates if already mapped by booking
-          const exists = map[key].some((ex) => ex.time === s.startTime || (s.id && ex.slotId === s.id));
-          if (!exists) {
-            const isBlocked = s.status === 'Blocked' || s.status === 'BLOCKED';
-            const isBooked = s.status === 'Booked' || s.status === 'BOOKED';
+    const daysCount = daysInMonth(year, month);
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    for (let d = 1; d <= daysCount; d++) {
+      const dateObj = new Date(year, month, d);
+      const dayName = dayNames[dateObj.getDay()];
+      const key = `${year}-${month + 1}-${d}`;
+      const dayConfig = activeSchedule[dayName];
+
+      map[key] = [];
+
+      // Find bookings for this date
+      const dateBookings = consultantBookings.filter((b) => {
+        const dObj = new Date(b.scheduledAt || b.date || b.createdAt || Date.now());
+        if (isNaN(dObj.getTime())) return false;
+        return dObj.getFullYear() === year && dObj.getMonth() === month && dObj.getDate() === d;
+      });
+
+      // Find custom slots/blocks for this date
+      const dateCustomSlots = consultantSlots.filter((s) => {
+        if (!s.date) return false;
+        const dObj = new Date(s.date);
+        if (isNaN(dObj.getTime())) return false;
+        return dObj.getFullYear() === year && dObj.getMonth() === month && dObj.getDate() === d;
+      });
+
+      // If working hours are enabled for this day, generate all standard working slots
+      if (dayConfig?.enabled) {
+        const timeSlots = generateHourlySlots(dayConfig.start || '09:00 AM', dayConfig.end || '05:00 PM');
+
+        timeSlots.forEach((timeStr) => {
+          // Check if this time slot is booked
+          const matchedBooking = dateBookings.find((b) => {
+            const bTime = b.time || new Date(b.scheduledAt || b.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            return parseTimeToMinutes(bTime) === parseTimeToMinutes(timeStr);
+          });
+
+          // Check if custom slot or block exists
+          const matchedCustomSlot = dateCustomSlots.find((s) => parseTimeToMinutes(s.startTime || s.time) === parseTimeToMinutes(timeStr));
+
+          if (matchedBooking) {
+            const isBlocked = String(matchedBooking.status || '').toUpperCase() === 'BLOCKED';
+            const isAvailable = String(matchedBooking.status || '').toUpperCase() === 'AVAILABLE' || matchedBooking.clientName === 'Open Consultation Slot';
 
             map[key].push({
-              client: isBlocked ? 'Blocked Time Slot' : isBooked ? (s.clientName || 'Booked Client') : 'Open Consultation Slot',
-              initials: (s.clientName || 'OP').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-              time: s.startTime || '10:00 AM',
-              type: s.serviceType || 'Individual Clinical Psychology',
-              duration: `${s.durationMinutes || 50} min`,
+              client: isBlocked ? 'Blocked Time Slot' : isAvailable ? 'Open Consultation Slot' : (matchedBooking.clientName || 'Patient Consultation'),
+              initials: (matchedBooking.clientName || 'PT').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+              time: timeStr,
+              type: matchedBooking.serviceTitle || 'Individual Clinical Psychology',
+              duration: matchedBooking.duration || `${matchedBooking.durationMinutes || 50} min`,
+              status: isBlocked ? 'blocked' : isAvailable ? 'available' : 'booked',
+              bookingId: matchedBooking.id || String(matchedBooking._id),
+              consultantId: activeConsultant.id,
+              consultantName: activeConsultant.name
+            });
+          } else if (matchedCustomSlot) {
+            const isBlocked = matchedCustomSlot.status === 'Blocked' || matchedCustomSlot.status === 'BLOCKED';
+            const isBooked = matchedCustomSlot.status === 'Booked' || matchedCustomSlot.status === 'BOOKED';
+
+            map[key].push({
+              client: isBlocked ? 'Blocked Time Slot' : isBooked ? (matchedCustomSlot.clientName || 'Booked Client') : 'Open Consultation Slot',
+              initials: (matchedCustomSlot.clientName || 'OP').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+              time: timeStr,
+              type: matchedCustomSlot.serviceType || 'Individual Clinical Psychology',
+              duration: `${matchedCustomSlot.durationMinutes || 50} min`,
               status: isBlocked ? 'blocked' : isBooked ? 'booked' : 'available',
-              slotId: s.id || String(s._id),
+              slotId: matchedCustomSlot.id || String(matchedCustomSlot._id),
+              consultantId: activeConsultant.id,
+              consultantName: activeConsultant.name
+            });
+          } else {
+            // Default Available working slot
+            map[key].push({
+              client: 'Open Consultation Slot',
+              initials: 'OP',
+              time: timeStr,
+              type: activeConsultant.title || 'Individual Clinical Psychology',
+              duration: '50 min',
+              status: 'available',
+              slotId: `AVAIL-${key}-${timeStr.replace(/[^a-zA-Z0-9]/g, '')}`,
               consultantId: activeConsultant.id,
               consultantName: activeConsultant.name
             });
           }
-        }
+        });
       }
-    });
+
+      // Add any additional bookings on this date that fell outside standard working hours
+      dateBookings.forEach((b) => {
+        const bTime = b.time || new Date(b.scheduledAt || b.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const exists = map[key].some((s) => parseTimeToMinutes(s.time) === parseTimeToMinutes(bTime));
+        if (!exists) {
+          const isBlocked = String(b.status || '').toUpperCase() === 'BLOCKED';
+          const isAvailable = String(b.status || '').toUpperCase() === 'AVAILABLE' || b.clientName === 'Open Consultation Slot';
+
+          map[key].push({
+            client: isBlocked ? 'Blocked Time Slot' : isAvailable ? 'Open Consultation Slot' : (b.clientName || 'Patient Consultation'),
+            initials: (b.clientName || 'PT').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+            time: bTime,
+            type: b.serviceTitle || 'Individual Clinical Psychology',
+            duration: b.duration || `${b.durationMinutes || 50} min`,
+            status: isBlocked ? 'blocked' : isAvailable ? 'available' : 'booked',
+            bookingId: b.id || String(b._id),
+            consultantId: activeConsultant.id,
+            consultantName: activeConsultant.name
+          });
+        }
+      });
+
+      // Add any additional custom slots on this date that fell outside standard working hours
+      dateCustomSlots.forEach((s) => {
+        const sTime = s.startTime || s.time || '10:00 AM';
+        const exists = map[key].some((ex) => parseTimeToMinutes(ex.time) === parseTimeToMinutes(sTime));
+        if (!exists) {
+          const isBlocked = s.status === 'Blocked' || s.status === 'BLOCKED';
+          const isBooked = s.status === 'Booked' || s.status === 'BOOKED';
+
+          map[key].push({
+            client: isBlocked ? 'Blocked Time Slot' : isBooked ? (s.clientName || 'Booked Client') : 'Open Consultation Slot',
+            initials: (s.clientName || 'OP').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+            time: sTime,
+            type: s.serviceType || 'Individual Clinical Psychology',
+            duration: `${s.durationMinutes || 50} min`,
+            status: isBlocked ? 'blocked' : isBooked ? 'booked' : 'available',
+            slotId: s.id || String(s._id),
+            consultantId: activeConsultant.id,
+            consultantName: activeConsultant.name
+          });
+        }
+      });
+
+      // Sort chronological
+      map[key].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+    }
 
     return map;
-  }, [allRawBookings, allRawSlots, activeConsultant, year, month]);
+  }, [allRawBookings, allRawSlots, activeConsultant, workingHours, year, month]);
 
   // Calendar matrix computation
   const totalDays = daysInMonth(year, month);
@@ -420,6 +552,10 @@ export const AvailabilityView: React.FC = () => {
       }
 
       showToast(`Working hours updated for ${activeConsultant.name} in MongoDB Atlas!`);
+      if (activeConsultant) {
+        activeConsultant.availability = { ...workingHours };
+      }
+      setWorkingHours({ ...workingHours });
       fetchLiveScheduleData();
     } catch {
       showToast('Error updating working hours');
@@ -858,10 +994,10 @@ export const AvailabilityView: React.FC = () => {
 
       {/* ── MODAL: Add Event / Schedule Session ─────────────────────────────────── */}
       {isAddEventModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[85vh] shadow-2xl border border-slate-100 flex flex-col my-auto overflow-hidden animate-fade-in">
+            <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 shrink-0 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
                 <span className="p-2 rounded-xl bg-purple-100 text-[#5e2be2]">
                   <CalendarDays className="w-5 h-5" />
                 </span>
@@ -872,93 +1008,95 @@ export const AvailabilityView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsAddEventModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSessionSubmit} className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-extrabold text-slate-700">Select Client</label>
-                <select
-                  value={eventClientName}
-                  onChange={(e) => setEventClientName(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
-                  required
-                >
-                  {dbClients.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name} ({c.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-extrabold text-slate-700">Date</label>
-                  <input
-                    type="date"
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
+            <form onSubmit={handleCreateSessionSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs overscroll-contain">
+                <div className="space-y-1.5">
+                  <label className="font-extrabold text-slate-700">Select Client</label>
+                  <select
+                    value={eventClientName}
+                    onChange={(e) => setEventClientName(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
                     required
-                  />
+                  >
+                    {dbClients.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name} ({c.email})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="font-extrabold text-slate-700">Time</label>
-                  <input
-                    type="text"
-                    value={eventTime}
-                    onChange={(e) => setEventTime(e.target.value)}
-                    placeholder="10:00 AM"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
-                    required
-                  />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-extrabold text-slate-700">Date</label>
+                    <input
+                      type="date"
+                      value={eventDate}
+                      onChange={(e) => setEventDate(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-extrabold text-slate-700">Time</label>
+                    <input
+                      type="text"
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      placeholder="10:00 AM"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-extrabold text-slate-700">Duration</label>
+                    <select
+                      value={eventDuration}
+                      onChange={(e) => setEventDuration(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                    >
+                      <option value="30 min">30 Minutes</option>
+                      <option value="50 min">50 Minutes (Standard)</option>
+                      <option value="60 min">60 Minutes</option>
+                      <option value="90 min">90 Minutes (Intake)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-extrabold text-slate-700">Modality / Service</label>
+                    <select
+                      value={eventType}
+                      onChange={(e) => setEventType(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                    >
+                      <option value="Individual Clinical Psychology">Individual Therapy</option>
+                      <option value="Comprehensive CBT Care">Comprehensive CBT</option>
+                      <option value="Couples & Relationship Counseling">Couples Counseling</option>
+                      <option value="ADHD & Executive Functioning">ADHD Coaching</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-extrabold text-slate-700">Duration</label>
-                  <select
-                    value={eventDuration}
-                    onChange={(e) => setEventDuration(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
-                  >
-                    <option value="30 min">30 Minutes</option>
-                    <option value="50 min">50 Minutes (Standard)</option>
-                    <option value="60 min">60 Minutes</option>
-                    <option value="90 min">90 Minutes (Intake)</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="font-extrabold text-slate-700">Modality / Service</label>
-                  <select
-                    value={eventType}
-                    onChange={(e) => setEventType(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
-                  >
-                    <option value="Individual Clinical Psychology">Individual Therapy</option>
-                    <option value="Comprehensive CBT Care">Comprehensive CBT</option>
-                    <option value="Couples & Relationship Counseling">Couples Counseling</option>
-                    <option value="ADHD & Executive Functioning">ADHD Coaching</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAddEventModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-200 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer transition-all active:scale-95"
                 >
                   Confirm & Schedule
                 </button>
@@ -970,27 +1108,27 @@ export const AvailabilityView: React.FC = () => {
 
       {/* ── MODAL: Set Weekly Availability / Working Hours ──────────────────────── */}
       {isAvailabilityModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 animate-fade-in max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[85vh] shadow-2xl border border-slate-100 flex flex-col my-auto overflow-hidden animate-fade-in">
+            <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 shrink-0 bg-slate-50/50">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-base">Configure Working Hours</h3>
                 <p className="text-xs text-slate-400">Set weekly active hours for {activeConsultant?.name}</p>
               </div>
               <button
                 onClick={() => setIsAvailabilityModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-3 text-xs overscroll-contain">
               {Object.entries(workingHours).map(([dayKey, dayVal]) => {
                 const dayLabel = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
                 return (
-                  <div key={dayKey} className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 bg-slate-50/60">
-                    <label className="flex items-center gap-2 cursor-pointer w-28">
+                  <div key={dayKey} className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors">
+                    <label className="flex items-center gap-2.5 cursor-pointer w-32 select-none">
                       <input
                         type="checkbox"
                         checked={dayVal.enabled}
@@ -1000,7 +1138,7 @@ export const AvailabilityView: React.FC = () => {
                             [dayKey]: { ...dayVal, enabled: e.target.checked }
                           });
                         }}
-                        className="rounded border-slate-300 text-[#5e2be2] focus:ring-[#5e2be2]"
+                        className="w-4 h-4 rounded border-slate-300 text-[#5e2be2] focus:ring-[#5e2be2] accent-[#5e2be2] cursor-pointer"
                       />
                       <span className="font-extrabold text-slate-800">{dayLabel}</span>
                     </label>
@@ -1016,7 +1154,7 @@ export const AvailabilityView: React.FC = () => {
                               [dayKey]: { ...dayVal, start: e.target.value }
                             });
                           }}
-                          className="w-24 p-1.5 bg-white border border-slate-200 rounded-lg text-center font-bold text-slate-800"
+                          className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
                         />
                         <span className="text-slate-400 font-bold">to</span>
                         <input
@@ -1028,29 +1166,29 @@ export const AvailabilityView: React.FC = () => {
                               [dayKey]: { ...dayVal, end: e.target.value }
                             });
                           }}
-                          className="w-24 p-1.5 bg-white border border-slate-200 rounded-lg text-center font-bold text-slate-800"
+                          className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
                         />
                       </div>
                     ) : (
-                      <span className="text-slate-400 font-medium italic">Unavailable</span>
+                      <span className="text-slate-400 font-medium italic pr-2">Unavailable</span>
                     )}
                   </div>
                 );
               })}
             </div>
 
-            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsAvailabilityModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-200 cursor-pointer transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveWorkingHours}
-                className="px-5 py-2 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer transition-all active:scale-95"
               >
                 Save Availability
               </button>
@@ -1061,22 +1199,22 @@ export const AvailabilityView: React.FC = () => {
 
       {/* ── MODAL: Assign Client to Open Slot ─────────────────────────────────── */}
       {isAssignModalOpen && assignTarget && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] shadow-2xl border border-slate-100 flex flex-col my-auto overflow-hidden animate-fade-in">
+            <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 shrink-0 bg-slate-50/50">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-base">Assign Client to Slot</h3>
                 <p className="text-xs text-slate-400">{assignTarget.slot.time} on {MONTHS[month]} {selectedDay}</p>
               </div>
               <button
                 onClick={() => setIsAssignModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-3 text-xs overscroll-contain">
               <label className="font-extrabold text-slate-700 block">Select Patient / Client</label>
               <select
                 value={assignClientName}
@@ -1091,18 +1229,18 @@ export const AvailabilityView: React.FC = () => {
               </select>
             </div>
 
-            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsAssignModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-200 cursor-pointer transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmAssignClient}
-                className="px-5 py-2 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer transition-all active:scale-95"
               >
                 Confirm Assignment
               </button>

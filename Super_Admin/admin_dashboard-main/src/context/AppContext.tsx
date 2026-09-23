@@ -226,26 +226,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 3. Fetch Bookings
     fetchWithFallback("/api/admin/bookings").then((data) => {
       if (data?.bookings && Array.isArray(data.bookings) && data.bookings.length > 0) {
-        const liveBookings: Booking[] = data.bookings.map((b: any) => ({
-          id: b.id || String(b._id),
-          bookingCode: b.bookingCode || `HEX-${String(b.id || b._id).slice(-6).toUpperCase()}`,
-          clientName: b.clientName || "Client User",
-          clientAvatar: b.clientAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
-          therapistName: b.therapistName || b.consultantName || "Specialist",
-          therapistAvatar: b.therapistAvatar || b.consultantAvatar || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100",
-          therapistProfession: b.therapistProfession || b.profession || b.consultantProfession || "Clinical Specialist",
-          service: b.serviceTitle || b.service || "1-on-1 Consultation",
-          date: b.date || (b.scheduledAt ? new Date(b.scheduledAt).toISOString().split('T')[0] : "Today"),
-          time: b.time || "10:00 AM",
-          duration: b.duration ? String(b.duration) : `${b.durationMinutes || 50} mins`,
-          sessionType: "Individual" as const,
-          status: String(b.status || '').toUpperCase() === "COMPLETED" ? ("Completed" as const) : String(b.status || '').toUpperCase() === "CANCELLED" ? ("Cancelled" as const) : ("Scheduled" as const),
-          amount: Number(b.amount) || 1500,
-          paymentStatus: b.paymentStatus || "Paid",
-          channel: "Video Call (Google Meet)" as const,
-          notes: "Live MongoDB Atlas consultation",
-          meetingUrl: b.meetingLink || b.meetingUrl || "https://meet.google.com/xyz-hexpertify-session",
-        }));
+        const liveBookings: Booking[] = data.bookings.map((b: any) => {
+          const rawStatus = String(b.status || '').trim().toUpperCase();
+          let bookingStatus: Booking['status'] = 'Scheduled';
+          if (rawStatus === 'COMPLETED') {
+            bookingStatus = 'Completed';
+          } else if (rawStatus === 'CANCELLED') {
+            bookingStatus = 'Cancelled';
+          } else if (rawStatus === 'RESCHEDULED') {
+            bookingStatus = 'Rescheduled';
+          } else if (rawStatus.includes('NO SHOW') && rawStatus.includes('CLIENT')) {
+            bookingStatus = 'No Show - Client';
+          } else if (rawStatus.includes('NO SHOW') && (rawStatus.includes('CONSULTANT') || rawStatus.includes('THERAPIST'))) {
+            bookingStatus = 'No Show - Consultant';
+          } else if (rawStatus === 'CONFIRMED' || rawStatus === 'SCHEDULED' || rawStatus === 'PENDING') {
+            bookingStatus = 'Scheduled';
+          } else if (b.status === 'Rescheduled' || b.status === 'Completed' || b.status === 'Cancelled' || b.status === 'No Show - Client' || b.status === 'No Show - Consultant') {
+            bookingStatus = b.status;
+          }
+
+          return {
+            id: b.id || String(b._id),
+            bookingCode: b.bookingCode || `HEX-${String(b.id || b._id).slice(-6).toUpperCase()}`,
+            clientName: b.clientName || "Client User",
+            clientAvatar: b.clientAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
+            therapistName: b.therapistName || b.consultantName || "Specialist",
+            therapistAvatar: b.therapistAvatar || b.consultantAvatar || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100",
+            therapistProfession: b.therapistProfession || b.profession || b.consultantProfession || "Clinical Specialist",
+            service: b.serviceTitle || b.service || "1-on-1 Consultation",
+            date: b.date || (b.scheduledAt ? new Date(b.scheduledAt).toISOString().split('T')[0] : "Today"),
+            time: b.time || "10:00 AM",
+            duration: b.duration ? String(b.duration) : `${b.durationMinutes || 50} mins`,
+            sessionType: "Individual" as const,
+            status: bookingStatus,
+            amount: Number(b.amount) || 1500,
+            paymentStatus: b.paymentStatus || "Paid",
+            channel: "Video Call (Google Meet)" as const,
+            notes: b.notes || "Live MongoDB Atlas consultation",
+            meetingUrl: b.meetingLink || b.meetingUrl || "https://meet.google.com/xyz-hexpertify-session",
+          };
+        });
         setBookings(liveBookings);
         try {
           localStorage.setItem(`${LOCAL_STORAGE_KEY}_bookings`, JSON.stringify(liveBookings));
@@ -274,6 +294,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchWithFallback("/api/admin/assessments").then((data) => {
       if (data?.assessments && Array.isArray(data.assessments) && data.assessments.length > 0) {
         setAssessments(data.assessments);
+      }
+    });
+
+    // 7. Fetch Audit Logs
+    fetchWithFallback("/api/admin/logs?limit=100").then((data) => {
+      if (data?.logs && Array.isArray(data.logs) && data.logs.length > 0) {
+        setAuditLogs(data.logs);
+        try {
+          localStorage.setItem(`${LOCAL_STORAGE_KEY}_auditLogs`, JSON.stringify(data.logs));
+        } catch {}
       }
     });
   };
@@ -449,15 +479,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addAuditLog = (action: string, moduleName: string, role = 'Super Admin') => {
     const newLog: AuditLog = {
-      id: `LOG-${Date.now()}`,
-      user: 'Admin User',
+      id: `LOG-${Date.now().toString().slice(-6)}`,
+      user: 'Super Administrator',
       role,
       action,
       module: moduleName,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      severity: 'INFO',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       ipAddress: '127.0.0.1'
     };
     setAuditLogs((prev) => [newLog, ...prev]);
+
+    // Persist to MongoDB Atlas
+    api.post('/api/admin/logs', newLog).catch((err) => {
+      console.warn('Could not persist audit log to DB:', err);
+    });
   };
 
   return (

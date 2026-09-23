@@ -10,6 +10,11 @@ export interface BlogPostDocument {
   tags: string[];
   content: string;
   featuredImage?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
+  isPdf?: boolean;
   status: 'pending' | 'submitted' | 'published' | 'approved' | 'rejected' | 'draft';
   author: string;
   authorEmail: string;
@@ -31,6 +36,11 @@ export interface BlogOutlineDocument {
   targetAudience: string;
   keywords: string[];
   notes?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
+  isPdf?: boolean;
   status: 'pending' | 'approved' | 'rejected';
   author: string;
   authorEmail: string;
@@ -89,11 +99,23 @@ export class BlogController {
         .sort({ createdAt: -1 })
         .toArray();
 
-      const formatted = posts.map((p: any) => ({
-        ...p,
-        id: p.id || p._id?.toString(),
-        status: p.status === 'pending' ? 'submitted' : p.status,
-      }));
+      const formatted = posts.map((p: any) => {
+        const isPdf = Boolean(
+          p.isPdf ||
+          p.fileType === 'application/pdf' ||
+          (p.fileName && p.fileName.toLowerCase().endsWith('.pdf')) ||
+          (typeof p.content === 'string' && (p.content.toLowerCase().endsWith('.pdf') || p.content.includes('.pdf]')))
+        );
+        const inferredFileName = p.fileName || (isPdf && typeof p.content === 'string' && p.content.toLowerCase().endsWith('.pdf') ? p.content : undefined);
+
+        return {
+          ...p,
+          id: p.id || p._id?.toString(),
+          isPdf,
+          fileName: inferredFileName || p.fileName,
+          status: p.status === 'pending' ? 'submitted' : p.status,
+        };
+      });
 
       // Return both raw array (required by consultant api-client) and JSON envelope
       res.json(formatted);
@@ -124,9 +146,19 @@ export class BlogController {
         return;
       }
 
+      const isPdf = Boolean(
+        post.isPdf ||
+        post.fileType === 'application/pdf' ||
+        (post.fileName && post.fileName.toLowerCase().endsWith('.pdf')) ||
+        (typeof post.content === 'string' && (post.content.toLowerCase().endsWith('.pdf') || post.content.includes('.pdf]')))
+      );
+      const inferredFileName = post.fileName || (isPdf && typeof post.content === 'string' && post.content.toLowerCase().endsWith('.pdf') ? post.content : undefined);
+
       res.json({
         ...post,
         id: post.id || post._id?.toString(),
+        isPdf,
+        fileName: inferredFileName || post.fileName,
       });
     } catch (error: any) {
       console.error('[BlogController.getPostById] Error:', error);
@@ -146,6 +178,13 @@ export class BlogController {
       const now = new Date().toISOString();
       const numericId = Date.now();
 
+      const isPdf = Boolean(
+        body.isPdf ||
+        body.fileType === 'application/pdf' ||
+        (body.fileName && body.fileName.toLowerCase().endsWith('.pdf')) ||
+        (typeof body.content === 'string' && (body.content.toLowerCase().endsWith('.pdf') || body.content.includes('.pdf]')))
+      );
+
       const newPost: BlogPostDocument = {
         id: body.id || numericId,
         title: body.title || 'Untitled Article',
@@ -156,9 +195,12 @@ export class BlogController {
           ? body.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
           : [],
         content: body.content || '',
-        featuredImage:
-          body.featuredImage ||
-          'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop',
+        featuredImage: body.featuredImage || null,
+        fileUrl: body.fileUrl || null,
+        fileName: body.fileName || (isPdf && typeof body.content === 'string' && body.content.toLowerCase().endsWith('.pdf') ? body.content : null),
+        fileType: body.fileType || (isPdf ? 'application/pdf' : null),
+        fileSize: body.fileSize || null,
+        isPdf: isPdf,
         status: body.status || 'pending', // Consultant submits -> defaults to pending review!
         author: body.author || body.authorName || 'Dr. Evelyn Reed, PhD',
         authorEmail: body.authorEmail || 'dr.evelyn@hexpertify.com',
@@ -211,7 +253,7 @@ export class BlogController {
       }
 
       const updateData: any = {
-        status: status === 'approved' ? 'published' : status,
+        status: status,
         updatedAt: new Date().toISOString(),
         reviewedAt: new Date().toISOString(),
         reviewedBy: reviewedBy || 'Super Admin',
@@ -329,10 +371,20 @@ export class BlogController {
         .toArray();
 
       res.json(
-        outlines.map((o: any) => ({
-          ...o,
-          id: o.id || o._id?.toString(),
-        }))
+        outlines.map((o: any) => {
+          const isPdf = Boolean(
+            o.isPdf ||
+            o.fileType === 'application/pdf' ||
+            (o.fileName && o.fileName.toLowerCase().endsWith('.pdf')) ||
+            (typeof o.notes === 'string' && (o.notes.toLowerCase().endsWith('.pdf') || o.notes.includes('.pdf]'))) ||
+            (Array.isArray(o.keyPoints) && o.keyPoints.some((kp: string) => kp.toLowerCase().includes('.pdf')))
+          );
+          return {
+            ...o,
+            id: o.id || o._id?.toString(),
+            isPdf,
+          };
+        })
       );
     } catch (error: any) {
       console.error('[BlogController.getAllOutlines] Error:', error);
@@ -349,6 +401,14 @@ export class BlogController {
       const body = req.body || {};
       const now = new Date().toISOString();
 
+      const isPdf = Boolean(
+        body.isPdf ||
+        body.fileType === 'application/pdf' ||
+        (body.fileName && body.fileName.toLowerCase().endsWith('.pdf')) ||
+        (typeof body.notes === 'string' && (body.notes.toLowerCase().endsWith('.pdf') || body.notes.includes('.pdf]'))) ||
+        (Array.isArray(body.keyPoints) && body.keyPoints.some((kp: string) => kp.toLowerCase().includes('.pdf')))
+      );
+
       const newOutline: BlogOutlineDocument = {
         id: body.id || Date.now(),
         proposedTitle: body.proposedTitle || 'Untitled Pitch',
@@ -360,6 +420,11 @@ export class BlogController {
           ? body.keywords.split(',').map((k: string) => k.trim())
           : [],
         notes: body.notes || null,
+        fileUrl: body.fileUrl || null,
+        fileName: body.fileName || (isPdf && typeof body.notes === 'string' && body.notes.toLowerCase().endsWith('.pdf') ? body.notes : null),
+        fileType: body.fileType || (isPdf ? 'application/pdf' : null),
+        fileSize: body.fileSize || null,
+        isPdf: isPdf,
         status: body.status || 'pending',
         author: body.author || 'Dr. Evelyn Reed, PhD',
         authorEmail: body.authorEmail || 'dr.evelyn@hexpertify.com',

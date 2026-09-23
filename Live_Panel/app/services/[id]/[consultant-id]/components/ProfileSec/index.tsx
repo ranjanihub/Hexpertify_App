@@ -93,13 +93,25 @@ const ProfileSec = ({ ConsultantProfileDetails }: props) => {
                     max-md:flex-col max-md:text-center max-md:gap-[20px]"
     >
       {/* Image */}
-      <Image
-        src={ConsultantProfileDetails?.profileUrl}
-        width={500}
-        height={0}
-        alt={ConsultantProfileDetails?.profileUrlAltText}
-        className="max-md:w-[300px] max-md:!w-full !max-w-full max-md:h-auto rounded-[25px]"
-      />
+      <div className="w-full md:w-[420px] lg:w-[450px] shrink-0 overflow-hidden rounded-[25px] shadow-sm bg-slate-100 flex items-center justify-center">
+        <Image
+          src={
+            ConsultantProfileDetails?.profileUrl ||
+            ConsultantProfileDetails?.photoUrl ||
+            "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=600&q=80"
+          }
+          width={500}
+          height={450}
+          alt={
+            ConsultantProfileDetails?.profileUrlAltText ||
+            ConsultantProfileDetails?.photoAltText ||
+            ConsultantProfileDetails?.name ||
+            "Consultant Profile"
+          }
+          className="w-full h-[320px] sm:h-[380px] md:h-[420px] lg:h-[450px] object-cover rounded-[25px]"
+          priority
+        />
+      </div>
 
       <div className="max-md:flex max-md:flex-col max-md:items-center max-md:w-full">
         {/* Name + Rating */}

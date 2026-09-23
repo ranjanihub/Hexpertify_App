@@ -241,14 +241,14 @@ export default function TherapistMatchHero({
                   {typeof therapist.src === "string" ? (
                     <img
                       src={therapist.src}
-                      alt={therapist.alt}
+                      alt={therapist.alt || "Therapist portrait"}
                       loading={index === 0 ? "eager" : "lazy"}
                       className="h-full w-full object-cover"
                     />
                   ) : (
                     <Image
                       src={therapist.src}
-                      alt={therapist.alt}
+                      alt={therapist.alt || "Therapist portrait"}
                       width={512}
                       height={512}
                       priority={index === 0}

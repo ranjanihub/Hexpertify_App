@@ -92,7 +92,11 @@ export function isAdminAuthenticated(): boolean {
 export function logoutAdmin(): void {
   try {
     localStorage.setItem(STORAGE_KEY, 'logged_out');
+    localStorage.removeItem(STORAGE_KEY);
     window.dispatchEvent(new Event("auth_state_change"));
+    fetch('http://localhost:5000/api/auth/logout', { method: 'POST' }).catch(() => {
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    });
   } catch (e) {}
 }
 
@@ -105,7 +109,7 @@ export async function launchConsultantPanel(targetUser: any, newTab: boolean = t
   let targetUrl = `${targetBaseUrl}/?sso_user=${encodeURIComponent(JSON.stringify(targetUser))}`;
 
   try {
-    const apiEndpoints = ['/api/auth/sso-ticket', 'http://localhost:5000/api/auth/sso-ticket', 'http://localhost:5001/api/auth/sso-ticket', 'http://localhost:3000/api/auth/sso-ticket'];
+    const apiEndpoints = ['http://localhost:5000/api/auth/sso-ticket', '/api/auth/sso-ticket'];
     let res: Response | null = null;
 
     for (const endpoint of apiEndpoints) {
@@ -143,11 +147,11 @@ export async function launchConsultantPanel(targetUser: any, newTab: boolean = t
  */
 export async function launchClientPanel(targetUser: any, newTab: boolean = true): Promise<void> {
   const isSinglePort = window.location.pathname.startsWith('/admin') || window.location.port === '5000';
-  const targetBaseUrl = isSinglePort ? '/client' : 'http://localhost:5173';
+  const targetBaseUrl = isSinglePort ? '/client' : 'http://localhost:5000';
   let targetUrl = `${targetBaseUrl}/?sso_user=${encodeURIComponent(JSON.stringify(targetUser))}`;
 
   try {
-    const apiEndpoints = ['/api/auth/sso-ticket', 'http://localhost:5000/api/auth/sso-ticket', 'http://localhost:5001/api/auth/sso-ticket', 'http://localhost:3000/api/auth/sso-ticket'];
+    const apiEndpoints = ['http://localhost:5000/api/auth/sso-ticket', '/api/auth/sso-ticket'];
     let res: Response | null = null;
 
     for (const endpoint of apiEndpoints) {

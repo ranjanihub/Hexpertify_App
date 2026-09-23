@@ -16,7 +16,10 @@ import { CalendarCheck } from "lucide-react";
 
 interface ConsultantPageContainerProps {
   consultant: {
+    id?: string;
+    identifier?: string;
     profileUrl: string | null;
+    profileUrlAltText?: string | null;
     name: string;
     notificationTitle?: string | null;
     rating: number;
