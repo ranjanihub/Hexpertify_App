@@ -5,7 +5,6 @@ import { getDatabase } from '../db/mongodb';
 const DEFAULT_SEED_ACTIVITIES = [
   {
     "id": "ACT-01",
-    "_id": "ACT-01",
     "name": "Diaphragmatic Breathing",
     "title": "Diaphragmatic Breathing",
     "categoryTag": "BREATHING",
@@ -46,7 +45,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-02",
-    "_id": "ACT-02",
     "name": "Box Breathing",
     "title": "Box Breathing",
     "categoryTag": "BREATHING",
@@ -87,7 +85,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-03",
-    "_id": "ACT-03",
     "name": "4-7-8 Breathing",
     "title": "4-7-8 Breathing",
     "categoryTag": "BREATHING",
@@ -128,7 +125,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-04",
-    "_id": "ACT-04",
     "name": "Alternate Nostril Breathing",
     "title": "Alternate Nostril Breathing",
     "categoryTag": "BREATHING",
@@ -169,7 +165,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-05",
-    "_id": "ACT-05",
     "name": "Describe Your Room",
     "title": "Describe Your Room",
     "categoryTag": "MINDFULNESS",
@@ -210,7 +205,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-06",
-    "_id": "ACT-06",
     "name": "Name the Moment",
     "title": "Name the Moment",
     "categoryTag": "MINDFULNESS",
@@ -251,7 +245,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-07",
-    "_id": "ACT-07",
     "name": "Physical Grounding",
     "title": "Physical Grounding",
     "categoryTag": "SOMATIC",
@@ -292,7 +285,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-08",
-    "_id": "ACT-08",
     "name": "Posture Reset",
     "title": "Posture Reset",
     "categoryTag": "SOMATIC",
@@ -333,7 +325,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-09",
-    "_id": "ACT-09",
     "name": "Self-Soothing",
     "title": "Self-Soothing",
     "categoryTag": "SOMATIC",
@@ -374,7 +365,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-10",
-    "_id": "ACT-10",
     "name": "CBT Thought-Challenger",
     "title": "CBT Thought-Challenger",
     "categoryTag": "CBT",
@@ -415,7 +405,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-11",
-    "_id": "ACT-11",
     "name": "Affirmation Mirror",
     "title": "Affirmation Mirror",
     "categoryTag": "GRATITUDE",
@@ -456,7 +445,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-12",
-    "_id": "ACT-12",
     "name": "Worry Box",
     "title": "Worry Box",
     "categoryTag": "CBT",
@@ -497,7 +485,6 @@ const DEFAULT_SEED_ACTIVITIES = [
   },
   {
     "id": "ACT-13",
-    "_id": "ACT-13",
     "name": "Cognitive Grounding",
     "title": "Cognitive Grounding",
     "categoryTag": "MINDFULNESS",
@@ -560,7 +547,7 @@ export class ActivitiesController {
 
         if (activities.length === 0) {
           // Auto-seed default clinical activities in MongoDB Atlas
-          await db.collection('Activity').insertMany(DEFAULT_SEED_ACTIVITIES).catch(() => {});
+          await db.collection('Activity').insertMany(DEFAULT_SEED_ACTIVITIES as any[]).catch(() => {});
           activities = await db.collection('Activity').find({}).toArray();
         }
 
