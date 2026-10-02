@@ -4,6 +4,7 @@ class TherapeuticAudioEngine {
   private ctx: AudioContext | null = null;
   public soundEnabled: boolean = true;
   public voiceEnabled: boolean = true;
+  private lastSpeakTime: number = 0;
 
   private getAudioContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -19,14 +20,21 @@ class TherapeuticAudioEngine {
     return this.ctx;
   }
 
-  // 1. Spoken Voice Guidance Coach (Web Speech Synthesis API)
-  public speak(text: string, priority: boolean = false) {
+  // 1. Spoken Voice Guidance Coach (Web Speech Synthesis API) - Calmed, gentle, slow therapeutic cadence
+  public speak(text: string, priority: boolean = false, customRate: number = 0.72) {
     if (!this.voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
     }
 
+    // Debounce rapid successive calls
+    const now = Date.now();
+    if (!priority && now - this.lastSpeakTime < 600) {
+      return;
+    }
+    this.lastSpeakTime = now;
+
     try {
-      if (priority || window.speechSynthesis.speaking) {
+      if (window.speechSynthesis.speaking || priority) {
         window.speechSynthesis.cancel();
       }
 
@@ -34,19 +42,25 @@ class TherapeuticAudioEngine {
 
       // Select warm, natural english voice
       const voices = window.speechSynthesis.getVoices();
-      const naturalVoice = voices.find(
-        (v) =>
-          (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Female')) &&
-          v.lang.startsWith('en')
-      ) || voices.find((v) => v.lang.startsWith('en'));
+      const naturalVoice =
+        voices.find(
+          (v) =>
+            (v.name.includes('Natural') ||
+              v.name.includes('Google') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Karen') ||
+              v.name.includes('Female')) &&
+            v.lang.startsWith('en')
+        ) || voices.find((v) => v.lang.startsWith('en'));
 
       if (naturalVoice) {
         utterance.voice = naturalVoice;
       }
 
-      utterance.rate = 0.88; // Calm, gentle therapeutic pace
-      utterance.pitch = 1.0;
-      utterance.volume = 0.95;
+      // Ultra calm, slow, relaxed pacing (0.72 = soothing meditation pace, not rushed)
+      utterance.rate = Math.max(0.65, Math.min(customRate, 0.85));
+      utterance.pitch = 0.95; // Slightly lower, warm, soothing pitch
+      utterance.volume = 0.9;
 
       window.speechSynthesis.speak(utterance);
     } catch (e) {
