@@ -125,6 +125,38 @@ const initialActivities: ActivityCardItem[] = [
     assignedInfo: 'Michael Chen • Daily',
     imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=600',
     templateId: 'ACT-05'
+  },
+  {
+    id: 'ACT-06',
+    name: '4-7-8 Parasympathetic Breathing',
+    description: 'Calm your nervous system using rhythmic 4-second inhale, 7-second hold, and 8-second exhale wave cycles.',
+    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
+    isVisible: true,
+    categoryTag: 'BREATHING',
+    duration: '5 min',
+    difficulty: 'Easy',
+    repeat: 'As Needed',
+    assignedClientName: 'Sarah Jenkins',
+    assignedTherapistName: 'Dr. Alex Harrison',
+    assignedInfo: 'Sarah Jenkins • As Needed',
+    imageUrl: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=600',
+    templateId: 'ACT-06'
+  },
+  {
+    id: 'ACT-07',
+    name: 'Daily Gratitude Journal & Reflection',
+    description: 'Write down 3 things you felt grateful for today and reflect on why they brought meaning, joy, or relief.',
+    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
+    isVisible: true,
+    categoryTag: 'GRATITUDE',
+    duration: '8 min',
+    difficulty: 'Easy',
+    repeat: 'Daily',
+    assignedClientName: 'Amanda Miller',
+    assignedTherapistName: 'Marcus Vance',
+    assignedInfo: 'Amanda Miller • Daily',
+    imageUrl: 'https://images.unsplash.com/photo-1511295742362-92c96b124e52?w=600',
+    templateId: 'ACT-07'
   }
 ];
 

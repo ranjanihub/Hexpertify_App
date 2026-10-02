@@ -4,107 +4,82 @@ import { getDatabase } from '../db/mongodb';
 
 const DEFAULT_SEED_ACTIVITIES = [
   {
-    id: '1',
-    name: 'Morning Mindfulness Meditation',
-    title: 'Morning Mindfulness Meditation',
-    description: '10-minute guided breathing session focusing on awareness of breath and body sensations.',
+    id: 'ACT-01',
+    name: '5-4-3-2-1 Grounding Technique',
+    title: '5-4-3-2-1 Grounding Technique',
+    description: '10-minute guided breathing session focusing on awareness of breath, sensory details (5 Sights, 4 Touches, 3 Sounds, 2 Scents, 1 Taste), and body sensations.',
     categoryTag: 'MINDFULNESS',
     category: 'MINDFULNESS',
     duration: '10 min',
     difficulty: 'Easy',
     repeat: 'Daily',
     frequency: 'Daily',
+    timeOfDay: 'Morning (8:00 AM)',
     dueDate: 'Today',
     imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Sit in a comfortable position with your spine upright but relaxed.\n2. Gently close your eyes and bring awareness to your breath.\n3. Observe the sensation of air flowing in through your nose and out through your mouth.\n4. Whenever your mind drifts to thoughts, acknowledge them without judgment and return to the breath.',
+    instructions: '1. Look around and name 5 things you can see.\n2. Touch and observe 4 physical textures.\n3. Tune in and listen to 3 distinct sounds.\n4. Take a slow breath and notice 2 scents.\n5. Notice 1 taste or take a refreshing sip of water.',
+    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
+    templateId: 'ACT-01',
+    assignedTo: ['Sarah Jenkins'],
+    clientAssignments: [
+      { clientName: 'Sarah Jenkins', frequency: 'Daily', timeOfDay: 'Morning (8:00 AM)' }
+    ],
+    assignedTherapistName: 'Dr. Alex Harrison',
+    assignedInfo: 'Sarah Jenkins • Daily',
     isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    id: '2',
-    name: 'CBT Thought Record Entry',
-    title: 'CBT Thought Record Entry',
-    description: 'Document recent anxiety trigger and write a balanced, rational reframe using the 5-column technique.',
+    id: 'ACT-02',
+    name: 'CBT Automatic Thought Record',
+    title: 'CBT Automatic Thought Record',
+    description: 'Document recent anxiety trigger and write a balanced, rational reframe using Beck 5-column cognitive distortion analysis.',
     categoryTag: 'CBT',
     category: 'CBT',
     duration: '15 min',
     difficulty: 'Medium',
     repeat: '2-3 Times / Week',
     frequency: '2-3 Times / Week',
+    timeOfDay: 'Evening (7:00 PM)',
     dueDate: 'Today',
     imageUrl: 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Record the triggering situation (Where were you? Who was there?).\n2. Catch your automatic thought and rate how strongly you believed it (0-100%).\n3. Note down the emotional response and physical sensations.\n4. Challenge the thought by listing objective evidence for and against.\n5. Formulate a balanced, realistic replacement thought.',
+    instructions: '1. Record the triggering situation (Where were you? Who was there?).\n2. Catch your automatic thought and rate its emotional intensity (0-100%).\n3. Identify cognitive distortions (catastrophizing, all-or-nothing, mind reading).\n4. Challenge the thought with objective evidence.\n5. Formulate a realistic replacement thought.',
+    filePath: 'src/activities/templates/CBTThoughtRecord.tsx',
+    templateId: 'ACT-02',
+    assignedTo: ['Emily Rodriguez'],
+    clientAssignments: [
+      { clientName: 'Emily Rodriguez', frequency: '2-3 Times / Week', timeOfDay: 'Evening (7:00 PM)' }
+    ],
+    assignedTherapistName: 'Dr. Elena Rostova',
+    assignedInfo: 'Emily Rodriguez • 2-3 Times / Week',
     isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    id: '3',
-    name: 'Evening Gratitude Journaling',
-    title: 'Evening Gratitude Journaling',
-    description: 'Write down 3 things you felt grateful for today and reflect on why they mattered.',
-    categoryTag: 'GRATITUDE',
-    category: 'GRATITUDE',
-    duration: '8 min',
-    difficulty: 'Easy',
-    repeat: 'Daily',
-    frequency: 'Daily',
-    dueDate: 'Today',
-    imageUrl: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Take 2 slow abdominal breaths.\n2. Write down 3 specific things from today that brought you warmth, joy, or relief.\n3. For each item, write 1-2 sentences about *why* it was meaningful.\n4. Rest quietly for a moment to absorb the positive emotions.',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '4',
-    name: '4-7-8 Parasympathetic Breathing',
-    title: '4-7-8 Parasympathetic Breathing',
-    description: 'Calm your nervous system using rhythmic 4-second inhale, 7-second hold, and 8-second exhale.',
-    categoryTag: 'BREATHING',
-    category: 'BREATHING',
-    duration: '5 min',
-    difficulty: 'Easy',
-    repeat: 'As Needed (PRN)',
-    frequency: 'As Needed (PRN)',
-    dueDate: 'Tomorrow',
-    imageUrl: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Place tip of tongue against ridge behind upper front teeth.\n2. Exhale completely through mouth with a gentle whoosh sound.\n3. Inhale silently through nose for 4 seconds.\n4. Hold breath for 7 seconds.\n5. Exhale through mouth for 8 seconds. Repeat 4 cycles.',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '5',
+    id: 'ACT-03',
     name: 'Progressive Muscle Relaxation (PMR)',
     title: 'Progressive Muscle Relaxation (PMR)',
-    description: 'Systematically tense and release muscle groups from toes to head to dissolve physical anxiety.',
+    description: 'Systematically tense and release muscle groups from toes to head to dissolve physical anxiety and somatic stress.',
     categoryTag: 'SOMATIC',
     category: 'SOMATIC',
     duration: '12 min',
-    difficulty: 'Medium',
-    repeat: 'Weekly',
-    frequency: 'Weekly',
-    dueDate: 'Completed',
-    imageUrl: 'https://images.unsplash.com/photo-1511295742362-92c96b124e52?auto=format&fit=crop&w=800&q=80',
-    instructions: 'Tense each muscle group firmly for 5s, then release completely.',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: 'ACT-01',
-    name: '5-4-3-2-1 Grounding Technique',
-    title: '5-4-3-2-1 Grounding Technique',
-    description: '10-minute guided breathing session focusing on awareness of breath, sensory details, and body sensations.',
-    categoryTag: 'MINDFULNESS',
-    category: 'MINDFULNESS',
-    duration: '10 min',
     difficulty: 'Easy',
     repeat: 'Daily',
     frequency: 'Daily',
-    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600',
+    timeOfDay: 'Evening (7:00 PM)',
+    dueDate: 'Today',
+    imageUrl: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Settle into a comfortable reclining position.\n2. Tense your feet/toes firmly for 5 seconds, then release completely for 10 seconds.\n3. Progress upwards through calves, thighs, abdomen, chest, shoulders, and face.\n4. Observe the contrast between tension and deep soothing relaxation.',
+    filePath: 'src/activities/templates/ProgressiveMuscleRelaxation.tsx',
+    templateId: 'ACT-03',
+    assignedTo: ['Amanda Miller'],
+    clientAssignments: [
+      { clientName: 'Amanda Miller', frequency: 'Daily', timeOfDay: 'Evening (7:00 PM)' }
+    ],
+    assignedTherapistName: 'Marcus Vance',
+    assignedInfo: 'Amanda Miller • Daily',
     isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -120,7 +95,18 @@ const DEFAULT_SEED_ACTIVITIES = [
     difficulty: 'Advanced',
     repeat: 'Weekly',
     frequency: 'Weekly',
-    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600',
+    timeOfDay: 'Afternoon (1:00 PM)',
+    dueDate: 'Tomorrow',
+    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Define your primary fear target.\n2. Break the situation down into 5 graded steps from mild (SUDS 20) to severe (SUDS 90).\n3. Complete repeated trials on the current rung until anxiety drops by 50% before climbing.',
+    filePath: 'src/activities/templates/ExposureHierarchyLadder.tsx',
+    templateId: 'ACT-04',
+    assignedTo: ['Robert Garcia'],
+    clientAssignments: [
+      { clientName: 'Robert Garcia', frequency: 'Weekly', timeOfDay: 'Afternoon (1:00 PM)' }
+    ],
+    assignedTherapistName: 'Dr. Sophia Bennett',
+    assignedInfo: 'Robert Garcia • Weekly',
     isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -136,7 +122,72 @@ const DEFAULT_SEED_ACTIVITIES = [
     difficulty: 'Medium',
     repeat: 'Daily',
     frequency: 'Daily',
-    imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=600',
+    timeOfDay: 'Morning (8:00 AM)',
+    dueDate: 'Today',
+    imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Identify 3 small meaningful actions you can take today.\n2. Rate anticipated Pleasure (0-10) and Mastery (0-10).\n3. Log your actual mood shift immediately after finishing.',
+    filePath: 'src/activities/templates/BehavioralActivationTracker.tsx',
+    templateId: 'ACT-05',
+    assignedTo: ['Michael Chen'],
+    clientAssignments: [
+      { clientName: 'Michael Chen', frequency: 'Daily', timeOfDay: 'Morning (8:00 AM)' }
+    ],
+    assignedTherapistName: 'Dr. Alex Harrison',
+    assignedInfo: 'Michael Chen • Daily',
+    isVisible: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'ACT-06',
+    name: '4-7-8 Parasympathetic Breathing',
+    title: '4-7-8 Parasympathetic Breathing',
+    description: 'Calm your nervous system using rhythmic 4-second inhale, 7-second hold, and 8-second exhale wave cycles.',
+    categoryTag: 'BREATHING',
+    category: 'BREATHING',
+    duration: '5 min',
+    difficulty: 'Easy',
+    repeat: 'As Needed (PRN)',
+    frequency: 'As Needed (PRN)',
+    timeOfDay: 'Any Time',
+    dueDate: 'Today',
+    imageUrl: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Inhale silently through your nose for 4 seconds.\n2. Hold your breath gently for 7 seconds.\n3. Exhale completely through your mouth for 8 seconds. Complete 4 consecutive cycles.',
+    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
+    templateId: 'ACT-06',
+    assignedTo: ['Sarah Jenkins'],
+    clientAssignments: [
+      { clientName: 'Sarah Jenkins', frequency: 'As Needed (PRN)', timeOfDay: 'Any Time' }
+    ],
+    assignedTherapistName: 'Dr. Alex Harrison',
+    assignedInfo: 'Sarah Jenkins • As Needed',
+    isVisible: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'ACT-07',
+    name: 'Daily Gratitude Journal & Reflection',
+    title: 'Daily Gratitude Journal & Reflection',
+    description: 'Write down 3 things you felt grateful for today and reflect on why they brought meaning, joy, or relief.',
+    categoryTag: 'GRATITUDE',
+    category: 'GRATITUDE',
+    duration: '8 min',
+    difficulty: 'Easy',
+    repeat: 'Daily',
+    frequency: 'Daily',
+    timeOfDay: 'Before Bed (10:00 PM)',
+    dueDate: 'Today',
+    imageUrl: 'https://images.unsplash.com/photo-1511295742362-92c96b124e52?auto=format&fit=crop&w=800&q=80',
+    instructions: '1. Take 2 slow abdominal breaths.\n2. Write down 3 specific moments from today that brought warmth, satisfaction, or relief.\n3. Reflect on *why* they mattered to absorb positive emotions.',
+    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
+    templateId: 'ACT-07',
+    assignedTo: ['Amanda Miller'],
+    clientAssignments: [
+      { clientName: 'Amanda Miller', frequency: 'Daily', timeOfDay: 'Before Bed (10:00 PM)' }
+    ],
+    assignedTherapistName: 'Marcus Vance',
+    assignedInfo: 'Amanda Miller • Daily',
     isVisible: true,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -149,9 +200,17 @@ export class ActivitiesController {
   /**
    * GET /api/activities and GET /api/admin/activities
    */
-  static async getAll(_req: Request, res: Response): Promise<void> {
+  static async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const responseData = await cacheService.wrap('activities:all', ['activities'], 30, async () => {
+      const isAdmin =
+        req.path.includes('admin') ||
+        req.baseUrl.includes('admin') ||
+        req.query.role === 'ADMIN' ||
+        req.query.isAdmin === 'true';
+
+      const cacheKey = isAdmin ? 'activities:admin' : 'activities:public';
+
+      const responseData = await cacheService.wrap(cacheKey, ['activities'], 30, async () => {
         const db = getDatabase();
         let activities = await db.collection('Activity').find({}).toArray();
 
@@ -161,14 +220,22 @@ export class ActivitiesController {
           activities = await db.collection('Activity').find({}).toArray();
         }
 
+        // Filter for non-admin viewers (consultants and clients only see activities approved/visible by admin)
+        const filtered = isAdmin
+          ? activities
+          : activities.filter((a) => a.isVisible !== false);
+
         return {
           success: true,
-          count: activities.length,
-          activities: activities.map((a) => ({
+          count: filtered.length,
+          activities: filtered.map((a) => ({
             ...a,
             id: a.id || String(a._id),
             title: a.title || a.name || 'Therapeutic Activity',
-            category: (a.categoryTag || a.category || 'MINDFULNESS').toUpperCase()
+            name: a.name || a.title || 'Therapeutic Activity',
+            category: (a.categoryTag || a.category || 'MINDFULNESS').toUpperCase(),
+            categoryTag: (a.categoryTag || a.category || 'MINDFULNESS').toUpperCase(),
+            isVisible: a.isVisible !== undefined ? a.isVisible : true
           }))
         };
       });

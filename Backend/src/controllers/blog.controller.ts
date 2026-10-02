@@ -411,7 +411,7 @@ export class BlogController {
 
       const newOutline: BlogOutlineDocument = {
         id: body.id || Date.now(),
-        proposedTitle: body.proposedTitle || 'Untitled Pitch',
+        proposedTitle: body.proposedTitle || 'Untitled Outline',
         keyPoints: Array.isArray(body.keyPoints) ? body.keyPoints : [String(body.keyPoints || '')],
         targetAudience: body.targetAudience || 'General Audience',
         keywords: Array.isArray(body.keywords)

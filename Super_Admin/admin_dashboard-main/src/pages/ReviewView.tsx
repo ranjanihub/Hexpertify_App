@@ -366,7 +366,7 @@ export const ReviewView: React.FC = () => {
               Consultant Blog & Article Reviews
             </h1>
             <p className="text-sm text-purple-100/90 max-w-2xl leading-relaxed">
-              Review psychoeducational articles and outline pitches submitted by licensed therapists.
+              Review psychoeducational articles and outline proposals submitted by licensed therapists.
               Verify and approve submissions for consultant clinical records.
             </p>
           </div>
@@ -769,16 +769,16 @@ export const ReviewView: React.FC = () => {
         </div>
       )}
 
-      {/* Outlines & Pitches Tab preview card at bottom */}
+      {/* Outlines & Proposals Tab preview card at bottom */}
       {outlines.length > 0 && (
         <div className="mt-8 pt-6 border-t border-slate-200">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#5e2be2]" /> Pitch Outlines & PDF Proposals ({outlines.length})
+                <Sparkles className="w-4 h-4 text-[#5e2be2]" /> Blog Outlines & PDF Proposals ({outlines.length})
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Topics pitched by therapists before writing the full draft
+                Topics proposed by therapists before writing the full draft
               </p>
             </div>
           </div>
@@ -801,7 +801,7 @@ export const ReviewView: React.FC = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-[#5e2be2] uppercase">
-                          Outline Pitch
+                          Outline Proposal
                         </span>
                         {isOutlinePdf && (
                           <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
@@ -836,7 +836,7 @@ export const ReviewView: React.FC = () => {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5 text-rose-600" />
-                        <span>View Pitch PDF</span>
+                        <span>View Attached PDF</span>
                         <ExternalLink className="w-3 h-3 ml-0.5 text-rose-500" />
                       </button>
                     </div>
