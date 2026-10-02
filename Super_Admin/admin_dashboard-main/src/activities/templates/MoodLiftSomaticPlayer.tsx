@@ -82,51 +82,51 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
   const currentStep = steps[stepIdx];
 
   return (
-    <div className="w-full rounded-3xl bg-[#090615] p-6 sm:p-8 text-white shadow-2xl border border-purple-500/20 relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-[#5e2be2]/20 blur-3xl pointer-events-none" />
+    <div className="w-full rounded-3xl bg-white p-6 sm:p-8 text-slate-800 shadow-xl shadow-purple-500/5 border border-slate-100 relative overflow-hidden font-['Plus_Jakarta_Sans']">
+      <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-[#5e2be2]/5 blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5 mb-6 relative z-10">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6 relative z-10">
         <div className="flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/30 text-emerald-300 shadow-inner">
+          <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-emerald-600 shadow-inner">
             <Activity className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
               ACT-08 • SOMATIC ALIGNMENT HUD
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white mt-1 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight">
               {activityName || 'Posture Reset'}
             </h2>
-            <p className="text-xs text-purple-200/80 font-semibold mt-0.5">
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">
               Reset physical posture to relieve musculoskeletal constriction and lower sympathetic nervous tension.
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
+        <button onClick={handleReset} className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
 
       {!isCompleted ? (
         <div className="max-w-md mx-auto text-center space-y-6 relative z-10">
-          <div className="flex justify-between text-xs font-bold text-emerald-300">
+          <div className="flex justify-between text-xs font-bold text-emerald-700">
             <span>Alignment Phase {stepIdx + 1} of 4</span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-black">
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-black text-emerald-700">
               {currentStep.tag}
             </span>
           </div>
 
-          <div className="p-6 bg-slate-950/80 rounded-3xl border border-purple-500/30 space-y-4 shadow-xl">
-            <div className="text-xl font-black text-white tracking-tight">{currentStep.title}</div>
-            <p className="text-xs text-purple-200/80 leading-relaxed font-medium">{currentStep.desc}</p>
+          <div className="p-6 bg-slate-50/90 rounded-3xl border border-slate-200 space-y-4 shadow-sm">
+            <div className="text-xl font-black text-slate-900 tracking-tight">{currentStep.title}</div>
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">{currentStep.desc}</p>
 
             <div className="py-2">
-              <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-emerald-500 to-cyan-400 p-1 mx-auto shadow-[0_0_35px_rgba(16,185,129,0.35)] flex items-center justify-center">
-                <div className="w-full h-full rounded-full bg-slate-950/80 flex flex-col items-center justify-center text-emerald-300">
+              <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 p-1 mx-auto shadow-lg shadow-emerald-500/20 flex items-center justify-center">
+                <div className="w-full h-full rounded-full bg-white flex flex-col items-center justify-center text-emerald-600">
                   <span className="text-3xl font-black">{secondsLeft}s</span>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-purple-200/60">Hold</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Hold</span>
                 </div>
               </div>
             </div>
@@ -135,32 +135,32 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
           {!isActive ? (
             <button
               onClick={handleStart}
-              className="px-10 py-4 bg-gradient-to-r from-emerald-500 to-[#5e2be2] hover:opacity-95 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all mx-auto cursor-pointer"
+              className="px-10 py-4 bg-gradient-to-r from-emerald-600 to-[#5e2be2] hover:opacity-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-500/20 transition-all mx-auto cursor-pointer"
             >
               Initiate Alignment Protocol
             </button>
           ) : (
-            <div className="text-xs text-emerald-400 font-black uppercase tracking-wider animate-pulse flex items-center justify-center gap-1.5">
+            <div className="text-xs text-emerald-700 font-black uppercase tracking-wider animate-pulse flex items-center justify-center gap-1.5">
               <Sparkles className="w-4 h-4" /> Maintain alignment and breathe deeply...
             </div>
           )}
         </div>
       ) : (
         <div className="text-center py-10 space-y-6 max-w-md mx-auto animate-fade-in relative z-10">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-emerald-500 to-[#5e2be2] p-1 mx-auto shadow-[0_0_50px_rgba(16,185,129,0.5)] flex items-center justify-center">
-            <div className="w-full h-full rounded-3xl bg-slate-950/80 flex items-center justify-center text-emerald-300">
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-emerald-500 to-[#5e2be2] p-1 mx-auto shadow-lg shadow-emerald-500/30 flex items-center justify-center">
+            <div className="w-full h-full rounded-3xl bg-white flex items-center justify-center text-emerald-600">
               <CheckCircle2 className="w-12 h-12" />
             </div>
           </div>
           <div>
-            <h3 className="text-2xl sm:text-3xl font-black text-white">Posture & Spine Aligned</h3>
-            <p className="text-xs sm:text-sm text-purple-200/80 mt-1">
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900">Posture & Spine Aligned</h3>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
               Spinal decompression complete, diaphragm unobstructed, and full respiratory volume unlocked.
             </p>
           </div>
           <button
             onClick={handleReset}
-            className="px-8 py-3.5 bg-white/10 hover:bg-white/15 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+            className="px-8 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
           >
             Repeat Realignment
           </button>
@@ -186,11 +186,11 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   const senses = [
-    { key: 'sight', label: 'Visual Channel', icon: Eye, color: 'text-amber-400', default: 'Warm sunlight or pleasing minimalist art', voice: 'Engaging visual comfort' },
-    { key: 'sound', label: 'Auditory Channel', icon: Volume2, color: 'text-cyan-400', default: 'Gentle ambient acoustic tones or ocean waves', voice: 'Engaging auditory soundscape' },
-    { key: 'touch', label: 'Tactile Somatosensory', icon: Hand, color: 'text-purple-400', default: 'Comfortable textured fabric or smooth cool object', voice: 'Engaging tactile touch sensation' },
-    { key: 'smell', label: 'Olfactory Scent', icon: Sparkles, color: 'text-rose-400', default: 'Lavender, cedarwood, or clean morning air', voice: 'Engaging soothing scent' },
-    { key: 'taste', label: 'Gustatory Savoring', icon: Coffee, color: 'text-emerald-400', default: 'Mindful warm chamomile tea or refreshing mint', voice: 'Mindful taste and hydration' }
+    { key: 'sight', label: 'Visual Channel', icon: Eye, color: 'text-amber-500 bg-amber-50 border-amber-200', default: 'Warm sunlight or pleasing minimalist art', voice: 'Engaging visual comfort' },
+    { key: 'sound', label: 'Auditory Channel', icon: Volume2, color: 'text-cyan-600 bg-cyan-50 border-cyan-200', default: 'Gentle ambient acoustic tones or ocean waves', voice: 'Engaging auditory soundscape' },
+    { key: 'touch', label: 'Tactile Somatosensory', icon: Hand, color: 'text-purple-600 bg-purple-50 border-purple-200', default: 'Comfortable textured fabric or smooth cool object', voice: 'Engaging tactile touch sensation' },
+    { key: 'smell', label: 'Olfactory Scent', icon: Sparkles, color: 'text-rose-500 bg-rose-50 border-rose-200', default: 'Lavender, cedarwood, or clean morning air', voice: 'Engaging soothing scent' },
+    { key: 'taste', label: 'Gustatory Savoring', icon: Coffee, color: 'text-emerald-600 bg-emerald-50 border-emerald-200', default: 'Mindful warm chamomile tea or refreshing mint', voice: 'Mindful taste and hydration' }
   ];
 
   const toggleCheck = (key: string) => {
@@ -221,36 +221,36 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
   };
 
   return (
-    <div className="w-full rounded-3xl bg-[#090615] p-6 sm:p-8 text-white shadow-2xl border border-purple-500/20 relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#5e2be2]/20 blur-3xl pointer-events-none" />
+    <div className="w-full rounded-3xl bg-white p-6 sm:p-8 text-slate-800 shadow-xl shadow-purple-500/5 border border-slate-100 relative overflow-hidden font-['Plus_Jakarta_Sans']">
+      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-rose-500/5 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#5e2be2]/5 blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5 mb-6 relative z-10">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6 relative z-10">
         <div className="flex items-center gap-3.5">
-          <div className="p-3 bg-rose-500/10 rounded-2xl border border-rose-500/30 text-rose-300 shadow-inner">
+          <div className="p-3 bg-rose-50 rounded-2xl border border-rose-100 text-rose-600 shadow-inner">
             <Heart className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
               ACT-09 • DBT DISTRESS TOLERANCE
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white mt-1 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight">
               {activityName || 'Self-Soothing'}
             </h2>
-            <p className="text-xs text-purple-200/80 font-semibold mt-0.5">
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">
               Bathe autonomic sensory channels in safe, comforting stimuli to arrest acute distress loops.
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
+        <button onClick={handleReset} className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
 
       {!isCompleted ? (
         <div className="max-w-xl mx-auto space-y-4 relative z-10">
-          <div className="flex justify-between text-xs font-bold text-rose-300">
+          <div className="flex justify-between text-xs font-bold text-rose-600">
             <span>Sensory Channels Engaged ({checkedSenses.length}/5)</span>
             <span>Tap card as you experience each element</span>
           </div>
@@ -265,22 +265,22 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
                   onClick={() => toggleCheck(s.key)}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
                     isChecked
-                      ? 'bg-purple-900/40 border-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)] ring-1 ring-rose-400'
-                      : 'bg-slate-950/60 border-purple-500/20 hover:bg-purple-950/30'
+                      ? 'bg-rose-50/50 border-rose-300 shadow-sm ring-2 ring-rose-200'
+                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-xl bg-slate-950/80 border border-white/10 ${s.color}`}>
+                    <div className={`p-2.5 rounded-xl border ${s.color}`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-black text-xs text-white">{s.label}</div>
-                      <div className="text-[11px] text-purple-200/70 mt-0.5">{(selectedItems as any)[s.key] || s.default}</div>
+                      <div className="font-black text-xs text-slate-900">{s.label}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">{(selectedItems as any)[s.key] || s.default}</div>
                     </div>
                   </div>
 
                   <div className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${
-                    isChecked ? 'bg-gradient-to-tr from-rose-500 to-[#5e2be2] border-rose-400 text-white' : 'border-purple-500/30 bg-slate-950'
+                    isChecked ? 'bg-gradient-to-tr from-rose-500 to-[#5e2be2] border-rose-500 text-white' : 'border-slate-300 bg-white'
                   }`}>
                     {isChecked && <Check className="w-4 h-4 stroke-[3]" />}
                   </div>
@@ -291,20 +291,20 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
         </div>
       ) : (
         <div className="text-center py-10 space-y-6 max-w-md mx-auto animate-fade-in relative z-10">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-rose-500 to-[#5e2be2] p-1 mx-auto shadow-[0_0_50px_rgba(244,63,94,0.5)] flex items-center justify-center">
-            <div className="w-full h-full rounded-3xl bg-slate-950/80 flex items-center justify-center text-rose-300">
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-rose-500 to-[#5e2be2] p-1 mx-auto shadow-lg shadow-rose-500/30 flex items-center justify-center">
+            <div className="w-full h-full rounded-3xl bg-white flex items-center justify-center text-rose-500">
               <Heart className="w-12 h-12" />
             </div>
           </div>
           <div>
-            <h3 className="text-2xl sm:text-3xl font-black text-white">Full Multisensory Comfort Reached</h3>
-            <p className="text-xs sm:text-sm text-purple-200/80 mt-1">
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900">Full Multisensory Comfort Reached</h3>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
               All 5 somatic channels have transmitted parasympathetic comfort signals to your nervous system.
             </p>
           </div>
           <button
             onClick={handleReset}
-            className="px-8 py-3.5 bg-white/10 hover:bg-white/15 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+            className="px-8 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
           >
             Review Kit Again
           </button>
