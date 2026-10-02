@@ -26,7 +26,26 @@ export class NotificationsController {
             { type: 'ADMIN_ALERT' }
           ]
         };
-      } else if (recipientEmail || recipientId) {
+      } else if (role === 'CONSULTANT' || role === 'THERAPIST') {
+        const roleMatch = { $or: [{ recipientRole: 'CONSULTANT' }, { recipientRole: 'THERAPIST' }, { role: 'CONSULTANT' }, { role: 'THERAPIST' }] };
+        if (recipientEmail || recipientId) {
+          const specificConditions: any[] = [];
+          if (recipientEmail) {
+            const emailRegex = new RegExp(`^${recipientEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+            specificConditions.push({ recipientEmail: emailRegex });
+            specificConditions.push({ consultantEmail: emailRegex });
+            specificConditions.push({ userEmail: emailRegex });
+          }
+          if (recipientId) {
+            specificConditions.push({ recipientId: recipientId });
+            specificConditions.push({ consultantId: recipientId });
+            specificConditions.push({ userId: recipientId });
+          }
+          query = { $and: [roleMatch, { $or: specificConditions }] };
+        } else {
+          query = roleMatch;
+        }
+      } else if (role === 'CLIENT' || (!role && (recipientEmail || recipientId))) {
         const clientConditions: any[] = [];
         if (recipientEmail) {
           const emailRegex = new RegExp(`^${recipientEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
@@ -39,26 +58,10 @@ export class NotificationsController {
           clientConditions.push({ userId: recipientId });
           clientConditions.push({ clientId: recipientId });
         }
-        // Also allow general broadcast notifications marked for ALL clients
+        // General broadcasts for all clients
         clientConditions.push({ recipientRole: 'CLIENT', recipientEmail: { $in: ['', null, 'all', 'ALL'] } });
 
-        query = { $or: clientConditions };
-      } else if (role === 'CLIENT') {
-        query = {
-          $or: [
-            { recipientRole: 'CLIENT' },
-            { role: 'CLIENT' }
-          ]
-        };
-      } else if (role === 'CONSULTANT' || role === 'THERAPIST') {
-        query = {
-          $or: [
-            { recipientRole: 'CONSULTANT' },
-            { recipientRole: 'THERAPIST' },
-            { role: 'CONSULTANT' },
-            { role: 'THERAPIST' }
-          ]
-        };
+        query = { $and: [{ recipientRole: { $in: ['CLIENT', undefined, null] } }, { $or: clientConditions }] };
       }
 
       const primaryList = await db.collection('Notification').find(query).sort({ createdAt: -1 }).toArray();
@@ -88,11 +91,14 @@ export class NotificationsController {
 
       const newNotification = {
         id: body.id || `NOTIF-${Date.now().toString().slice(-6)}`,
-        recipientId: body.recipientId || body.userId || body.clientId || '',
-        recipientEmail: (body.recipientEmail || body.userEmail || body.clientEmail || '').toLowerCase(),
-        clientEmail: (body.clientEmail || body.recipientEmail || '').toLowerCase(),
+        recipientId: body.recipientId || body.userId || body.clientId || body.consultantId || '',
+        recipientEmail: (body.recipientEmail || body.userEmail || body.consultantEmail || body.clientEmail || '').toLowerCase(),
+        consultantEmail: (body.consultantEmail || body.recipientEmail || '').toLowerCase(),
+        consultantId: body.consultantId || body.recipientId || '',
+        consultantName: body.consultantName || body.recipientName || '',
+        clientEmail: (body.clientEmail || '').toLowerCase(),
         clientName: body.clientName || '',
-        recipientRole: (body.recipientRole || body.role || 'ADMIN').toUpperCase(),
+        recipientRole: (body.recipientRole || body.role || (body.consultantEmail || body.consultantId ? 'CONSULTANT' : 'ADMIN')).toUpperCase(),
         type: body.type || 'ALERT',
         title: body.title || 'Notification',
         message: body.message || '',
@@ -102,7 +108,9 @@ export class NotificationsController {
         activityTitle: body.activityTitle || '',
         assessmentId: body.assessmentId || '',
         assessmentTitle: body.assessmentTitle || '',
-        consultantName: body.consultantName || '',
+        isPrivate: !!body.isPrivate,
+        sharingPreference: body.sharingPreference || 'full',
+        submissionData: body.submissionData || null,
         read: false,
         createdAt: new Date(),
         updatedAt: new Date()
