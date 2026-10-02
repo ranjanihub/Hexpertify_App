@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
-  Heart,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 import type { BaseActivityComponentProps } from '../types';
 
@@ -12,89 +13,99 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
   onComplete
 }) => {
   const affirmationsList = [
-    { text: 'I am safe, capable, and doing the best I can in this moment.', category: 'Safety & Calm' },
-    { text: 'My worth is intrinsic and not defined by productivity or perfection.', category: 'Self-Worth' },
-    { text: 'I have survived difficult days before, and I will navigate this one with grace.', category: 'Resilience' },
-    { text: 'I release what I cannot control and invest my energy into my peace.', category: 'Boundary & Release' },
-    { text: 'I treat my mind and body with unconditional compassion today.', category: 'Self-Love' }
+    { text: 'I am inherently worthy, safe, and capable of navigating this day with grounded confidence.', domain: 'SELF-WORTH & SAFETY', color: '#ec4899' },
+    { text: 'My value is not measured by relentless productivity. I am allowed to rest, pause, and breathe.', domain: 'PERMISSION & PEACE', color: '#8b5cf6' },
+    { text: 'I have moved through intense storms before. I possess the resilience to handle whatever unfolds.', domain: 'NEURAL RESILIENCE', color: '#06b6d4' },
+    { text: 'I release responsibility for things outside my direct control and protect my inner peace.', domain: 'BOUNDARY RESTORATION', color: '#f59e0b' },
+    { text: 'I treat my mind and physical body with unconditional compassion and gentleness today.', domain: 'SELF-COMPASSION', color: '#10b981' }
   ];
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [reflectionTimer, setReflectionTimer] = useState(20);
-  const [isActive, setIsActive] = useState(false);
-  const [selfWorthScore] = useState(8);
-  const [completed, setCompleted] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState<number>(0);
+  const [reflectionTimer, setReflectionTimer] = useState<number>(20);
+  const [isActive, setIsActive] = useState<boolean>(true);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   useEffect(() => {
-    let interval: any = null;
+    let timer: any = null;
     if (isActive && reflectionTimer > 0) {
-      interval = setInterval(() => setReflectionTimer((t) => t - 1), 1000);
+      timer = setInterval(() => setReflectionTimer((t) => t - 1), 1000);
     } else if (isActive && reflectionTimer === 0) {
       setIsActive(false);
     }
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, [isActive, reflectionTimer]);
 
   const handleNext = () => {
-    if (currentIndex < affirmationsList.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+    if (currentIdx < affirmationsList.length - 1) {
+      setCurrentIdx(currentIdx + 1);
       setReflectionTimer(20);
       setIsActive(true);
     } else {
-      setCompleted(true);
-      if (onComplete) onComplete({ selfWorthScore, completedAffirmations: affirmationsList.length });
+      setIsCompleted(true);
+      if (onComplete) onComplete({ completedAffirmations: affirmationsList.length });
     }
   };
 
   const handleReset = () => {
-    setCurrentIndex(0);
+    setCurrentIdx(0);
     setReflectionTimer(20);
-    setIsActive(false);
-    setCompleted(false);
+    setIsActive(true);
+    setIsCompleted(false);
   };
 
-  const currentAffirmation = affirmationsList[currentIndex];
+  const currentAffirmation = affirmationsList[currentIdx];
 
   return (
-    <div className="w-full rounded-3xl bg-gradient-to-b from-fuchsia-950 via-slate-900 to-slate-950 p-6 sm:p-8 text-white shadow-2xl border border-fuchsia-500/20 font-['Plus_Jakarta_Sans'] relative overflow-hidden">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-fuchsia-500/20 rounded-2xl border border-fuchsia-400/30 text-fuchsia-300">
-            <Sparkles className="w-6 h-6 animate-pulse" />
+    <div className="w-full rounded-3xl bg-[#090615] p-6 sm:p-8 text-white shadow-2xl border border-purple-500/20 relative overflow-hidden font-['Plus_Jakarta_Sans']">
+      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-fuchsia-600/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#5e2be2]/20 blur-3xl pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5 mb-6 relative z-10">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-fuchsia-500/10 rounded-2xl border border-fuchsia-500/30 text-fuchsia-300 shadow-inner">
+            <Sparkles className="w-6 h-6 animate-pulse text-fuchsia-400" />
           </div>
           <div>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-400/30">
-              ACT-11 • NEUROPLASTICITY MIRROR WORK
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">
+              ACT-11 • NEUROPLASTICITY MIRROR
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white mt-0.5">{activityName || 'Affirmation Mirror'}</h2>
-            <p className="text-xs text-white/70">Rewire self-referential neural pathways through deliberate compassionate mirror reflection.</p>
+            <h2 className="text-xl sm:text-2xl font-black text-white mt-1 tracking-tight">
+              {activityName || 'Affirmation Mirror'}
+            </h2>
+            <p className="text-xs text-purple-200/80 font-semibold mt-0.5">
+              Reinforce positive self-worth pathways via deliberate mirror neuro-linguistic reframing.
+            </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs">
+        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
 
-      {!completed ? (
-        <div className="max-w-xl mx-auto space-y-6 text-center">
+      {!isCompleted ? (
+        <div className="max-w-xl mx-auto space-y-6 text-center relative z-10">
           <div className="flex justify-between text-xs font-bold text-fuchsia-300">
-            <span>Affirmation {currentIndex + 1} of {affirmationsList.length}</span>
-            <span>Category: {currentAffirmation.category}</span>
+            <span>Neural Mirror Reflection {currentIdx + 1} of {affirmationsList.length}</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 text-[10px] font-black">
+              {currentAffirmation.domain}
+            </span>
           </div>
 
-          {/* Mirror Frame Aesthetic */}
-          <div className="relative p-8 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 border-2 border-fuchsia-400/40 backdrop-blur-xl shadow-[0_0_50px_rgba(217,70,239,0.2)]">
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300">
-              Speak Aloud / Internalize Gaze
+          {/* Holographic Mirror Canvas Box */}
+          <div className="relative p-8 sm:p-10 rounded-3xl bg-slate-950/80 border-2 border-fuchsia-500/40 backdrop-blur-2xl shadow-[0_0_50px_rgba(217,70,239,0.25)] space-y-4">
+            <div className="text-[10px] font-black uppercase tracking-widest text-fuchsia-400/80 flex items-center justify-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-300" /> Speak Aloud or Absorb Internally
             </div>
 
-            <p className="text-lg sm:text-2xl font-black text-white leading-relaxed my-6 tracking-wide">
+            <p className="text-xl sm:text-2xl font-black text-white leading-relaxed my-4 tracking-wide drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
               "{currentAffirmation.text}"
             </p>
 
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-400/30 flex items-center justify-center font-bold text-xs">
-                {reflectionTimer}s
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="px-4 py-1.5 rounded-full bg-purple-950/60 border border-fuchsia-500/30 flex items-center gap-2 text-xs font-bold text-fuchsia-300">
+                <span className="w-2 h-2 rounded-full bg-fuchsia-400 animate-ping" />
+                <span>Integration Timer: {reflectionTimer}s</span>
               </div>
             </div>
           </div>
@@ -102,26 +113,28 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           <div className="flex justify-center gap-3">
             <button
               onClick={handleNext}
-              className="px-8 py-3.5 bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl flex items-center gap-2 shadow-xl shadow-fuchsia-500/30 transition-all"
+              className="px-10 py-4 bg-gradient-to-r from-fuchsia-500 to-[#5e2be2] hover:opacity-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl flex items-center gap-2 shadow-[0_0_35px_rgba(217,70,239,0.4)] transition-all cursor-pointer"
             >
-              {currentIndex === affirmationsList.length - 1 ? 'Complete Reflection' : 'Next Affirmation'} <ArrowRight className="w-4 h-4" />
+              {currentIdx === affirmationsList.length - 1 ? 'Integrate Affirmation Protocol' : 'Next Mirror Reflection'} <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       ) : (
-        <div className="text-center py-8 space-y-5 max-w-md mx-auto animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-400/40 flex items-center justify-center mx-auto">
-            <Heart className="w-8 h-8" />
+        <div className="text-center py-10 space-y-6 max-w-md mx-auto animate-fade-in relative z-10">
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-fuchsia-500 to-[#5e2be2] p-1 mx-auto shadow-[0_0_50px_rgba(217,70,239,0.5)] flex items-center justify-center">
+            <div className="w-full h-full rounded-3xl bg-slate-950/80 flex items-center justify-center text-fuchsia-300">
+              <CheckCircle2 className="w-12 h-12" />
+            </div>
           </div>
           <div>
-            <h3 className="text-2xl font-black text-white">Neural Affirmation Integrated</h3>
-            <p className="text-xs text-white/70 mt-1">
-              You've reinforced positive self-worth pathways across 5 core domains.
+            <h3 className="text-2xl sm:text-3xl font-black text-white">Neuro-Affirmation Grounded</h3>
+            <p className="text-xs sm:text-sm text-purple-200/80 mt-1">
+              Reinforced 5 core self-worth circuits in your prefrontal cortex.
             </p>
           </div>
           <button
             onClick={handleReset}
-            className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all"
+            className="px-8 py-3.5 bg-white/10 hover:bg-white/15 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
           >
             Practice Mirror Work Again
           </button>

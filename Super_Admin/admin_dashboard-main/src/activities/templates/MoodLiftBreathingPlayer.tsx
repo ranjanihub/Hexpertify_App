@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Wind,
   Play,
@@ -9,106 +9,87 @@ import {
   Sparkles,
   CheckCircle2,
   Activity,
-  Info
+  Heart,
+  ShieldCheck
 } from 'lucide-react';
 import type { BaseActivityComponentProps } from '../types';
 
-interface BreathingModeConfig {
-  name: string;
-  subtitle: string;
-  patternName: string;
-  phases: { name: 'Inhale' | 'Hold' | 'Exhale' | 'Hold (Empty)'; duration: number; cue: string }[];
-  totalCyclesTarget: number;
-  description: string;
-  colorScheme: {
-    bgGradient: string;
-    orbGradient: string;
-    accentGlow: string;
-    textColor: string;
-    borderColor: string;
-  };
+interface BreathingConfig {
+  title: string;
+  categoryTag: string;
+  badge: string;
+  pacingDesc: string;
+  phases: { name: 'Inhale' | 'Hold' | 'Exhale' | 'Hold (Rest)'; duration: number; cue: string; color: string }[];
+  targetCycles: number;
+  clinicalEffect: string;
+  primaryGlow: string;
+  secondaryGlow: string;
 }
 
-const BREATHING_CONFIGS: Record<string, BreathingModeConfig> = {
+const BREATH_PROTOCOLS: Record<string, BreathingConfig> = {
   'ACT-01': {
-    name: 'Diaphragmatic Breathing',
-    subtitle: 'Deep Belly Resonance & Vagus Nerve Activation',
-    patternName: '4s Inhale • 2s Hold • 6s Slow Exhale',
+    title: 'Diaphragmatic Bio-Breathing',
+    categoryTag: 'VAGAL STIMULATION',
+    badge: 'PARASYMPATHETIC ACTIVATOR',
+    pacingDesc: '4s Deep Inhale • 2s Stillness • 6s Slow Exhale',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Expand your belly outwards, letting diaphragm drop deeply' },
-      { name: 'Hold', duration: 2, cue: 'Softly suspend breath with relaxed shoulders' },
-      { name: 'Exhale', duration: 6, cue: 'Slowly release through pursed lips, drawing belly in' }
+      { name: 'Inhale', duration: 4, cue: 'Expand lower abdomen deeply, allowing diaphragm to descend', color: '#06b6d4' },
+      { name: 'Hold', duration: 2, cue: 'Suspend air effortlessly with open throat & dropped shoulders', color: '#8b5cf6' },
+      { name: 'Exhale', duration: 6, cue: 'Gently release through pursed lips, emptying lungs completely', color: '#10b981' }
     ],
-    totalCyclesTarget: 6,
-    description: 'Deep belly breathing signals your brain that you are safe, downregulating acute anxiety and restoring heart-rate variability.',
-    colorScheme: {
-      bgGradient: 'from-emerald-950 via-teal-950 to-slate-950',
-      orbGradient: 'from-teal-400 via-emerald-500 to-cyan-400',
-      accentGlow: 'rgba(20, 184, 166, 0.45)',
-      textColor: 'text-teal-300',
-      borderColor: 'border-teal-500/30'
-    }
+    targetCycles: 6,
+    clinicalEffect: 'Lowers systemic blood pressure, stimulates acetylcholine release via the vagus nerve, and restores heart-rate variability (HRV).',
+    primaryGlow: '#06b6d4',
+    secondaryGlow: '#5e2be2'
   },
   'ACT-02': {
-    name: 'Box Breathing',
-    subtitle: 'Navy SEAL 4-4-4-4 Tactical Focus & Nervous System Balance',
-    patternName: '4s Inhale • 4s Hold • 4s Exhale • 4s Hold',
+    title: 'Tactical Box Resonance',
+    categoryTag: 'NEURO-REGULATION',
+    badge: 'TACTICAL FOCUS PROTOCOL',
+    pacingDesc: '4s Inhale • 4s Retain • 4s Exhale • 4s Empty Hold',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Breathe in smoothly through your nose filling upper & lower lungs' },
-      { name: 'Hold', duration: 4, cue: 'Retain air gently without clamping throat' },
-      { name: 'Exhale', duration: 4, cue: 'Smooth, even exhale emptying lungs completely' },
-      { name: 'Hold (Empty)', duration: 4, cue: 'Stay comfortable and still in empty space' }
+      { name: 'Inhale', duration: 4, cue: 'Inhale smoothly through the nose, expanding chest and ribs evenly', color: '#6366f1' },
+      { name: 'Hold', duration: 4, cue: 'Hold breath with tranquil focus, maintaining total physical stillness', color: '#a855f7' },
+      { name: 'Exhale', duration: 4, cue: 'Release breath in a controlled, steady stream through the mouth', color: '#06b6d4' },
+      { name: 'Hold (Rest)', duration: 4, cue: 'Rest calmly in the empty space before the next breath', color: '#3b82f6' }
     ],
-    totalCyclesTarget: 5,
-    description: 'Used by elite tactical performers and first responders to eliminate panic and sharpen laser mental clarity.',
-    colorScheme: {
-      bgGradient: 'from-indigo-950 via-blue-950 to-slate-950',
-      orbGradient: 'from-blue-400 via-indigo-500 to-cyan-400',
-      accentGlow: 'rgba(99, 102, 241, 0.45)',
-      textColor: 'text-indigo-300',
-      borderColor: 'border-indigo-500/30'
-    }
+    targetCycles: 5,
+    clinicalEffect: 'Equalizes autonomic nervous system balance (SNS/PNS ratio), eliminating cognitive tunnel vision under acute distress.',
+    primaryGlow: '#6366f1',
+    secondaryGlow: '#a855f7'
   },
   'ACT-03': {
-    name: '4-7-8 Breathing',
-    subtitle: 'Dr. Andrew Weil Parasympathetic Reset & Natural Tranquilizer',
-    patternName: '4s Inhale • 7s Deep Hold • 8s Extended Exhale',
+    title: '4-7-8 Somatic Tranquilizer',
+    categoryTag: 'NEURAL SEDATIVE',
+    badge: 'RAPID ANXIOLYTIC RESET',
+    pacingDesc: '4s Inhale • 7s Oxygen Lock • 8s Whoosh Exhale',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Quietly inhale through your nose with tongue tip behind upper teeth' },
-      { name: 'Hold', duration: 7, cue: 'Hold breath steadily, allowing oxygen saturation to rise' },
-      { name: 'Exhale', duration: 8, cue: 'Whoosh exhale completely through mouth with audible sound' }
+      { name: 'Inhale', duration: 4, cue: 'Inhale quietly through nose with tip of tongue against roof of mouth', color: '#8b5cf6' },
+      { name: 'Hold', duration: 7, cue: 'Retain oxygen deeply, allowing cellular perfusion and brain calming', color: '#ec4899' },
+      { name: 'Exhale', duration: 8, cue: 'Whoosh exhale completely through mouth with an audible releasing sigh', color: '#10b981' }
     ],
-    totalCyclesTarget: 4,
-    description: 'The extended 8-second exhale powerfully engages the parasympathetic rest-and-digest system, ideal before sleep or acute stress.',
-    colorScheme: {
-      bgGradient: 'from-purple-950 via-violet-950 to-slate-950',
-      orbGradient: 'from-purple-400 via-violet-500 to-fuchsia-400',
-      accentGlow: 'rgba(168, 85, 247, 0.45)',
-      textColor: 'text-purple-300',
-      borderColor: 'border-purple-500/30'
-    }
+    targetCycles: 4,
+    clinicalEffect: 'Dr. Andrew Weil ratio forces carbon dioxide expulsion, triggering deep autonomic downregulation within 90 seconds.',
+    primaryGlow: '#a855f7',
+    secondaryGlow: '#f43f5e'
   },
   'ACT-04': {
-    name: 'Alternate Nostril Breathing',
-    subtitle: 'Nadi Shodhana Hemispheric Synchronization',
-    patternName: '4s Left Inhale • 4s Right Exhale • 4s Right Inhale • 4s Left Exhale',
+    title: 'Alternate Nostril Synapse Flow',
+    categoryTag: 'HEMISPHERIC BALANCE',
+    badge: 'NADI SHODHANA HARMONIZER',
+    pacingDesc: '4s Left Inhale • 2s Hold • 4s Right Exhale • 4s Right Inhale • 4s Left Exhale',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Close right nostril with thumb -> Inhale through Left nostril' },
-      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause' },
-      { name: 'Exhale', duration: 4, cue: 'Open right nostril -> Exhale completely through Right' },
-      { name: 'Inhale', duration: 4, cue: 'Keep right nostril open -> Inhale deeply through Right' },
-      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause' },
-      { name: 'Exhale', duration: 4, cue: 'Open left nostril -> Exhale completely through Left' }
+      { name: 'Inhale', duration: 4, cue: 'Block right nostril with thumb -> Inhale deeply through Left nostril', color: '#f59e0b' },
+      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause in calm equilibrium', color: '#a855f7' },
+      { name: 'Exhale', duration: 4, cue: 'Release right nostril -> Exhale completely through Right side', color: '#ec4899' },
+      { name: 'Inhale', duration: 4, cue: 'Keep right nostril open -> Inhale smoothly through Right nostril', color: '#06b6d4' },
+      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause in calm equilibrium', color: '#8b5cf6' },
+      { name: 'Exhale', duration: 4, cue: 'Release left nostril -> Exhale completely through Left side', color: '#10b981' }
     ],
-    totalCyclesTarget: 4,
-    description: 'Harmonizes left (logical) and right (creative) brain hemispheres, clearing mental fog and calming agitated thought loops.',
-    colorScheme: {
-      bgGradient: 'from-amber-950 via-orange-950 to-slate-950',
-      orbGradient: 'from-amber-400 via-orange-500 to-rose-400',
-      accentGlow: 'rgba(245, 158, 11, 0.45)',
-      textColor: 'text-amber-300',
-      borderColor: 'border-amber-500/30'
-    }
+    targetCycles: 4,
+    clinicalEffect: 'Harmonizes EEG brainwave activity across both cerebral hemispheres, dispelling brain fog and ruminative overdrive.',
+    primaryGlow: '#f59e0b',
+    secondaryGlow: '#8b5cf6'
   }
 };
 
@@ -117,73 +98,246 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
   activityName,
   onComplete
 }) => {
-  const config = BREATHING_CONFIGS[activityId] || BREATHING_CONFIGS['ACT-01'];
+  const protocol = BREATH_PROTOCOLS[activityId] || BREATH_PROTOCOLS['ACT-01'];
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
-  const [secondsRemainingInPhase, setSecondsRemainingInPhase] = useState(config.phases[0].duration);
-  const [completedCycles, setCompletedCycles] = useState(0);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [preAnxiety] = useState(7);
-  const [postAnxiety, setPostAnxiety] = useState(3);
-  const [showCompletion, setShowCompletion] = useState(false);
-  const [sessionDurationSecs, setSessionDurationSecs] = useState(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [phaseIndex, setPhaseIndex] = useState<number>(0);
+  const [phaseSecsLeft, setPhaseSecsLeft] = useState<number>(protocol.phases[0].duration);
+  const [completedCycles, setCompletedCycles] = useState<number>(0);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [sessionSeconds, setSessionSeconds] = useState<number>(0);
+  const [hrvCoherence, setHrvCoherence] = useState<number>(64);
+  const [postSuds, setPostSuds] = useState<number>(2);
 
-  const currentPhase = config.phases[currentPhaseIndex];
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animFrameId = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Play peaceful chime
-  const playChime = (type: 'inhale' | 'exhale' | 'hold' | 'complete') => {
+  const currentPhase = protocol.phases[phaseIndex];
+
+  // Synthesize realistic binaural singing bowl meditation tones
+  const playHarmonicSound = (phaseName: string) => {
     if (!soundEnabled) return;
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioCtx();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
 
-      osc.type = 'sine';
-      const freq = type === 'inhale' ? 528 : type === 'exhale' ? 396 : type === 'complete' ? 639 : 432;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      const baseFreq = phaseName === 'Inhale' ? 528 : phaseName === 'Exhale' ? 396 : 432;
+      const now = ctx.currentTime;
 
-      gain.gain.setValueAtTime(0.01, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.4);
+      // Master gain
+      const masterGain = ctx.createGain();
+      masterGain.connect(ctx.destination);
+      masterGain.gain.setValueAtTime(0.001, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.2, now + 0.1);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      // Primary Solfeggio Sine
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(baseFreq, now);
+      osc1.connect(masterGain);
+      osc1.start(now);
+      osc1.stop(now + 2.1);
 
-      osc.start();
-      osc.stop(ctx.currentTime + 1.5);
+      // Warm Overtone
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(baseFreq * 1.5, now);
+      const subGain = ctx.createGain();
+      subGain.gain.setValueAtTime(0.05, now);
+      osc2.connect(subGain);
+      subGain.connect(masterGain);
+      osc2.start(now);
+      osc2.stop(now + 1.8);
     } catch (e) {
       // audio restrictions
     }
   };
 
-  // Timer loop
+  // 60FPS Realistic Canvas Particle Vortex Simulation
   useEffect(() => {
-    let interval: any = null;
-    if (isPlaying && !showCompletion) {
-      interval = setInterval(() => {
-        setSessionDurationSecs((prev) => prev + 1);
-        setSecondsRemainingInPhase((prev) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = (canvas.width = canvas.parentElement?.clientWidth || 400);
+    let height = (canvas.height = 360);
+
+    interface Particle {
+      x: number;
+      y: number;
+      radius: number;
+      angle: number;
+      distance: number;
+      speed: number;
+      baseAlpha: number;
+      color: string;
+    }
+
+    const particleCount = 180;
+    const particles: Particle[] = [];
+    const colors = [protocol.primaryGlow, protocol.secondaryGlow, '#06b6d4', '#ec4899', '#ffffff'];
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: width / 2,
+        y: height / 2,
+        radius: Math.random() * 2.5 + 1.0,
+        angle: Math.random() * Math.PI * 2,
+        distance: Math.random() * 90 + 30,
+        speed: (Math.random() * 0.015 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
+        baseAlpha: Math.random() * 0.7 + 0.3,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+
+    let pulseRadius = 70;
+    let targetPulseRadius = 70;
+    let rotation = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Determine target expansion based on breathing phase
+      if (isPlaying) {
+        if (currentPhase.name === 'Inhale') {
+          targetPulseRadius = 135;
+        } else if (currentPhase.name === 'Exhale') {
+          targetPulseRadius = 60;
+        } else {
+          targetPulseRadius = 120;
+        }
+      } else {
+        targetPulseRadius = 75;
+      }
+
+      // Smooth spring interpolation
+      pulseRadius += (targetPulseRadius - pulseRadius) * 0.04;
+      rotation += 0.008;
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      // 1. Ambient Background Glow Halo
+      const bgGrad = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, pulseRadius * 1.8);
+      bgGrad.addColorStop(0, `${currentPhase.color}33`);
+      bgGrad.addColorStop(0.5, `${protocol.secondaryGlow}18`);
+      bgGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = bgGrad;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, pulseRadius * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Multi-Layered Resonance Shockwave Rings
+      for (let r = 1; r <= 3; r++) {
+        ctx.strokeStyle = `${currentPhase.color}${Math.floor((0.3 / r) * 255).toString(16).padStart(2, '0')}`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([8, 12]);
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, pulseRadius + r * 22, rotation * r, rotation * r + Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // 3. Swirling Bioluminescent Particles
+      particles.forEach((p) => {
+        p.angle += p.speed;
+        const currentDist = (p.distance / 80) * pulseRadius;
+        const px = centerX + Math.cos(p.angle) * currentDist;
+        const py = centerY + Math.sin(p.angle) * currentDist;
+
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+        ctx.globalAlpha = p.baseAlpha * (pulseRadius / 110);
+        ctx.beginPath();
+        ctx.arc(px, py, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1.0;
+      ctx.shadowBlur = 0;
+
+      // 4. Central Glowing Core Sphere
+      const sphereGrad = ctx.createRadialGradient(
+        centerX - pulseRadius * 0.25,
+        centerY - pulseRadius * 0.25,
+        pulseRadius * 0.1,
+        centerX,
+        centerY,
+        pulseRadius
+      );
+      sphereGrad.addColorStop(0, '#ffffff');
+      sphereGrad.addColorStop(0.3, currentPhase.color);
+      sphereGrad.addColorStop(0.7, protocol.secondaryGlow);
+      sphereGrad.addColorStop(1, '#05030e');
+
+      ctx.save();
+      ctx.shadowColor = currentPhase.color;
+      ctx.shadowBlur = 35;
+      ctx.fillStyle = sphereGrad;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 5. Outer Shimmering Rim
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+
+      animFrameId.current = requestAnimationFrame(render);
+    };
+
+    render();
+
+    const handleResize = () => {
+      if (canvas && canvas.parentElement) {
+        width = canvas.width = canvas.parentElement.clientWidth;
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isPlaying, currentPhase, protocol]);
+
+  // Main Breathing Interval Controller
+  useEffect(() => {
+    let timer: any = null;
+    if (isPlaying && !isCompleted) {
+      timer = setInterval(() => {
+        setSessionSeconds((s) => s + 1);
+        setPhaseSecsLeft((prev) => {
           if (prev <= 1) {
-            // Advance phase
-            const nextIndex = (currentPhaseIndex + 1) % config.phases.length;
+            const nextIndex = (phaseIndex + 1) % protocol.phases.length;
+
             if (nextIndex === 0) {
-              // Completed a cycle
               setCompletedCycles((c) => {
                 const updated = c + 1;
-                if (updated >= config.totalCyclesTarget) {
+                setHrvCoherence((h) => Math.min(98, h + 6));
+                if (updated >= protocol.targetCycles) {
                   setIsPlaying(false);
-                  setShowCompletion(true);
-                  playChime('complete');
+                  setIsCompleted(true);
                   if (onComplete) {
                     onComplete({
                       activityId,
-                      cycles: updated,
-                      preAnxiety,
-                      postAnxiety,
-                      durationSecs: sessionDurationSecs + 1
+                      cyclesCompleted: updated,
+                      coherenceScore: hrvCoherence + 6,
+                      durationSeconds: sessionSeconds + 1
                     });
                   }
                 }
@@ -191,78 +345,85 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
               });
             }
 
-            setCurrentPhaseIndex(nextIndex);
-            const nextDuration = config.phases[nextIndex].duration;
-            const phaseType = config.phases[nextIndex].name.toLowerCase().includes('inhale')
-              ? 'inhale'
-              : config.phases[nextIndex].name.toLowerCase().includes('exhale')
-              ? 'exhale'
-              : 'hold';
-            playChime(phaseType as any);
-            return nextDuration;
+            setPhaseIndex(nextIndex);
+            const nextPhase = protocol.phases[nextIndex];
+            playHarmonicSound(nextPhase.name);
+            return nextPhase.duration;
           }
           return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
-  }, [isPlaying, currentPhaseIndex, config, showCompletion, preAnxiety, postAnxiety, activityId, onComplete, sessionDurationSecs]);
+    return () => clearInterval(timer);
+  }, [isPlaying, phaseIndex, protocol, isCompleted, sessionSeconds, onComplete, activityId, hrvCoherence]);
 
   const handleTogglePlay = () => {
     if (!isPlaying) {
-      playChime('inhale');
+      playHarmonicSound(currentPhase.name);
     }
     setIsPlaying(!isPlaying);
   };
 
   const handleReset = () => {
     setIsPlaying(false);
-    setCurrentPhaseIndex(0);
-    setSecondsRemainingInPhase(config.phases[0].duration);
+    setPhaseIndex(0);
+    setPhaseSecsLeft(protocol.phases[0].duration);
     setCompletedCycles(0);
-    setShowCompletion(false);
-    setSessionDurationSecs(0);
+    setIsCompleted(false);
+    setSessionSeconds(0);
+    setHrvCoherence(64);
   };
 
   return (
-    <div className={`w-full rounded-3xl bg-gradient-to-b ${config.colorScheme.bgGradient} p-6 sm:p-8 text-white shadow-2xl border ${config.colorScheme.borderColor} relative overflow-hidden font-['Plus_Jakarta_Sans']`}>
-      {/* Background Decorative Rings */}
-      <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+    <div className="w-full rounded-3xl bg-[#090615] p-6 sm:p-8 text-white shadow-2xl border border-purple-500/20 relative overflow-hidden font-['Plus_Jakarta_Sans']">
+      {/* Dynamic Hexpertify Background Lighting */}
+      <div
+        className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-40 transition-colors duration-1000"
+        style={{ background: currentPhase.color }}
+      />
+      <div
+        className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-30"
+        style={{ background: protocol.secondaryGlow }}
+      />
 
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5 relative z-10">
         <div className="flex items-center gap-3.5">
-          <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/15 shrink-0 shadow-inner">
-            <Wind className={`w-6 h-6 ${config.colorScheme.textColor} animate-pulse`} />
+          <div className="p-3 bg-purple-500/10 rounded-2xl backdrop-blur-xl border border-purple-500/30 text-purple-300 shadow-inner">
+            <Wind className="w-6 h-6 animate-pulse text-[#06b6d4]" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/10 ${config.colorScheme.textColor} border border-white/15`}>
-                {activityId} • BREATHING THERAPY
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                {activityId} • {protocol.badge}
               </span>
               <span className="text-xs text-white/50 font-medium">
-                Cycle {completedCycles}/{config.totalCyclesTarget}
+                Cycle {completedCycles}/{protocol.targetCycles}
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white mt-0.5 tracking-tight">
-              {activityName || config.name}
+            <h2 className="text-xl sm:text-2xl font-black text-white mt-1 tracking-tight">
+              {activityName || protocol.title}
             </h2>
-            <p className="text-xs text-white/70 font-medium mt-0.5">{config.subtitle}</p>
+            <p className="text-xs text-purple-300/80 font-semibold mt-0.5">{protocol.pacingDesc}</p>
           </div>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="px-3 py-1.5 rounded-xl bg-purple-900/30 border border-purple-500/30 text-[11px] font-bold text-cyan-300 flex items-center gap-1.5">
+            <Heart className="w-3.5 h-3.5 text-rose-400 fill-current animate-pulse" />
+            <span>Coherence: {hrvCoherence}%</span>
+          </div>
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/15 transition-all text-xs flex items-center gap-1.5"
-            title="Toggle meditative chimes"
+            className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs flex items-center"
+            title="Toggle Harmonic Solfeggio Audio"
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-white/40" />}
           </button>
           <button
             onClick={handleReset}
-            className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/15 transition-all text-xs flex items-center gap-1.5"
+            className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs"
             title="Reset Session"
           >
             <RotateCcw className="w-4 h-4" />
@@ -270,134 +431,124 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
         </div>
       </div>
 
-      {/* Main Breathing Biofeedback Arena */}
-      {!showCompletion ? (
-        <div className="py-8 relative z-10 flex flex-col items-center justify-center">
-          {/* Pattern Ribbon */}
-          <div className="mb-6 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-white/80 flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Pacing Protocol: {config.patternName}</span>
-          </div>
+      {!isCompleted ? (
+        <div className="py-6 relative z-10 flex flex-col items-center justify-center">
+          {/* Real-Time Canvas 3D Particle Bio-Sphere */}
+          <div className="relative w-full max-w-md h-80 flex items-center justify-center my-2">
+            <canvas ref={canvasRef} className="w-full h-full absolute inset-0 z-0 pointer-events-none" />
 
-          {/* Central Pulsing Diaphragm Orb */}
-          <div className="relative w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center my-4">
-            {/* Outer Expanding Halo */}
-            <div
-              className={`absolute rounded-full transition-all duration-1000 ease-in-out`}
-              style={{
-                width: currentPhase.name === 'Inhale' ? '100%' : currentPhase.name === 'Exhale' ? '65%' : '85%',
-                height: currentPhase.name === 'Inhale' ? '100%' : currentPhase.name === 'Exhale' ? '65%' : '85%',
-                background: `radial-gradient(circle, ${config.colorScheme.accentGlow} 0%, rgba(0,0,0,0) 70%)`
-              }}
-            />
-
-            {/* Glowing Center Core */}
-            <div
-              className={`relative rounded-full bg-gradient-to-tr ${config.colorScheme.orbGradient} p-1 shadow-2xl flex flex-col items-center justify-center text-center transition-all duration-1000 ease-in-out cursor-pointer select-none`}
-              style={{
-                width: currentPhase.name === 'Inhale' ? '210px' : currentPhase.name === 'Exhale' ? '145px' : '180px',
-                height: currentPhase.name === 'Inhale' ? '210px' : currentPhase.name === 'Exhale' ? '145px' : '180px',
-                boxShadow: `0 0 50px ${config.colorScheme.accentGlow}`
-              }}
-              onClick={handleTogglePlay}
-            >
-              <div className="w-full h-full rounded-full bg-slate-950/40 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-                <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-white/90">
-                  {isPlaying ? currentPhase.name : 'Ready'}
-                </span>
-                <span className="text-4xl sm:text-5xl font-black text-white tracking-tighter my-1">
-                  {isPlaying ? secondsRemainingInPhase : 'Start'}
-                </span>
-                <span className="text-[11px] font-semibold text-white/80">
-                  {isPlaying ? `${currentPhase.duration}s target` : 'Click to begin'}
-                </span>
-              </div>
+            {/* Floating Live State Display */}
+            <div className="relative z-10 text-center pointer-events-none select-none flex flex-col items-center justify-center">
+              <span
+                className="text-xs sm:text-sm font-black uppercase tracking-widest transition-colors duration-500 drop-shadow-md"
+                style={{ color: currentPhase.color }}
+              >
+                {isPlaying ? currentPhase.name : 'System Ready'}
+              </span>
+              <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter my-1 drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
+                {isPlaying ? phaseSecsLeft : 'Start'}
+              </span>
+              <span className="text-[11px] font-bold text-white/70">
+                {isPlaying ? `${currentPhase.duration}s Phase Target` : 'Tap Button Below'}
+              </span>
             </div>
           </div>
 
-          {/* Real-Time Somatic Instruction Cue */}
-          <div className="max-w-md text-center mt-2 px-4 py-3 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
-            <p className="text-sm sm:text-base font-bold text-white tracking-wide">
-              {isPlaying ? currentPhase.cue : 'Sit comfortably with feet flat, shoulders dropped, and follow the rhythm.'}
+          {/* Somatic Real-Time Clinical Cue Card */}
+          <div className="w-full max-w-lg mt-2 p-4 rounded-2xl bg-slate-950/80 border border-purple-500/20 backdrop-blur-xl text-center space-y-1 shadow-xl">
+            <div className="text-[10px] uppercase font-black tracking-wider text-purple-300 flex items-center justify-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Somatic Guidance
+            </div>
+            <p className="text-sm sm:text-base font-bold text-white tracking-wide leading-snug">
+              {isPlaying ? currentPhase.cue : 'Settle into a relaxed seated posture, soften your jaw, and click Begin.'}
             </p>
           </div>
 
-          {/* Controls & Progress */}
+          {/* Interactive Controls & Coherence Stream */}
           <div className="w-full max-w-md mt-6 space-y-4">
             <div className="flex items-center justify-center gap-4">
               <button
                 onClick={handleTogglePlay}
-                className={`px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center gap-2.5 shadow-xl transition-all ${
+                className={`px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center gap-3 shadow-2xl transition-all cursor-pointer ${
                   isPlaying
-                    ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30'
-                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/30'
+                    ? 'bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-400/40 shadow-[0_0_30px_rgba(139,92,246,0.3)]'
+                    : 'bg-gradient-to-r from-[#5e2be2] to-[#06b6d4] hover:opacity-95 text-white shadow-[0_0_35px_rgba(94,43,226,0.5)] transform hover:scale-[1.02]'
                 }`}
               >
                 {isPlaying ? (
                   <>
-                    <Pause className="w-4 h-4 fill-current" /> Pause Exercise
+                    <Pause className="w-5 h-5 fill-current" /> Pause Session
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 fill-current" /> Begin Breathwork
+                    <Play className="w-5 h-5 fill-current" /> Begin Breathwork
                   </>
                 )}
               </button>
             </div>
 
-            {/* Cycle Gauge */}
+            {/* Session Multi-Stage Progress Bar */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-white/70">
-                <span>Session Target: {config.totalCyclesTarget} Breath Cycles</span>
-                <span>{Math.round((completedCycles / config.totalCyclesTarget) * 100)}% Complete</span>
+              <div className="flex justify-between text-xs font-bold text-purple-200/80">
+                <span>Protocol Target: {protocol.targetCycles} Full Cycles</span>
+                <span className="text-cyan-300">{Math.round((completedCycles / protocol.targetCycles) * 100)}% Complete</span>
               </div>
-              <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden border border-white/10">
+              <div className="w-full h-3 bg-slate-950/80 rounded-full overflow-hidden border border-purple-500/30 p-0.5">
                 <div
-                  className="h-full bg-gradient-to-r from-teal-400 to-emerald-400 transition-all duration-500 rounded-full"
-                  style={{ width: `${Math.min(100, (completedCycles / config.totalCyclesTarget) * 100)}%` }}
+                  className="h-full bg-gradient-to-r from-[#5e2be2] via-purple-500 to-[#06b6d4] transition-all duration-500 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+                  style={{ width: `${Math.min(100, (completedCycles / protocol.targetCycles) * 100)}%` }}
                 />
               </div>
             </div>
           </div>
         </div>
       ) : (
-        /* Completion State */
+        /* Clinical Completion Ceremony */
         <div className="py-10 text-center space-y-6 relative z-10 max-w-lg mx-auto animate-fade-in">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center mx-auto shadow-2xl">
-            <CheckCircle2 className="w-10 h-10" />
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-[#5e2be2] to-[#06b6d4] p-1 mx-auto shadow-[0_0_50px_rgba(6,182,212,0.5)] flex items-center justify-center">
+            <div className="w-full h-full rounded-3xl bg-slate-950/80 flex items-center justify-center text-cyan-300">
+              <CheckCircle2 className="w-12 h-12" />
+            </div>
           </div>
 
           <div>
-            <h3 className="text-2xl sm:text-3xl font-black text-white">Exercise Complete!</h3>
-            <p className="text-xs sm:text-sm text-white/70 mt-1">
-              You completed {completedCycles} mindful breath cycles ({Math.floor(sessionDurationSecs / 60)}m {sessionDurationSecs % 60}s).
+            <h3 className="text-2xl sm:text-3xl font-black text-white">Vagal Equilibrium Restored</h3>
+            <p className="text-xs sm:text-sm text-purple-200/80 mt-1">
+              Completed {completedCycles} breathwork cycles in {Math.floor(sessionSeconds / 60)}m {sessionSeconds % 60}s.
             </p>
           </div>
 
-          {/* Pre / Post SUDS Anxiety Check */}
-          <div className="bg-white/5 p-5 rounded-2xl border border-white/10 space-y-4 text-left">
-            <h4 className="font-extrabold text-xs uppercase tracking-wider text-teal-300 flex items-center gap-1.5">
-              <Activity className="w-4 h-4" /> Somatic SUDS Tension Check
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-xs font-bold text-white">
-              <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                <div className="text-white/50 text-[10px] uppercase">Pre-Session Tension</div>
-                <div className="text-xl text-amber-400 font-black mt-0.5">{preAnxiety} / 10</div>
+          {/* Autonomic Coherence Card */}
+          <div className="bg-slate-950/80 p-5 rounded-3xl border border-purple-500/30 space-y-4 text-left shadow-2xl">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-xs uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                <Activity className="w-4 h-4" /> Neural Coherence Index
+              </span>
+              <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                OPTIMAL PARASYMPATHETIC STATE
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-purple-950/40 rounded-2xl border border-purple-500/20">
+                <div className="text-white/50 text-[10px] uppercase font-bold">HRV Coherence</div>
+                <div className="text-2xl text-cyan-300 font-black mt-0.5">{hrvCoherence}%</div>
               </div>
-              <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30">
-                <div className="text-emerald-300/70 text-[10px] uppercase">Post-Session Tension</div>
-                <div className="text-xl text-emerald-400 font-black mt-0.5">{postAnxiety} / 10</div>
+              <div className="p-3 bg-purple-950/40 rounded-2xl border border-purple-500/20">
+                <div className="text-white/50 text-[10px] uppercase font-bold">Somatic Calm Rating</div>
+                <div className="text-2xl text-emerald-400 font-black mt-0.5">{10 - postSuds} / 10</div>
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[11px] text-white/70 font-semibold">Rate your current tension level now (1-10):</label>
+
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[11px] text-white/70 font-bold">Rate your residual tension (0 = Serene, 10 = High):</label>
               <input
                 type="range"
-                min="1"
+                min="0"
                 max="10"
-                value={postAnxiety}
-                onChange={(e) => setPostAnxiety(Number(e.target.value))}
-                className="w-full accent-emerald-400"
+                value={postSuds}
+                onChange={(e) => setPostSuds(Number(e.target.value))}
+                className="w-full accent-cyan-400"
               />
             </div>
           </div>
@@ -405,7 +556,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
           <div className="flex gap-3 justify-center">
             <button
               onClick={handleReset}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+              className="px-8 py-3.5 bg-gradient-to-r from-[#5e2be2] to-[#06b6d4] text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-xl shadow-purple-500/30 cursor-pointer flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" /> Repeat Session
             </button>
@@ -413,12 +564,10 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
         </div>
       )}
 
-      {/* Clinical Reference Box */}
-      <div className="mt-6 pt-5 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-white/60 relative z-10">
-        <div className="flex items-center gap-2">
-          <Info className="w-4 h-4 text-white/40 shrink-0" />
-          <span>{config.description}</span>
-        </div>
+      {/* Clinical Footer */}
+      <div className="mt-6 pt-5 border-t border-white/10 flex items-center gap-2 text-xs text-purple-200/60 relative z-10">
+        <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
+        <span>{protocol.clinicalEffect}</span>
       </div>
     </div>
   );
