@@ -4,193 +4,537 @@ import { getDatabase } from '../db/mongodb';
 
 const DEFAULT_SEED_ACTIVITIES = [
   {
-    id: 'ACT-01',
-    name: '5-4-3-2-1 Grounding Technique',
-    title: '5-4-3-2-1 Grounding Technique',
-    description: '10-minute guided breathing session focusing on awareness of breath, sensory details (5 Sights, 4 Touches, 3 Sounds, 2 Scents, 1 Taste), and body sensations.',
-    categoryTag: 'MINDFULNESS',
-    category: 'MINDFULNESS',
-    duration: '10 min',
-    difficulty: 'Easy',
-    repeat: 'Daily',
-    frequency: 'Daily',
-    timeOfDay: 'Morning (8:00 AM)',
-    dueDate: 'Today',
-    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Look around and name 5 things you can see.\n2. Touch and observe 4 physical textures.\n3. Tune in and listen to 3 distinct sounds.\n4. Take a slow breath and notice 2 scents.\n5. Notice 1 taste or take a refreshing sip of water.',
-    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
-    templateId: 'ACT-01',
-    assignedTo: ['Sarah Jenkins'],
-    clientAssignments: [
-      { clientName: 'Sarah Jenkins', frequency: 'Daily', timeOfDay: 'Morning (8:00 AM)' }
+    "id": "ACT-01",
+    "_id": "ACT-01",
+    "name": "Diaphragmatic Breathing",
+    "title": "Diaphragmatic Breathing",
+    "categoryTag": "BREATHING",
+    "category": "BREATHING",
+    "duration": "5-10 minutes",
+    "difficulty": "Easy",
+    "repeat": "Daily",
+    "frequency": "Daily",
+    "timeOfDay": "Morning (8:00 AM)",
+    "dueDate": "Today",
+    "description": "Deep belly breathing technique to reduce stress and anxiety naturally.",
+    "howItHelps": "Deep belly breathing technique to reduce stress and anxiety naturally.",
+    "benefits": [
+      "Reduces Stress",
+      "Improves Focus",
+      "Enhances Relaxation"
     ],
-    assignedTherapistName: 'Dr. Alex Harrison',
-    assignedInfo: 'Sarah Jenkins • Daily',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    "imageUrl": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-01",
+    "assignedClientName": "Sarah Jenkins",
+    "assignedTherapistName": "Dr. Alex Harrison",
+    "assignedInfo": "Sarah Jenkins • Daily",
+    "assignedTo": [
+      "Sarah Jenkins"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Sarah Jenkins",
+        "frequency": "Daily",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Deep belly breathing technique to reduce stress and anxiety naturally.\n\nClinical Benefits:\n• Reduces Stress\n• Improves Focus\n• Enhances Relaxation",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
   },
   {
-    id: 'ACT-02',
-    name: 'CBT Automatic Thought Record',
-    title: 'CBT Automatic Thought Record',
-    description: 'Document recent anxiety trigger and write a balanced, rational reframe using Beck 5-column cognitive distortion analysis.',
-    categoryTag: 'CBT',
-    category: 'CBT',
-    duration: '15 min',
-    difficulty: 'Medium',
-    repeat: '2-3 Times / Week',
-    frequency: '2-3 Times / Week',
-    timeOfDay: 'Evening (7:00 PM)',
-    dueDate: 'Today',
-    imageUrl: 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Record the triggering situation (Where were you? Who was there?).\n2. Catch your automatic thought and rate its emotional intensity (0-100%).\n3. Identify cognitive distortions (catastrophizing, all-or-nothing, mind reading).\n4. Challenge the thought with objective evidence.\n5. Formulate a realistic replacement thought.',
-    filePath: 'src/activities/templates/CBTThoughtRecord.tsx',
-    templateId: 'ACT-02',
-    assignedTo: ['Emily Rodriguez'],
-    clientAssignments: [
-      { clientName: 'Emily Rodriguez', frequency: '2-3 Times / Week', timeOfDay: 'Evening (7:00 PM)' }
+    "id": "ACT-02",
+    "_id": "ACT-02",
+    "name": "Box Breathing",
+    "title": "Box Breathing",
+    "categoryTag": "BREATHING",
+    "category": "BREATHING",
+    "duration": "4-8 minutes",
+    "difficulty": "Easy",
+    "repeat": "2-3 Times / Week",
+    "frequency": "2-3 Times / Week",
+    "timeOfDay": "Evening (7:00 PM)",
+    "dueDate": "Today",
+    "description": "Navy SEAL breathing technique for staying calm under pressure with 4-4-4-4 pattern.",
+    "howItHelps": "Navy SEAL breathing technique for staying calm under pressure with 4-4-4-4 pattern.",
+    "benefits": [
+      "Calms Mind",
+      "Reduces Anxiety",
+      "Improves Concentration"
     ],
-    assignedTherapistName: 'Dr. Elena Rostova',
-    assignedInfo: 'Emily Rodriguez • 2-3 Times / Week',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    "imageUrl": "https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-02",
+    "assignedClientName": "Emily Rodriguez",
+    "assignedTherapistName": "Dr. Elena Rostova",
+    "assignedInfo": "Emily Rodriguez • 2-3 Times / Week",
+    "assignedTo": [
+      "Emily Rodriguez"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Emily Rodriguez",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Navy SEAL breathing technique for staying calm under pressure with 4-4-4-4 pattern.\n\nClinical Benefits:\n• Calms Mind\n• Reduces Anxiety\n• Improves Concentration",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
   },
   {
-    id: 'ACT-03',
-    name: 'Progressive Muscle Relaxation (PMR)',
-    title: 'Progressive Muscle Relaxation (PMR)',
-    description: 'Systematically tense and release muscle groups from toes to head to dissolve physical anxiety and somatic stress.',
-    categoryTag: 'SOMATIC',
-    category: 'SOMATIC',
-    duration: '12 min',
-    difficulty: 'Easy',
-    repeat: 'Daily',
-    frequency: 'Daily',
-    timeOfDay: 'Evening (7:00 PM)',
-    dueDate: 'Today',
-    imageUrl: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Settle into a comfortable reclining position.\n2. Tense your feet/toes firmly for 5 seconds, then release completely for 10 seconds.\n3. Progress upwards through calves, thighs, abdomen, chest, shoulders, and face.\n4. Observe the contrast between tension and deep soothing relaxation.',
-    filePath: 'src/activities/templates/ProgressiveMuscleRelaxation.tsx',
-    templateId: 'ACT-03',
-    assignedTo: ['Amanda Miller'],
-    clientAssignments: [
-      { clientName: 'Amanda Miller', frequency: 'Daily', timeOfDay: 'Evening (7:00 PM)' }
+    "id": "ACT-03",
+    "_id": "ACT-03",
+    "name": "4-7-8 Breathing",
+    "title": "4-7-8 Breathing",
+    "categoryTag": "BREATHING",
+    "category": "BREATHING",
+    "duration": "2-3 minutes",
+    "difficulty": "Easy",
+    "repeat": "As Needed",
+    "frequency": "As Needed (PRN)",
+    "timeOfDay": "Afternoon (1:00 PM)",
+    "dueDate": "Today",
+    "description": "The famous 4-7-8 breathing technique popularized by Dr. Andrew Weil is a simple yet powerful method for anxiety relief and better sleep. By following the pattern of inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds, you activate your parasympathetic nervous system and experience deep relaxation.",
+    "howItHelps": "The famous 4-7-8 breathing technique popularized by Dr. Andrew Weil is a simple yet powerful method for anxiety relief and better sleep. By following the pattern of inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds, you activate your parasympathetic nervous system and experience deep relaxation.",
+    "benefits": [
+      "Promotes Better Sleep",
+      "Reduces Anxiety",
+      "Calms the Nervous System"
     ],
-    assignedTherapistName: 'Marcus Vance',
-    assignedInfo: 'Amanda Miller • Daily',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    "imageUrl": "https://images.unsplash.com/photo-1511295742362-92c96b124e52?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-03",
+    "assignedClientName": "Amanda Miller",
+    "assignedTherapistName": "Marcus Vance",
+    "assignedInfo": "Amanda Miller • As Needed",
+    "assignedTo": [
+      "Amanda Miller"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Amanda Miller",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "The famous 4-7-8 breathing technique popularized by Dr. Andrew Weil is a simple yet powerful method for anxiety relief and better sleep. By following the pattern of inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds, you activate your parasympathetic nervous system and experience deep relaxation.\n\nClinical Benefits:\n• Promotes Better Sleep\n• Reduces Anxiety\n• Calms the Nervous System",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
   },
   {
-    id: 'ACT-04',
-    name: 'Fear Hierarchy & Exposure Ladder',
-    title: 'Fear Hierarchy & Exposure Ladder',
-    description: 'Hierarchy ladder for anxiety triggers using SUDS 0-100 graded exposure steps and habituation tracking.',
-    categoryTag: 'EXPOSURE',
-    category: 'EXPOSURE',
-    duration: '25 min',
-    difficulty: 'Advanced',
-    repeat: 'Weekly',
-    frequency: 'Weekly',
-    timeOfDay: 'Afternoon (1:00 PM)',
-    dueDate: 'Tomorrow',
-    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Define your primary fear target.\n2. Break the situation down into 5 graded steps from mild (SUDS 20) to severe (SUDS 90).\n3. Complete repeated trials on the current rung until anxiety drops by 50% before climbing.',
-    filePath: 'src/activities/templates/ExposureHierarchyLadder.tsx',
-    templateId: 'ACT-04',
-    assignedTo: ['Robert Garcia'],
-    clientAssignments: [
-      { clientName: 'Robert Garcia', frequency: 'Weekly', timeOfDay: 'Afternoon (1:00 PM)' }
+    "id": "ACT-04",
+    "_id": "ACT-04",
+    "name": "Alternate Nostril Breathing",
+    "title": "Alternate Nostril Breathing",
+    "categoryTag": "BREATHING",
+    "category": "BREATHING",
+    "duration": "5-10 minutes",
+    "difficulty": "Easy",
+    "repeat": "Daily",
+    "frequency": "Daily",
+    "timeOfDay": "Any Time",
+    "dueDate": "Today",
+    "description": "This ancient yogic breathing technique alternates airflow between nostrils to balance the left and right brain hemispheres. By harmonizing your nervous system, it reduces stress, improves focus, and creates a profound sense of calm and mental clarity.",
+    "howItHelps": "This ancient yogic breathing technique alternates airflow between nostrils to balance the left and right brain hemispheres. By harmonizing your nervous system, it reduces stress, improves focus, and creates a profound sense of calm and mental clarity.",
+    "benefits": [
+      "Balances Brain Hemispheres",
+      "Promotes Deep Relaxation",
+      "Enhances Mental Clarity"
     ],
-    assignedTherapistName: 'Dr. Sophia Bennett',
-    assignedInfo: 'Robert Garcia • Weekly',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    "imageUrl": "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-04",
+    "assignedClientName": "Robert Garcia",
+    "assignedTherapistName": "Dr. Sophia Bennett",
+    "assignedInfo": "Robert Garcia • Daily",
+    "assignedTo": [
+      "Robert Garcia"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Robert Garcia",
+        "frequency": "Daily",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "This ancient yogic breathing technique alternates airflow between nostrils to balance the left and right brain hemispheres. By harmonizing your nervous system, it reduces stress, improves focus, and creates a profound sense of calm and mental clarity.\n\nClinical Benefits:\n• Balances Brain Hemispheres\n• Promotes Deep Relaxation\n• Enhances Mental Clarity",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
   },
   {
-    id: 'ACT-05',
-    name: 'Behavioral Activation Tracker',
-    title: 'Behavioral Activation Tracker',
-    description: 'Schedule rewarding daily activities, track mood changes, and monitor Pleasure & Mastery scores.',
-    categoryTag: 'BEHAVIORAL',
-    category: 'BEHAVIORAL',
-    duration: '12 min',
-    difficulty: 'Medium',
-    repeat: 'Daily',
-    frequency: 'Daily',
-    timeOfDay: 'Morning (8:00 AM)',
-    dueDate: 'Today',
-    imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Identify 3 small meaningful actions you can take today.\n2. Rate anticipated Pleasure (0-10) and Mastery (0-10).\n3. Log your actual mood shift immediately after finishing.',
-    filePath: 'src/activities/templates/BehavioralActivationTracker.tsx',
-    templateId: 'ACT-05',
-    assignedTo: ['Michael Chen'],
-    clientAssignments: [
-      { clientName: 'Michael Chen', frequency: 'Daily', timeOfDay: 'Morning (8:00 AM)' }
+    "id": "ACT-05",
+    "_id": "ACT-05",
+    "name": "Describe Your Room",
+    "title": "Describe Your Room",
+    "categoryTag": "MINDFULNESS",
+    "category": "MINDFULNESS",
+    "duration": "1-2 minutes",
+    "difficulty": "Easy",
+    "repeat": "2-3 Times / Week",
+    "frequency": "2-3 Times / Week",
+    "timeOfDay": "Morning (8:00 AM)",
+    "dueDate": "Today",
+    "description": "Use mindfulness to anchor yourself in the present moment by describing your surroundings in detail. This grounding technique helps redirect anxious thoughts and brings you into the here-and-now through sensory awareness.",
+    "howItHelps": "Use mindfulness to anchor yourself in the present moment by describing your surroundings in detail. This grounding technique helps redirect anxious thoughts and brings you into the here-and-now through sensory awareness.",
+    "benefits": [
+      "Improves Presence",
+      "Grounds in Reality",
+      "Enhances Sensory Awareness"
     ],
-    assignedTherapistName: 'Dr. Alex Harrison',
-    assignedInfo: 'Michael Chen • Daily',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    "imageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-05",
+    "assignedClientName": "Michael Chen",
+    "assignedTherapistName": "Dr. Alex Harrison",
+    "assignedInfo": "Michael Chen • 2-3 Times / Week",
+    "assignedTo": [
+      "Michael Chen"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Michael Chen",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Use mindfulness to anchor yourself in the present moment by describing your surroundings in detail. This grounding technique helps redirect anxious thoughts and brings you into the here-and-now through sensory awareness.\n\nClinical Benefits:\n• Improves Presence\n• Grounds in Reality\n• Enhances Sensory Awareness",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
   },
   {
-    id: 'ACT-06',
-    name: '4-7-8 Parasympathetic Breathing',
-    title: '4-7-8 Parasympathetic Breathing',
-    description: 'Calm your nervous system using rhythmic 4-second inhale, 7-second hold, and 8-second exhale wave cycles.',
-    categoryTag: 'BREATHING',
-    category: 'BREATHING',
-    duration: '5 min',
-    difficulty: 'Easy',
-    repeat: 'As Needed (PRN)',
-    frequency: 'As Needed (PRN)',
-    timeOfDay: 'Any Time',
-    dueDate: 'Today',
-    imageUrl: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Inhale silently through your nose for 4 seconds.\n2. Hold your breath gently for 7 seconds.\n3. Exhale completely through your mouth for 8 seconds. Complete 4 consecutive cycles.',
-    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
-    templateId: 'ACT-06',
-    assignedTo: ['Sarah Jenkins'],
-    clientAssignments: [
-      { clientName: 'Sarah Jenkins', frequency: 'As Needed (PRN)', timeOfDay: 'Any Time' }
+    "id": "ACT-06",
+    "_id": "ACT-06",
+    "name": "Name the Moment",
+    "title": "Name the Moment",
+    "categoryTag": "MINDFULNESS",
+    "category": "MINDFULNESS",
+    "duration": "2-3 minutes",
+    "difficulty": "Easy",
+    "repeat": "As Needed",
+    "frequency": "As Needed (PRN)",
+    "timeOfDay": "Evening (7:00 PM)",
+    "dueDate": "Today",
+    "description": "This guided self-reassurance exercise helps you acknowledge difficult emotions with kindness and compassion. By speaking affirmations and reassurances to yourself, you rewire your nervous system to respond to stress with self-support instead of self-criticism, building lasting emotional resilience.",
+    "howItHelps": "This guided self-reassurance exercise helps you acknowledge difficult emotions with kindness and compassion. By speaking affirmations and reassurances to yourself, you rewire your nervous system to respond to stress with self-support instead of self-criticism, building lasting emotional resilience.",
+    "benefits": [
+      "Builds Self-Compassion",
+      "Reduces Emotional Overwhelm",
+      "Strengthens Inner Resilience"
     ],
-    assignedTherapistName: 'Dr. Alex Harrison',
-    assignedInfo: 'Sarah Jenkins • As Needed',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    "imageUrl": "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-06",
+    "assignedClientName": "David Kim",
+    "assignedTherapistName": "Dr. Evelyn Reed",
+    "assignedInfo": "David Kim • As Needed",
+    "assignedTo": [
+      "David Kim"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "David Kim",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "This guided self-reassurance exercise helps you acknowledge difficult emotions with kindness and compassion. By speaking affirmations and reassurances to yourself, you rewire your nervous system to respond to stress with self-support instead of self-criticism, building lasting emotional resilience.\n\nClinical Benefits:\n• Builds Self-Compassion\n• Reduces Emotional Overwhelm\n• Strengthens Inner Resilience",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
   },
   {
-    id: 'ACT-07',
-    name: 'Daily Gratitude Journal & Reflection',
-    title: 'Daily Gratitude Journal & Reflection',
-    description: 'Write down 3 things you felt grateful for today and reflect on why they brought meaning, joy, or relief.',
-    categoryTag: 'GRATITUDE',
-    category: 'GRATITUDE',
-    duration: '8 min',
-    difficulty: 'Easy',
-    repeat: 'Daily',
-    frequency: 'Daily',
-    timeOfDay: 'Before Bed (10:00 PM)',
-    dueDate: 'Today',
-    imageUrl: 'https://images.unsplash.com/photo-1511295742362-92c96b124e52?auto=format&fit=crop&w=800&q=80',
-    instructions: '1. Take 2 slow abdominal breaths.\n2. Write down 3 specific moments from today that brought warmth, satisfaction, or relief.\n3. Reflect on *why* they mattered to absorb positive emotions.',
-    filePath: 'src/activities/templates/GroundingTechnique54321.tsx',
-    templateId: 'ACT-07',
-    assignedTo: ['Amanda Miller'],
-    clientAssignments: [
-      { clientName: 'Amanda Miller', frequency: 'Daily', timeOfDay: 'Before Bed (10:00 PM)' }
+    "id": "ACT-07",
+    "_id": "ACT-07",
+    "name": "Physical Grounding",
+    "title": "Physical Grounding",
+    "categoryTag": "SOMATIC",
+    "category": "SOMATIC",
+    "duration": "5-10 minutes",
+    "difficulty": "Easy",
+    "repeat": "Daily",
+    "frequency": "Daily",
+    "timeOfDay": "Afternoon (1:00 PM)",
+    "dueDate": "Today",
+    "description": "Engage your five senses through tactile and physical experiences to bring you fully into the present moment. This somatic grounding technique interrupts the stress response cycle by signaling to your nervous system that you are safe, helping you move out of fight-or-flight mode into calm awareness.",
+    "howItHelps": "Engage your five senses through tactile and physical experiences to bring you fully into the present moment. This somatic grounding technique interrupts the stress response cycle by signaling to your nervous system that you are safe, helping you move out of fight-or-flight mode into calm awareness.",
+    "benefits": [
+      "Anchors You in Your Body",
+      "Releases Trauma Responses",
+      "Activates Safety Signals"
     ],
-    assignedTherapistName: 'Marcus Vance',
-    assignedInfo: 'Amanda Miller • Daily',
-    isVisible: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    "imageUrl": "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-07",
+    "assignedClientName": "Rohan Mehta",
+    "assignedTherapistName": "Dr. Aravind Swamy",
+    "assignedInfo": "Rohan Mehta • Daily",
+    "assignedTo": [
+      "Rohan Mehta"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Rohan Mehta",
+        "frequency": "Daily",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Engage your five senses through tactile and physical experiences to bring you fully into the present moment. This somatic grounding technique interrupts the stress response cycle by signaling to your nervous system that you are safe, helping you move out of fight-or-flight mode into calm awareness.\n\nClinical Benefits:\n• Anchors You in Your Body\n• Releases Trauma Responses\n• Activates Safety Signals",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
+  },
+  {
+    "id": "ACT-08",
+    "_id": "ACT-08",
+    "name": "Posture Reset",
+    "title": "Posture Reset",
+    "categoryTag": "SOMATIC",
+    "category": "SOMATIC",
+    "duration": "1-1.5 minutes",
+    "difficulty": "Easy",
+    "repeat": "2-3 Times / Week",
+    "frequency": "2-3 Times / Week",
+    "timeOfDay": "Any Time",
+    "dueDate": "Today",
+    "description": "Your body and mind are deeply connected. By intentionally adjusting your posture and releasing tension through gentle movements, you signal to your nervous system that you are safe and grounded. This practice helps you reclaim your physical presence and mental clarity.",
+    "howItHelps": "Your body and mind are deeply connected. By intentionally adjusting your posture and releasing tension through gentle movements, you signal to your nervous system that you are safe and grounded. This practice helps you reclaim your physical presence and mental clarity.",
+    "benefits": [
+      "Releases Physical Tension",
+      "Improves Body Awareness",
+      "Restores Natural Alignment"
+    ],
+    "imageUrl": "https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-08",
+    "assignedClientName": "Kavita Krishnan",
+    "assignedTherapistName": "Dr. Priya Sharma",
+    "assignedInfo": "Kavita Krishnan • 2-3 Times / Week",
+    "assignedTo": [
+      "Kavita Krishnan"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Kavita Krishnan",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Your body and mind are deeply connected. By intentionally adjusting your posture and releasing tension through gentle movements, you signal to your nervous system that you are safe and grounded. This practice helps you reclaim your physical presence and mental clarity.\n\nClinical Benefits:\n• Releases Physical Tension\n• Improves Body Awareness\n• Restores Natural Alignment",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
+  },
+  {
+    "id": "ACT-09",
+    "_id": "ACT-09",
+    "name": "Self-Soothing",
+    "title": "Self-Soothing",
+    "categoryTag": "SOMATIC",
+    "category": "SOMATIC",
+    "duration": "5-10 minutes",
+    "difficulty": "Easy",
+    "repeat": "As Needed",
+    "frequency": "As Needed (PRN)",
+    "timeOfDay": "Morning (8:00 AM)",
+    "dueDate": "Today",
+    "description": "Drawing from Dialectical Behavior Therapy (DBT), this technique teaches you to soothe yourself through multisensory engagement. By intentionally activating your senses—touch, smell, taste, sight, sound—you create a safe container for emotional pain and build your capacity to tolerate distressing moments.",
+    "howItHelps": "Drawing from Dialectical Behavior Therapy (DBT), this technique teaches you to soothe yourself through multisensory engagement. By intentionally activating your senses—touch, smell, taste, sight, sound—you create a safe container for emotional pain and build your capacity to tolerate distressing moments.",
+    "benefits": [
+      "Soothes Emotional Pain",
+      "Provides Immediate Relief",
+      "Builds Distress Tolerance"
+    ],
+    "imageUrl": "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-09",
+    "assignedClientName": "Siddharth Verma",
+    "assignedTherapistName": "Dr. David Chen",
+    "assignedInfo": "Siddharth Verma • As Needed",
+    "assignedTo": [
+      "Siddharth Verma"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Siddharth Verma",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Drawing from Dialectical Behavior Therapy (DBT), this technique teaches you to soothe yourself through multisensory engagement. By intentionally activating your senses—touch, smell, taste, sight, sound—you create a safe container for emotional pain and build your capacity to tolerate distressing moments.\n\nClinical Benefits:\n• Soothes Emotional Pain\n• Provides Immediate Relief\n• Builds Distress Tolerance",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
+  },
+  {
+    "id": "ACT-10",
+    "_id": "ACT-10",
+    "name": "CBT Thought-Challenger",
+    "title": "CBT Thought-Challenger",
+    "categoryTag": "CBT",
+    "category": "CBT",
+    "duration": "10-15 minutes",
+    "difficulty": "Medium",
+    "repeat": "Daily",
+    "frequency": "Daily",
+    "timeOfDay": "Evening (7:00 PM)",
+    "dueDate": "Today",
+    "description": "Using Cognitive Behavioral Therapy techniques, challenge automatic negative thoughts by examining the evidence for and against them. Develop balanced, realistic perspectives that reduce anxiety, low mood, and self-criticism through cognitive restructuring.",
+    "howItHelps": "Using Cognitive Behavioral Therapy techniques, challenge automatic negative thoughts by examining the evidence for and against them. Develop balanced, realistic perspectives that reduce anxiety, low mood, and self-criticism through cognitive restructuring.",
+    "benefits": [
+      "Challenges Negative Thinking",
+      "Reduces Anxiety",
+      "Builds Emotional Resilience"
+    ],
+    "imageUrl": "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-10",
+    "assignedClientName": "Alex Morgan",
+    "assignedTherapistName": "Dr. Elena Rostova",
+    "assignedInfo": "Alex Morgan • Daily",
+    "assignedTo": [
+      "Alex Morgan"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Alex Morgan",
+        "frequency": "Daily",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Using Cognitive Behavioral Therapy techniques, challenge automatic negative thoughts by examining the evidence for and against them. Develop balanced, realistic perspectives that reduce anxiety, low mood, and self-criticism through cognitive restructuring.\n\nClinical Benefits:\n• Challenges Negative Thinking\n• Reduces Anxiety\n• Builds Emotional Resilience",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
+  },
+  {
+    "id": "ACT-11",
+    "_id": "ACT-11",
+    "name": "Affirmation Mirror",
+    "title": "Affirmation Mirror",
+    "categoryTag": "GRATITUDE",
+    "category": "GRATITUDE",
+    "duration": "5-10 minutes",
+    "difficulty": "Easy",
+    "repeat": "2-3 Times / Week",
+    "frequency": "2-3 Times / Week",
+    "timeOfDay": "Afternoon (1:00 PM)",
+    "dueDate": "Today",
+    "description": "Transform negative self-talk into powerful, personalized affirmations that rewire your brain toward self-compassion. By mirroring empowering statements back to yourself, you create new neural pathways that support lasting confidence, resilience, and emotional wellbeing.",
+    "howItHelps": "Transform negative self-talk into powerful, personalized affirmations that rewire your brain toward self-compassion. By mirroring empowering statements back to yourself, you create new neural pathways that support lasting confidence, resilience, and emotional wellbeing.",
+    "benefits": [
+      "Boosts Self-Esteem",
+      "Builds Self-Compassion",
+      "Reduces Negative Self-Talk"
+    ],
+    "imageUrl": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-11",
+    "assignedClientName": "Sarah Jenkins",
+    "assignedTherapistName": "Marcus Vance",
+    "assignedInfo": "Sarah Jenkins • 2-3 Times / Week",
+    "assignedTo": [
+      "Sarah Jenkins"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Sarah Jenkins",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Transform negative self-talk into powerful, personalized affirmations that rewire your brain toward self-compassion. By mirroring empowering statements back to yourself, you create new neural pathways that support lasting confidence, resilience, and emotional wellbeing.\n\nClinical Benefits:\n• Boosts Self-Esteem\n• Builds Self-Compassion\n• Reduces Negative Self-Talk",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
+  },
+  {
+    "id": "ACT-12",
+    "_id": "ACT-12",
+    "name": "Worry Box",
+    "title": "Worry Box",
+    "categoryTag": "CBT",
+    "category": "CBT",
+    "duration": "3-5 minutes",
+    "difficulty": "Easy",
+    "repeat": "As Needed",
+    "frequency": "As Needed (PRN)",
+    "timeOfDay": "Any Time",
+    "dueDate": "Today",
+    "description": "Externalize your worries by placing them somewhere safe—outside your mind. This CBT-based technique helps your brain interpret the worry as \"stored and contained,\" reducing its emotional intensity. When worries feel infinite in your head, simply writing them down and placing them away creates essential psychological distance.",
+    "howItHelps": "Externalize your worries by placing them somewhere safe—outside your mind. This CBT-based technique helps your brain interpret the worry as \"stored and contained,\" reducing its emotional intensity. When worries feel infinite in your head, simply writing them down and placing them away creates essential psychological distance.",
+    "benefits": [
+      "Reduces Mental Clutter",
+      "Prevents Rumination",
+      "Increases Emotional Control"
+    ],
+    "imageUrl": "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-12",
+    "assignedClientName": "Emily Rodriguez",
+    "assignedTherapistName": "Dr. Sophia Bennett",
+    "assignedInfo": "Emily Rodriguez • As Needed",
+    "assignedTo": [
+      "Emily Rodriguez"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Emily Rodriguez",
+        "frequency": "2-3 Times / Week",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Externalize your worries by placing them somewhere safe—outside your mind. This CBT-based technique helps your brain interpret the worry as \"stored and contained,\" reducing its emotional intensity. When worries feel infinite in your head, simply writing them down and placing them away creates essential psychological distance.\n\nClinical Benefits:\n• Reduces Mental Clutter\n• Prevents Rumination\n• Increases Emotional Control",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
+  },
+  {
+    "id": "ACT-13",
+    "_id": "ACT-13",
+    "name": "Cognitive Grounding",
+    "title": "Cognitive Grounding",
+    "categoryTag": "MINDFULNESS",
+    "category": "MINDFULNESS",
+    "duration": "5-10 minutes",
+    "difficulty": "Easy",
+    "repeat": "Daily",
+    "frequency": "Daily",
+    "timeOfDay": "Morning (8:00 AM)",
+    "dueDate": "Today",
+    "description": "Engage your mind with focused mental exercises like counting, naming, and sensory grounding to shift attention away from worry and anchor you in the present.",
+    "howItHelps": "Engage your mind with focused mental exercises like counting, naming, and sensory grounding to shift attention away from worry and anchor you in the present.",
+    "benefits": [
+      "Interrupts Anxiety",
+      "Sharpens Focus",
+      "Grounds in Present"
+    ],
+    "imageUrl": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",
+    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "templateId": "ACT-13",
+    "assignedClientName": "Amanda Miller",
+    "assignedTherapistName": "Dr. Alex Harrison",
+    "assignedInfo": "Amanda Miller • Daily",
+    "assignedTo": [
+      "Amanda Miller"
+    ],
+    "clientAssignments": [
+      {
+        "clientName": "Amanda Miller",
+        "frequency": "Daily",
+        "timeOfDay": "Morning (8:00 AM)"
+      }
+    ],
+    "isVisible": true,
+    "instructions": "Engage your mind with focused mental exercises like counting, naming, and sensory grounding to shift attention away from worry and anchor you in the present.\n\nClinical Benefits:\n• Interrupts Anxiety\n• Sharpens Focus\n• Grounds in Present",
+    "createdAt": "2026-10-02T06:00:13.370Z",
+    "updatedAt": "2026-10-02T06:00:13.370Z"
   }
 ];
 
