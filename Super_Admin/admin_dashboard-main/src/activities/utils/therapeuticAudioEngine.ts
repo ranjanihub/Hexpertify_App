@@ -300,6 +300,48 @@ class TherapeuticAudioEngine {
       }
     }
   }
+
+  // Chime / acoustic tone helper
+  public playChime(freq: number = 528) {
+    if (!this.soundEnabled) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.25);
+  }
+
+  // Binaural frequency generator helper
+  public playBinauralTone(baseFreq: number = 432, beatFreq: number = 6) {
+    if (!this.soundEnabled) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(baseFreq + beatFreq, now);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.55);
+  }
+
+  // Celebration / completion sound helper
+  public playSuccess() {
+    this.playSfx('celebration_chords');
+  }
 }
 
 export const audioEngine = new TherapeuticAudioEngine();
+
