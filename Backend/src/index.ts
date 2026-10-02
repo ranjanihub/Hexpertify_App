@@ -103,10 +103,10 @@ app.get(['/admin', '/admin/*'], (_req: Request, res: Response) => {
 // 3b. Consultant / Therapist Suite (/consultant, /consultant/*)
 app.get(['/consultant', '/consultant/*'], (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  if (fs.existsSync(consultantIndexPath)) {
-    res.sendFile(consultantIndexPath);
-  } else if (fs.existsSync(unifiedIndexPath)) {
+  if (fs.existsSync(unifiedIndexPath)) {
     res.sendFile(unifiedIndexPath);
+  } else if (fs.existsSync(consultantIndexPath)) {
+    res.sendFile(consultantIndexPath);
   } else {
     res.status(404).send('<h3>Hexpertify Consultant Suite build not found. Run "npm run build" to generate bundles.</h3>');
   }
