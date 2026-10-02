@@ -50,7 +50,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-01",
     "name": "Diaphragmatic Breathing",
     "description": "Deep belly breathing technique to reduce stress and anxiety naturally.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
     "isVisible": true,
     "categoryTag": "BREATHING",
     "duration": "5-10 minutes",
@@ -66,7 +66,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-02",
     "name": "Box Breathing",
     "description": "Navy SEAL breathing technique for staying calm under pressure with 4-4-4-4 pattern.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
     "isVisible": true,
     "categoryTag": "BREATHING",
     "duration": "4-8 minutes",
@@ -82,7 +82,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-03",
     "name": "4-7-8 Breathing",
     "description": "The famous 4-7-8 breathing technique popularized by Dr. Andrew Weil is a simple yet powerful method for anxiety relief and better sleep. By following the pattern of inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds, you activate your parasympathetic nervous system and experience deep relaxation.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
     "isVisible": true,
     "categoryTag": "BREATHING",
     "duration": "2-3 minutes",
@@ -98,7 +98,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-04",
     "name": "Alternate Nostril Breathing",
     "description": "This ancient yogic breathing technique alternates airflow between nostrils to balance the left and right brain hemispheres. By harmonizing your nervous system, it reduces stress, improves focus, and creates a profound sense of calm and mental clarity.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
     "isVisible": true,
     "categoryTag": "BREATHING",
     "duration": "5-10 minutes",
@@ -114,7 +114,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-05",
     "name": "Describe Your Room",
     "description": "Use mindfulness to anchor yourself in the present moment by describing your surroundings in detail. This grounding technique helps redirect anxious thoughts and brings you into the here-and-now through sensory awareness.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
     "isVisible": true,
     "categoryTag": "MINDFULNESS",
     "duration": "1-2 minutes",
@@ -130,7 +130,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-06",
     "name": "Name the Moment",
     "description": "This guided self-reassurance exercise helps you acknowledge difficult emotions with kindness and compassion. By speaking affirmations and reassurances to yourself, you rewire your nervous system to respond to stress with self-support instead of self-criticism, building lasting emotional resilience.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
     "isVisible": true,
     "categoryTag": "MINDFULNESS",
     "duration": "2-3 minutes",
@@ -146,7 +146,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-07",
     "name": "Physical Grounding",
     "description": "Engage your five senses through tactile and physical experiences to bring you fully into the present moment. This somatic grounding technique interrupts the stress response cycle by signaling to your nervous system that you are safe, helping you move out of fight-or-flight mode into calm awareness.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
     "isVisible": true,
     "categoryTag": "SOMATIC",
     "duration": "5-10 minutes",
@@ -162,7 +162,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-08",
     "name": "Posture Reset",
     "description": "Your body and mind are deeply connected. By intentionally adjusting your posture and releasing tension through gentle movements, you signal to your nervous system that you are safe and grounded. This practice helps you reclaim your physical presence and mental clarity.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftSomaticPlayer.tsx",
     "isVisible": true,
     "categoryTag": "SOMATIC",
     "duration": "1-1.5 minutes",
@@ -178,7 +178,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-09",
     "name": "Self-Soothing",
     "description": "Drawing from Dialectical Behavior Therapy (DBT), this technique teaches you to soothe yourself through multisensory engagement. By intentionally activating your senses—touch, smell, taste, sight, sound—you create a safe container for emotional pain and build your capacity to tolerate distressing moments.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftSomaticPlayer.tsx",
     "isVisible": true,
     "categoryTag": "SOMATIC",
     "duration": "5-10 minutes",
@@ -194,7 +194,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-10",
     "name": "CBT Thought-Challenger",
     "description": "Using Cognitive Behavioral Therapy techniques, challenge automatic negative thoughts by examining the evidence for and against them. Develop balanced, realistic perspectives that reduce anxiety, low mood, and self-criticism through cognitive restructuring.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftCbtPlayer.tsx",
     "isVisible": true,
     "categoryTag": "CBT",
     "duration": "10-15 minutes",
@@ -210,7 +210,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-11",
     "name": "Affirmation Mirror",
     "description": "Transform negative self-talk into powerful, personalized affirmations that rewire your brain toward self-compassion. By mirroring empowering statements back to yourself, you create new neural pathways that support lasting confidence, resilience, and emotional wellbeing.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftAffirmationPlayer.tsx",
     "isVisible": true,
     "categoryTag": "GRATITUDE",
     "duration": "5-10 minutes",
@@ -226,7 +226,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-12",
     "name": "Worry Box",
     "description": "Externalize your worries by placing them somewhere safe—outside your mind. This CBT-based technique helps your brain interpret the worry as \"stored and contained,\" reducing its emotional intensity. When worries feel infinite in your head, simply writing them down and placing them away creates essential psychological distance.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftCbtPlayer.tsx",
     "isVisible": true,
     "categoryTag": "CBT",
     "duration": "3-5 minutes",
@@ -242,7 +242,7 @@ const initialActivities: ActivityCardItem[] = [
     "id": "ACT-13",
     "name": "Cognitive Grounding",
     "description": "Engage your mind with focused mental exercises like counting, naming, and sensory grounding to shift attention away from worry and anchor you in the present.",
-    "filePath": "src/activities/templates/MoodLiftActivity.tsx",
+    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
     "isVisible": true,
     "categoryTag": "MINDFULNESS",
     "duration": "5-10 minutes",
@@ -426,7 +426,7 @@ export const ActivitiesView: React.FC = () => {
   });
 
   const activeGameObj = selectedGameId ? activitiesList.find((a) => a.id === selectedGameId) : null;
-  const activeGameComponent = activeGameObj ? getCodedActivityComponent(activeGameObj.templateId) : null;
+  const activeGameComponent = activeGameObj ? (getCodedActivityComponent(activeGameObj.templateId) || getCodedActivityComponent(activeGameObj.id)) : null;
 
   const categoriesList = ['All', 'MINDFULNESS', 'CBT', 'GRATITUDE', 'BREATHING', 'SOMATIC', 'EXPOSURE', 'BEHAVIORAL'];
 
@@ -766,7 +766,7 @@ export const ActivitiesView: React.FC = () => {
 
               <div className="px-3.5 py-2 bg-slate-900 text-emerald-400 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5 border border-slate-800">
                 <Code className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{activeGameObj?.filePath}</span>
+                <span>{activeGameComponent?.filePath || activeGameObj?.filePath}</span>
               </div>
             </div>
           </div>
