@@ -4,9 +4,11 @@ import {
   RotateCcw,
   ArrowRight,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  Volume2
 } from 'lucide-react';
 import type { BaseActivityComponentProps } from '../types';
+import { audioEngine } from '../utils/therapeuticAudioEngine';
 
 export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = ({
   activityName,
@@ -25,6 +27,8 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
   const [isActive, setIsActive] = useState<boolean>(true);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
+  const currentAffirmation = affirmationsList[currentIdx];
+
   useEffect(() => {
     let timer: any = null;
     if (isActive && reflectionTimer > 0) {
@@ -35,25 +39,34 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
     return () => clearInterval(timer);
   }, [isActive, reflectionTimer]);
 
+  const speakCurrentAffirmation = () => {
+    audioEngine.playSfx('neural_sparkle');
+    audioEngine.speak(currentAffirmation.text);
+  };
+
   const handleNext = () => {
+    audioEngine.playSfx('sonar_ping');
     if (currentIdx < affirmationsList.length - 1) {
-      setCurrentIdx(currentIdx + 1);
+      const next = currentIdx + 1;
+      setCurrentIdx(next);
       setReflectionTimer(20);
       setIsActive(true);
+      audioEngine.speak(affirmationsList[next].text);
     } else {
       setIsCompleted(true);
+      audioEngine.playSfx('celebration_chords');
+      audioEngine.speak('Neural mirror affirmation integrated into your self-concept.');
       if (onComplete) onComplete({ completedAffirmations: affirmationsList.length });
     }
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
     setCurrentIdx(0);
     setReflectionTimer(20);
     setIsActive(true);
     setIsCompleted(false);
   };
-
-  const currentAffirmation = affirmationsList[currentIdx];
 
   return (
     <div className="w-full rounded-3xl bg-[#090615] p-6 sm:p-8 text-white shadow-2xl border border-purple-500/20 relative overflow-hidden font-['Plus_Jakarta_Sans']">
@@ -78,7 +91,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all">
+        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
@@ -92,7 +105,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
             </span>
           </div>
 
-          {/* Holographic Mirror Canvas Box */}
+          {/* Holographic Mirror Box */}
           <div className="relative p-8 sm:p-10 rounded-3xl bg-slate-950/80 border-2 border-fuchsia-500/40 backdrop-blur-2xl shadow-[0_0_50px_rgba(217,70,239,0.25)] space-y-4">
             <div className="text-[10px] font-black uppercase tracking-widest text-fuchsia-400/80 flex items-center justify-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-amber-300" /> Speak Aloud or Absorb Internally
@@ -103,6 +116,14 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
             </p>
 
             <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={speakCurrentAffirmation}
+                className="px-4 py-1.5 rounded-full bg-purple-900/40 hover:bg-purple-900/60 border border-fuchsia-500/30 flex items-center gap-1.5 text-xs font-bold text-fuchsia-300 transition-all cursor-pointer"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>Hear Voice Guide</span>
+              </button>
+
               <div className="px-4 py-1.5 rounded-full bg-purple-950/60 border border-fuchsia-500/30 flex items-center gap-2 text-xs font-bold text-fuchsia-300">
                 <span className="w-2 h-2 rounded-full bg-fuchsia-400 animate-ping" />
                 <span>Integration Timer: {reflectionTimer}s</span>

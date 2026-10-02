@@ -14,6 +14,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import type { BaseActivityComponentProps } from '../types';
+import { audioEngine } from '../utils/therapeuticAudioEngine';
 
 export const MoodLiftCbtPlayer: React.FC<BaseActivityComponentProps> = ({
   activityId = 'ACT-10',
@@ -121,12 +122,30 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
     return () => cancelAnimationFrame(animId);
   }, []);
 
+  const handleSelectDistortion = (dName: string) => {
+    audioEngine.playSfx('neural_sparkle');
+    setThoughtData({ ...thoughtData, distortion: dName });
+  };
+
+  const handleStepAdvance = (nextStep: 1 | 2 | 3) => {
+    audioEngine.playSfx('sonar_ping');
+    setStep(nextStep);
+    if (nextStep === 2) {
+      audioEngine.speak('Now, weigh the factual evidence for and against this automatic thought.');
+    } else if (nextStep === 3) {
+      audioEngine.speak('Synthesize a grounded, compassionate reframe.');
+    }
+  };
+
   const handleFinish = () => {
+    audioEngine.playSfx('celebration_chords');
+    audioEngine.speak('Cognitive distortion successfully reframed and locked into memory.');
     setIsCompleted(true);
     if (onComplete) onComplete(thoughtData);
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
     setStep(1);
     setThoughtData({
       automaticThought: '',
@@ -147,7 +166,6 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
 
   return (
     <div className="w-full rounded-3xl bg-[#090615] p-6 sm:p-8 text-white shadow-2xl border border-purple-500/20 relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      {/* Background Neon Aura */}
       <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#5e2be2]/20 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#06b6d4]/20 blur-3xl pointer-events-none" />
 
@@ -171,7 +189,7 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
         </div>
         <button
           onClick={handleReset}
-          className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs"
+          className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs cursor-pointer"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
@@ -188,7 +206,7 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
             </div>
           </div>
 
-          {/* STEP 1: Thought & Distortion */}
+          {/* STEP 1 */}
           {step === 1 && (
             <div className="space-y-4 animate-fade-in">
               <div className="space-y-1.5">
@@ -214,7 +232,7 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
                   {distortions.map((d) => (
                     <button
                       key={d.name}
-                      onClick={() => setThoughtData({ ...thoughtData, distortion: d.name })}
+                      onClick={() => handleSelectDistortion(d.name)}
                       className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                         thoughtData.distortion === d.name
                           ? 'bg-purple-900/50 border-cyan-400 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400'
@@ -236,7 +254,7 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
               <div className="flex justify-end pt-2">
                 <button
                   disabled={!thoughtData.automaticThought.trim()}
-                  onClick={() => setStep(2)}
+                  onClick={() => handleStepAdvance(2)}
                   className="px-8 py-3.5 bg-gradient-to-r from-[#5e2be2] to-[#06b6d4] hover:opacity-95 disabled:opacity-40 text-white font-black text-xs uppercase tracking-wider rounded-2xl flex items-center gap-2 shadow-xl shadow-purple-500/30 transition-all cursor-pointer"
                 >
                   Weigh Neural Evidence <ArrowRight className="w-4 h-4" />
@@ -245,7 +263,7 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
             </div>
           )}
 
-          {/* STEP 2: Evidence Balance Scale */}
+          {/* STEP 2 */}
           {step === 2 && (
             <div className="space-y-4 animate-fade-in">
               <div className="p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-xs flex items-center justify-between flex-wrap gap-2">
@@ -309,7 +327,7 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
                   Back
                 </button>
                 <button
-                  onClick={() => setStep(3)}
+                  onClick={() => handleStepAdvance(3)}
                   className="px-8 py-3.5 bg-gradient-to-r from-[#5e2be2] to-[#06b6d4] text-white font-black text-xs uppercase tracking-wider rounded-2xl flex items-center gap-2 shadow-xl shadow-purple-500/30 cursor-pointer"
                 >
                   Crystallize Reframe <ArrowRight className="w-4 h-4" />
@@ -318,7 +336,7 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
             </div>
           )}
 
-          {/* STEP 3: Balanced Reframe & Belief Slider */}
+          {/* STEP 3 */}
           {step === 3 && (
             <div className="space-y-4 animate-fade-in">
               <div className="space-y-1.5">
@@ -334,7 +352,6 @@ function CbtNeuralSynapseChallenger({ activityName, onComplete }: { activityName
                 />
               </div>
 
-              {/* Real-Time Belief Downregulation Slider */}
               <div className="p-5 bg-slate-950/80 rounded-3xl border border-purple-500/30 space-y-3 shadow-xl">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-purple-200">Belief in Original Thought Now</span>
@@ -419,6 +436,9 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
   const handleDeposit = () => {
     if (!worryText.trim()) return;
     setVaultPulse(true);
+    audioEngine.playSfx('vault_lock');
+    audioEngine.speak('Worry safely sealed in the vault. You are released to focus on the present.');
+
     setTimeout(() => {
       setIsLocked(true);
       setVaultPulse(false);
@@ -427,13 +447,13 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
     setWorryText('');
     setIsLocked(false);
   };
 
   return (
     <div className="w-full rounded-3xl bg-[#090615] p-6 sm:p-8 text-white shadow-2xl border border-purple-500/20 relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      {/* Dynamic Aura */}
       <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#5e2be2]/20 blur-3xl pointer-events-none" />
 

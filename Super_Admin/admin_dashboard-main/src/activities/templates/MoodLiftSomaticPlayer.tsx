@@ -9,9 +9,10 @@ import {
   Coffee,
   Eye,
   Hand,
-  Check,
+  Check
 } from 'lucide-react';
 import type { BaseActivityComponentProps } from '../types';
+import { audioEngine } from '../utils/therapeuticAudioEngine';
 
 export const MoodLiftSomaticPlayer: React.FC<BaseActivityComponentProps> = ({
   activityId = 'ACT-08',
@@ -30,10 +31,10 @@ export const MoodLiftSomaticPlayer: React.FC<BaseActivityComponentProps> = ({
    ───────────────────────────────────────────────────────────── */
 function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: string; onComplete?: any }) {
   const steps = [
-    { title: 'Plant Gravitational Base', desc: 'Place feet shoulder-width apart, flat on the ground. Uncross limbs and feel solid floor support.', holdSecs: 15, tag: 'GROUNDING' },
-    { title: 'Scapular Depression & Roll', desc: 'Inhale while lifting shoulders up to ears; exhale smoothly as you roll them back and drop blades into spine pockets.', holdSecs: 20, tag: 'TENSION RELEASE' },
-    { title: 'Axial Spine Elongation', desc: 'Visualize a golden cord lifting the crown of your skull. Gently tuck chin to decompress cervical vertebrae.', holdSecs: 20, tag: 'DECOMPRESSION' },
-    { title: 'Full Diaphragmatic Expansion', desc: 'Place palms over lower ribs. Take a deep, 360-degree expansive breath filling the torso, then sigh out completely.', holdSecs: 25, tag: 'CHEST OPENER' }
+    { title: 'Plant Gravitational Base', desc: 'Place feet shoulder-width apart, flat on the ground. Uncross limbs and feel solid floor support.', voice: 'Plant your feet firmly on the floor. Feel your weight grounded.', holdSecs: 15, tag: 'GROUNDING' },
+    { title: 'Scapular Depression & Roll', desc: 'Inhale while lifting shoulders up to ears; exhale smoothly as you roll them back and drop blades into spine pockets.', voice: 'Inhale lifting your shoulders, then roll them back and down.', holdSecs: 20, tag: 'TENSION RELEASE' },
+    { title: 'Axial Spine Elongation', desc: 'Visualize a golden cord lifting the crown of your skull. Gently tuck chin to decompress cervical vertebrae.', voice: 'Lengthen your spine and gently tuck your chin.', holdSecs: 20, tag: 'DECOMPRESSION' },
+    { title: 'Full Diaphragmatic Expansion', desc: 'Place palms over lower ribs. Take a deep, 360-degree expansive breath filling the torso, then sigh out completely.', voice: 'Take a full expansive breath into your ribs and chest, then release.', holdSecs: 25, tag: 'CHEST OPENER' }
   ];
 
   const [stepIdx, setStepIdx] = useState<number>(0);
@@ -50,17 +51,28 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
         const next = stepIdx + 1;
         setStepIdx(next);
         setSecondsLeft(steps[next].holdSecs);
+        audioEngine.playSfx('singing_bowl');
+        audioEngine.speak(steps[next].voice);
       } else {
         setIsActive(false);
         setIsCompleted(true);
+        audioEngine.playSfx('celebration_chords');
+        audioEngine.speak('Posture alignment complete. Your chest and spine are open.');
         if (onComplete) onComplete({ completed: true });
       }
     }
     return () => clearInterval(timer);
   }, [isActive, secondsLeft, stepIdx, steps, onComplete]);
 
-  const handleStart = () => setIsActive(true);
+  const handleStart = () => {
+    audioEngine.playSfx('sonar_ping');
+    setIsActive(true);
+    audioEngine.speak(steps[0].voice);
+  };
+
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
+    audioEngine.stopSpeaking();
     setIsActive(false);
     setStepIdx(0);
     setSecondsLeft(steps[0].holdSecs);
@@ -92,7 +104,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all">
+        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
@@ -174,27 +186,36 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   const senses = [
-    { key: 'sight', label: 'Visual Channel', icon: Eye, color: 'text-amber-400', glow: 'rgba(245,158,11,0.3)', default: 'Warm sunlight or pleasing minimalist art' },
-    { key: 'sound', label: 'Auditory Channel', icon: Volume2, color: 'text-cyan-400', glow: 'rgba(6,182,212,0.3)', default: 'Gentle ambient acoustic tones or ocean waves' },
-    { key: 'touch', label: 'Tactile Somatosensory', icon: Hand, color: 'text-purple-400', glow: 'rgba(168,85,247,0.3)', default: 'Comfortable textured fabric or smooth cool object' },
-    { key: 'smell', label: 'Olfactory Scent', icon: Sparkles, color: 'text-rose-400', glow: 'rgba(244,63,94,0.3)', default: 'Lavender, cedarwood, or clean morning air' },
-    { key: 'taste', label: 'Gustatory Savoring', icon: Coffee, color: 'text-emerald-400', glow: 'rgba(16,185,129,0.3)', default: 'Mindful warm chamomile tea or refreshing mint' }
+    { key: 'sight', label: 'Visual Channel', icon: Eye, color: 'text-amber-400', default: 'Warm sunlight or pleasing minimalist art', voice: 'Engaging visual comfort' },
+    { key: 'sound', label: 'Auditory Channel', icon: Volume2, color: 'text-cyan-400', default: 'Gentle ambient acoustic tones or ocean waves', voice: 'Engaging auditory soundscape' },
+    { key: 'touch', label: 'Tactile Somatosensory', icon: Hand, color: 'text-purple-400', default: 'Comfortable textured fabric or smooth cool object', voice: 'Engaging tactile touch sensation' },
+    { key: 'smell', label: 'Olfactory Scent', icon: Sparkles, color: 'text-rose-400', default: 'Lavender, cedarwood, or clean morning air', voice: 'Engaging soothing scent' },
+    { key: 'taste', label: 'Gustatory Savoring', icon: Coffee, color: 'text-emerald-400', default: 'Mindful warm chamomile tea or refreshing mint', voice: 'Mindful taste and hydration' }
   ];
 
   const toggleCheck = (key: string) => {
+    audioEngine.playSfx('tactile_tap');
     if (checkedSenses.includes(key)) {
       setCheckedSenses(checkedSenses.filter((k) => k !== key));
     } else {
       const updated = [...checkedSenses, key];
       setCheckedSenses(updated);
+      const sObj = senses.find((s) => s.key === key);
+      if (sObj) {
+        audioEngine.playSfx('neural_sparkle');
+        audioEngine.speak(sObj.voice);
+      }
       if (updated.length === senses.length) {
         setIsCompleted(true);
+        audioEngine.playSfx('celebration_chords');
+        audioEngine.speak('Full 5-sense self-soothing comfort activated.');
         if (onComplete) onComplete({ selectedItems });
       }
     }
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
     setCheckedSenses([]);
     setIsCompleted(false);
   };
@@ -222,7 +243,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all">
+        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>

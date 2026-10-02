@@ -6,6 +6,8 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
+  Mic,
+  MicOff,
   Sparkles,
   CheckCircle2,
   Activity,
@@ -13,13 +15,14 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import type { BaseActivityComponentProps } from '../types';
+import { audioEngine } from '../utils/therapeuticAudioEngine';
 
 interface BreathingConfig {
   title: string;
   categoryTag: string;
   badge: string;
   pacingDesc: string;
-  phases: { name: 'Inhale' | 'Hold' | 'Exhale' | 'Hold (Rest)'; duration: number; cue: string; color: string }[];
+  phases: { name: 'Inhale' | 'Hold' | 'Exhale' | 'Hold (Rest)'; duration: number; cue: string; voiceCue: string; color: string }[];
   targetCycles: number;
   clinicalEffect: string;
   primaryGlow: string;
@@ -33,9 +36,9 @@ const BREATH_PROTOCOLS: Record<string, BreathingConfig> = {
     badge: 'PARASYMPATHETIC ACTIVATOR',
     pacingDesc: '4s Deep Inhale • 2s Stillness • 6s Slow Exhale',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Expand lower abdomen deeply, allowing diaphragm to descend', color: '#06b6d4' },
-      { name: 'Hold', duration: 2, cue: 'Suspend air effortlessly with open throat & dropped shoulders', color: '#8b5cf6' },
-      { name: 'Exhale', duration: 6, cue: 'Gently release through pursed lips, emptying lungs completely', color: '#10b981' }
+      { name: 'Inhale', duration: 4, cue: 'Expand lower abdomen deeply, allowing diaphragm to descend', voiceCue: 'Breathe in deeply through your nose, expanding your belly', color: '#06b6d4' },
+      { name: 'Hold', duration: 2, cue: 'Suspend air effortlessly with open throat & dropped shoulders', voiceCue: 'Hold softly and stay peaceful', color: '#8b5cf6' },
+      { name: 'Exhale', duration: 6, cue: 'Gently release through pursed lips, emptying lungs completely', voiceCue: 'Slowly exhale through your mouth, releasing all tension', color: '#10b981' }
     ],
     targetCycles: 6,
     clinicalEffect: 'Lowers systemic blood pressure, stimulates acetylcholine release via the vagus nerve, and restores heart-rate variability (HRV).',
@@ -48,10 +51,10 @@ const BREATH_PROTOCOLS: Record<string, BreathingConfig> = {
     badge: 'TACTICAL FOCUS PROTOCOL',
     pacingDesc: '4s Inhale • 4s Retain • 4s Exhale • 4s Empty Hold',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Inhale smoothly through the nose, expanding chest and ribs evenly', color: '#6366f1' },
-      { name: 'Hold', duration: 4, cue: 'Hold breath with tranquil focus, maintaining total physical stillness', color: '#a855f7' },
-      { name: 'Exhale', duration: 4, cue: 'Release breath in a controlled, steady stream through the mouth', color: '#06b6d4' },
-      { name: 'Hold (Rest)', duration: 4, cue: 'Rest calmly in the empty space before the next breath', color: '#3b82f6' }
+      { name: 'Inhale', duration: 4, cue: 'Inhale smoothly through the nose, expanding chest and ribs evenly', voiceCue: 'Inhale steadily for four seconds', color: '#6366f1' },
+      { name: 'Hold', duration: 4, cue: 'Hold breath with tranquil focus, maintaining total physical stillness', voiceCue: 'Hold your breath, staying perfectly still', color: '#a855f7' },
+      { name: 'Exhale', duration: 4, cue: 'Release breath in a controlled, steady stream through the mouth', voiceCue: 'Exhale smoothly and empty your lungs', color: '#06b6d4' },
+      { name: 'Hold (Rest)', duration: 4, cue: 'Rest calmly in the empty space before the next breath', voiceCue: 'Rest in the quiet pause', color: '#3b82f6' }
     ],
     targetCycles: 5,
     clinicalEffect: 'Equalizes autonomic nervous system balance (SNS/PNS ratio), eliminating cognitive tunnel vision under acute distress.',
@@ -64,9 +67,9 @@ const BREATH_PROTOCOLS: Record<string, BreathingConfig> = {
     badge: 'RAPID ANXIOLYTIC RESET',
     pacingDesc: '4s Inhale • 7s Oxygen Lock • 8s Whoosh Exhale',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Inhale quietly through nose with tip of tongue against roof of mouth', color: '#8b5cf6' },
-      { name: 'Hold', duration: 7, cue: 'Retain oxygen deeply, allowing cellular perfusion and brain calming', color: '#ec4899' },
-      { name: 'Exhale', duration: 8, cue: 'Whoosh exhale completely through mouth with an audible releasing sigh', color: '#10b981' }
+      { name: 'Inhale', duration: 4, cue: 'Inhale quietly through nose with tip of tongue against roof of mouth', voiceCue: 'Inhale quietly through your nose', color: '#8b5cf6' },
+      { name: 'Hold', duration: 7, cue: 'Retain oxygen deeply, allowing cellular perfusion and brain calming', voiceCue: 'Hold your breath for seven seconds', color: '#ec4899' },
+      { name: 'Exhale', duration: 8, cue: 'Whoosh exhale completely through mouth with an audible releasing sigh', voiceCue: 'Whoosh exhale all the air out slowly', color: '#10b981' }
     ],
     targetCycles: 4,
     clinicalEffect: 'Dr. Andrew Weil ratio forces carbon dioxide expulsion, triggering deep autonomic downregulation within 90 seconds.',
@@ -79,12 +82,12 @@ const BREATH_PROTOCOLS: Record<string, BreathingConfig> = {
     badge: 'NADI SHODHANA HARMONIZER',
     pacingDesc: '4s Left Inhale • 2s Hold • 4s Right Exhale • 4s Right Inhale • 4s Left Exhale',
     phases: [
-      { name: 'Inhale', duration: 4, cue: 'Block right nostril with thumb -> Inhale deeply through Left nostril', color: '#f59e0b' },
-      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause in calm equilibrium', color: '#a855f7' },
-      { name: 'Exhale', duration: 4, cue: 'Release right nostril -> Exhale completely through Right side', color: '#ec4899' },
-      { name: 'Inhale', duration: 4, cue: 'Keep right nostril open -> Inhale smoothly through Right nostril', color: '#06b6d4' },
-      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause in calm equilibrium', color: '#8b5cf6' },
-      { name: 'Exhale', duration: 4, cue: 'Release left nostril -> Exhale completely through Left side', color: '#10b981' }
+      { name: 'Inhale', duration: 4, cue: 'Block right nostril with thumb -> Inhale deeply through Left nostril', voiceCue: 'Close right nostril, inhale through the left', color: '#f59e0b' },
+      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause in calm equilibrium', voiceCue: 'Hold both nostrils closed', color: '#8b5cf6' },
+      { name: 'Exhale', duration: 4, cue: 'Release right nostril -> Exhale completely through Right side', voiceCue: 'Open right nostril and exhale', color: '#ec4899' },
+      { name: 'Inhale', duration: 4, cue: 'Keep right nostril open -> Inhale smoothly through Right nostril', voiceCue: 'Inhale through the right nostril', color: '#06b6d4' },
+      { name: 'Hold', duration: 2, cue: 'Close both nostrils softly and pause in calm equilibrium', voiceCue: 'Hold gently', color: '#8b5cf6' },
+      { name: 'Exhale', duration: 4, cue: 'Release left nostril -> Exhale completely through Left side', voiceCue: 'Open left nostril and exhale completely', color: '#10b981' }
     ],
     targetCycles: 4,
     clinicalEffect: 'Harmonizes EEG brainwave activity across both cerebral hemispheres, dispelling brain fog and ruminative overdrive.',
@@ -105,6 +108,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
   const [phaseSecsLeft, setPhaseSecsLeft] = useState<number>(protocol.phases[0].duration);
   const [completedCycles, setCompletedCycles] = useState<number>(0);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [sessionSeconds, setSessionSeconds] = useState<number>(0);
   const [hrvCoherence, setHrvCoherence] = useState<number>(64);
@@ -112,52 +116,26 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameId = useRef<number | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   const currentPhase = protocol.phases[phaseIndex];
 
-  // Synthesize realistic binaural singing bowl meditation tones
-  const playHarmonicSound = (phaseName: string) => {
-    if (!soundEnabled) return;
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioCtx();
-      }
-      const ctx = audioContextRef.current;
-      if (ctx.state === 'suspended') ctx.resume();
+  // Sync state to engine
+  useEffect(() => {
+    audioEngine.soundEnabled = soundEnabled;
+    audioEngine.voiceEnabled = voiceEnabled;
+  }, [soundEnabled, voiceEnabled]);
 
-      const baseFreq = phaseName === 'Inhale' ? 528 : phaseName === 'Exhale' ? 396 : 432;
-      const now = ctx.currentTime;
+  const triggerPhaseFeedback = (phase: typeof currentPhase) => {
+    if (phase.name === 'Inhale') {
+      audioEngine.playSfx('inhale_whoosh');
+    } else if (phase.name === 'Exhale') {
+      audioEngine.playSfx('exhale_whoosh');
+    } else {
+      audioEngine.playSfx('singing_bowl');
+    }
 
-      // Master gain
-      const masterGain = ctx.createGain();
-      masterGain.connect(ctx.destination);
-      masterGain.gain.setValueAtTime(0.001, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.2, now + 0.1);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
-
-      // Primary Solfeggio Sine
-      const osc1 = ctx.createOscillator();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(baseFreq, now);
-      osc1.connect(masterGain);
-      osc1.start(now);
-      osc1.stop(now + 2.1);
-
-      // Warm Overtone
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'triangle';
-      osc2.frequency.setValueAtTime(baseFreq * 1.5, now);
-      const subGain = ctx.createGain();
-      subGain.gain.setValueAtTime(0.05, now);
-      osc2.connect(subGain);
-      subGain.connect(masterGain);
-      osc2.start(now);
-      osc2.stop(now + 1.8);
-    } catch (e) {
-      // audio restrictions
+    if (voiceEnabled) {
+      audioEngine.speak(phase.voiceCue);
     }
   };
 
@@ -206,7 +184,6 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Determine target expansion based on breathing phase
       if (isPlaying) {
         if (currentPhase.name === 'Inhale') {
           targetPulseRadius = 135;
@@ -219,14 +196,13 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
         targetPulseRadius = 75;
       }
 
-      // Smooth spring interpolation
       pulseRadius += (targetPulseRadius - pulseRadius) * 0.04;
       rotation += 0.008;
 
       const centerX = width / 2;
       const centerY = height / 2;
 
-      // 1. Ambient Background Glow Halo
+      // Ambient Background Glow Halo
       const bgGrad = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, pulseRadius * 1.8);
       bgGrad.addColorStop(0, `${currentPhase.color}33`);
       bgGrad.addColorStop(0.5, `${protocol.secondaryGlow}18`);
@@ -236,7 +212,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
       ctx.arc(centerX, centerY, pulseRadius * 1.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Multi-Layered Resonance Shockwave Rings
+      // Resonance Shockwave Rings
       for (let r = 1; r <= 3; r++) {
         ctx.strokeStyle = `${currentPhase.color}${Math.floor((0.3 / r) * 255).toString(16).padStart(2, '0')}`;
         ctx.lineWidth = 1.5;
@@ -247,7 +223,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
       }
       ctx.setLineDash([]);
 
-      // 3. Swirling Bioluminescent Particles
+      // Bioluminescent Particles
       particles.forEach((p) => {
         p.angle += p.speed;
         const currentDist = (p.distance / 80) * pulseRadius;
@@ -265,7 +241,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
       ctx.globalAlpha = 1.0;
       ctx.shadowBlur = 0;
 
-      // 4. Central Glowing Core Sphere
+      // Glowing Center Core Sphere
       const sphereGrad = ctx.createRadialGradient(
         centerX - pulseRadius * 0.25,
         centerY - pulseRadius * 0.25,
@@ -288,7 +264,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
       ctx.fill();
       ctx.restore();
 
-      // 5. Outer Shimmering Rim
+      // Outer Shimmering Rim
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2.5;
       ctx.globalAlpha = 0.8;
@@ -332,6 +308,8 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
                 if (updated >= protocol.targetCycles) {
                   setIsPlaying(false);
                   setIsCompleted(true);
+                  audioEngine.playSfx('celebration_chords');
+                  audioEngine.speak('Excellent session. You have restored your autonomic balance and vagal tone.');
                   if (onComplete) {
                     onComplete({
                       activityId,
@@ -347,7 +325,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
 
             setPhaseIndex(nextIndex);
             const nextPhase = protocol.phases[nextIndex];
-            playHarmonicSound(nextPhase.name);
+            triggerPhaseFeedback(nextPhase);
             return nextPhase.duration;
           }
           return prev - 1;
@@ -355,16 +333,21 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isPlaying, phaseIndex, protocol, isCompleted, sessionSeconds, onComplete, activityId, hrvCoherence]);
+  }, [isPlaying, phaseIndex, protocol, isCompleted, sessionSeconds, onComplete, activityId, hrvCoherence, voiceEnabled]);
 
   const handleTogglePlay = () => {
+    audioEngine.playSfx('tactile_tap');
     if (!isPlaying) {
-      playHarmonicSound(currentPhase.name);
+      triggerPhaseFeedback(currentPhase);
+    } else {
+      audioEngine.stopSpeaking();
     }
     setIsPlaying(!isPlaying);
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
+    audioEngine.stopSpeaking();
     setIsPlaying(false);
     setPhaseIndex(0);
     setPhaseSecsLeft(protocol.phases[0].duration);
@@ -408,22 +391,34 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
           <div className="px-3 py-1.5 rounded-xl bg-purple-900/30 border border-purple-500/30 text-[11px] font-bold text-cyan-300 flex items-center gap-1.5">
             <Heart className="w-3.5 h-3.5 text-rose-400 fill-current animate-pulse" />
             <span>Coherence: {hrvCoherence}%</span>
           </div>
+
+          <button
+            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            className={`p-2.5 rounded-xl border transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+              voiceEnabled ? 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300' : 'bg-white/5 border-white/10 text-white/40'
+            }`}
+            title="Toggle Voice Guidance Coach"
+          >
+            {voiceEnabled ? <Mic className="w-4 h-4 text-cyan-300" /> : <MicOff className="w-4 h-4 text-white/40" />}
+            <span className="hidden sm:inline font-bold text-[10px]">{voiceEnabled ? 'Voice ON' : 'Voice OFF'}</span>
+          </button>
+
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs flex items-center"
-            title="Toggle Harmonic Solfeggio Audio"
+            className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs flex items-center cursor-pointer"
+            title="Toggle Meditative Sound Effects"
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-white/40" />}
           </button>
           <button
             onClick={handleReset}
-            className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs"
+            className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl border border-white/10 transition-all text-xs cursor-pointer"
             title="Reset Session"
           >
             <RotateCcw className="w-4 h-4" />
@@ -433,11 +428,11 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
 
       {!isCompleted ? (
         <div className="py-6 relative z-10 flex flex-col items-center justify-center">
-          {/* Real-Time Canvas 3D Particle Bio-Sphere */}
+          {/* Canvas 3D Particle Bio-Sphere */}
           <div className="relative w-full max-w-md h-80 flex items-center justify-center my-2">
             <canvas ref={canvasRef} className="w-full h-full absolute inset-0 z-0 pointer-events-none" />
 
-            {/* Floating Live State Display */}
+            {/* Floating Live State */}
             <div className="relative z-10 text-center pointer-events-none select-none flex flex-col items-center justify-center">
               <span
                 className="text-xs sm:text-sm font-black uppercase tracking-widest transition-colors duration-500 drop-shadow-md"
@@ -454,7 +449,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
             </div>
           </div>
 
-          {/* Somatic Real-Time Clinical Cue Card */}
+          {/* Somatic Clinical Cue Card */}
           <div className="w-full max-w-lg mt-2 p-4 rounded-2xl bg-slate-950/80 border border-purple-500/20 backdrop-blur-xl text-center space-y-1 shadow-xl">
             <div className="text-[10px] uppercase font-black tracking-wider text-purple-300 flex items-center justify-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Somatic Guidance
@@ -464,7 +459,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
             </p>
           </div>
 
-          {/* Interactive Controls & Coherence Stream */}
+          {/* Controls */}
           <div className="w-full max-w-md mt-6 space-y-4">
             <div className="flex items-center justify-center gap-4">
               <button
@@ -487,7 +482,7 @@ export const MoodLiftBreathingPlayer: React.FC<BaseActivityComponentProps> = ({
               </button>
             </div>
 
-            {/* Session Multi-Stage Progress Bar */}
+            {/* Session Progress Bar */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-bold text-purple-200/80">
                 <span>Protocol Target: {protocol.targetCycles} Full Cycles</span>

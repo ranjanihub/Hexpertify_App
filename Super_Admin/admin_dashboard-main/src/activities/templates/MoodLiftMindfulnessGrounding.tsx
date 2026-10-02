@@ -16,6 +16,7 @@ import {
   Target
 } from 'lucide-react';
 import type { BaseActivityComponentProps } from '../types';
+import { audioEngine } from '../utils/therapeuticAudioEngine';
 
 interface MindfulnessActivityProps extends BaseActivityComponentProps {
   activityId?: string;
@@ -52,15 +53,20 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
   const currentKey = `item${step}` as keyof typeof items;
 
   const handleNext = () => {
+    audioEngine.playSfx('sonar_ping');
     if (step < 3) {
       setStep(step + 1);
+      audioEngine.speak(`Target object ${step + 1}. Look around and describe its details.`);
     } else {
       setIsCompleted(true);
+      audioEngine.playSfx('celebration_chords');
+      audioEngine.speak('Environmental scan complete. You are fully present in this room.');
       if (onComplete) onComplete({ items });
     }
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
     setStep(1);
     setItems({
       item1: { name: '', color: '', texture: '', lightReflection: '' },
@@ -93,7 +99,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all">
+        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
@@ -208,12 +214,23 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
     { label: 'Frustrated / Blocked', color: '#ef4444', tag: 'BOUNDARY ALERT' }
   ];
 
+  const handleSelectEmotion = (eObj: (typeof emotionsList)[0]) => {
+    audioEngine.playSfx('neural_sparkle');
+    setSelectedEmotion(eObj.label);
+    const stmt = `Even though I am experiencing ${eObj.label.toLowerCase()} right now, I acknowledge this feeling with kindness and know I am safe.`;
+    setSelfCompassionStatement(stmt);
+    audioEngine.speak(`I feel ${eObj.label}. I accept this feeling with compassion.`);
+  };
+
   const handleFinish = () => {
+    audioEngine.playSfx('celebration_chords');
+    audioEngine.speak('Emotional validation recorded. Your feeling has been witnessed and honored.');
     setIsCompleted(true);
     if (onComplete) onComplete({ selectedEmotion, intensity, selfCompassionStatement });
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
     setSelectedEmotion('');
     setIntensity(7);
     setSelfCompassionStatement('');
@@ -243,7 +260,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all">
+        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
@@ -258,10 +275,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               {emotionsList.map((e) => (
                 <button
                   key={e.label}
-                  onClick={() => {
-                    setSelectedEmotion(e.label);
-                    setSelfCompassionStatement(`Even though I am experiencing ${e.label.toLowerCase()} right now, I acknowledge this feeling with kindness and know I am safe.`);
-                  }}
+                  onClick={() => handleSelectEmotion(e)}
                   className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                     selectedEmotion === e.label
                       ? 'bg-purple-900/50 border-rose-400 text-white shadow-[0_0_25px_rgba(244,63,94,0.35)] ring-1 ring-rose-400'
@@ -278,7 +292,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
           {selectedEmotion && (
             <div className="space-y-4 p-5 bg-slate-950/80 rounded-3xl border border-purple-500/30 shadow-xl animate-fade-in">
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-bold">
+                <div className="flex items-center justify-between text-xs font-bold">
                   <span className="text-purple-300">2. Somatic Intensity Gauge</span>
                   <span className="text-rose-400 font-black">{intensity} / 10</span>
                 </div>
@@ -343,11 +357,11 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
    ───────────────────────────────────────────────────────────── */
 function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?: string; onComplete?: any }) {
   const steps = [
-    { num: 5, sense: 'SIGHT', icon: Eye, prompt: 'Scan and identify 5 specific visual patterns or colors in your field of view.', color: '#06b6d4' },
-    { num: 4, sense: 'TOUCH', icon: Hand, prompt: 'Feel 4 physical textures (fabric on thighs, solid chair support, feet on floor).', color: '#8b5cf6' },
-    { num: 3, sense: 'SOUND', icon: Volume2, prompt: 'Listen closely for 3 distant or subtle acoustic frequencies in the environment.', color: '#ec4899' },
-    { num: 2, sense: 'SMELL', icon: Sparkles, prompt: 'Detect 2 aromas in the room (fresh air, coffee, cedar, or skin scent).', color: '#f59e0b' },
-    { num: 1, sense: 'BREATH', icon: Heart, prompt: 'Take 1 slow, deep abdominal breath and note the cool air entering your nostrils.', color: '#10b981' }
+    { num: 5, sense: 'SIGHT', icon: Eye, prompt: 'Scan and identify 5 specific visual patterns or colors in your field of view.', voice: 'Notice 5 things you can see right now.', color: '#06b6d4' },
+    { num: 4, sense: 'TOUCH', icon: Hand, prompt: 'Feel 4 physical textures (fabric on thighs, solid chair support, feet on floor).', voice: 'Notice 4 physical sensations and textures.', color: '#8b5cf6' },
+    { num: 3, sense: 'SOUND', icon: Volume2, prompt: 'Listen closely for 3 distant or subtle acoustic frequencies in the environment.', voice: 'Listen for 3 sounds around you.', color: '#ec4899' },
+    { num: 2, sense: 'SMELL', icon: Sparkles, prompt: 'Detect 2 aromas in the room (fresh air, coffee, cedar, or skin scent).', voice: 'Notice 2 scents in the air.', color: '#f59e0b' },
+    { num: 1, sense: 'BREATH', icon: Heart, prompt: 'Take 1 slow, deep abdominal breath and note the cool air entering your nostrils.', voice: 'Take 1 deep grounding breath.', color: '#10b981' }
   ];
 
   const [currentIdx, setCurrentIdx] = useState<number>(0);
@@ -357,15 +371,21 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
   const StepIcon = step.icon;
 
   const handleNext = () => {
+    audioEngine.playSfx('sonar_ping');
     if (currentIdx < steps.length - 1) {
-      setCurrentIdx(currentIdx + 1);
+      const next = currentIdx + 1;
+      setCurrentIdx(next);
+      audioEngine.speak(steps[next].voice);
     } else {
       setIsCompleted(true);
+      audioEngine.playSfx('celebration_chords');
+      audioEngine.speak('Full 5-sense physical grounding achieved. Your body is safely connected.');
       if (onComplete) onComplete({ completed: true });
     }
   };
 
   const handleReset = () => {
+    audioEngine.playSfx('tactile_tap');
     setCurrentIdx(0);
     setIsCompleted(false);
   };
@@ -393,14 +413,13 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
             </p>
           </div>
         </div>
-        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all">
+        <button onClick={handleReset} className="p-2.5 bg-white/5 hover:bg-white/15 text-white rounded-xl text-xs transition-all cursor-pointer">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
 
       {!isCompleted ? (
         <div className="max-w-md mx-auto text-center space-y-6 relative z-10">
-          {/* Glowing Sonar Target Icon */}
           <div
             className="w-32 h-32 rounded-3xl p-1 mx-auto shadow-[0_0_40px_rgba(6,182,212,0.4)] flex items-center justify-center transition-all duration-700"
             style={{ background: `linear-gradient(135deg, ${step.color}, #5e2be2)` }}
@@ -467,16 +486,25 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
       interval = setInterval(() => setTimerSeconds((prev) => prev - 1), 1000);
     } else if (timerSeconds === 0) {
       setIsActive(false);
+      audioEngine.playSfx('celebration_chords');
+      audioEngine.speak(`Cognitive drill finished. You recalled ${score} items.`);
       if (onComplete) onComplete({ score, puzzleType });
     }
     return () => clearInterval(interval);
   }, [isActive, timerSeconds, score, puzzleType, onComplete]);
 
   const handleStart = (type: 'categories' | 'countdown' | 'alphabet') => {
+    audioEngine.playSfx('sonar_ping');
     setPuzzleType(type);
     setTimerSeconds(45);
     setScore(0);
     setIsActive(true);
+    audioEngine.speak(`Challenge starting. Speak items aloud and tap to count.`);
+  };
+
+  const handleItemCount = () => {
+    audioEngine.playSfx('neural_sparkle');
+    setScore((s) => s + 1);
   };
 
   return (
@@ -567,7 +595,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
 
             <div className="pt-3">
               <button
-                onClick={() => setScore((s) => s + 1)}
+                onClick={handleItemCount}
                 className="px-8 py-3 bg-gradient-to-r from-indigo-500 to-[#5e2be2] text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer"
               >
                 +1 Item Recalled ({score} Total)
