@@ -5,7 +5,6 @@
   "installCommand": "node scripts/vercel-install.js",
   "functions": {
     "Backend/api/index.ts": {
-      "includeFiles": "Backend/public/**",
       "maxDuration": 60,
       "memory": 1024
     }
