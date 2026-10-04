@@ -4,7 +4,11 @@
   "buildCommand": "node scripts/vercel-build.js",
   "installCommand": "node scripts/vercel-install.js",
   "functions": {
-    "Backend/api/index.ts": {
+    "api/index.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "Backend/api/index.js": {
       "maxDuration": 60,
       "memory": 1024
     }
@@ -12,11 +16,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/Backend/api/index.ts"
+      "destination": "/api/index.js"
     },
     {
       "source": "/api",
-      "destination": "/Backend/api/index.ts"
+      "destination": "/api/index.js"
     },
     {
       "source": "/admin/:match*",

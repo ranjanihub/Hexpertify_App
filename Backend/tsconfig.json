@@ -8,10 +8,21 @@
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "api/**/*"],
-  "exclude": ["node_modules", "dist", "src/scripts"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "public",
+    "scripts",
+    "../Client_Panel",
+    "../Consultant_Panel",
+    "../Super_Admin",
+    "../Live_Panel",
+    "../public"
+  ]
 }
