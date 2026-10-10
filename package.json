@@ -12,11 +12,14 @@
     "dev:admin": "npm --prefix Super_Admin/admin_dashboard-main run dev",
     "build": "node scripts/vercel-build.js",
     "vercel-build": "node scripts/vercel-build.js",
-    "postinstall": "npm --prefix Backend install",
+    "postinstall": "npm --prefix Live_Panel install && npm --prefix Backend install",
     "build:all": "npm --prefix Backend run build:all",
     "start": "npm --prefix Backend run start"
   },
   "dependencies": {
+    "next": "15.5.7",
+    "react": "19.1.2",
+    "react-dom": "19.1.2",
     "typescript": "^5.8.2"
   }
 }

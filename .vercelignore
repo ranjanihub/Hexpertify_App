@@ -2,8 +2,4 @@ node_modules/
 .git
 .vscode
 backups
-Client_Panel/
-Consultant_Panel/
-Super_Admin/
-Live_Panel/
 *.md

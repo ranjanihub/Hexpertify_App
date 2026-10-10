@@ -1,44 +1,10 @@
 {
   "version": 2,
-  "framework": null,
-  "outputDirectory": "public",
   "buildCommand": "node scripts/vercel-build.js",
   "installCommand": "node scripts/vercel-install.js",
   "build": {
     "env": {
       "NODE_OPTIONS": "--max-old-space-size=4096"
     }
-  },
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "Backend/api/index.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/api",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/admin/:match*",
-      "destination": "/admin/index.html"
-    },
-    {
-      "source": "/consultant/:match*",
-      "destination": "/consultant/index.html"
-    },
-    {
-      "source": "/((?!assets|admin/assets|consultant/assets|favicon.svg|hexpertify-logo.*|dr_sarah_jenkins.jpg|expertify-logo.png|icons.svg|logo.png|.*\\..*).*)",
-      "destination": "/index.html"
-    }
-  ]
+  }
 }
