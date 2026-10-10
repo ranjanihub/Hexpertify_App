@@ -10,9 +10,21 @@ try {
   } else if (fs.existsSync('Backend/package.json')) {
     console.log('[Vercel Build] Building Backend from root directory...');
     execSync('npm --prefix Backend run build', { stdio: 'inherit' });
+    if (fs.existsSync('Backend/dist/index.js')) {
+      fs.copyFileSync('Backend/dist/index.js', 'index.js');
+      fs.copyFileSync('Backend/dist/index.js', 'app.js');
+      fs.copyFileSync('Backend/dist/index.js', 'Backend/index.js');
+      fs.copyFileSync('Backend/dist/index.js', 'Backend/app.js');
+      fs.copyFileSync('Backend/dist/index.js', 'Backend/src/index.js');
+    }
   } else if (fs.existsSync('src/index.ts') && fs.existsSync('package.json')) {
     console.log('[Vercel Build] Building Backend in current directory...');
     execSync('npm run build', { stdio: 'inherit' });
+    if (fs.existsSync('dist/index.js')) {
+      fs.copyFileSync('dist/index.js', 'index.js');
+      fs.copyFileSync('dist/index.js', 'app.js');
+      fs.copyFileSync('dist/index.js', 'src/index.js');
+    }
   } else {
     console.log('[Vercel Build] Fallback building...');
     execSync('npm run build', { stdio: 'inherit' });
