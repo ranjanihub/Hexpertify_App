@@ -2,6 +2,7 @@
   "name": "hexpertify-ecosystem-root",
   "version": "1.0.0",
   "description": "Unified Hexpertify Ecosystem",
+  "main": "index.js",
   "scripts": {
     "dev": "npm --prefix Backend run dev",
     "dev:backend": "npm --prefix Backend run dev",

@@ -1,4 +1,6 @@
 // Central Serverless Gateway Entrypoint for Vercel (Root)
+const express = require('express');
 const app = require('../Backend/dist/index');
 
-module.exports = app.default || app;
+const handler = app.default || app;
+module.exports = handler;

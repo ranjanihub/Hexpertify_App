@@ -2,7 +2,7 @@
   "name": "hexpertify-central-backend",
   "version": "1.0.0",
   "description": "Unified Central Backend & Identity Gateway for Hexpertify Ecosystem",
-  "main": "dist/index.js",
+  "main": "index.js",
   "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/index.ts",
