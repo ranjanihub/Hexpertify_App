@@ -3,6 +3,11 @@
   "framework": null,
   "buildCommand": "node scripts/vercel-build.js",
   "installCommand": "node scripts/vercel-install.js",
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096"
+    }
+  },
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
