@@ -51,6 +51,24 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'hexpertify_admin_state_v1';
 
+/** Maps backend payment statuses (PAID, REFUND_PENDING, ...) to the labels used across the admin UI */
+const PAYMENT_STATUS_LABELS: Record<string, Booking['paymentStatus']> = {
+  PAID: 'Paid',
+  PENDING: 'Pending',
+  FAILED: 'Failed',
+  EXPIRED: 'Failed',
+  UNPAID: 'Unpaid',
+  REFUND_PENDING: 'Refund Pending',
+  PARTIALLY_REFUNDED: 'Partially Refunded',
+  REFUNDED: 'Refunded',
+  'PENDING PAYOUT': 'Pending Payout',
+};
+
+function formatPaymentStatus(raw?: string): Booking['paymentStatus'] {
+  if (!raw) return 'Paid';
+  return PAYMENT_STATUS_LABELS[String(raw).toUpperCase()] || (raw as Booking['paymentStatus']);
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [bookings, setBookings] = useState<Booking[]>(() => {
     try {
@@ -260,7 +278,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             sessionType: "Individual" as const,
             status: bookingStatus,
             amount: Number(b.amount) || 1500,
-            paymentStatus: b.paymentStatus || "Paid",
+            paymentStatus: formatPaymentStatus(b.paymentStatus),
+            paymentId: b.paymentId,
             channel: "Video Call (Google Meet)" as const,
             notes: b.notes || "Live MongoDB Atlas consultation",
             meetingUrl: b.meetingLink || b.meetingUrl || "https://meet.google.com/xyz-hexpertify-session",

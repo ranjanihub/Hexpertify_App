@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { getApiAuthHeaders } from '../lib/auth';
 import {
   CalendarDays,
   ChevronLeft,
@@ -465,16 +466,17 @@ export const AvailabilityView: React.FC = () => {
     };
 
     try {
+      // Admin token lets the backend record this manual booking's payment status
       let res = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
         body: JSON.stringify(newBooking)
       }).catch(() => null);
 
       if (!res || !res.ok) {
         res = await fetch('http://localhost:5000/api/bookings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
           body: JSON.stringify(newBooking)
         }).catch(() => null);
       }

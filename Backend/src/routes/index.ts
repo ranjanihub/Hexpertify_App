@@ -15,6 +15,7 @@ import assetsRoutes from './assets.routes';
 import resourcesRoutes from './resources.routes';
 import pagesRoutes from './pages.routes';
 import payoutsRoutes from './payouts.routes';
+import paymentsRoutes from './payments.routes';
 import activitiesRoutes from './activities.routes';
 import blogRoutes from './blog.routes';
 import dashboardRoutes from './dashboard.routes';
@@ -106,6 +107,9 @@ router.use('/admin/assets', assetsRoutes);
 
 router.use('/resources', resourcesRoutes);
 router.use('/admin/resources', resourcesRoutes);
+
+router.use('/payments', paymentsRoutes);
+router.use('/admin/payments', paymentsRoutes);
 
 router.use('/payouts', payoutsRoutes);
 router.use('/admin/payouts', payoutsRoutes);

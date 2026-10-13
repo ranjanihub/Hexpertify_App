@@ -2,6 +2,7 @@ export type PageId =
   | 'dashboard'
   | 'bookings'
   | 'payments'
+  | 'transactions'
   | 'revenue'
   | 'therapists'
   | 'availability'
@@ -62,7 +63,51 @@ export interface Booking {
   sessionType: 'Individual' | 'Couple' | 'Teen' | 'Family' | 'Career';
   status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'No Show - Client' | 'No Show - Consultant';
   amount: number;
-  paymentStatus: 'Paid' | 'Pending Payout' | 'Refunded';
+  paymentStatus: 'Paid' | 'Pending Payout' | 'Refunded' | 'Pending' | 'Failed' | 'Refund Pending' | 'Partially Refunded' | 'Unpaid';
+  /** Gateway payment backing this booking, when paid online */
+  paymentId?: string;
+}
+
+export type GatewayPaymentStatus =
+  | 'CREATED'
+  | 'PAID'
+  | 'FAILED'
+  | 'EXPIRED'
+  | 'REFUND_PENDING'
+  | 'PARTIALLY_REFUNDED'
+  | 'REFUNDED';
+
+export interface PaymentRefund {
+  id: string;
+  providerRefundId?: string;
+  amount: number;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  reason?: string;
+  requestedBy?: string;
+  createdAt: string;
+}
+
+/** Customer payment collected through the gateway (amounts in INR) */
+export interface Payment {
+  id: string;
+  bookingId: string;
+  bookingSource: 'backend' | 'live';
+  provider: 'razorpay' | 'cashfree';
+  providerOrderId: string;
+  providerPaymentId?: string;
+  method?: string;
+  amount: number;
+  refundedAmount: number;
+  currency: string;
+  status: GatewayPaymentStatus;
+  failureReason?: string;
+  clientName?: string;
+  clientEmail?: string;
+  consultantName?: string;
+  serviceTitle?: string;
+  refunds: PaymentRefund[];
+  createdAt: string;
+  paidAt?: string;
 }
 
 export interface SessionReport {

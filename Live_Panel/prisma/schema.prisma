@@ -32,6 +32,8 @@ type TestimonialItem {
 
 enum BookingStatus {
   PENDING
+  PENDING_PAYMENT
+  EXPIRED
   CONFIRMED
   COMPLETED
   CANCELLED
@@ -258,6 +260,12 @@ model Booking {
 
   serviceId String
   service   Service @relation(fields: [serviceId], references: [id])
+
+  // Payment fields are written by the central Backend payment service
+  amount         Float?
+  paymentStatus  String?
+  paymentId      String?
+  refundedAmount Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { setAdminAuth, launchConsultantPanel, launchClientPanel } from '../lib/auth';
+import { setAdminAuth, setApiToken, launchConsultantPanel, launchClientPanel } from '../lib/auth';
 import {
   ShieldCheck,
   Lock,
@@ -85,6 +85,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
       };
 
+      setApiToken(data?.token);
       setAdminAuth(adminUser);
       setIsLoading(false);
       if (onSuccess) {

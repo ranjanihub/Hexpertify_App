@@ -12,6 +12,7 @@ import { DashboardView } from './pages/DashboardView';
 import { BookingsView } from './pages/BookingsView';
 import { PaymentsView } from './pages/PaymentsView';
 import { RevenueView } from './pages/RevenueView';
+import { TransactionsView } from './pages/TransactionsView';
 import { TherapistsView } from './pages/TherapistsView';
 import { AvailabilityView } from './pages/AvailabilityView';
 import { ClientsView } from './pages/ClientsView';
@@ -33,6 +34,7 @@ const pageToPathMap: Record<PageId, string> = {
   dashboard: '/',
   bookings: '/bookings',
   payments: '/payments',
+  transactions: '/transactions',
   revenue: '/revenue',
   therapists: '/therapists',
   availability: '/availability',
@@ -183,6 +185,7 @@ export const App: React.FC = () => {
                 <Route path="/dashboard" element={<DashboardView onSelectPage={handleSelectPage} />} />
                 <Route path="/bookings" element={<BookingsView />} />
                 <Route path="/payments" element={<PaymentsView />} />
+                <Route path="/transactions" element={<TransactionsView />} />
                 <Route path="/revenue" element={<RevenueView />} />
                 <Route
                   path="/therapists"

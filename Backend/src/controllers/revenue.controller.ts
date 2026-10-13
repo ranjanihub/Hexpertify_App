@@ -2,6 +2,31 @@ import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
 
+const PAID_PAYMENT_STATUSES = new Set(['PAID', 'PARTIALLY_REFUNDED', 'REFUND_PENDING']);
+// Abandoned/failed checkouts and manually scheduled unpaid sessions carry no revenue
+const NON_FINANCIAL_PAYMENT_STATUSES = new Set(['FAILED', 'EXPIRED', 'UNPAID']);
+
+/**
+ * Classifies a booking financially. Bookings created before gateway integration have no
+ * paymentStatus and are treated as paid once confirmed/completed.
+ */
+function classifyBooking(b: any, servicePrice?: number) {
+  const statusStr = String(b.status || '').toUpperCase();
+  const paymentStatusStr = String(b.paymentStatus || '').toUpperCase();
+  const isLegacy = !paymentStatusStr;
+  const fee = Number(b.amount ?? b.fee ?? b.price ?? servicePrice ?? 0);
+  const refunded = Number(b.refundedAmount || 0);
+
+  if (statusStr === 'PENDING_PAYMENT' && paymentStatusStr !== 'PENDING') return { kind: 'ignore' as const, fee, net: 0 };
+  if (statusStr === 'EXPIRED' || NON_FINANCIAL_PAYMENT_STATUSES.has(paymentStatusStr)) return { kind: 'ignore' as const, fee, net: 0 };
+  if (paymentStatusStr === 'REFUNDED') return { kind: 'refunded' as const, fee, net: 0 };
+  if (PAID_PAYMENT_STATUSES.has(paymentStatusStr) || (isLegacy && (statusStr === 'CONFIRMED' || statusStr === 'COMPLETED'))) {
+    return { kind: 'paid' as const, fee, net: Math.max(0, fee - refunded) };
+  }
+  if (paymentStatusStr === 'PENDING' || (isLegacy && statusStr === 'PENDING')) return { kind: 'pending' as const, fee, net: 0 };
+  return { kind: 'ignore' as const, fee, net: 0 };
+}
+
 export class RevenueController {
   /**
    * GET /api/revenue and GET /api/admin/revenue
@@ -87,15 +112,14 @@ export class RevenueController {
           const rawClientEmail = b.clientEmail || u?.email || '';
           const therapistName = b.consultantName || b.therapistName || c?.name || 'Specialist Consultant';
 
-          const rawFee = Number(b.amount ?? b.fee ?? b.price ?? s?.price ?? 1500);
-          const statusStr = String(b.status || '').toUpperCase();
-          const paymentStatusStr = String(b.paymentStatus || '').toUpperCase();
-
-          const isPaid = statusStr === 'CONFIRMED' || statusStr === 'COMPLETED' || paymentStatusStr === 'PAID';
-          const isPending = (statusStr === 'PENDING' || paymentStatusStr === 'PENDING') && !isPaid;
+          const financial = classifyBooking(b, s?.price);
+          if (financial.kind === 'ignore') return;
+          const rawFee = financial.fee;
+          const isPaid = financial.kind === 'paid';
+          const isPending = financial.kind === 'pending';
 
           if (isPaid) {
-            totalRevenue += rawFee;
+            totalRevenue += financial.net;
             completedConsultations += 1;
             therapyHours += Number(b.durationHours ?? (b.durationMinutes ? b.durationMinutes / 60 : 1));
           } else if (isPending) {
@@ -111,8 +135,10 @@ export class RevenueController {
             clientName,
             clientEmail: isConsultantView ? undefined : rawClientEmail,
             therapistName,
-            amount: rawFee,
+            amount: isPaid ? financial.net : rawFee,
             status: isPaid ? 'paid' : isPending ? 'pending' : 'refunded',
+            paymentStatus: b.paymentStatus,
+            paymentId: b.paymentId,
             invoiceNumber: `INV-${String(b.customId || b.bookingId || b.id || b._id).replace('BK-', '').replace('HEX-', '').slice(-6)}`
           });
         });
@@ -135,9 +161,9 @@ export class RevenueController {
           const d = new Date(b.scheduledAt || b.date || b.createdAt || Date.now());
           if (!isNaN(d.getTime())) {
             const mName = months[d.getMonth()];
-            if (monthlyDataMap[mName]) {
-              const rawFee = Number(b.amount ?? b.fee ?? b.price ?? 1500);
-              monthlyDataMap[mName].revenue += rawFee;
+            const financial = classifyBooking(b, serviceMap.get(String(b.serviceId))?.price);
+            if (monthlyDataMap[mName] && financial.kind === 'paid') {
+              monthlyDataMap[mName].revenue += financial.net;
               monthlyDataMap[mName].consultations += 1;
               monthlyDataMap[mName].hours += Number(b.durationHours ?? (b.durationMinutes ? b.durationMinutes / 60 : 1));
             }

@@ -18,7 +18,8 @@ import {
   FileCode,
   Settings,
   LogOut,
-  Shield
+  Shield,
+  Receipt
 } from 'lucide-react';
 import { HexpertifyLogo } from '../common/HexpertifyLogo';
 import type { PageId } from '../../types';
@@ -94,7 +95,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
         {
           title: 'Finance',
           items: [
-            { id: 'payments', path: '/payments', label: 'Payments', icon: CreditCard },
+            { id: 'transactions', path: '/transactions', label: 'Transactions', icon: Receipt },
+            { id: 'payments', path: '/payments', label: 'Therapist Payouts', icon: CreditCard },
             { id: 'revenue', path: '/revenue', label: 'Revenue', icon: TrendingUp }
           ]
         },

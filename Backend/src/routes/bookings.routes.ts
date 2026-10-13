@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { BookingsController } from '../controllers/bookings.controller';
+import { optionalAuth } from '../middlewares/auth.middleware';
 
 const router = Router();
+
+router.use(optionalAuth);
 
 router.get('/', BookingsController.getAll);
 router.post('/', BookingsController.create);

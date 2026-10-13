@@ -93,34 +93,71 @@ export default function Container({
       accordianItem: faq.answer || faq.accordianItem || "Answer",
     })) || [];
 
-  const handleBooking = async () => {
-    const userId = data?.user?.id || "";
-    const payload = {
-      userId,
-      consultantId: consultant?.id || "",
-      serviceId: bookingPayload.serviceId,
-    };
-    setIsLoading(true);
-    const { data: resDate, error } = await createBooking(payload);
-    setOpen(false);
-    setIsLoading(false);
-    if (resDate?.id) {
-      setIsSuccessModalOpen(true);
-      toast.success("Booking successful!");
-    } else {
-      toast.error(
-        <div className="flex items-center justify-between gap-3">
-          <span>{error || "Booking failed. Please try again."}</span>
+  const selectedService = services?.find((s) => s.id === bookingPayload.serviceId);
 
-          <button
-            onClick={() => router.push("/profile")}
-            className="bg-[#4a00e0] hover:bg-[#3b00b3] max-w-fit w-[200px] text-white font-bold py-2 px-6 rounded-full transition-colors duration-200"
-          >
-            Update
-          </button>
-        </div>,
-      );
+  const handleBooking = async () => {
+    if (!data?.user?.id) {
+      toast.error("Please sign in to book a consultation.");
+      return;
     }
+    setIsLoading(true);
+    try {
+      const initiated = await initiateBookingPayment({
+        consultantId: consultant?.id || "",
+        serviceId: bookingPayload.serviceId,
+      });
+      if (!initiated.success || !initiated.data) {
+        showBookingError(initiated.error);
+        return;
+      }
+
+      setOpen(false);
+      const checkoutResult = await openPaymentCheckout(initiated.data.checkout, {
+        businessName: "Hexpertify",
+      });
+      if (checkoutResult.status === "dismissed") {
+        toast.info("Payment cancelled. Your booking was not confirmed.");
+        return;
+      }
+      if (checkoutResult.status === "failed") {
+        toast.error(checkoutResult.error || "Payment failed. Please try again.");
+        return;
+      }
+
+      const confirmed = await confirmBookingPayment(initiated.data.paymentId, checkoutResult.response);
+      if (confirmed.success) {
+        setIsSuccessModalOpen(true);
+        toast.success("Payment successful! Your booking is confirmed.");
+      } else if ((confirmed as any).pending) {
+        toast.info(confirmed.error);
+      } else {
+        toast.error(confirmed.error || "We could not verify your payment. If money was deducted, please contact us.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const showBookingError = (error?: string | string[]) => {
+    const message = Array.isArray(error) ? error.join(", ") : error;
+    if (!message?.toLowerCase().includes("phone")) {
+      toast.error(message || "Booking failed. Please try again.");
+      return;
+    }
+    toast.error(
+      <div className="flex items-center justify-between gap-3">
+        <span>{message}</span>
+
+        <button
+          onClick={() => router.push("/profile")}
+          className="bg-[#4a00e0] hover:bg-[#3b00b3] max-w-fit w-[200px] text-white font-bold py-2 px-6 rounded-full transition-colors duration-200"
+        >
+          Update
+        </button>
+      </div>,
+    );
   };
 
   return (
@@ -196,6 +233,7 @@ export default function Container({
           setOpen={setOpen}
           handleBooking={handleBooking}
           isLoading={isLoading}
+          price={selectedService?.price}
         />
       </div>
 
@@ -223,7 +261,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"; // Adjust import path based on your project structure
 import { useSession } from "next-auth/react";
-import { createBooking } from "./actions";
+import { confirmBookingPayment, initiateBookingPayment } from "./actions";
+import { openPaymentCheckout } from "@/lib/payment-checkout";
 import { toast } from "sonner";
 
 interface BookingModalProps {
@@ -231,6 +270,7 @@ interface BookingModalProps {
   setOpen: (open: boolean) => void;
   handleBooking: () => Promise<void>;
   isLoading: boolean;
+  price?: number;
 }
 
 function BookingModal({
@@ -238,6 +278,7 @@ function BookingModal({
   setOpen,
   handleBooking,
   isLoading,
+  price,
 }: BookingModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -248,7 +289,9 @@ function BookingModal({
             Book Consultant
           </DialogTitle>
           <DialogDescription className="text-[16px] md:text-[20px]  text-left text-black">
-            Are you sure you want to book the consultant?
+            {price
+              ? `You will pay ₹${price} securely to confirm this consultation.`
+              : "Are you sure you want to book the consultant?"}
           </DialogDescription>
         </DialogHeader>
 
@@ -263,7 +306,7 @@ function BookingModal({
               }}
               disabled={isLoading}
             >
-              {isLoading ? "Booking..." : "Yes, Book"}
+              {isLoading ? "Processing..." : price ? `Pay ₹${price} & Book` : "Yes, Book"}
             </Button>
             <Button
               onClick={() => setOpen(false)}
@@ -290,29 +333,29 @@ function BookingModal({
                   Book Your Consultation
                 </h2>
                 <p className="mx-auto mt-1 max-w-lg text-sm font-semibold text-gray-600 md:text-base">
-                  Choose your preferred expert and submit your booking request.
+                  Choose your preferred expert and plan.
                 </p>
               </div>
 
               {/* Step 2 */}
               <div>
                 <h2 className="text-lg font-bold text-black md:text-xl">
-                  Confirmation
+                  Secure Payment
                 </h2>
                 <p className="mx-auto mt-1 max-w-lg text-sm font-semibold text-gray-600 md:text-base">
-                  Our executive will reach out to confirm and schedule your
-                  booking as per your preferred time.
+                  Pay securely via UPI, card, net banking or wallet. Your
+                  booking is confirmed instantly after payment.
                 </p>
               </div>
 
               {/* Step 3 */}
               <div>
                 <h2 className="text-lg font-bold text-black md:text-xl">
-                  Secure Payment
+                  Scheduling
                 </h2>
                 <p className="mx-auto mt-1 max-w-lg text-sm font-semibold text-gray-600 md:text-base">
-                  Once your booking is confirmed, you’ll receive a payment link.
-                  Complete your payment securely to finalize the consultation.
+                  Our executive will reach out to schedule your consultation
+                  at your preferred time.
                 </p>
               </div>
 

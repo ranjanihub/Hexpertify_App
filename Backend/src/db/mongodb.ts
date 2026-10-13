@@ -77,7 +77,15 @@ async function initIndexes(database: Db): Promise<void> {
     { collection: 'messages', index: { recipientId: 1 } },
     { collection: 'Review', index: { consultantId: 1 } },
     { collection: 'Activity', index: { assignedTherapistId: 1 } },
+    { collection: 'Payment', index: { id: 1 } },
+    { collection: 'Payment', index: { bookingId: 1 } },
+    { collection: 'Payment', index: { status: 1, createdAt: -1 } },
+    { collection: 'Payment', index: { providerPaymentId: 1 } },
   ];
+
+  try {
+    await database.collection('Payment').createIndex({ provider: 1, providerOrderId: 1 }, { unique: true, background: true });
+  } catch {}
 
   for (const { collection, index } of indexSpecs) {
     try {

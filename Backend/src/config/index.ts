@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
+// Local secrets (e.g. payment gateway keys) live in the git-ignored .env.local and take precedence
+dotenv.config({ path: '.env.local', override: true });
 
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
@@ -13,6 +15,26 @@ export const config = {
   googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || (process.env.VERCEL ? 'https://hexpertify-backend.vercel.app/api/auth/google/callback' : 'http://localhost:5000/api/auth/google/callback'),
   liveSiteUrl: process.env.LIVE_SITE_URL || 'http://localhost:3000',
   frontendUrl: process.env.FRONTEND_URL || (process.env.VERCEL ? 'https://hexpertify-app.vercel.app' : ''),
+  internalApiKey: process.env.INTERNAL_API_KEY || '',
+  payment: {
+    provider: (process.env.PAYMENT_PROVIDER || 'razorpay').toLowerCase() as 'razorpay' | 'cashfree',
+    currency: 'INR',
+    defaultSessionFee: Number(process.env.DEFAULT_SESSION_FEE || 1500),
+    pendingExpiryMinutes: Number(process.env.PAYMENT_PENDING_EXPIRY_MINUTES || 30),
+    // Public base URL of this backend, used for gateway notify/webhook URLs (e.g. https://hexpertify-backend.vercel.app)
+    publicBaseUrl: process.env.BACKEND_PUBLIC_URL || '',
+    razorpay: {
+      keyId: process.env.RAZORPAY_KEY_ID || '',
+      keySecret: process.env.RAZORPAY_KEY_SECRET || '',
+      webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || ''
+    },
+    cashfree: {
+      appId: process.env.CASHFREE_APP_ID || '',
+      secretKey: process.env.CASHFREE_SECRET_KEY || '',
+      env: (process.env.CASHFREE_ENV || 'sandbox').toLowerCase() as 'sandbox' | 'production',
+      apiVersion: process.env.CASHFREE_API_VERSION || '2023-08-01'
+    }
+  },
   corsOrigins: [
     'http://localhost:5000', // Single Port Platform
     'http://localhost:5175', // Super Admin standalone

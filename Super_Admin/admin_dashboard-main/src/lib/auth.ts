@@ -15,6 +15,24 @@ export const DEFAULT_ADMIN: AdminAuthUser = {
 };
 
 const STORAGE_KEY = "hexpertify_admin_auth";
+// Signed API token issued by the backend at login (shared with the central login page on the same origin)
+const API_TOKEN_KEY = "hexpertify_api_token";
+
+export function setApiToken(token?: string | null): void {
+  try {
+    if (token) localStorage.setItem(API_TOKEN_KEY, token);
+    else localStorage.removeItem(API_TOKEN_KEY);
+  } catch (e) {}
+}
+
+export function getApiAuthHeaders(): Record<string, string> {
+  try {
+    const token = localStorage.getItem(API_TOKEN_KEY);
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  } catch (e) {
+    return {};
+  }
+}
 
 function checkSsoTransfer(): AdminAuthUser | null {
   try {
@@ -93,6 +111,7 @@ export function logoutAdmin(): void {
   try {
     localStorage.setItem(STORAGE_KEY, 'logged_out');
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(API_TOKEN_KEY);
     window.dispatchEvent(new Event("auth_state_change"));
     fetch('http://localhost:5000/api/auth/logout', { method: 'POST' }).catch(() => {
       fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});

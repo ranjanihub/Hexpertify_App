@@ -7,6 +7,8 @@
  * - Validates response.ok and throws meaningful errors instead of silently swallowing them.
  */
 
+import { getApiAuthHeaders } from './auth';
+
 const FALLBACK_BASE = 'http://localhost:5000';
 
 export interface ApiResponse<T = any> {
@@ -31,6 +33,8 @@ export async function apiRequest<T = any>(
   if (options.body && !options.headers) {
     options.headers = { 'Content-Type': 'application/json' };
   }
+  // Attach the admin API token (required by protected endpoints such as payments/refunds)
+  options.headers = { ...getApiAuthHeaders(), ...(options.headers as Record<string, string> || {}) };
 
   // 1. Try primary URL (proxied in dev, same-origin in prod)
   try {

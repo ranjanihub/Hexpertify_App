@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../lib/apiClient';
+import { refundPayment } from '../lib/paymentsApi';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -292,16 +293,30 @@ export const BookingsView: React.FC = () => {
     e.preventDefault();
     if (!cancelBookingTarget) return;
 
+    const wantsFullRefund = refundOption.startsWith('Full Refund');
+    // Bookings paid online are refunded through the gateway; the backend then updates their payment status
+    const isGatewayPaid =
+      Boolean(cancelBookingTarget.paymentId) &&
+      ['Paid', 'Partially Refunded'].includes(cancelBookingTarget.paymentStatus);
+
     const cancelledBooking: Booking = {
       ...cancelBookingTarget,
       status: 'Cancelled',
-      paymentStatus: 'Refunded'
+      paymentStatus: wantsFullRefund
+        ? (isGatewayPaid ? 'Refund Pending' : 'Refunded')
+        : cancelBookingTarget.paymentStatus
     };
 
     try {
+      if (wantsFullRefund && isGatewayPaid) {
+        await refundPayment(cancelBookingTarget.paymentId as string, {
+          reason: `Booking cancelled: ${cancelReason}`
+        });
+      }
+
       await api.put(`/api/admin/bookings/${cancelBookingTarget.id}`, {
         status: 'CANCELLED',
-        paymentStatus: 'REFUNDED',
+        ...(wantsFullRefund && !isGatewayPaid ? { paymentStatus: 'REFUNDED' } : {}),
         cancelReason
       });
 
@@ -317,9 +332,9 @@ export const BookingsView: React.FC = () => {
       setCancelBookingTarget(null);
 
       await refreshAllData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error cancelling booking in DB:', err);
-      showToast('Failed to cancel booking in database', 'warning');
+      showToast(err?.message ? `Cancellation failed: ${err.message}` : 'Failed to cancel booking in database', 'warning');
     }
   };
 

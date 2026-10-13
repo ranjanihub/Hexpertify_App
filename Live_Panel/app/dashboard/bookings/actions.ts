@@ -27,6 +27,8 @@ export async function listBookings(
 
     const where: any = {};
     if (filters?.status) where.status = filters.status;
+    // Unpaid/abandoned checkouts are not real bookings yet
+    else where.status = { notIn: [BookingStatus.PENDING_PAYMENT, BookingStatus.EXPIRED] };
     if (filters?.userId) where.userId = filters.userId;
     if (filters?.consultantId) where.consultantId = filters.consultantId;
 
@@ -73,7 +75,7 @@ export async function listBookings(
 // ✅ 2. Update Booking Status (Approve / Confirm / Cancel)
 export async function updateBookingStatus(id: string, status: string) {
   try {
-    const allowed = [
+    const allowed: BookingStatus[] = [
       BookingStatus.PENDING,
       BookingStatus.CONFIRMED,
       BookingStatus.COMPLETED,

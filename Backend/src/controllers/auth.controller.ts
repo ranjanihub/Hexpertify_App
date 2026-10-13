@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
+import { tryIssueAuthToken } from '../utils/jwt';
 
 // In-memory single-use ticket registry
 const activeTickets = new Map<string, { payload: any; expiresAt: number; used: boolean }>();
@@ -94,6 +95,7 @@ export class AuthController {
           role: 'super_admin',
           redirectUrl: '/admin',
           ssoTicket,
+          token: tryIssueAuthToken(adminUser, 'super_admin'),
           message: 'Super Admin authenticated. Opening Admin Suite...'
         });
         return;
@@ -186,6 +188,7 @@ export class AuthController {
           role: 'therapist',
           redirectUrl: '/consultant',
           ssoTicket,
+          token: tryIssueAuthToken(therapistUser, 'therapist'),
           message: 'Therapist authenticated. Opening Consultant Suite...'
         });
         return;
@@ -329,6 +332,7 @@ export class AuthController {
         role: 'client',
         redirectUrl: '/client',
         ssoTicket,
+        token: tryIssueAuthToken(clientUser, 'client'),
         message: 'Client authenticated. Opening Client Care Portal...'
       });
     } catch (error: any) {
@@ -892,6 +896,8 @@ export class AuthController {
         role: authResult.role,
         redirectUrl: authResult.redirectUrl,
         ssoTicket: authResult.ssoTicket,
+        // Only issue API tokens when the Google credential was cryptographically verified
+        token: config.googleClientId ? tryIssueAuthToken(authResult.user, authResult.role as any) : undefined,
         message: 'Google authentication successful.'
       });
     } catch (error: any) {
