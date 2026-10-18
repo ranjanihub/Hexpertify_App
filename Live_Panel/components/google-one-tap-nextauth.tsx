@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
+import { redirectToPanel } from "@/lib/panel-redirect";
 import Script from "next/script";
 import { signIn, useSession } from "next-auth/react";
 
@@ -120,10 +121,7 @@ export function GoogleOneTapNextAuth() {
               ? (isProd ? "https://hexpertify-backend.vercel.app/consultant" : "http://localhost:5000/consultant")
               : (isProd ? "https://hexpertify-backend.vercel.app/client" : "http://localhost:5000/client")
           );
-          const ssoUserParam = encodeURIComponent(JSON.stringify(data.user));
-          const ssoTicketParam = data.ssoTicket ? `&sso_ticket=${encodeURIComponent(data.ssoTicket)}` : "";
-          const delimiter = targetUrl.includes("?") ? "&" : "?";
-          window.location.href = `${targetUrl}${delimiter}sso_user=${ssoUserParam}${ssoTicketParam}`;
+          redirectToPanel(targetUrl, data);
           return;
         }
 

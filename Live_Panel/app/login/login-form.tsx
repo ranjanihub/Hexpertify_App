@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { redirectToPanel } from "@/lib/panel-redirect";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,10 +128,7 @@ export function LoginForm({
         }
       }
 
-      const ssoUserParam = encodeURIComponent(JSON.stringify(data.user));
-      const ssoTicketParam = data.ssoTicket ? `&sso_ticket=${encodeURIComponent(data.ssoTicket)}` : "";
-      const delimiter = targetUrl.includes("?") ? "&" : "?";
-      window.location.href = `${targetUrl}${delimiter}sso_user=${ssoUserParam}${ssoTicketParam}`;
+      redirectToPanel(targetUrl, data);
     } catch (error: any) {
       console.error("Login error:", error);
       setErrorMsg(error.message || "An unexpected network error occurred.");

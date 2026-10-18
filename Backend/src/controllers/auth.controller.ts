@@ -486,7 +486,8 @@ export class AuthController {
       email: user.email,
       role: targetRole || user.role || 'therapist',
       title: user.profession || user.title || undefined,
-      avatarUrl: user.photo || user.avatarUrl || user.photoUrl || user.image || undefined,
+      // Tickets travel in URLs, so inline (base64) photos are left out
+      avatarUrl: [user.photo, user.avatarUrl, user.photoUrl, user.image].find((u) => typeof u === 'string' && u && !u.startsWith('data:')) || undefined,
       timestamp: Date.now(),
       nonce: crypto.randomBytes(16).toString('hex')
     };
@@ -821,7 +822,12 @@ export class AuthController {
         redirectBase = '/client';
       }
       const hostPrefix = config.frontendUrl || '';
-      res.redirect(`${hostPrefix}${redirectBase}?sso_ticket=${authResult.ssoTicket}&sso_user=${encodeURIComponent(JSON.stringify(authResult.user))}&google_auth=success`);
+      // Only short scalar fields fit in a URL; the full profile (logs, history, base64 photos) causes URI_TOO_LONG
+      const ssoUser = Object.fromEntries(
+        Object.entries(authResult.user || {}).filter(([, v]) =>
+          ['string', 'number', 'boolean'].includes(typeof v) && !String(v).startsWith('data:') && String(v).length <= 300)
+      );
+      res.redirect(`${hostPrefix}${redirectBase}?sso_ticket=${authResult.ssoTicket}&sso_user=${encodeURIComponent(JSON.stringify(ssoUser))}&google_auth=success`);
     } catch (error: any) {
       res.redirect(`/login?google_error=callback_failed&message=${encodeURIComponent(error?.message || 'Google authentication failed')}`);
     }
