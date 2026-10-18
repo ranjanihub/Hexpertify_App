@@ -22,7 +22,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  ShieldCheck
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import type { Client } from '../types';
@@ -357,6 +358,19 @@ export const ClientsView: React.FC = () => {
               </button>
             </div>
 
+            {selectedClient.detailsRestricted ? (
+              <div className="flex flex-col items-center text-center gap-3 py-10 px-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="w-12 h-12 rounded-full bg-[#5e2be2]/10 flex items-center justify-center">
+                  <Lock className="w-6 h-6 text-[#5e2be2]" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800">Clinical details are private</h4>
+                <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                  Intake answers, assessments, goals, mood logs, sessions, homework and documents are visible only to
+                  this client's assigned therapist
+                  {selectedClient.assignedTherapistName ? <> (<strong className="text-slate-700">{selectedClient.assignedTherapistName}</strong>)</> : null}.
+                </p>
+              </div>
+            ) : (<>
             {/* Modal Navigation Tabs */}
             <div className="flex items-center gap-1.5 sm:gap-2 border-b border-slate-100 pb-3 overflow-x-auto text-xs scrollbar-none">
               {[
@@ -610,6 +624,7 @@ export const ClientsView: React.FC = () => {
                 )}
               </div>
             )}
+            </>)}
           </div>
         </div>,
         document.body

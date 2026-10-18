@@ -469,6 +469,10 @@ export class AuthController {
           photoUrl: payload.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80',
           avatarUrl: payload.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80'
         },
+        // The ticket is HMAC-signed and single-use, so it can be exchanged for an API token
+        token: ['super_admin', 'admin', 'therapist', 'client'].includes(payload.role)
+          ? tryIssueAuthToken({ id: payload.id, email: payload.email }, payload.role)
+          : undefined,
         message: 'SSO ticket verified successfully. Authenticated session established.'
       });
     } catch (error: any) {

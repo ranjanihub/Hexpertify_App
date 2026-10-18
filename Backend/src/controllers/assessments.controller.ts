@@ -1,5 +1,37 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
+import { canViewFullClient, resolveClientViewer } from '../services/client-access';
+
+/** Results (scores, severity, answers, notes) are clinical details: only the assigned therapist and the client see them */
+const SUBMISSION_RESULT_FIELDS = ['score', 'totalScore', 'maxScore', 'severity', 'severityLabel', 'severityColor', 'flaggedRisk', 'answers', 'responses', 'notes', 'interpretation'];
+
+async function protectSubmissions(req: Request, submissions: any[], isClientSelfQuery: boolean): Promise<any[]> {
+  const viewer = await resolveClientViewer(req);
+  if (viewer.kind === 'internal') return submissions;
+  // The client panel still reads its own results by email without a token
+  if (viewer.kind === 'anonymous' && isClientSelfQuery) return submissions;
+
+  const db = getDatabase();
+  const emails = [...new Set(submissions.map((s) => String(s.clientEmail || s.email || '').toLowerCase()).filter(Boolean))];
+  const ids = [...new Set(submissions.map((s) => String(s.clientId || s.userId || '')).filter(Boolean))];
+  const clients: any[] = emails.length || ids.length
+    ? await db.collection('User').find({ $or: [{ email: { $in: emails } }, { id: { $in: ids } }, { _id: { $in: ids as any[] } }] }).toArray().catch(() => [])
+    : [];
+
+  const findClient = (s: any) => {
+    const email = String(s.clientEmail || s.email || '').toLowerCase();
+    const id = String(s.clientId || s.userId || '');
+    return clients.find((c) => (email && String(c.email || '').toLowerCase() === email) || (id && (String(c.id) === id || String(c._id) === id)));
+  };
+
+  return submissions.map((s) => {
+    const client = findClient(s) || { id: s.clientId, email: s.clientEmail || s.email };
+    if (canViewFullClient(viewer, client)) return s;
+    const basic: any = { ...s, detailsRestricted: true };
+    SUBMISSION_RESULT_FIELDS.forEach((f) => delete basic[f]);
+    return basic;
+  });
+}
 
 export class AssessmentsController {
   /**
@@ -166,13 +198,15 @@ export class AssessmentsController {
         }
       }
 
+      const visibleSubmissions = await protectSubmissions(req, submissions, Boolean(clientEmail || clientId));
+
       res.json({
         success: true,
-        count: submissions.length,
-        submissionsCount: submissions.length,
+        count: visibleSubmissions.length,
+        submissionsCount: visibleSubmissions.length,
         assignmentsCount: assignments.length,
-        submissions,
-        scores: submissions,
+        submissions: visibleSubmissions,
+        scores: visibleSubmissions,
         assignments
       });
     } catch (error: any) {

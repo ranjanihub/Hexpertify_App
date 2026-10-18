@@ -180,7 +180,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           homework: u.homework || [],
           sessionHistory: u.sessionHistory || [],
           sessions: u.sessions || [],
-          documents: u.documents || []
+          documents: u.documents || [],
+          // Set by the backend: clinical details are visible only to the assigned therapist
+          detailsRestricted: Boolean(u.detailsRestricted)
         }));
         setClients(liveClients);
         try {

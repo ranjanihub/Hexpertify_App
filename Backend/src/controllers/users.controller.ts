@@ -5,6 +5,8 @@ import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
 import { AuthController } from './auth.controller';
 import { cacheService } from '../services/cache.service';
+import { applyClientPrivacy, resolveClientViewer } from '../services/client-access';
+import { verifyAuthToken } from '../utils/jwt';
 
 /**
  * Strips email, phone number, and private contact info from client records when viewed by a consultant.
@@ -25,6 +27,23 @@ function sanitizeClientForConsultant(u: any): any {
     clone.intakeResponses = safeIntake;
   }
   return clone;
+}
+
+/**
+ * Older clients send the user's email or id as the bearer value. A signed API token is resolved
+ * to the client's email; staff tokens never act as a client identity.
+ */
+function legacyBearerIdentity(authHeader: string): string {
+  const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (bearer.split('.').length !== 3) return bearer;
+  const payload = verifyAuthToken(bearer);
+  return payload?.role === 'client' ? payload.email : '';
+}
+
+/** Client self-service endpoints stay open to the client panel; staff only get basic details unless assigned */
+async function protectForStaff(req: Request, client: any): Promise<any> {
+  const viewer = await resolveClientViewer(req);
+  return viewer.kind === 'admin' || viewer.kind === 'therapist' ? applyClientPrivacy(viewer, client) : client;
 }
 
 export class UsersController {
@@ -147,7 +166,9 @@ export class UsersController {
         };
       });
 
-      res.json(responseData);
+      // Full client records only for the assigned therapist (applied after the shared cache)
+      const viewer = await resolveClientViewer(req);
+      res.json({ ...responseData, users: responseData.users.map((u: any) => applyClientPrivacy(viewer, u)) });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch users' });
     }
@@ -182,7 +203,7 @@ export class UsersController {
 
       res.json({
         success: true,
-        user: formattedUser
+        user: applyClientPrivacy(await resolveClientViewer(req), formattedUser)
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch user' });
@@ -440,7 +461,7 @@ export class UsersController {
     try {
       const db = getDatabase();
       const authHeader = String(req.headers.authorization || '').trim();
-      const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim();
+      const bearerToken = legacyBearerIdentity(authHeader);
 
       const email = String(
         req.query.email || 
@@ -486,10 +507,10 @@ export class UsersController {
 
       res.json({
         success: true,
-        user: {
+        user: await protectForStaff(req, {
           ...user,
           id: user.id || String(user._id)
-        }
+        })
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch client profile' });
@@ -506,7 +527,7 @@ export class UsersController {
   static async getClientData(req: Request, res: Response): Promise<void> {
     try {
       const authHeader = String(req.headers.authorization || '').trim();
-      const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim();
+      const bearerToken = legacyBearerIdentity(authHeader);
 
       const email = String(
         req.query.email ||
@@ -700,7 +721,11 @@ export class UsersController {
         };
       });
 
-      res.status(responseData.status).json(responseData.body);
+      const body: any = { ...responseData.body }; // copy: responseData is shared through the cache
+      if (body.client) {
+        body.client = await protectForStaff(req, body.client);
+      }
+      res.status(responseData.status).json(body);
     } catch (error: any) {
       res.status(500).json({
         success: false,

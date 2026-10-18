@@ -261,6 +261,8 @@ export interface Client {
   homeworkAssigned: { title: string; dueDate: string; completed: boolean }[];
   sessionHistory: { id: string; date: string; summary: string; therapistNotes: string }[];
   documents: { name: string; size: string; date: string; type: string }[];
+  /** True when the backend withheld clinical details (only the assigned therapist may see them) */
+  detailsRestricted?: boolean;
   goals?: { title: string; targetDate?: string; status?: string }[];
   moodLogs?: { date: string; mood?: string; score: number; notes?: string }[];
   homework?: { title: string; dueDate: string; status: string }[];
