@@ -161,8 +161,18 @@ export class BookingsController {
         updatedAt: new Date()
       };
 
-      const result = await db.collection('Booking').insertOne(newBooking);
-      await db.collection('bookings').insertOne(newBooking).catch(() => {});
+      // A repeated POST with the same booking ID (double submit, client retry) must not create a second booking or resend emails
+      const result = await db.collection('Booking').updateOne(
+        { id: newBooking.id },
+        { $setOnInsert: newBooking },
+        { upsert: true }
+      );
+      if (!result.upsertedId) {
+        const existing = await db.collection('Booking').findOne({ id: newBooking.id });
+        res.status(200).json({ success: true, booking: existing, duplicate: true, message: 'Booking already exists.' });
+        return;
+      }
+      await db.collection('bookings').insertOne({ ...newBooking, _id: result.upsertedId }).catch(() => {});
 
       // Invalidate cache tags
       cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
@@ -172,7 +182,7 @@ export class BookingsController {
 
       res.status(201).json({
         success: true,
-        booking: { ...newBooking, _id: result.insertedId },
+        booking: { ...newBooking, _id: result.upsertedId },
         message: 'Booking confirmed. Client, Therapist, and Super Admin notifications and emails dispatched successfully.'
       });
     } catch (error: any) {
@@ -217,6 +227,21 @@ export class BookingsController {
       const query = { $or: orConditions };
 
       const existing = await db.collection('Booking').findOne(query) || await db.collection('bookings').findOne(query);
+
+      // Emails go out only for a real change, so repeated or concurrent requests don't resend them
+      let isNewCancellation = false;
+      if (updates.status === 'CANCELLED') {
+        const transition = await db.collection('Booking').updateMany(
+          { $and: [query, { status: { $ne: 'CANCELLED' } }] },
+          { $set: { status: 'CANCELLED' } }
+        );
+        isNewCancellation = transition.modifiedCount > 0;
+      }
+      const changed = (field: string) => updates[field] !== undefined && String(updates[field]) !== String(existing?.[field] ?? '');
+      const isReschedule = updates.status !== 'CANCELLED' &&
+        (changed('date') || changed('time') || (updates.scheduledAt !== undefined && new Date(updates.scheduledAt).getTime() !== new Date(existing?.scheduledAt).getTime()) ||
+         (updates.status === 'RESCHEDULED' && existing?.status !== 'RESCHEDULED'));
+
       await Promise.all([
         db.collection('Booking').updateMany(query, { $set: updates }),
         db.collection('bookings').updateMany(query, { $set: updates })
@@ -233,7 +258,7 @@ export class BookingsController {
         const serviceTitle = existing.serviceTitle || 'Individual Clinical Consultation';
 
         // 1. Cancellation Email & Notification
-        if (updates.status === 'CANCELLED' || updates.status === 'cancelled') {
+        if (isNewCancellation) {
           const formattedDate = existing.date || new Date(existing.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
           const formattedTime = existing.time || '10:00 AM';
 
@@ -264,7 +289,7 @@ export class BookingsController {
         }
 
         // 2. Reschedule Email & Notification
-        if (updates.scheduledAt || updates.date || updates.time || updates.status === 'RESCHEDULED') {
+        if (isReschedule) {
           const newDate = updates.date || (updates.scheduledAt ? new Date(updates.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : existing.date);
           const newTime = updates.time || existing.time || '10:00 AM';
 
@@ -324,8 +349,9 @@ export class BookingsController {
       }
       const query = { $or: orConditions };
 
-      const existing = await db.collection('Booking').findOne(query) || await db.collection('bookings').findOne(query);
-      await Promise.all([
+      const existingMain = await db.collection('Booking').findOne(query);
+      const existing = existingMain || await db.collection('bookings').findOne(query);
+      const [deleted, deletedLegacy] = await Promise.all([
         db.collection('Booking').deleteMany(query),
         db.collection('bookings').deleteMany(query),
         db.collection('Availability').deleteMany(query).catch(() => {})
@@ -334,8 +360,11 @@ export class BookingsController {
       // Invalidate cache
       cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
 
-      // If a scheduled client booking was deleted/cancelled, send cancellation email
-      if (existing && existing.clientEmail && existing.clientName !== 'Open Consultation Slot' && existing.clientName !== 'Blocked Time Slot') {
+      // Only the request that actually removed the booking emails the client (clients fire parallel DELETEs);
+      // an already-cancelled booking got its cancellation email when it was cancelled
+      const removedNow = existingMain ? deleted.deletedCount > 0 : deletedLegacy.deletedCount > 0;
+      if (removedNow && existing && existing.clientEmail && String(existing.status || '').toUpperCase() !== 'CANCELLED' &&
+          existing.clientName !== 'Open Consultation Slot' && existing.clientName !== 'Blocked Time Slot') {
         const clientEmail = existing.clientEmail;
         const clientName = existing.clientName || 'Client';
         const consultantName = existing.consultantName || 'Therapist';

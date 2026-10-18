@@ -86,6 +86,10 @@ export async function updateBookingStatus(id: string, status: string) {
       return { success: false, message: "Invalid booking status" };
     }
 
+    const previous = await prisma.booking.findUnique({ where: { id }, select: { status: true } });
+    // Re-saving the same status must not resend the status email
+    const statusChanged = previous?.status !== status;
+
     const updated = await prisma.booking.update({
       where: { id },
       data: { status: status as BookingStatus },
@@ -101,7 +105,7 @@ export async function updateBookingStatus(id: string, status: string) {
     });
 
     // Send Email if Confirmed
-    if (status === BookingStatus.CONFIRMED && updated.user.email) {
+    if (statusChanged && status === BookingStatus.CONFIRMED && updated.user.email) {
       try {
         const html = BookingConfirmationToCustomerHtml({
           customerName: updated.user.name || "Customer",
@@ -125,7 +129,7 @@ export async function updateBookingStatus(id: string, status: string) {
     }
 
     // Send Email if Completed
-    if (status === BookingStatus.COMPLETED && updated.user.email) {
+    if (statusChanged && status === BookingStatus.COMPLETED && updated.user.email) {
       try {
         const html = ConsultationCompletedToCustomerHtml({
           customerName: updated.user.name || "Customer",
