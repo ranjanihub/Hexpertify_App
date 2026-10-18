@@ -71,6 +71,10 @@ const nextConfig: NextConfig = {
         { source: "/admin/:path*", destination: "/admin/index.html" },
         { source: "/consultant/:path*", destination: "/consultant/index.html" },
         { source: "/client/:path*", destination: "/client/index.html" },
+        // Client panel deep links (only used when no Live page matches, e.g. a refresh on /therapist)
+        ...["/therapist", "/sessions", "/messages", "/activities", "/activities/:slug", "/assessments", "/progress", "/resources"].map(
+          (source) => ({ source, destination: "/client/index.html" }),
+        ),
       ],
     };
   },

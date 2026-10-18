@@ -1,0 +1,17 @@
+{
+  "short_name": "Hexpertify",
+  "name": "Hexpertify | Unified Mental Health Platform",
+  "icons": [
+    {
+      "src": "/expertify-logo.png",
+      "type": "image/png",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/client",
+  "background_color": "#ffffff",
+  "theme_color": "#5e2be2",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/"
+}
