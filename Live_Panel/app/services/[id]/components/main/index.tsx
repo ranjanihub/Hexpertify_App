@@ -39,7 +39,9 @@ const consultantProcess = [
   },
 ];
 
-const ServicesMain = ({ FeatureConsultantData, faqs, serviceId }: any) => {
+const ServicesMain = ({ FeatureConsultantData, faqs, serviceId, profession: professionProp }: any) => {
+  // The profession is passed in directly; older callers derive it from the first therapist
+  const profession = professionProp || FeatureConsultantData?.[0]?.profession;
   return (
     <div>
       <div className="p-4 md:p-6 lg:p-[50px]">
@@ -57,7 +59,7 @@ const ServicesMain = ({ FeatureConsultantData, faqs, serviceId }: any) => {
         <div
           className="w-full flex justify-center items-center h-[200px] rounded-[16px] shadow-xl overflow-hidden bg-gray-100" // Added bg-gray-100 as fallback color for empty spaces
           style={{
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${FeatureConsultantData?.[0]?.profession?.bannerUrl})`,
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${profession?.bannerUrl})`,
 
             // CHANGE 1: "contain" ensures the full image is visible.
             // Use "auto" if you want the image's raw pixel size (which might crop).
@@ -72,7 +74,7 @@ const ServicesMain = ({ FeatureConsultantData, faqs, serviceId }: any) => {
           <h1 className="text-[18px] sm:text-[22px] md:text-[28px] text-white font-semibold leading-tight drop-shadow-md text-center px-4">
             
             {
-              FeatureConsultantData?.[0]?.bannerTitle ?? `Consult Certified ${FeatureConsultantData?.[0]?.profession?.name}`
+              profession?.bannerTitle || `Consult Certified ${profession?.name}`
             }
           </h1>
         </div>
@@ -124,7 +126,7 @@ const ServicesMain = ({ FeatureConsultantData, faqs, serviceId }: any) => {
         </div>
         <div className="my-[30px]">
           <HtmlContent
-            content={FeatureConsultantData?.[0]?.profession?.seoMeta?.htmlChunk}
+            content={profession?.seoMeta?.htmlChunk}
           />
         </div>
       </div>

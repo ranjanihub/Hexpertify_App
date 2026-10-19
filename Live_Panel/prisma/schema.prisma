@@ -79,6 +79,7 @@ model SeoMeta {
 
   // HTML Chunk for structured data
   htmlChunk String?
+  canonicalUrl String?
 
   profession Profession? @relation("ProfessionSeo")
   consultant Consultant? @relation("ConsultantSeo")
@@ -97,6 +98,10 @@ model Profession {
   consultants  Consultant[]
   seoMeta      SeoMeta?     @relation("ProfessionSeo", fields: [seoMetaId], references: [id], onDelete: NoAction)
   seoMetaId    String?      @unique
+
+  // Set in the Super Admin panel; Draft/Archived or Private professions are not listed publicly
+  status     String?
+  visibility String?
 
   createdAt DateTime @default(now())
 }
@@ -201,6 +206,13 @@ model Consultant {
   isCertified         Boolean   @default(false)
   faqs                FAQItem[]
   minPrice     Float?
+
+  // Set in the Super Admin panel: hidden/archived/inactive profiles are not shown publicly,
+  // and booking can be switched off while the profile stays visible
+  isHiddenFromLive   Boolean?
+  isArchived         Boolean?
+  isBookingGreyedOut Boolean?
+  accountStatus      String?
   professionId String?
   profession   Profession? @relation(fields: [professionId], references: [id])
 
@@ -223,6 +235,8 @@ model Service {
   duration     Int
   sessionCount Int
   platform     String @default("G-Meet")
+  // Plans removed in the admin panel but kept for past bookings
+  retired      Boolean?
 
   consultantId String
   consultant   Consultant @relation(fields: [consultantId], references: [id])

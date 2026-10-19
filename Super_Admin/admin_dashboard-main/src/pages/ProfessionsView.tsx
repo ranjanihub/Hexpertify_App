@@ -467,25 +467,24 @@ export const ProfessionsView: React.FC = () => {
       return;
     }
 
-    if (isNewModalOpen) {
-      // Create new profession — use POST
-      api.post('/api/admin/professions', editingProf).catch((err) => {
-        console.error('Error creating profession in DB:', err);
-        showToast(`Error saving new profession to database.`);
+    const draft = editingProf;
+    const isNew = isNewModalOpen;
+    // Wait for the server: it returns the saved profession (with its real id) or a clear error
+    (isNew
+      ? api.post<any>('/api/admin/professions', draft)
+      : api.put<any>('/api/admin/professions', { ...draft, id: draft.id })
+    )
+      .then((data) => {
+        const saved = (data?.profession || draft) as ProfessionService;
+        setProfessions((prev) => (isNew ? [saved, ...prev] : prev.map((p) => (p.id === draft.id ? saved : p))));
+        showToast(isNew ? `Added "${saved.serviceName}". It's now on the website.` : `Saved "${saved.serviceName}". Changes are live on the website.`);
+        setEditingProf(null);
+        setIsNewModalOpen(false);
+      })
+      .catch((err) => {
+        console.error('Error saving profession:', err);
+        showToast(`Could not save "${draft.serviceName}": ${err?.message || 'please try again'}`);
       });
-      setProfessions((prev) => [editingProf, ...prev]);
-      showToast(`Added new profession "${editingProf.serviceName}" to MongoDB`);
-    } else {
-      // Update existing profession — use PUT
-      api.put('/api/admin/professions', { ...editingProf, id: editingProf.id }).catch((err) => {
-        console.error('Error updating profession in DB:', err);
-        showToast(`Error saving changes for "${editingProf.serviceName}" to database.`);
-      });
-      setProfessions((prev) => prev.map((p) => (p.id === editingProf.id ? editingProf : p)));
-      showToast(`Saved changes for "${editingProf.serviceName}" to MongoDB`);
-    }
-    setEditingProf(null);
-    setIsNewModalOpen(false);
   };
 
   const handleDeleteProfession = async (id: string) => {

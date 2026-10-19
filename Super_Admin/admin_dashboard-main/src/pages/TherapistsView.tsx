@@ -888,10 +888,10 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       // Persist Update to MongoDB Atlas
       try {
         await api.put('/api/admin/consultants', { ...newTherapist, id: editingTherapistId });
-        setSuccessToast(`Consultant ${formattedName} updated successfully in MongoDB!`);
-      } catch (err) {
+        setSuccessToast(`${formattedName} saved. Changes are live on the website.`);
+      } catch (err: any) {
         console.error('Error updating consultant in DB:', err);
-        setSuccessToast(`Warning: ${formattedName} updated locally but may not have saved to database.`);
+        setSuccessToast(`Not saved: ${err?.message || 'the server could not save'} (${formattedName})`);
       }
 
       setTherapistsList((prev) =>
@@ -917,11 +917,10 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
         const data = await api.post('/api/admin/consultants', newTherapist);
         const saved = data.consultant || newTherapist;
         setTherapistsList((prev) => [saved, ...prev.filter(t => t.id !== saved.id)]);
-        setSuccessToast(`Consultant ${formattedName} created successfully in MongoDB!`);
-      } catch (err) {
+        setSuccessToast(`${formattedName} added. Their profile is live on the website.`);
+      } catch (err: any) {
         console.error('Error creating consultant in DB:', err);
-        setTherapistsList([newTherapist, ...therapistsList]);
-        setSuccessToast(`Warning: ${formattedName} added locally but may not have saved to database.`);
+        setSuccessToast(`Not saved: ${err?.message || 'the server could not save'} (${formattedName})`);
       }
     }
     setTimeout(() => setSuccessToast(null), 5000);

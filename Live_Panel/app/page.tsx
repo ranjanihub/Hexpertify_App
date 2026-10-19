@@ -27,6 +27,7 @@ import NotificationTitleBar from "@/components/NotificationTitleBar";
 
 import { Metadata } from "next";
 import { BlogGridContainer } from "@/components/BlogGridCard";
+import { lowestPrice } from "@/lib/visibility";
 import TherapySections, {
   TherapySectionItem,
 } from "@/components/TherapySections";
@@ -181,7 +182,7 @@ export default async function HomePage() {
     name: item?.name || "Consultant",
     consultantType: item?.profession?.name || "Specialist",
     experience: `${item?.experience || 0} yrs + experience`,
-    amount: `₹ ${item?.services && item.services.length > 0 ? Math.min(...item.services.map((s: any) => s.price)) : 500}`,
+    amount: `₹ ${lowestPrice(item?.services, item?.minPrice) ?? 500}`,
     profilePic: item?.photoUrl,
     profileAltText: item?.photoAltText,
     link: `/services/${item?.profession?.identifier || "specialists"}/${item?.identifier || ""}`,

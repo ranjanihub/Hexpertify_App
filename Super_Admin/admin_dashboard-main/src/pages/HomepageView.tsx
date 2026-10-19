@@ -158,9 +158,16 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
         setSavedCmsState(JSON.stringify(cms));
         setSavedSuccess(true);
         setTimeout(() => setSavedSuccess(false), 3000);
+      } else {
+        const data = res ? await res.json().catch(() => null) : null;
+        const reason = res?.status === 401
+          ? 'Your admin session has expired. Please sign out and sign in again, then save.'
+          : data?.error || 'The server could not be reached.';
+        alert(`Homepage changes were not saved.\n\n${reason}`);
       }
     } catch (err) {
       console.error('Error saving homepage CMS to MongoDB:', err);
+      alert('Homepage changes were not saved. Please try again.');
     } finally {
       setIsSaving(false);
     }

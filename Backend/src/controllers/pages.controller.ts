@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
+import { newId, readSeoMeta, seoToAdmin, toFaqs, upsertSeoMeta } from '../services/live-content';
+
+/** The public website reads its homepage from Page { identifier: 'home' } */
+const HOME_IDENTIFIER = 'home';
 
 const SEED_ZOMBIE_PAGES = [
   {
@@ -226,7 +230,10 @@ export class PagesController {
       }
 
       const today = new Date().toISOString().split('T')[0];
-      const sanitized = sanitizeZombiePage(body, 0);
+      // Partial saves (e.g. the status toggle sends only id + status) keep the stored content
+      const stored = await db.collection('zombie_pages').findOne(query);
+      const merged = stored ? { ...stored, ...body, seo: { ...(stored.seo || {}), ...(body.seo || {}) } } : body;
+      const sanitized = sanitizeZombiePage(merged, 0);
       const updatedPage = {
         ...sanitized,
         id,
@@ -277,43 +284,111 @@ export class PagesController {
 
   /**
    * GET /api/admin/homepage and GET /api/homepage
+   * Reads the public website's `Page { identifier: 'home' }` (+ SeoMeta) in the admin CMS shape.
    */
-  static async getHomepage(req: Request, res: Response): Promise<void> {
+  static async getHomepage(_req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const configDoc = await db.collection('userinterfaces').findOne({ type: 'homepage' }) ||
-                        await db.collection('userinterfaces').findOne({}) ||
-                        await db.collection('Page').findOne({ slug: 'home' });
+      const page: any = await db.collection('Page').findOne({ identifier: HOME_IDENTIFIER });
+      const seo = page ? await readSeoMeta(page.seoMetaId) : null;
+      const adminSeo = seoToAdmin(seo) || {};
+      const urls: string[] = page?.carouselImageUrls || [];
 
-      res.json({
-        success: true,
-        homepage: configDoc || {}
-      });
+      const homepage = {
+        general: { pageIdentifier: HOME_IDENTIFIER, notificationTitle: page?.notificationTitle || '' },
+        carouselImages: urls.map((url, i) => ({
+          id: `carousel-${i + 1}`,
+          imageUrl: url,
+          altText: (page.carouselImageAltTexts || [])[i] || '',
+          deviceType: (page.carouselImageIsMobileFlags || [])[i] ? 'Mobile' : 'Desktop'
+        })),
+        seo: {
+          metaTitle: adminSeo.metaTitle || '',
+          metaDescription: adminSeo.metaDescription || '',
+          keywords: adminSeo.keywords || '',
+          openGraphTitle: adminSeo.openGraphTitle || '',
+          openGraphDescription: adminSeo.openGraphDescription || '',
+          openGraphImageUrl: adminSeo.openGraphImageUrl || '',
+          openGraphImageAltText: adminSeo.openGraphImageAltText || ''
+        },
+        faqs: (page?.faqs || []).map((f: any, i: number) => ({ id: `faq-${i + 1}`, question: f.question, answer: f.answer })),
+        testimonials: (page?.testimonials || []).map((t: any, i: number) => ({
+          id: `testimonial-${i + 1}`,
+          authorName: t.authorName || '',
+          profession: t.authorProfessional || '',
+          authorEmail: t.authorEmail || '',
+          authorImageUrl: t.authorImageUrl || '',
+          authorImageAltText: t.authorImageAltText || '',
+          content: t.quote || ''
+        }))
+      };
+
+      res.json({ success: true, homepage, cms: homepage });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch homepage' });
     }
   }
 
   /**
-   * POST /api/admin/homepage
+   * POST/PUT /api/admin/homepage (admins)
+   * Writes the admin CMS payload into the public website's Page + SeoMeta. Sections missing from
+   * the payload are left unchanged.
    */
   static async updateHomepage(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
       const body = req.body || {};
-      const updates = { ...body, type: 'homepage', updatedAt: new Date() };
-      delete updates._id;
+      const page: any = await db.collection('Page').findOne({ identifier: HOME_IDENTIFIER });
+      const set: Record<string, any> = {};
 
-      await db.collection('userinterfaces').updateOne(
-        { type: 'homepage' },
-        { $set: updates },
-        { upsert: true }
-      );
+      if (body.general) set.notificationTitle = String(body.general.notificationTitle || '').trim() || null;
 
-      res.json({
-        success: true,
-        message: 'Homepage settings updated successfully'
-      });
+      if (Array.isArray(body.carouselImages)) {
+        const images = body.carouselImages
+          .map((c: any) => ({ url: String(c?.imageUrl || '').trim(), alt: String(c?.altText || '').trim(), mobile: String(c?.deviceType || '').toLowerCase() === 'mobile' }))
+          .filter((c: any) => c.url);
+        set.carouselImageUrls = images.map((c: any) => c.url);
+        set.carouselImageAltTexts = images.map((c: any, i: number) => c.alt || `Hexpertify banner ${i + 1}`);
+        set.carouselImageIsMobileFlags = images.map((c: any) => c.mobile);
+      }
+
+      if (Array.isArray(body.faqs)) set.faqs = toFaqs(body.faqs);
+
+      if (Array.isArray(body.testimonials)) {
+        set.testimonials = body.testimonials
+          .map((t: any) => ({
+            quote: String(t?.content ?? t?.quote ?? '').trim(),
+            authorName: String(t?.authorName || '').trim(),
+            authorProfessional: String(t?.profession ?? t?.authorProfessional ?? '').trim() || null,
+            authorImageUrl: String(t?.authorImageUrl || '').trim() || null,
+            authorImageAltText: String(t?.authorImageAltText || '').trim() || null,
+            authorEmail: String(t?.authorEmail || '').trim() || null
+          }))
+          .filter((t: any) => t.quote && t.authorName);
+      }
+
+      if (body.seo) {
+        set.seoMetaId = await upsertSeoMeta(page?.seoMetaId, body.seo, 'Hexpertify | Online Therapy & Counselling in India');
+      }
+
+      if (page) {
+        await db.collection('Page').updateOne({ _id: page._id }, { $set: set });
+      } else {
+        await db.collection('Page').insertOne({
+          _id: newId() as any,
+          identifier: HOME_IDENTIFIER,
+          notificationTitle: null,
+          carouselImageUrls: [],
+          carouselImageAltTexts: [],
+          carouselImageIsMobileFlags: [],
+          faqs: [],
+          testimonials: [],
+          seoMetaId: set.seoMetaId || await upsertSeoMeta(null, {}, 'Hexpertify | Online Therapy & Counselling in India'),
+          ...set
+        });
+      }
+
+      res.json({ success: true, message: 'Homepage updated. Changes are live on the website.' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to update homepage' });
     }

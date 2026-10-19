@@ -2,6 +2,50 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
+import { isAdminUser, isInternalRequest } from '../middlewares/auth.middleware';
+import { resolveClientViewer } from '../services/client-access';
+import {
+  consultantDefaults, consultantFieldsFromAdmin, consultantToAdmin, idQuery, newId, replaceAdminReviews,
+  replaceConsultantServices, slugify, upsertSeoMeta
+} from '../services/live-content';
+
+// Prisma-typed or derived fields that must never be copied from a request body as-is
+const RESERVED_KEYS = new Set([
+  'id', '_id', 'services', 'reviews', 'seo', 'minPrice', 'seoMetaId', 'createdAt', 'updatedAt',
+  'name', 'email', 'identifier', 'notificationTitle', 'sequence', 'photo', 'photoUrl', 'photoAltText', 'youtubeUrl',
+  'about', 'bio', 'isCertified', 'experience', 'experienceYears', 'clientCount', 'clientsServed', 'specialties',
+  'specializations', 'languages', 'qualifications', 'faqs', 'certificates', 'certificateUrls', 'certificateAltTexts',
+  'profession', 'professionId', 'accountStatus', 'isHiddenFromLive', 'isArchived', 'isBookingGreyedOut',
+  // Computed by the list endpoint
+  'rating', 'reviewCount', 'activeClientsCount', 'totalSessions', 'totalRevenue', 'therapyHours', 'fees', 'title', 'outcomes', 'professionName'
+]);
+
+/** Other keys (availability, working hours, ...) are kept as the panels send them */
+function passthrough(body: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  Object.keys(body || {}).forEach((k) => { if (!RESERVED_KEYS.has(k) && body[k] !== undefined) out[k] = body[k]; });
+  return out;
+}
+
+/** Writes services, reviews and SEO (when present in the payload) and returns extra fields to $set */
+async function writeRelatedContent(consultantId: string, body: any, existingSeoMetaId: string | null, name: string): Promise<Record<string, any>> {
+  const extra: Record<string, any> = {};
+  if (body.services !== undefined) {
+    const minPrice = await replaceConsultantServices(consultantId, body.services);
+    extra.minPrice = minPrice;
+    if (minPrice) extra.fees = minPrice;
+  }
+  if (body.reviews !== undefined) await replaceAdminReviews(consultantId, body.reviews);
+  if (body.seo !== undefined) extra.seoMetaId = await upsertSeoMeta(existingSeoMetaId, body.seo, name);
+  return extra;
+}
+
+async function canEditConsultant(req: Request, consultant: any): Promise<boolean> {
+  if (isInternalRequest(req) || isAdminUser(req.user)) return true;
+  const viewer = await resolveClientViewer(req);
+  if (viewer.kind !== 'therapist') return false;
+  return [consultant._id, consultant.id, consultant.email].some((v) => v && viewer.ids.has(String(v).toLowerCase()));
+}
 
 export function normalizeImageUrl(url?: string): string {
   if (!url || typeof url !== 'string') return '';
@@ -101,7 +145,7 @@ export class ConsultantsController {
             ? clientSet.size 
             : (c.activeClientsCount !== undefined ? Number(c.activeClientsCount) : (c.clientCount !== undefined ? Number(c.clientCount) : 0));
 
-          const resolvedProfession = c.profession || c.title || (c.professionId ? profMap.get(c.professionId) : null) || 'Licensed Clinical Psychologist';
+          const resolvedProfession = (c.professionId ? profMap.get(String(c.professionId)) : null) || c.profession || c.title || 'Licensed Clinical Psychologist';
           const photoUrl = normalizeImageUrl(c.photo || c.photoUrl || c.image || c.avatarUrl) || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
           const primaryServiceFee = Number(
             c.services?.[0]?.sessionFee || 
@@ -133,10 +177,24 @@ export class ConsultantsController {
           };
         });
 
+        // Plans, reviews and SEO come from the collections the public website reads
+        const withContent = await Promise.all(enriched.map(async (c: any) => {
+          const content = await consultantToAdmin(c);
+          const fee = content.services[0]?.sessionFee;
+          return {
+            ...c,
+            ...content,
+            profession: content.professionName || c.profession,
+            title: content.professionName || c.title,
+            photoUrl: content.photo || c.photoUrl,
+            ...(fee ? { fees: fee, minPrice: fee } : {})
+          };
+        }));
+
         return {
           success: true,
-          count: enriched.length,
-          consultants: enriched
+          count: withContent.length,
+          consultants: withContent
         };
       });
 
@@ -152,266 +210,175 @@ export class ConsultantsController {
   static async getById(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || '');
-      const cacheKey = `consultant:${id}`;
-
-      const responseData = await cacheService.wrap(cacheKey, ['consultants'], 30, async () => {
-        const db = getDatabase();
-
-        let query: any = { id };
-        if (ObjectId.isValid(id)) {
-          query = { $or: [{ _id: new ObjectId(id) }, { id }] };
-        }
-
-        const consultant = await db.collection('Consultant').findOne(query) ||
-                           await db.collection('consultants').findOne(query);
-
-        if (!consultant) {
-          return null;
-        }
-
-        return {
-          success: true,
-          consultant: {
-            ...consultant,
-            id: consultant.id || String(consultant._id)
-          }
-        };
-      });
-
-      if (!responseData) {
+      const db = getDatabase();
+      const consultant: any = await db.collection('Consultant').findOne(idQuery(id)) ||
+                              await db.collection('Consultant').findOne({ identifier: id });
+      if (!consultant) {
         res.status(404).json({ success: false, error: 'Consultant not found' });
         return;
       }
-
-      res.json(responseData);
+      const content = await consultantToAdmin(consultant);
+      res.json({
+        success: true,
+        consultant: { ...consultant, ...content, id: String(consultant._id ?? consultant.id), profession: content.professionName || consultant.profession }
+      });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch consultant' });
     }
   }
 
   /**
-   * POST /api/consultants
+   * POST /api/consultants (admins). Stored in the shape the public website reads.
    */
   static async create(req: Request, res: Response): Promise<void> {
     try {
+      if (!isInternalRequest(req) && !isAdminUser(req.user)) {
+        res.status(401).json({ success: false, error: 'Administrator authentication required. Please sign in again.' });
+        return;
+      }
       const body = req.body || {};
-      const { name, email, profession, title } = body;
-
+      const name = String(body.name || '').trim();
       if (!name) {
         res.status(400).json({ success: false, error: 'Name is required' });
         return;
       }
 
       const db = getDatabase();
-      const randomKey = new ObjectId().toString();
-      const generatedId = body.id || `CON-${Date.now().toString().slice(-4)}`;
-      const cleanSlug = body.identifier || body.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4);
-      const safeEmail = (email || `${cleanSlug}@hexpertify.com`).toLowerCase().trim();
+      const identifier = slugify(String(body.identifier || body.slug || '')) || `${slugify(name.replace(/^dr\.?\s*/i, ''))}-${Date.now().toString().slice(-4)}`;
+      const email = String(body.email || `${identifier}@hexpertify.com`).toLowerCase().trim();
 
-      // Check for existing consultant with the same email or name to prevent duplicates
-      const existingConsultant = await db.collection('Consultant').findOne({
-        $or: [
-          { email: safeEmail },
-          { name: new RegExp(`^${name.trim()}$`, 'i') }
-        ]
-      }) || await db.collection('consultants').findOne({
-        $or: [
-          { email: safeEmail },
-          { name: new RegExp(`^${name.trim()}$`, 'i') }
-        ]
-      });
-
-      const serviceFee = Number(
-        body.services?.[0]?.sessionFee ||
-        body.services?.[0]?.price ||
-        body.platformFeePerSession ||
-        body.fees ||
-        body.minPrice ||
-        500
-      );
-
-      if (existingConsultant) {
-        const existingId = existingConsultant.id || String(existingConsultant._id);
-        const updateDoc = {
-          ...body,
-          name: name.trim(),
-          email: safeEmail,
-          profession: profession || title || existingConsultant.profession || 'Licensed Clinical Psychologist',
-          title: title || profession || existingConsultant.title || 'Licensed Clinical Psychologist',
-          platformFeePerSession: serviceFee,
-          fees: serviceFee,
-          minPrice: serviceFee,
-          updatedAt: new Date()
-        };
-        delete updateDoc.id;
-        delete updateDoc._id;
-
-        await Promise.all([
-          db.collection('Consultant').updateOne({ $or: [{ id: existingId }, { email: safeEmail }] }, { $set: updateDoc }),
-          db.collection('consultants').updateOne({ $or: [{ id: existingId }, { email: safeEmail }] }, { $set: updateDoc })
-        ]);
-
-        cacheService.invalidateTags(['consultants', 'stats', 'users']);
-
-        res.status(200).json({
-          success: true,
-          consultant: { ...existingConsultant, ...updateDoc, id: existingId },
-          message: 'Existing consultant updated successfully (duplicate avoided).'
-        });
+      // Same email: update that consultant instead of creating a duplicate
+      const duplicate: any = await db.collection('Consultant').findOne({ email });
+      if (duplicate) {
+        req.params.id = String(duplicate._id);
+        await ConsultantsController.update(req, res);
         return;
       }
 
-      const exp = typeof body.experience === 'number' ? body.experience : (typeof body.experienceYears === 'number' ? Number(body.experienceYears) : (typeof body.yearsOfExperience === 'number' ? Number(body.yearsOfExperience) : 0));
-
-      const newConsultant: any = {
-        ...body,
-        id: generatedId,
-        _id: generatedId,
-        name: name.trim(),
-        email: safeEmail,
-        identifier: cleanSlug,
-        profession: profession || title || 'Licensed Clinical Psychologist',
-        title: title || profession || 'Licensed Clinical Psychologist',
-        accountStatus: body.accountStatus || body.status || 'Active',
-        isCertified: body.isCertified ?? true,
-        experience: exp,
-        experienceYears: exp,
-        yearsOfExperience: exp,
-        rating: body.rating || 5.0,
-        reviewCount: body.reviewCount || 1,
-        platformFeePerSession: serviceFee,
-        fees: serviceFee,
-        minPrice: serviceFee,
-        services: body.services || [],
-        activeClientsCount: body.activeClientsCount || 0,
-        photo: body.photo || body.photoUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80',
-        photoUrl: body.photoUrl || body.photo || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80',
-        seoMetaId: body.seoMetaId || `seo-${randomKey}`,
-        professionId: body.professionId || `prof-${randomKey}`,
+      const id = newId();
+      const fields = await consultantFieldsFromAdmin({ ...body, name, email, identifier });
+      const doc: any = {
+        _id: id,
+        ...passthrough(body),
+        ...consultantDefaults(name, email, identifier),
+        ...fields,
+        accountStatus: fields.accountStatus || 'Active',
         createdAt: new Date(),
         updatedAt: new Date()
       };
-
-      await Promise.all([
-        db.collection('Consultant').insertOne({ ...newConsultant }).catch(() => {}),
-        db.collection('consultants').insertOne({ ...newConsultant }).catch(() => {})
-      ]);
+      await db.collection('Consultant').insertOne(doc);
+      const related = await writeRelatedContent(id, body, null, name);
+      if (Object.keys(related).length) await db.collection('Consultant').updateOne({ _id: id as any }, { $set: related });
 
       cacheService.invalidateTags(['consultants', 'stats', 'users']);
-
-      res.status(201).json({
-        success: true,
-        consultant: newConsultant,
-        message: 'Consultant created successfully in MongoDB Atlas'
-      });
+      const saved: any = await db.collection('Consultant').findOne({ _id: id as any });
+      res.status(201).json({ success: true, consultant: { ...saved, ...(await consultantToAdmin(saved)), id }, message: 'Consultant created' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to create consultant' });
     }
   }
 
   /**
-   * PUT /api/consultants and PUT /api/consultants/:id
+   * PUT /api/consultants and PUT /api/consultants/:id (admins, or the therapist editing themselves).
+   * Only the fields present in the payload change, so status toggles never clear other data.
    */
   static async update(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || req.body?.id || req.body?._id || '');
-      const updates = { ...req.body, updatedAt: new Date() };
-      delete updates.id;
-      delete updates._id;
-
-      if (updates.experienceYears !== undefined && updates.experience === undefined) {
-        updates.experience = Number(updates.experienceYears) || 0;
-      }
-      if (updates.experience !== undefined) {
-        updates.experience = Number(updates.experience) || 0;
-        updates.experienceYears = updates.experience;
-      }
-
-      if (updates.services && Array.isArray(updates.services) && updates.services.length > 0) {
-        const servicePrice = Number(updates.services[0]?.sessionFee || updates.services[0]?.price) || 0;
-        if (servicePrice > 0) {
-          updates.fees = servicePrice;
-          updates.minPrice = servicePrice;
-          updates.platformFeePerSession = servicePrice;
-        }
-      }
-
+      const body = req.body || {};
+      const id = String(req.params.id || body.id || body._id || '');
       const db = getDatabase();
-      let query: any = null;
 
+      let existing: any = null;
       if (id) {
-        if (ObjectId.isValid(id)) {
-          query = { $or: [{ _id: new ObjectId(id) }, { id }, { _id: id }] };
-        } else {
-          query = { $or: [{ id }, { _id: id }] };
-        }
-      } else if (updates.name) {
-        query = { name: new RegExp(`^${updates.name.trim()}$`, 'i') };
-      } else {
-        res.status(400).json({ success: false, error: 'Consultant ID or Name is required' });
+        existing = await db.collection('Consultant').findOne(idQuery(id));
+      } else if (body.name) {
+        const rx = new RegExp(`^${String(body.name).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        existing = await db.collection('Consultant').findOne({ name: rx });
+      }
+      if (!existing) {
+        const missingId = !id && !body.name;
+        res.status(missingId ? 400 : 404).json({ success: false, error: missingId ? 'Consultant ID or Name is required' : 'Consultant not found' });
+        return;
+      }
+      if (!(await canEditConsultant(req, existing))) {
+        res.status(401).json({ success: false, error: 'You are not allowed to edit this profile. Please sign in again.' });
         return;
       }
 
-      await Promise.all([
-        db.collection('Consultant').updateMany(query, { $set: updates }),
-        db.collection('consultants').updateMany(query, { $set: updates })
-      ]);
+      const fields = await consultantFieldsFromAdmin(body);
+      if (fields.email) {
+        const clash = await db.collection('Consultant').findOne({ email: fields.email, _id: { $ne: existing._id } });
+        if (clash) {
+          res.status(409).json({ success: false, error: `Another therapist already uses ${fields.email}` });
+          return;
+        }
+      }
+      if (fields.name === '') delete fields.name;
+
+      const consultantId = String(existing._id);
+      const related = await writeRelatedContent(consultantId, body, existing.seoMetaId || null, fields.name || existing.name);
+      // Required Prisma fields older records may lack
+      const repairs: Record<string, any> = {};
+      if (typeof existing.clientCount !== 'number' && fields.clientCount === undefined) repairs.clientCount = 0;
+      if (typeof existing.experience !== 'number' && fields.experience === undefined) repairs.experience = 0;
+      if (!existing.email && !fields.email) repairs.email = `${existing.identifier || consultantId}@hexpertify.com`;
+
+      await db.collection('Consultant').updateOne(
+        { _id: existing._id },
+        { $set: { ...passthrough(body), ...repairs, ...fields, ...related, updatedAt: new Date() } }
+      );
 
       cacheService.invalidateTags(['consultants', 'stats', 'users']);
-
-      res.json({
-        success: true,
-        message: 'Consultant updated successfully in MongoDB Atlas'
-      });
+      const saved: any = await db.collection('Consultant').findOne({ _id: existing._id });
+      res.json({ success: true, consultant: { ...saved, ...(await consultantToAdmin(saved)), id: consultantId }, message: 'Consultant updated' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to update consultant' });
     }
   }
 
   /**
-   * DELETE /api/consultants and DELETE /api/consultants/:id
+   * DELETE /api/consultants and DELETE /api/consultants/:id (admins)
    */
   static async delete(req: Request, res: Response): Promise<void> {
     try {
+      if (!isInternalRequest(req) && !isAdminUser(req.user)) {
+        res.status(401).json({ success: false, error: 'Administrator authentication required. Please sign in again.' });
+        return;
+      }
       const id = String(req.params.id || req.query.id || req.query.therapistId || req.body?.id || req.body?.therapistId || '').trim();
-
       if (!id) {
         res.status(400).json({ success: false, error: 'Consultant ID is required' });
         return;
       }
 
       const db = getDatabase();
-      const orConditions: any[] = [
-        { id: id },
-        { _id: id }
-      ];
-
-      if (ObjectId.isValid(id)) {
-        try {
-          orConditions.push({ _id: new ObjectId(id) });
-        } catch {}
+      const existing: any = await db.collection('Consultant').findOne(idQuery(id));
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Consultant not found' });
+        return;
+      }
+      const consultantId = String(existing._id);
+      const bookings = await db.collection('Booking').countDocuments({ consultantId });
+      if (bookings) {
+        res.status(409).json({ success: false, error: `This therapist has ${bookings} booking(s). Archive or hide them from the website instead of deleting, so booking history stays intact.` });
+        return;
       }
 
-      const query = { $or: orConditions };
-
-      const [res1, res2] = await Promise.all([
-        db.collection('Consultant').deleteMany(query).catch(() => ({ deletedCount: 0 })),
-        db.collection('consultants').deleteMany(query).catch(() => ({ deletedCount: 0 }))
+      await Promise.all([
+        db.collection('Consultant').deleteOne({ _id: existing._id }),
+        db.collection('consultants').deleteMany(idQuery(id)).catch(() => {}),
+        db.collection('Service').deleteMany({ consultantId }),
+        db.collection('Review').deleteMany({ consultantId }),
+        existing.seoMetaId ? db.collection('SeoMeta').deleteOne({ _id: existing.seoMetaId }) : Promise.resolve()
       ]);
 
       cacheService.invalidateTags(['consultants', 'stats', 'users']);
-
-      const deletedTotal = ((res1 as any)?.deletedCount || 0) + ((res2 as any)?.deletedCount || 0);
-
-      res.json({
-        success: true,
-        deletedCount: deletedTotal,
-        message: 'Consultant removed successfully from MongoDB Atlas'
-      });
+      res.json({ success: true, deletedCount: 1, message: 'Consultant removed' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to delete consultant' });
     }
   }
+
 
   /**
    * GET /api/client/therapist

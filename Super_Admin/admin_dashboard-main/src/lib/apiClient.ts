@@ -37,15 +37,19 @@ export async function apiRequest<T = any>(
   options.headers = { ...getApiAuthHeaders(), ...(options.headers as Record<string, string> || {}) };
 
   // 1. Try primary URL (proxied in dev, same-origin in prod)
+  let primaryRes: Response | null = null;
   try {
-    const res = await fetch(endpoint, options);
-    if (res.ok) {
-      return await res.json();
-    }
-    // Non-OK response — try fallback
-    console.warn(`[API] Primary request failed: ${res.status} ${res.statusText} for ${options.method || 'GET'} ${endpoint}`);
+    primaryRes = await fetch(endpoint, options);
   } catch (primaryErr) {
     console.warn(`[API] Primary request error for ${options.method || 'GET'} ${endpoint}:`, primaryErr);
+  }
+  if (primaryRes?.ok) {
+    return await primaryRes.json();
+  }
+  // The server answered with an error: report its message instead of retrying elsewhere
+  if (primaryRes && primaryRes.status !== 404 && primaryRes.status !== 405) {
+    const data = await primaryRes.json().catch(() => null);
+    throw new Error(data?.error || `API ${options.method || 'GET'} ${endpoint} failed: ${primaryRes.status}`);
   }
 
   // 2. Fallback to explicit localhost:5000

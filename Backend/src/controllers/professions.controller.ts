@@ -1,38 +1,81 @@
 import { Request, Response } from 'express';
-import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
+import { idQuery, newId, readSeoMeta, seoToAdmin, slugify, toFaqs, toFloat, toInt, upsertSeoMeta } from '../services/live-content';
+
+/**
+ * Professions are read by the public website through Prisma (`Profession` + `SeoMeta`), so writes
+ * store its field names: name, identifier, imageUrl, imageAltText, bannerUrl, bannerTitle, faqs,
+ * seoMetaId. The admin panel's names (serviceName, heroBannerUrl, seo{...}) are mapped both ways.
+ */
+
+/** Profession document (+ SeoMeta) → the admin panel's ProfessionService shape */
+async function toAdmin(p: any) {
+  const name = p.name || p.serviceName || 'Untitled Profession';
+  const seo = await readSeoMeta(p.seoMetaId);
+  return {
+    ...p,
+    id: String(p._id ?? p.id),
+    name,
+    serviceName: name,
+    identifier: p.identifier || slugify(name),
+    slug: p.identifier || slugify(name),
+    heroBannerUrl: p.bannerUrl || p.heroBannerUrl || '',
+    heroBannerTitle: p.bannerTitle || p.heroBannerTitle || '',
+    bannerUrl: p.bannerUrl || '',
+    bannerTitle: p.bannerTitle || '',
+    status: p.status || 'Active',
+    visibility: p.visibility || 'Public',
+    faqs: p.faqs || [],
+    seo: seoToAdmin(seo) || p.seo
+  };
+}
+
+/** Admin payload → Prisma-shaped fields; only fields present in the payload are returned */
+function fieldsFromAdmin(body: any): Record<string, any> {
+  const set: Record<string, any> = {};
+  const has = (k: string) => body[k] !== undefined;
+  if (has('serviceName') || has('name')) set.name = String(body.serviceName ?? body.name).trim();
+  if (has('identifier') || has('slug')) set.identifier = slugify(String(body.identifier || body.slug || ''));
+  if (has('imageUrl')) set.imageUrl = String(body.imageUrl || '') || null;
+  if (has('imageAltText')) set.imageAltText = String(body.imageAltText || '') || null;
+  if (has('heroBannerUrl') || has('bannerUrl')) set.bannerUrl = String(body.heroBannerUrl ?? body.bannerUrl ?? '') || null;
+  if (has('heroBannerTitle') || has('bannerTitle')) set.bannerTitle = String(body.heroBannerTitle ?? body.bannerTitle ?? '') || null;
+  if (has('faqs')) set.faqs = toFaqs(body.faqs);
+  // Admin-only fields; status/visibility also decide whether the public site lists the profession
+  if (has('status')) set.status = String(body.status);
+  if (has('visibility')) set.visibility = String(body.visibility);
+  if (has('description')) set.description = String(body.description || '');
+  if (has('consultationFee')) set.consultationFee = toFloat(body.consultationFee, 0);
+  if (has('sessionDurationMinutes')) set.sessionDurationMinutes = toInt(body.sessionDurationMinutes, 50);
+  Object.keys(set).forEach((k) => (set[k] === '' && (k === 'name' || k === 'identifier')) && delete set[k]);
+  return set;
+}
+
+async function assertUnique(name: string | undefined, identifier: string | undefined, exceptId?: string): Promise<string | null> {
+  const db = getDatabase();
+  const or: any[] = [];
+  if (name) or.push({ name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+  if (identifier) or.push({ identifier });
+  if (!or.length) return null;
+  const clash: any = await db.collection('Profession').findOne(exceptId ? { $and: [{ $or: or }, { _id: { $ne: exceptId as any } }] } : { $or: or });
+  if (!clash) return null;
+  return clash.identifier === identifier ? `Another profession already uses the identifier "${identifier}"` : `A profession named "${name}" already exists`;
+}
 
 export class ProfessionsController {
   /**
    * GET /api/professions and GET /api/admin/professions
    */
-  static async getAll(req: Request, res: Response): Promise<void> {
+  static async getAll(_req: Request, res: Response): Promise<void> {
     try {
       const responseData = await cacheService.wrap('professions:all', ['professions'], 60, async () => {
         const db = getDatabase();
-        let professions = await db.collection('Profession').find({}).toArray();
-        if (!professions || professions.length === 0) {
-          professions = await db.collection('professions').find({}).toArray();
-        }
-
-        return {
-          success: true,
-          count: professions.length,
-          professions: professions.map((p) => {
-            const name = p.name || p.serviceName || 'Untitled Profession';
-            const serviceName = p.serviceName || p.name || 'Untitled Profession';
-            return {
-              ...p,
-              id: p.id || String(p._id),
-              name,
-              serviceName,
-              identifier: p.identifier || p.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-            };
-          })
-        };
+        let professions = await db.collection('Profession').find({}).sort({ createdAt: 1 }).toArray();
+        if (!professions.length) professions = await db.collection('professions').find({}).toArray();
+        const list = await Promise.all(professions.map(toAdmin));
+        return { success: true, count: list.length, professions: list };
       });
-
       res.json(responseData);
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch professions' });
@@ -45,46 +88,13 @@ export class ProfessionsController {
   static async getById(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || req.query.id || '');
-      const cacheKey = `profession:${id}`;
-
-      const responseData = await cacheService.wrap(cacheKey, ['professions'], 60, async () => {
-        const db = getDatabase();
-
-        let query: any = { id };
-        if (ObjectId.isValid(id)) {
-          query = { $or: [{ _id: new ObjectId(id) }, { id }] };
-        }
-
-        let prof = await db.collection('Profession').findOne(query);
-        if (!prof) {
-          prof = await db.collection('professions').findOne(query);
-        }
-
-        if (!prof) {
-          return null;
-        }
-
-        const name = prof.name || prof.serviceName || 'Untitled Profession';
-        const serviceName = prof.serviceName || prof.name || 'Untitled Profession';
-
-        return {
-          success: true,
-          profession: {
-            ...prof,
-            id: prof.id || String(prof._id),
-            name,
-            serviceName,
-            identifier: prof.identifier || prof.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-          }
-        };
-      });
-
-      if (!responseData) {
+      const prof = await getDatabase().collection('Profession').findOne(idQuery(id)) ||
+                   await getDatabase().collection('Profession').findOne({ identifier: id });
+      if (!prof) {
         res.status(404).json({ success: false, error: 'Profession not found' });
         return;
       }
-
-      res.json(responseData);
+      res.json({ success: true, profession: await toAdmin(prof) });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch profession' });
     }
@@ -95,43 +105,42 @@ export class ProfessionsController {
    */
   static async create(req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
       const body = req.body || {};
-      const { name, serviceName } = body;
-
-      const title = name || serviceName;
-      if (!title) {
+      const fields = fieldsFromAdmin(body);
+      if (!fields.name) {
         res.status(400).json({ success: false, error: 'Profession name is required' });
         return;
       }
+      fields.identifier = fields.identifier || slugify(fields.name);
 
-      const generatedId = body.id || `PROF-${Date.now().toString().slice(-4)}`;
-      const cleanSlug = body.identifier || body.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const clash = await assertUnique(fields.name, fields.identifier);
+      if (clash) {
+        res.status(409).json({ success: false, error: clash });
+        return;
+      }
 
-      const newProfession = {
-        ...body,
-        id: generatedId,
-        _id: generatedId,
-        name: title,
-        serviceName: serviceName || title,
-        identifier: cleanSlug,
-        isActive: body.isActive !== undefined ? body.isActive : true,
+      const id = newId();
+      const seoMetaId = await upsertSeoMeta(null, body.seo, fields.name);
+      const doc = {
+        _id: id,
+        name: fields.name,
+        identifier: fields.identifier,
+        imageUrl: null,
+        imageAltText: null,
+        bannerUrl: null,
+        bannerTitle: null,
+        faqs: [],
+        status: 'Active',
+        visibility: 'Public',
+        ...fields,
+        seoMetaId,
         createdAt: new Date(),
         updatedAt: new Date()
       };
-
-      await Promise.all([
-        db.collection('Profession').insertOne(newProfession).catch(() => {}),
-        db.collection('professions').insertOne(newProfession).catch(() => {})
-      ]);
+      await getDatabase().collection('Profession').insertOne(doc as any);
 
       cacheService.invalidateTags(['professions', 'consultants']);
-
-      res.status(201).json({
-        success: true,
-        profession: newProfession,
-        message: 'Profession created successfully in MongoDB'
-      });
+      res.status(201).json({ success: true, profession: await toAdmin(doc), message: 'Profession created' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to create profession' });
     }
@@ -143,32 +152,38 @@ export class ProfessionsController {
   static async update(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || req.body?.id || req.body?._id || '');
-      const updates = { ...req.body, updatedAt: new Date() };
-      delete updates.id;
-      delete updates._id;
-
       if (!id) {
         res.status(400).json({ success: false, error: 'Profession ID is required' });
         return;
       }
 
       const db = getDatabase();
-      let query: any = { id };
-      if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      const existing: any = await db.collection('Profession').findOne(idQuery(id));
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Profession not found' });
+        return;
       }
 
-      await Promise.all([
-        db.collection('Profession').updateMany(query, { $set: updates }),
-        db.collection('professions').updateMany(query, { $set: updates })
-      ]);
+      const body = req.body || {};
+      const set = fieldsFromAdmin(body);
+      const clash = await assertUnique(set.name, set.identifier, existing._id);
+      if (clash) {
+        res.status(409).json({ success: false, error: clash });
+        return;
+      }
+      if (body.seo !== undefined) {
+        set.seoMetaId = await upsertSeoMeta(existing.seoMetaId, body.seo, set.name || existing.name);
+      }
+
+      await db.collection('Profession').updateOne({ _id: existing._id }, { $set: { ...set, updatedAt: new Date() } });
+      if (set.name && set.name !== existing.name) {
+        // Consultants keep a display copy of their profession name
+        await db.collection('Consultant').updateMany({ professionId: String(existing._id) }, { $set: { profession: set.name } }).catch(() => {});
+      }
 
       cacheService.invalidateTags(['professions', 'consultants']);
-
-      res.json({
-        success: true,
-        message: 'Profession updated successfully in MongoDB'
-      });
+      const updated = await db.collection('Profession').findOne({ _id: existing._id });
+      res.json({ success: true, profession: await toAdmin(updated), message: 'Profession updated' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to update profession' });
     }
@@ -180,29 +195,28 @@ export class ProfessionsController {
   static async delete(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || req.query.id || req.body?.id || '');
-
       if (!id) {
         res.status(400).json({ success: false, error: 'Profession ID is required' });
         return;
       }
 
       const db = getDatabase();
-      let query: any = { id };
-      if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      const existing: any = await db.collection('Profession').findOne(idQuery(id));
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Profession not found' });
+        return;
+      }
+      const linked = await db.collection('Consultant').countDocuments({ professionId: String(existing._id) });
+      if (linked) {
+        res.status(409).json({ success: false, error: `${linked} therapist(s) still belong to this profession. Move them to another profession first, or set the profession to Archived to hide it.` });
+        return;
       }
 
-      await Promise.all([
-        db.collection('Profession').deleteMany(query),
-        db.collection('professions').deleteMany(query)
-      ]);
+      await db.collection('Profession').deleteOne({ _id: existing._id });
+      if (existing.seoMetaId) await db.collection('SeoMeta').deleteOne({ _id: existing.seoMetaId }).catch(() => {});
 
       cacheService.invalidateTags(['professions', 'consultants']);
-
-      res.json({
-        success: true,
-        message: 'Profession removed successfully from MongoDB'
-      });
+      res.json({ success: true, message: 'Profession removed' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to delete profession' });
     }

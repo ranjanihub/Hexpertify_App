@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authConfig } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
+import { activeServices, isConsultantPublic, isProfessionPublic, lowestPrice as lowestServicePrice } from "@/lib/visibility";
 import {
   AdminBookingEmailHtml,
   BookingConfirmationToConsultantHtml,
@@ -39,7 +40,9 @@ export const getConsultantByIdentifier = cache(async (
     },
   });
 
-  if (!consultant) return null;
+  // Hidden, archived or inactive profiles (and hidden professions) are not public
+  if (!consultant || !isConsultantPublic(consultant) || !isProfessionPublic(consultant.profession)) return null;
+  const services = activeServices(consultant.services);
   const ratingBreakdown = {
     fiveStar: consultant.reviews.filter((r) => r.rating === 5).length,
     fourStar: consultant.reviews.filter((r) => r.rating === 4).length,
@@ -63,10 +66,7 @@ export const getConsultantByIdentifier = cache(async (
         ).toFixed(1)
       )
     : 0;
-  const lowestPrice =
-    consultant.services.length > 0
-      ? Math.min(...consultant.services.map((s) => s.price))
-      : 0;
+  const lowestPrice = lowestServicePrice(services, consultant.minPrice) ?? 0;
 
   const formatted = {
     profileUrl: consultant.photoUrl,
@@ -78,6 +78,8 @@ export const getConsultantByIdentifier = cache(async (
     identifier: consultant.identifier,
     experience: consultant.experience,
     specialties: consultant.specialties,
+    // Admin switch: the profile stays visible but cannot be booked
+    bookingDisabled: Boolean(consultant.isBookingGreyedOut),
     info: {
       patients: consultant.clientCount,
       bookingPrice: lowestPrice ? `₹${lowestPrice}` : "N/A",
@@ -115,7 +117,7 @@ export const getConsultantByIdentifier = cache(async (
 
   return {
     consultant: formatted,
-    services: consultant.services,
+    services,
     seoMeta: consultant.seoMeta,
     profession: consultant.profession,
     faqs: consultant.faqs,
@@ -169,10 +171,13 @@ export const initiateBookingPayment = async (data: any) => {
 
     const service = await prisma.service.findFirst({
       where: { id: validated.serviceId, consultantId: validated.consultantId },
-      select: { id: true },
+      select: { id: true, retired: true, consultant: { select: { isHiddenFromLive: true, isArchived: true, accountStatus: true, isBookingGreyedOut: true } } },
     });
-    if (!service) {
+    if (!service || service.retired) {
       return { success: false, error: "This service is no longer available." };
+    }
+    if (!isConsultantPublic(service.consultant) || service.consultant.isBookingGreyedOut) {
+      return { success: false, error: "This therapist isn't taking new bookings right now." };
     }
 
     const booking = await prisma.booking.create({

@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { isConsultantPublic, isProfessionPublic } from "@/lib/visibility";
 import { prisma } from "@/lib/prisma";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -49,12 +50,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     // Fetch all professions for service pages
-    const professions = await prisma.profession.findMany({
+    const professions = (await prisma.profession.findMany({
       select: {
         identifier: true,
+        status: true,
+        visibility: true,
         createdAt: true,
       },
-    });
+    })).filter(isProfessionPublic);
 
     professionPages = professions.map((profession) => ({
       url: `${baseUrl}/services/${profession.identifier}`,
@@ -64,18 +67,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
     // Fetch all consultants for consultant pages
-    const consultants = await prisma.consultant.findMany({
+    const consultants = (await prisma.consultant.findMany({
       select: {
         identifier: true,
+        isHiddenFromLive: true,
+        isArchived: true,
+        accountStatus: true,
         professionId: true,
         updatedAt: true,
         profession: {
           select: {
-            identifier: true,
+            identifier: true, status: true, visibility: true
           },
         },
       },
-    });
+    })).filter((c: any) => isConsultantPublic(c) && (!c.profession || isProfessionPublic(c.profession)));
 
     consultantPages = consultants
       .filter(

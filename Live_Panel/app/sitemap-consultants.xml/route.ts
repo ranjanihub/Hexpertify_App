@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isConsultantPublic, isProfessionPublic } from "@/lib/visibility";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -11,12 +12,16 @@ export async function GET() {
     consultants = await prisma.consultant.findMany({
       select: {
         identifier: true,
+        isHiddenFromLive: true,
+        isArchived: true,
+        accountStatus: true,
         updatedAt: true,
         profession: {
-          select: { identifier: true },
+          select: { identifier: true, status: true, visibility: true },
         },
       },
     });
+    consultants = consultants.filter((c: any) => isConsultantPublic(c) && (!c.profession || isProfessionPublic(c.profession)));
   } catch (err) {
     console.warn("Could not fetch consultants for sitemap-consultants.xml:", err);
   }

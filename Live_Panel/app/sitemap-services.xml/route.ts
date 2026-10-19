@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isConsultantPublic, isProfessionPublic } from "@/lib/visibility";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,12 @@ export async function GET() {
     professions = await prisma.profession.findMany({
       select: {
         identifier: true,
+        status: true,
+        visibility: true,
         createdAt: true,
       },
     });
+    professions = professions.filter(isProfessionPublic);
   } catch (err) {
     console.warn("Could not fetch professions for sitemap-services.xml:", err);
   }

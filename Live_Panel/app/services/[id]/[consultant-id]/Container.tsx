@@ -24,6 +24,7 @@ interface ConsultantPageContainerProps {
     notificationTitle?: string | null;
     rating: number;
     specialties: string[];
+    bookingDisabled?: boolean;
     info: {
       patients: number;
       bookingPrice: string;
@@ -66,6 +67,8 @@ export default function Container({
 }: ConsultantPageContainerProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Admin switch: profile visible, booking paused
+  const bookingDisabled = Boolean(consultant?.bookingDisabled);
   const { data } = useSession();
   const [bookingPayload, setBookingPayload] = useState({
     serviceId: "",
@@ -212,9 +215,14 @@ export default function Container({
           </div>
         </div>
         <section id="booking-section" className="scroll-mt-16">
+          {bookingDisabled && (
+            <div className="mx-4 md:mx-0 mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+              {consultant.name} isn&apos;t taking new bookings right now. Please check back soon or explore other therapists.
+            </div>
+          )}
           <MyOffering
             services={services}
-            setOpen={setOpen}
+            setOpen={bookingDisabled ? (() => toast.info(`${consultant.name} isn't taking new bookings right now.`)) as any : setOpen}
             setBookingPayload={setBookingPayload}
           />
         </section>
@@ -238,7 +246,7 @@ export default function Container({
       </div>
 
       {formattedFaqs.length > 0 && <FaqCompo data={formattedFaqs} />}
-      {services?.length > 0 && (
+      {services?.length > 0 && !bookingDisabled && (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/20 bg-white/95 px-4 py-3 shadow-[0_-4px_18px_rgba(0,0,0,0.18)] backdrop-blur md:hidden">
           <Button
             type="button"

@@ -1,6 +1,8 @@
 import Script from "next/script";
+import { notFound } from "next/navigation";
 import { getConsultantByProfessionByIdentifier } from "./action";
 import ServicesMain from "./components/main";
+import { lowestPrice } from "@/lib/visibility";
 
 export async function generateMetadata({
   params,
@@ -9,16 +11,9 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
 
-  const { data: consultants } = await getConsultantByProfessionByIdentifier(
-    id,
-    1,
-    1,
-  );
+  const { profession } = await getConsultantByProfessionByIdentifier(id, 1, 1);
 
-  if (!consultants || consultants.length === 0) return {};
-
-  // Use profession's seoMeta instead of consultant's
-  const { profession } = consultants[0];
+  if (!profession) return {};
   const professionSeo = profession?.seoMeta;
 
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://hexpertify.com";
@@ -82,7 +77,7 @@ export default async function ServiceByIdPage(props: {
   const currentPage = parseInt(page || "1", 10);
 
   const resolvedParams = await params;
-  const { data: fetchConsultant } = await getConsultantByProfessionByIdentifier(
+  const { data: fetchConsultant, profession: fetchedProfession } = await getConsultantByProfessionByIdentifier(
     resolvedParams?.id,
     currentPage,
     postPageSize,
@@ -94,7 +89,7 @@ export default async function ServiceByIdPage(props: {
     name: item?.name,
     Description: item?.about,
     Languages: item?.languages?.join(" ,"),
-    Price: Math.min(...item?.services?.map((s) => s.price)),
+    Price: lowestPrice(item?.services, item?.minPrice) ?? 0,
     rating: item?.reviews?.length
       ? item.reviews.reduce((sum, review) => sum + (review.rating || 0), 0) /
         item.reviews.length
@@ -106,8 +101,9 @@ export default async function ServiceByIdPage(props: {
     profession: item?.profession,
   }));
 
-  // Get profession data (same for all consultants on this page)
-  const profession = fetchConsultant?.[0]?.profession;
+  // Profession data comes from the profession itself (it may have no therapists yet)
+  const profession = fetchedProfession;
+  if (!profession) notFound();
 
   const Faqs = profession?.faqs?.map((item) => ({
     id: item?.question,
@@ -179,6 +175,7 @@ export default async function ServiceByIdPage(props: {
         FeatureConsultantData={FeatureConsultantData}
         faqs={Faqs}
         serviceId={resolvedParams?.id}
+        profession={profession}
       />
     </>
   );

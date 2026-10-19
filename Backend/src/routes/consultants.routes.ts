@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { ConsultantsController } from '../controllers/consultants.controller';
+import { optionalAuth } from '../middlewares/auth.middleware';
 
 const router = Router();
+
+router.use(optionalAuth);
 
 router.get('/client/therapist', ConsultantsController.getClientTherapist);
 router.get('/', ConsultantsController.getAll);

@@ -8,6 +8,9 @@ import {
 import ExploreConsultant from "@/components/Home/Explore";
 import { getPageData } from "../actions";
 import Image from "next/image";
+
+// Professions are edited in the Super Admin panel; render on every request so changes show immediately
+export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Services - Hexpertify",
   description:
