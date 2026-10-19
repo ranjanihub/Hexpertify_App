@@ -20,6 +20,40 @@ export interface BookingEmailPayload {
   therapistEmail?: string;
 }
 
+/** Absolute link into the panels: PORTAL_URL, else this Vercel project's domain, else local dev */
+export function portalUrl(path: string): string {
+  const base = process.env.PORTAL_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:5000');
+  return `${base.replace(/\/$/, '')}${path}`;
+}
+
+/** Shared layout for the short status emails */
+function statusEmailHtml(opts: { accent: string; subtitle: string; greeting: string; intro: string; rows: [string, string][]; ctaUrl?: string; ctaLabel?: string; outro?: string }): string {
+  const rows = opts.rows
+    .map(([label, value]) => `<tr><td style="padding:8px 0;color:#64748b;font-weight:600;font-size:14px;border-bottom:1px solid #f1f5f9;">${label}</td><td style="padding:8px 0;color:#0f172a;font-weight:700;font-size:14px;text-align:right;border-bottom:1px solid #f1f5f9;">${value}</td></tr>`)
+    .join('');
+  return `
+<!DOCTYPE html>
+<html>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background-color:#f8fafc;margin:0;padding:0;">
+  <div style="max-width:600px;margin:20px auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div style="background:${opts.accent};padding:32px 24px;text-align:center;color:#ffffff;">
+      <h1 style="margin:0 0 8px;font-size:24px;font-weight:800;">Hexpertify Therapy</h1>
+      <p style="margin:0;font-size:14px;opacity:0.9;">${opts.subtitle}</p>
+    </div>
+    <div style="padding:32px 24px;color:#1e293b;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#0f172a;">${opts.greeting}</div>
+      <p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:20px;">${opts.intro}</p>
+      <table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px 20px;margin-bottom:24px;">${rows}</table>
+      ${opts.outro ? `<p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:20px;">${opts.outro}</p>` : ''}
+      ${opts.ctaUrl ? `<div style="text-align:center;margin:24px 0;"><a href="${opts.ctaUrl}" target="_blank" style="display:inline-block;background-color:#5e2be2;color:#ffffff;font-size:15px;font-weight:700;padding:14px 32px;border-radius:12px;text-decoration:none;">${opts.ctaLabel}</a></div>` : ''}
+    </div>
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 24px;text-align:center;font-size:12px;color:#94a3b8;"><p>© 2026 Hexpertify Healthcare. All rights reserved.</p></div>
+  </div>
+</body>
+</html>`;
+}
+
 export class MailService {
   private static transporter: nodemailer.Transporter | null = null;
 
@@ -153,7 +187,7 @@ export class MailService {
       const recipient = payload.therapistEmail || payload.consultantEmail || process.env.THERAPIST_ALERT_EMAIL || 'sadaf.bhimani@hexpertify.com';
       const transporter = this.getTransporter();
       const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Portal" <support@hexpertify.com>';
-      const dashboardUrl = 'http://localhost:5000/consultant/calendar';
+      const dashboardUrl = portalUrl('/consultant/calendar');
 
       const emailHtml = `
 <!DOCTYPE html>
@@ -258,7 +292,7 @@ export class MailService {
       const adminRecipient = payload.adminEmail || process.env.ADMIN_ALERT_EMAIL || process.env.SMTP_USER || 'admin@hexpertify.com';
       const transporter = this.getTransporter();
       const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Central" <support@hexpertify.com>';
-      const adminUrl = 'http://localhost:5000/admin/bookings';
+      const adminUrl = portalUrl('/admin/bookings');
 
       const emailHtml = `
 <!DOCTYPE html>
@@ -470,7 +504,7 @@ export class MailService {
 
       const transporter = this.getTransporter();
       const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>';
-      const portalUrl = 'http://localhost:5000/client/sessions';
+      const sessionsUrl = portalUrl('/client/sessions');
 
       const emailHtml = `
 <!DOCTYPE html>
@@ -532,7 +566,7 @@ export class MailService {
       </p>
 
       <div style="text-align: center; margin: 24px 0;">
-        <a href="${portalUrl}" class="cta-button" target="_blank">Book New Session</a>
+        <a href="${sessionsUrl}" class="cta-button" target="_blank">Book New Session</a>
       </div>
     </div>
     <div class="footer">
@@ -559,6 +593,92 @@ export class MailService {
       return { success: true, messageId };
     } catch (error: any) {
       console.error('❌ [MailService] sendBookingCancellation failed:', error);
+      return { success: false, error: error?.message || 'Mail dispatch failed' };
+    }
+  }
+
+  /**
+   * Session completed — to the client, inviting them to rate the session
+   */
+  static async sendSessionCompleted(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
+    try {
+      if (!payload.clientEmail) return { success: false, error: 'No client email provided' };
+      const subject = `Session Completed: ${payload.serviceTitle} with ${payload.consultantName} ✅`;
+      const html = statusEmailHtml({
+        accent: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+        subtitle: 'Your session is complete',
+        greeting: `Hi ${payload.clientName},`,
+        intro: `Thank you for attending your session with <strong>${payload.consultantName}</strong> today.`,
+        rows: [
+          ['Therapist:', payload.consultantName],
+          ['Modality:', payload.serviceTitle],
+          ['Session Date:', payload.scheduledDate],
+          ['Session Time:', payload.scheduledTime],
+          ['Booking Reference:', payload.bookingId || 'COMPLETED']
+        ],
+        outro: 'How did it go? Open your client portal to rate today\'s session. It takes under a minute and helps your therapist shape your next session.',
+        ctaUrl: portalUrl('/client'),
+        ctaLabel: 'Rate Your Session'
+      });
+
+      let messageId = `msg-${Date.now()}`;
+      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
+        const info = await this.getTransporter().sendMail({
+          from: process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>',
+          to: payload.clientEmail,
+          subject,
+          html,
+          text: `Hi ${payload.clientName}, your session "${payload.serviceTitle}" with ${payload.consultantName} on ${payload.scheduledDate} is complete. Rate it in your client portal: ${portalUrl('/client')}`
+        });
+        messageId = info.messageId;
+      }
+      await this.logEmail(payload.clientEmail, payload.clientName, `Session Completed: ${payload.serviceTitle}`, payload.bookingId, messageId);
+      return { success: true, messageId };
+    } catch (error: any) {
+      console.error('❌ [MailService] sendSessionCompleted failed:', error);
+      return { success: false, error: error?.message || 'Mail dispatch failed' };
+    }
+  }
+
+  /**
+   * Session cancelled by the client — to the therapist
+   */
+  static async sendTherapistCancellationAlert(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
+    try {
+      const recipient = payload.therapistEmail || payload.consultantEmail;
+      if (!recipient) return { success: false, error: 'No therapist email provided' };
+      const subject = `Session Cancelled by ${payload.clientName}: ${payload.scheduledDate} ${payload.scheduledTime} ❌`;
+      const html = statusEmailHtml({
+        accent: 'linear-gradient(135deg, #e11d48 0%, #f43f5e 100%)',
+        subtitle: 'A client cancelled their session',
+        greeting: `Hi ${payload.consultantName},`,
+        intro: `<strong>${payload.clientName}</strong> has cancelled the following session. The time slot is free again in your calendar.`,
+        rows: [
+          ['Client:', payload.clientName],
+          ['Modality:', payload.serviceTitle],
+          ['Session Date:', payload.scheduledDate],
+          ['Session Time:', payload.scheduledTime],
+          ['Booking Reference:', payload.bookingId || 'CANCELLED']
+        ],
+        ctaUrl: portalUrl('/consultant/calendar'),
+        ctaLabel: 'Open Calendar'
+      });
+
+      let messageId = `msg-${Date.now()}`;
+      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
+        const info = await this.getTransporter().sendMail({
+          from: process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>',
+          to: recipient,
+          subject,
+          html,
+          text: `Hi ${payload.consultantName}, ${payload.clientName} cancelled their "${payload.serviceTitle}" session on ${payload.scheduledDate} at ${payload.scheduledTime}.`
+        });
+        messageId = info.messageId;
+      }
+      await this.logEmail(recipient, payload.consultantName, `Client Cancelled: ${payload.serviceTitle}`, payload.bookingId, messageId);
+      return { success: true, messageId };
+    } catch (error: any) {
+      console.error('❌ [MailService] sendTherapistCancellationAlert failed:', error);
       return { success: false, error: error?.message || 'Mail dispatch failed' };
     }
   }
@@ -704,7 +824,7 @@ export class MailService {
 
       ${recipientRole === 'admin' ? `
       <div style="margin-top:20px; text-align:center;">
-        <a href="http://localhost:5000/admin/payments" style="display:inline-block; background:#5e2be2; color:#ffffff; font-size:13px; font-weight:700; padding:12px 28px; border-radius:12px; text-decoration:none;">
+        <a href="${portalUrl('/admin/payments')}" style="display:inline-block; background:#5e2be2; color:#ffffff; font-size:13px; font-weight:700; padding:12px 28px; border-radius:12px; text-decoration:none;">
           View in Super Admin Panel
         </a>
       </div>` : `

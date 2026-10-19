@@ -1,80 +1,120 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
+import { ClientViewer, resolveClientViewer } from '../services/client-access';
+import { defaultNotificationLink, newNotificationId, NotificationRole } from '../services/notification.service';
+
+const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const exact = (s: string) => new RegExp(`^${escapeRx(s)}$`, 'i');
+const LIST_LIMIT = 100;
+
+/** Clients that predate API tokens identify themselves by email/id in the query or body */
+function legacyIdentity(req: Request): string[] {
+  const src: any = { ...(req.body || {}), ...req.query };
+  return [src.recipientEmail, src.recipientId, src.email, src.clientEmail, src.clientId]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+}
+
+function recipientMatch(ids: string[]): any[] {
+  const or: any[] = [];
+  ids.forEach((v) => {
+    if (v.includes('@')) {
+      const rx = exact(v);
+      or.push({ recipientEmail: rx }, { consultantEmail: rx }, { userEmail: rx }, { clientEmail: rx });
+    } else {
+      or.push({ recipientId: v }, { consultantId: v }, { userId: v }, { clientId: v });
+    }
+  });
+  return or;
+}
+
+/**
+ * The notifications the caller may see: admins get admin alerts; therapists and clients get only
+ * their own, identified by their API token (or, for the legacy client panel, the email/id they send).
+ */
+function scopeFor(viewer: ClientViewer, req: Request): { role: NotificationRole; query: any } | null {
+  const requestedRole = String(req.query.role || req.body?.role || '').toUpperCase();
+
+  if (viewer.kind === 'admin' || viewer.kind === 'internal') {
+    if (requestedRole === 'CLIENT' || requestedRole === 'CONSULTANT' || requestedRole === 'THERAPIST') {
+      // Internal tools may still read a specific person's feed
+      const ids = legacyIdentity(req);
+      if (!ids.length) return null;
+      const role: NotificationRole = requestedRole === 'CLIENT' ? 'CLIENT' : 'CONSULTANT';
+      return { role, query: { $and: [roleMatch(role), { $or: recipientMatch(ids) }] } };
+    }
+    return {
+      role: 'ADMIN',
+      query: { $or: [{ recipientRole: 'ADMIN' }, { role: 'ADMIN' }, { targetRole: 'ADMIN' }, { type: 'NEW_BOOKING_ALERT' }, { type: 'ADMIN_ALERT' }] }
+    };
+  }
+
+  if (viewer.kind === 'therapist') {
+    return { role: 'CONSULTANT', query: { $and: [roleMatch('CONSULTANT'), { $or: recipientMatch([...viewer.ids]) }] } };
+  }
+
+  const ids = viewer.kind === 'client' ? [...viewer.ids] : legacyIdentity(req);
+  if (!ids.length) return null;
+  return {
+    role: 'CLIENT',
+    query: {
+      $and: [
+        roleMatch('CLIENT'),
+        { $or: [...recipientMatch(ids), { recipientRole: 'CLIENT', recipientEmail: { $in: ['all', 'ALL'] } }] }
+      ]
+    }
+  };
+}
+
+function roleMatch(role: NotificationRole): any {
+  if (role === 'CONSULTANT') {
+    return { $or: [{ recipientRole: { $in: ['CONSULTANT', 'THERAPIST'] } }, { role: { $in: ['CONSULTANT', 'THERAPIST'] } }] };
+  }
+  if (role === 'CLIENT') return { recipientRole: { $in: ['CLIENT', null] } };
+  return { recipientRole: 'ADMIN' };
+}
+
+/** Older code wrote some events twice; show each (title, message, booking) once */
+function dedupe(list: any[]): any[] {
+  const seen = new Set<string>();
+  return list.filter((n) => {
+    const key = `${n.title}|${n.message}|${n.bookingId || ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 export class NotificationsController {
   /**
-   * GET /api/notifications
-   * Supports query filters: role, recipientId, recipientEmail
+   * GET /api/notifications — the caller's own notifications (newest first)
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
-      const role = String(req.query.role || '').toUpperCase();
-      const recipientId = String(req.query.recipientId || '');
-      const recipientEmail = String(req.query.recipientEmail || '').toLowerCase();
-
-      let query: any = {};
-
-      if (role === 'ADMIN') {
-        query = {
-          $or: [
-            { recipientRole: 'ADMIN' },
-            { role: 'ADMIN' },
-            { targetRole: 'ADMIN' },
-            { type: 'NEW_BOOKING_ALERT' },
-            { type: 'ADMIN_ALERT' }
-          ]
-        };
-      } else if (role === 'CONSULTANT' || role === 'THERAPIST') {
-        const roleMatch = { $or: [{ recipientRole: 'CONSULTANT' }, { recipientRole: 'THERAPIST' }, { role: 'CONSULTANT' }, { role: 'THERAPIST' }] };
-        if (recipientEmail || recipientId) {
-          const specificConditions: any[] = [];
-          if (recipientEmail) {
-            const emailRegex = new RegExp(`^${recipientEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-            specificConditions.push({ recipientEmail: emailRegex });
-            specificConditions.push({ consultantEmail: emailRegex });
-            specificConditions.push({ userEmail: emailRegex });
-          }
-          if (recipientId) {
-            specificConditions.push({ recipientId: recipientId });
-            specificConditions.push({ consultantId: recipientId });
-            specificConditions.push({ userId: recipientId });
-          }
-          query = { $and: [roleMatch, { $or: specificConditions }] };
-        } else {
-          query = roleMatch;
-        }
-      } else if (role === 'CLIENT' || (!role && (recipientEmail || recipientId))) {
-        const clientConditions: any[] = [];
-        if (recipientEmail) {
-          const emailRegex = new RegExp(`^${recipientEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-          clientConditions.push({ recipientEmail: emailRegex });
-          clientConditions.push({ userEmail: emailRegex });
-          clientConditions.push({ clientEmail: emailRegex });
-        }
-        if (recipientId) {
-          clientConditions.push({ recipientId: recipientId });
-          clientConditions.push({ userId: recipientId });
-          clientConditions.push({ clientId: recipientId });
-        }
-        // General broadcasts for all clients
-        clientConditions.push({ recipientRole: 'CLIENT', recipientEmail: { $in: ['', null, 'all', 'ALL'] } });
-
-        query = { $and: [{ recipientRole: { $in: ['CLIENT', undefined, null] } }, { $or: clientConditions }] };
+      const scope = scopeFor(await resolveClientViewer(req), req);
+      if (!scope) {
+        res.json({ success: true, count: 0, unreadCount: 0, notifications: [] });
+        return;
       }
 
-      const primaryList = await db.collection('Notification').find(query).sort({ createdAt: -1 }).toArray();
-      const fallbackList = primaryList.length === 0 ? await db.collection('notifications').find(query).sort({ createdAt: -1 }).toArray() : [];
-      const notifications = primaryList.length > 0 ? primaryList : fallbackList;
+      const db = getDatabase();
+      const primary = await db.collection('Notification').find(scope.query).sort({ createdAt: -1 }).limit(LIST_LIMIT * 2).toArray();
+      const list = primary.length
+        ? primary
+        : await db.collection('notifications').find(scope.query).sort({ createdAt: -1 }).limit(LIST_LIMIT * 2).toArray();
+
+      const notifications = dedupe(list).slice(0, LIST_LIMIT).map(({ _id, ...n }: any) => ({
+        ...n,
+        id: n.id || String(_id),
+        link: n.link || defaultNotificationLink(scope.role, n.type)
+      }));
 
       res.json({
         success: true,
         count: notifications.length,
-        notifications: notifications.map((n) => ({
-          ...n,
-          id: n.id || String(n._id)
-        }))
+        unreadCount: notifications.filter((n) => !n.read).length,
+        notifications
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch notifications' });
@@ -89,8 +129,9 @@ export class NotificationsController {
       const db = getDatabase();
       const body = req.body || {};
 
+      const recipientRole = (body.recipientRole || body.role || (body.consultantEmail || body.consultantId ? 'CONSULTANT' : 'ADMIN')).toUpperCase();
       const newNotification = {
-        id: body.id || `NOTIF-${Date.now().toString().slice(-6)}`,
+        id: body.id || newNotificationId(),
         recipientId: body.recipientId || body.userId || body.clientId || body.consultantId || '',
         recipientEmail: (body.recipientEmail || body.userEmail || body.consultantEmail || body.clientEmail || '').toLowerCase(),
         consultantEmail: (body.consultantEmail || body.recipientEmail || '').toLowerCase(),
@@ -98,11 +139,11 @@ export class NotificationsController {
         consultantName: body.consultantName || body.recipientName || '',
         clientEmail: (body.clientEmail || '').toLowerCase(),
         clientName: body.clientName || '',
-        recipientRole: (body.recipientRole || body.role || (body.consultantEmail || body.consultantId ? 'CONSULTANT' : 'ADMIN')).toUpperCase(),
+        recipientRole,
         type: body.type || 'ALERT',
         title: body.title || 'Notification',
         message: body.message || '',
-        link: body.link || (body.type === 'ACTIVITY_ASSIGNED' ? '/activities' : body.type === 'ASSESSMENT_ASSIGNED' ? '/assessments' : '/progress'),
+        link: body.link || defaultNotificationLink(recipientRole === 'THERAPIST' ? 'CONSULTANT' : recipientRole, body.type || ''),
         bookingId: body.bookingId || '',
         activityId: body.activityId || '',
         activityTitle: body.activityTitle || '',
@@ -130,50 +171,46 @@ export class NotificationsController {
   }
 
   /**
-   * PUT /api/notifications/:id/read
+   * PUT /api/notifications/:id/read — only within the caller's own notifications
    */
   static async markRead(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || '');
+      const scope = scopeFor(await resolveClientViewer(req), req);
+      const idMatch: any = ObjectId.isValid(id) ? { $or: [{ _id: new ObjectId(id) }, { id }] } : { id };
+      const query = scope ? { $and: [idMatch, scope.query] } : idMatch;
+
       const db = getDatabase();
+      await Promise.all([
+        db.collection('Notification').updateMany(query, { $set: { read: true, updatedAt: new Date() } }),
+        db.collection('notifications').updateMany(query, { $set: { read: true, updatedAt: new Date() } }).catch(() => {})
+      ]);
 
-      let query: any = { id };
-      if (ObjectId.isValid(id)) {
-        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
-      }
-
-      await db.collection('Notification').updateOne(query, { $set: { read: true, updatedAt: new Date() } });
-      await db.collection('notifications').updateOne(query, { $set: { read: true, updatedAt: new Date() } });
-
-      res.json({
-        success: true,
-        message: 'Notification marked as read'
-      });
+      res.json({ success: true, message: 'Notification marked as read' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to mark notification as read' });
     }
   }
 
   /**
-   * POST /api/notifications/mark-all-read
+   * POST /api/notifications/mark-all-read — the caller's own notifications only
    */
   static async markAllRead(req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
-      const role = String(req.body?.role || '').toUpperCase();
-
-      let query: any = {};
-      if (role) {
-        query = { recipientRole: role };
+      const scope = scopeFor(await resolveClientViewer(req), req);
+      if (!scope) {
+        res.json({ success: true, message: 'Nothing to mark' });
+        return;
       }
 
-      await db.collection('Notification').updateMany(query, { $set: { read: true, updatedAt: new Date() } });
-      await db.collection('notifications').updateMany(query, { $set: { read: true, updatedAt: new Date() } });
+      const db = getDatabase();
+      const query = { $and: [scope.query, { read: { $ne: true } }] };
+      await Promise.all([
+        db.collection('Notification').updateMany(query, { $set: { read: true, updatedAt: new Date() } }),
+        db.collection('notifications').updateMany(query, { $set: { read: true, updatedAt: new Date() } }).catch(() => {})
+      ]);
 
-      res.json({
-        success: true,
-        message: 'All notifications marked as read'
-      });
+      res.json({ success: true, message: 'All notifications marked as read' });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to mark all as read' });
     }

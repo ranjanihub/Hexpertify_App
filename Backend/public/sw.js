@@ -1,6 +1,6 @@
 /*
- * Hexpertify service worker. It exists so browsers can install the client portal as an app
- * (desktop / Start menu / home-screen shortcut). Requests always go to the network; page
+ * Hexpertify service worker. It lets browsers install the client portal as an app and
+ * shows booking status push notifications. Requests always go to the network; page
  * loads fall back to a short offline notice when there is no connection. Nothing is cached.
  */
 self.addEventListener('install', () => self.skipWaiting());
@@ -18,5 +18,39 @@ self.addEventListener('fetch', (event) => {
         { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       )
     )
+  );
+});
+
+// Booking status push notifications (confirmed / rescheduled / cancelled / completed)
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Hexpertify', {
+      body: data.body || 'You have a booking update.',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: data.tag,
+      renotify: Boolean(data.tag),
+      data: { url: data.url || '/client/sessions' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/client', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const existing = windows.find((w) => w.url.startsWith(self.location.origin));
+      if (existing) {
+        return existing.focus().then(() => existing.navigate(target));
+      }
+      return self.clients.openWindow(target);
+    })
   );
 });

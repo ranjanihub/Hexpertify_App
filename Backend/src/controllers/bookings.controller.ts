@@ -4,10 +4,44 @@ import { getDatabase } from '../db/mongodb';
 import { MailService } from '../services/mail.service';
 import { dispatchBookingConfirmed } from '../services/booking-confirmation.service';
 import { isAdminUser } from '../middlewares/auth.middleware';
+import { sendPushToClient } from '../services/push.service';
+import { createNotifications } from '../services/notification.service';
 
 // Bookings awaiting gateway payment (or abandoned) are not real sessions yet
 const UNSETTLED_STATUSES = new Set(['PENDING_PAYMENT', 'EXPIRED']);
 import { cacheService } from '../services/cache.service';
+
+/** The booking's therapist email: stored on the booking, else looked up from the consultant record */
+async function consultantEmailFor(booking: any): Promise<string> {
+  if (booking?.consultantEmail) return booking.consultantEmail;
+  const cid = booking?.consultantId || booking?.therapistId;
+  if (!cid) return '';
+  const db = getDatabase();
+  const or: any[] = [{ id: String(cid) }, { _id: cid }];
+  if (ObjectId.isValid(String(cid))) or.push({ _id: new ObjectId(String(cid)) });
+  const consultant: any = await db.collection('Consultant').findOne({ $or: or }).catch(() => null) ||
+                          await db.collection('consultants').findOne({ $or: or }).catch(() => null);
+  return consultant?.email || '';
+}
+
+/** In-app cancellation notifications: the client, the therapist (unless they cancelled it) and the admins */
+function notifyCancellation(
+  booking: any,
+  d: { clientEmail: string; clientName: string; consultantName: string; serviceTitle: string; formattedDate: string; formattedTime: string },
+  cancelledByTherapist: boolean,
+  pending: Promise<unknown>[]
+): void {
+  pending.push(consultantEmailFor(booking).then((therapistEmail) => createNotifications([
+    { recipientRole: 'CLIENT', recipientId: booking.clientId, recipientEmail: d.clientEmail, type: 'SESSION_CANCELLED', bookingId: booking.id,
+      title: 'Therapy Session Cancelled ❌', message: `Your consultation on ${d.formattedDate} at ${d.formattedTime} with ${d.consultantName} has been cancelled.` },
+    ...(cancelledByTherapist ? [] : [{
+      recipientRole: 'CONSULTANT' as const, recipientId: booking.consultantId, recipientEmail: therapistEmail, type: 'SESSION_CANCELLED', bookingId: booking.id,
+      title: 'Session Cancelled ❌', message: `${d.clientName} cancelled their "${d.serviceTitle}" session on ${d.formattedDate} at ${d.formattedTime}.`
+    }]),
+    { recipientRole: 'ADMIN', type: 'SESSION_CANCELLED', bookingId: booking.id,
+      title: 'Session Cancelled', message: `${d.clientName}'s session with ${d.consultantName} on ${d.formattedDate} at ${d.formattedTime} was cancelled.` }
+  ])));
+}
 
 export class BookingsController {
   /**
@@ -237,6 +271,14 @@ export class BookingsController {
         );
         isNewCancellation = transition.modifiedCount > 0;
       }
+      let isNewCompletion = false;
+      if (updates.status === 'COMPLETED') {
+        const transition = await db.collection('Booking').updateMany(
+          { $and: [query, { status: { $ne: 'COMPLETED' } }] },
+          { $set: { status: 'COMPLETED' } }
+        );
+        isNewCompletion = transition.modifiedCount > 0;
+      }
       const changed = (field: string) => updates[field] !== undefined && String(updates[field]) !== String(existing?.[field] ?? '');
       const isReschedule = updates.status !== 'CANCELLED' &&
         (changed('date') || changed('time') || (updates.scheduledAt !== undefined && new Date(updates.scheduledAt).getTime() !== new Date(existing?.scheduledAt).getTime()) ||
@@ -250,19 +292,21 @@ export class BookingsController {
       // Invalidate cache
       cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
 
-      // Automatically dispatch cancellation or reschedule email and in-app notifications
+      // Automatically dispatch cancellation, reschedule or completion emails, push and in-app notifications.
+      // Awaited before responding: serverless functions may be frozen once the response is sent.
+      const pending: Promise<unknown>[] = [];
       if (existing && existing.clientEmail && existing.clientName !== 'Open Consultation Slot' && existing.clientName !== 'Blocked Time Slot') {
         const clientEmail = existing.clientEmail;
         const clientName = existing.clientName || 'Client';
         const consultantName = existing.consultantName || 'Therapist';
         const serviceTitle = existing.serviceTitle || 'Individual Clinical Consultation';
+        const formattedDate = existing.date || new Date(existing.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const formattedTime = existing.time || '10:00 AM';
+        const client = { email: clientEmail, id: existing.clientId };
 
         // 1. Cancellation Email & Notification
         if (isNewCancellation) {
-          const formattedDate = existing.date || new Date(existing.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-          const formattedTime = existing.time || '10:00 AM';
-
-          MailService.sendBookingCancellation({
+          pending.push(MailService.sendBookingCancellation({
             clientName,
             clientEmail,
             consultantName,
@@ -271,21 +315,30 @@ export class BookingsController {
             scheduledTime: formattedTime,
             durationMinutes: existing.durationMinutes || 50,
             bookingId: existing.id
-          }).catch(() => {});
+          }).catch(() => {}));
 
-          db.collection('Notification').insertOne({
-            id: `NOTIF-${Date.now().toString().slice(-6)}-CL`,
-            recipientId: existing.clientId || '',
-            recipientEmail: clientEmail.toLowerCase(),
-            recipientRole: 'CLIENT',
-            type: 'SESSION_CANCELLED',
-            title: 'Therapy Session Cancelled ❌',
-            message: `Your consultation on ${formattedDate} at ${formattedTime} with ${consultantName} has been cancelled.`,
-            bookingId: existing.id,
-            read: false,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }).catch(() => {});
+          pending.push(sendPushToClient(client, {
+            title: 'Session cancelled ❌',
+            body: `Your ${serviceTitle} session with ${consultantName} on ${formattedDate} at ${formattedTime} has been cancelled.`,
+            tag: `booking-${existing.id}`
+          }));
+
+          // Let the therapist know, unless they cancelled it themselves
+          if (req.user?.role !== 'therapist') {
+            pending.push(consultantEmailFor(existing).then((therapistEmail) => therapistEmail && MailService.sendTherapistCancellationAlert({
+              clientName,
+              clientEmail,
+              consultantName,
+              therapistEmail,
+              serviceTitle,
+              scheduledDate: formattedDate,
+              scheduledTime: formattedTime,
+              durationMinutes: existing.durationMinutes || 50,
+              bookingId: existing.id
+            })).catch(() => {}));
+          }
+
+          notifyCancellation(existing, { clientEmail, clientName, consultantName, serviceTitle, formattedDate, formattedTime }, req.user?.role === 'therapist', pending);
         }
 
         // 2. Reschedule Email & Notification
@@ -293,7 +346,7 @@ export class BookingsController {
           const newDate = updates.date || (updates.scheduledAt ? new Date(updates.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : existing.date);
           const newTime = updates.time || existing.time || '10:00 AM';
 
-          MailService.sendBookingRescheduled({
+          pending.push(MailService.sendBookingRescheduled({
             clientName,
             clientEmail,
             consultantName,
@@ -303,24 +356,50 @@ export class BookingsController {
             durationMinutes: updates.durationMinutes || existing.durationMinutes || 50,
             meetingLink: updates.meetingLink || existing.meetingLink,
             bookingId: existing.id
-          }).catch(() => {});
+          }).catch(() => {}));
 
-          db.collection('Notification').insertOne({
-            id: `NOTIF-${Date.now().toString().slice(-6)}-CL`,
-            recipientId: existing.clientId || '',
-            recipientEmail: clientEmail.toLowerCase(),
-            recipientRole: 'CLIENT',
-            type: 'SESSION_RESCHEDULED',
-            title: 'Therapy Session Rescheduled 🕒',
-            message: `Your consultation with ${consultantName} has been rescheduled to ${newDate} at ${newTime}.`,
-            bookingId: existing.id,
-            read: false,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }).catch(() => {});
+          pending.push(sendPushToClient(client, {
+            title: 'Session rescheduled 🕒',
+            body: `Your session with ${consultantName} is now on ${newDate} at ${newTime}.`,
+            tag: `booking-${existing.id}`
+          }));
+
+          pending.push(consultantEmailFor(existing).then((therapistEmail) => createNotifications([
+            { recipientRole: 'CLIENT', recipientId: existing.clientId, recipientEmail: clientEmail, type: 'SESSION_RESCHEDULED', bookingId: existing.id,
+              title: 'Therapy Session Rescheduled 🕒', message: `Your consultation with ${consultantName} has been rescheduled to ${newDate} at ${newTime}.` },
+            { recipientRole: 'CONSULTANT', recipientId: existing.consultantId, recipientEmail: therapistEmail, type: 'SESSION_RESCHEDULED', bookingId: existing.id,
+              title: 'Session Rescheduled 🕒', message: `${clientName}'s "${serviceTitle}" session is now on ${newDate} at ${newTime}.` }
+          ])));
+        }
+
+        // 3. Completion Email & Notification (invites the client to rate the session)
+        if (isNewCompletion) {
+          pending.push(MailService.sendSessionCompleted({
+            clientName,
+            clientEmail,
+            consultantName,
+            serviceTitle,
+            scheduledDate: formattedDate,
+            scheduledTime: formattedTime,
+            durationMinutes: existing.durationMinutes || 50,
+            bookingId: existing.id
+          }).catch(() => {}));
+
+          pending.push(createNotifications([
+            { recipientRole: 'CLIENT', recipientId: existing.clientId, recipientEmail: clientEmail, type: 'SESSION_COMPLETED', bookingId: existing.id,
+              title: 'Session Completed ✅', message: `How was your session with ${consultantName}? Share quick feedback. It takes under a minute.` }
+          ]));
+
+          pending.push(sendPushToClient(client, {
+            title: 'Session completed ✅',
+            body: `How was your session with ${consultantName}? Tap to rate it. It takes under a minute.`,
+            url: '/client',
+            tag: `booking-${existing.id}`
+          }));
         }
       }
 
+      await Promise.allSettled(pending);
       res.json({
         success: true,
         message: 'Booking updated successfully in MongoDB Atlas and client notified.'
@@ -371,8 +450,7 @@ export class BookingsController {
         const serviceTitle = existing.serviceTitle || 'Individual Clinical Consultation';
         const formattedDate = existing.date || new Date(existing.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const formattedTime = existing.time || '10:00 AM';
-
-        MailService.sendBookingCancellation({
+        const emailPayload = {
           clientName,
           clientEmail,
           consultantName,
@@ -381,21 +459,26 @@ export class BookingsController {
           scheduledTime: formattedTime,
           durationMinutes: existing.durationMinutes || 50,
           bookingId: existing.id
-        }).catch(() => {});
+        };
 
-        db.collection('Notification').insertOne({
-          id: `NOTIF-${Date.now().toString().slice(-6)}-CL`,
-          recipientId: existing.clientId || '',
-          recipientEmail: clientEmail.toLowerCase(),
-          recipientRole: 'CLIENT',
-          type: 'SESSION_CANCELLED',
-          title: 'Therapy Session Cancelled ❌',
-          message: `Your consultation session on ${formattedDate} at ${formattedTime} with ${consultantName} has been cancelled.`,
-          bookingId: existing.id,
-          read: false,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }).catch(() => {});
+        const pending: Promise<unknown>[] = [
+          MailService.sendBookingCancellation(emailPayload).catch(() => {}),
+          sendPushToClient({ email: clientEmail, id: existing.clientId }, {
+            title: 'Session cancelled ❌',
+            body: `Your ${serviceTitle} session with ${consultantName} on ${formattedDate} at ${formattedTime} has been cancelled.`,
+            tag: `booking-${existing.id}`
+          })
+        ];
+        // Let the therapist know, unless they removed it themselves
+        if (req.user?.role !== 'therapist') {
+          pending.push(consultantEmailFor(existing)
+            .then((therapistEmail) => therapistEmail && MailService.sendTherapistCancellationAlert({ ...emailPayload, therapistEmail }))
+            .catch(() => {}));
+        }
+
+        notifyCancellation(existing, { clientEmail, clientName, consultantName, serviceTitle, formattedDate, formattedTime }, req.user?.role === 'therapist', pending);
+
+        await Promise.allSettled(pending);
       }
 
       res.json({

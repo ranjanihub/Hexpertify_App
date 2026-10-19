@@ -1,5 +1,21 @@
 import { getDatabase } from '../db/mongodb';
 import { MailService } from './mail.service';
+import { sendPushToClient } from './push.service';
+import { createNotifications } from './notification.service';
+
+/** In-app "booking confirmed" notifications for the client, the therapist and the admins */
+export async function notifyBookingConfirmed(booking: any, consultantEmail: string, formattedDate: string, formattedTime: string): Promise<void> {
+  const service = booking.serviceTitle || 'therapy';
+  const therapist = booking.consultantName || 'your therapist';
+  await createNotifications([
+    { recipientRole: 'CLIENT', recipientId: booking.clientId, recipientEmail: booking.clientEmail, type: 'SESSION_SCHEDULED', bookingId: booking.id,
+      title: 'Therapy Session Confirmed 📅', message: `Your "${service}" consultation with ${therapist} is scheduled on ${formattedDate} at ${formattedTime}.` },
+    { recipientRole: 'CONSULTANT', recipientId: booking.consultantId, recipientEmail: consultantEmail, type: 'NEW_CLIENT_BOOKING', bookingId: booking.id,
+      title: 'New Client Appointment Booked 🩺', message: `${booking.clientName || 'A client'} booked a "${service}" consultation with you on ${formattedDate} at ${formattedTime}.` },
+    { recipientRole: 'ADMIN', type: 'NEW_BOOKING_ALERT', bookingId: booking.id,
+      title: 'New Session Booking', message: `Client ${booking.clientName || 'Client'} booked a session with ${booking.consultantName || 'a therapist'} on ${formattedDate} at ${formattedTime}.` }
+  ]);
+}
 
 /**
  * Assigns the client to the consultant, writes in-app notifications for client, therapist and admin,
@@ -47,53 +63,8 @@ export async function dispatchBookingConfirmed(newBooking: any, consultantEmailH
       }
     } catch {}
 
-    // 1. Notification for Client
-    const clientNotif = {
-      id: `NOTIF-${Date.now().toString().slice(-6)}-CL`,
-      recipientId: newBooking.clientId || '',
-      recipientEmail: (newBooking.clientEmail || '').toLowerCase(),
-      recipientRole: 'CLIENT',
-      type: 'SESSION_SCHEDULED',
-      title: 'Therapy Session Confirmed 📅',
-      message: `Your "${newBooking.serviceTitle}" consultation with ${newBooking.consultantName || 'Your Therapist'} is scheduled on ${formattedDate} at ${formattedTime}.`,
-      bookingId: newBooking.id,
-      read: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    // 2. Notification for Therapist / Consultant
-    const therapistNotif = {
-      id: `NOTIF-${Date.now().toString().slice(-6)}-TH`,
-      recipientId: newBooking.consultantId || '',
-      recipientEmail: consultantEmail.toLowerCase(),
-      recipientRole: 'CONSULTANT',
-      type: 'NEW_CLIENT_BOOKING',
-      title: 'New Client Appointment Booked 🩺',
-      message: `${newBooking.clientName || 'A client'} booked a "${newBooking.serviceTitle}" consultation with you on ${formattedDate} at ${formattedTime}.`,
-      bookingId: newBooking.id,
-      read: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    // 3. Notification for Super Admin
-    const adminNotif = {
-      id: `NOTIF-${Date.now().toString().slice(-6)}-AD`,
-      recipientRole: 'ADMIN',
-      type: 'NEW_BOOKING_ALERT',
-      title: 'New Session Booking',
-      message: `Client ${newBooking.clientName || 'Client'} booked a session with Therapist ${newBooking.consultantName || 'Therapist'} on ${formattedDate} at ${formattedTime}.`,
-      bookingId: newBooking.id,
-      read: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    await Promise.all([
-      db.collection('Notification').insertMany([clientNotif, therapistNotif, adminNotif]).catch(() => {}),
-      db.collection('notifications').insertMany([clientNotif, therapistNotif, adminNotif]).catch(() => {})
-    ]);
+    // In-app notifications for the client, the therapist and the admins
+    await notifyBookingConfirmed({ ...newBooking, consultantName }, consultantEmail, formattedDate, formattedTime);
 
     const emailPayload: any = {
       clientName: newBooking.clientName || 'Valued Client',
@@ -109,14 +80,18 @@ export async function dispatchBookingConfirmed(newBooking: any, consultantEmailH
       bookingId: newBooking.id
     };
 
-    // Dispatch all 3 emails asynchronously
-    Promise.all([
+    // Emails and the client's push notification are awaited: serverless functions may freeze after responding
+    const results = await Promise.allSettled([
       newBooking.clientEmail ? MailService.sendBookingConfirmation(emailPayload) : Promise.resolve(),
       MailService.sendTherapistNewBookingAlert(emailPayload),
-      MailService.sendAdminNewBookingAlert(emailPayload)
-    ]).catch((mailErr) => {
-      console.error('Error in multi-recipient email dispatch:', mailErr);
-    });
+      MailService.sendAdminNewBookingAlert(emailPayload),
+      sendPushToClient({ email: newBooking.clientEmail, id: newBooking.clientId }, {
+        title: 'Session confirmed 📅',
+        body: `Your ${emailPayload.serviceTitle} session with ${emailPayload.consultantName} is on ${formattedDate} at ${formattedTime}.`,
+        tag: `booking-${newBooking.id}`
+      })
+    ]);
+    results.forEach((r) => r.status === 'rejected' && console.error('Error in booking confirmation dispatch:', r.reason));
   } catch (notifErr) {
     console.error('Error dispatching booking notifications and emails:', notifErr);
   }

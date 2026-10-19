@@ -14,7 +14,10 @@ import {
 
 import type { PageId } from '../../types';
 import { mockTherapists, mockClients, mockBookings, mockResources } from '../../data/mockData';
-import { getAdminAuth } from '../../lib/auth';
+import { getAdminAuth, getApiAuthHeaders } from '../../lib/auth';
+
+/** Pages a notification may open */
+const ADMIN_PAGES: PageId[] = ['dashboard', 'bookings', 'payments', 'transactions', 'revenue', 'therapists', 'clients'];
 
 interface TopNavProps {
   onOpenSearch: () => void;
@@ -46,8 +49,9 @@ export const TopNav: React.FC<TopNavProps> = ({
   const [liveNotifications, setLiveNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // The admin API token identifies the caller; without it the backend returns no admin notifications
   const fetchAdminNotifications = () => {
-    fetch('/api/notifications?role=ADMIN')
+    fetch('/api/notifications?role=ADMIN', { headers: getApiAuthHeaders() })
       .then(res => res.json())
       .then(data => {
         const list = Array.isArray(data?.notifications) ? data.notifications : [];
@@ -59,19 +63,45 @@ export const TopNav: React.FC<TopNavProps> = ({
 
   useEffect(() => {
     fetchAdminNotifications();
-    const interval = setInterval(fetchAdminNotifications, 10000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchAdminNotifications, 15000);
+    window.addEventListener('focus', fetchAdminNotifications);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', fetchAdminNotifications);
+    };
   }, []);
 
   const handleMarkAllNotificationsRead = () => {
     fetch('/api/notifications/mark-all-read', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
       body: JSON.stringify({ role: 'ADMIN' })
     }).then(() => {
       setLiveNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     }).catch(() => {});
+  };
+
+  // Marks the notification read and opens the page its link names (bookings, payments, ...)
+  const handleNotificationClick = (item: any) => {
+    setShowNotifications(false);
+    if (!item.read) {
+      setLiveNotifications(prev => prev.map(n => (n.id === item.id ? { ...n, read: true } : n)));
+      setUnreadCount(c => Math.max(0, c - 1));
+      fetch(`/api/notifications/${encodeURIComponent(item.id)}/read`, { method: 'PUT', headers: getApiAuthHeaders() }).catch(() => {});
+    }
+    const page = String(item.link || 'bookings').replace(/^\/?(admin\/)?/, '') as PageId;
+    onSelectPage(ADMIN_PAGES.includes(page) ? page : 'bookings');
+  };
+
+  const formatTime = (value?: string) => {
+    const d = value ? new Date(value) : null;
+    if (!d || isNaN(d.getTime())) return 'Recently';
+    const minutes = Math.round((Date.now() - d.getTime()) / 60000);
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
   const displayNotifications = liveNotifications;
@@ -308,16 +338,13 @@ export const TopNav: React.FC<TopNavProps> = ({
                     </div>
                   ) : (
                     displayNotifications.map((item: any, idx: number) => {
-                    const timeAgo = item.time || (item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently');
+                    const timeAgo = formatTime(item.createdAt);
                     const isNewBooking = item.type === 'NEW_BOOKING_ALERT' || item.type === 'SESSION_SCHEDULED';
 
                     return (
                       <div
                         key={item.id || idx}
-                        onClick={() => {
-                          setShowNotifications(false);
-                          onSelectPage('bookings');
-                        }}
+                        onClick={() => handleNotificationClick(item)}
                         className={`py-3 flex items-start gap-3 hover:bg-slate-50/80 px-2 rounded-xl transition-colors cursor-pointer ${!item.read ? 'bg-purple-50/40' : ''}`}
                       >
                         {isNewBooking ? (

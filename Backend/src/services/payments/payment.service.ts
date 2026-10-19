@@ -2,7 +2,8 @@ import crypto from 'crypto';
 import { getDatabase } from '../../db/mongodb';
 import { config } from '../../config';
 import { cacheService } from '../cache.service';
-import { dispatchBookingConfirmed } from '../booking-confirmation.service';
+import { dispatchBookingConfirmed, notifyBookingConfirmed } from '../booking-confirmation.service';
+import { sendPushToClient } from '../push.service';
 import { getActivePaymentProvider, getPaymentProvider } from './index';
 import { PaymentGatewayError, VerifyResult, WebhookEvent } from './provider';
 
@@ -288,6 +289,22 @@ export async function finalizePayment(payment: any, result: VerifyResult, opts: 
       date: updated.date,
       time: updated.time
     });
+  } else {
+    // The live website sends its own emails; in-app and push notifications still go out
+    const when = updated.scheduledAt ? new Date(updated.scheduledAt) : null;
+    const date = updated.date || (when && !isNaN(when.getTime()) ? when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'the scheduled date');
+    const time = updated.time || (when && !isNaN(when.getTime()) ? when.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '');
+    const consultant: any = updated.consultantId
+      ? await getDatabase().collection('Consultant').findOne({ $or: [{ _id: updated.consultantId }, { id: updated.consultantId }] }).catch(() => null)
+      : null;
+    await Promise.allSettled([
+      notifyBookingConfirmed({ ...updated, id: updated.bookingId }, consultant?.email || '', date, time),
+      sendPushToClient({ email: updated.clientEmail, id: updated.clientId }, {
+        title: 'Session confirmed 📅',
+        body: `Your payment was received and your ${updated.serviceTitle || 'therapy'} session${updated.consultantName ? ` with ${updated.consultantName}` : ''} is confirmed.`,
+        tag: `booking-${updated.bookingId}`
+      })
+    ]);
   }
 
   return { newlyConfirmed: true, payment: updated };
