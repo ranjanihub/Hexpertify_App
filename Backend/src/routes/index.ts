@@ -16,6 +16,7 @@ import resourcesRoutes from './resources.routes';
 import pagesRoutes from './pages.routes';
 import payoutsRoutes from './payouts.routes';
 import paymentsRoutes from './payments.routes';
+import sessionFeedbackRoutes from './session-feedback.routes';
 import activitiesRoutes from './activities.routes';
 import blogRoutes from './blog.routes';
 import dashboardRoutes from './dashboard.routes';
@@ -107,6 +108,9 @@ router.use('/admin/assets', assetsRoutes);
 
 router.use('/resources', resourcesRoutes);
 router.use('/admin/resources', resourcesRoutes);
+
+router.use('/session-feedback', sessionFeedbackRoutes);
+router.use('/admin/session-feedback', sessionFeedbackRoutes);
 
 router.use('/payments', paymentsRoutes);
 router.use('/admin/payments', paymentsRoutes);

@@ -18,7 +18,44 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { getApiAuthHeaders } from '../lib/auth';
 import type { Client } from '../types';
+
+/** Post-session feedback (Session Rating Scale): three 0–10 items, total out of 30 */
+type SessionFeedbackRow = {
+  id: string;
+  clientId: string;
+  clientEmail: string;
+  consultantName: string;
+  serviceTitle: string;
+  sessionDate?: string;
+  createdAt: string;
+  scores: { helpfulness: number; goalsHeard: number; approach: number };
+  totalScore: number;
+  maxScore: number;
+  level: 'healthy' | 'watch' | 'attention';
+};
+
+const FEEDBACK_LEVELS = {
+  healthy: { label: 'Healthy', dot: '🟢', className: 'bg-emerald-100 text-emerald-700' },
+  watch: { label: 'Watch', dot: '🟡', className: 'bg-amber-100 text-amber-700' },
+  attention: { label: 'Needs attention', dot: '🔴', className: 'bg-rose-100 text-rose-700' }
+};
+
+const formatFeedbackDate = (value?: string) => {
+  const d = value ? new Date(value) : null;
+  return d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+};
+
+const FeedbackScoreBadge: React.FC<{ feedback?: SessionFeedbackRow }> = ({ feedback }) => {
+  if (!feedback) return <span className="text-xs text-slate-400">—</span>;
+  const level = FEEDBACK_LEVELS[feedback.level] || FEEDBACK_LEVELS.watch;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] px-3 py-1 font-bold rounded-full ${level.className}`} title={level.label}>
+      {level.dot} {feedback.totalScore}/{feedback.maxScore || 30}
+    </span>
+  );
+};
 
 export const ClientsView: React.FC = () => {
   const { clients, therapists, assignClientTherapist } = useAppContext();
@@ -47,6 +84,17 @@ export const ClientsView: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
+
+  // Post-session feedback scores (the backend withholds clients' written messages from admins)
+  const [sessionFeedback, setSessionFeedback] = useState<SessionFeedbackRow[]>([]);
+  useEffect(() => {
+    fetch('/api/admin/session-feedback', { headers: getApiAuthHeaders() })
+      .then((r) => (r.ok ? r.json() : { feedback: [] }))
+      .then((data) => setSessionFeedback(Array.isArray(data?.feedback) ? data.feedback : []))
+      .catch(() => setSessionFeedback([]));
+  }, []);
+  const feedbackFor = (c: Client) =>
+    sessionFeedback.filter((f) => f.clientId === c.id || (!!c.email && f.clientEmail === c.email.toLowerCase()));
 
   const totalPages = Math.max(1, Math.ceil(filteredClients.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -119,13 +167,14 @@ export const ClientsView: React.FC = () => {
                 <th className="py-4 px-6 text-center">Assigned Therapist</th>
                 <th className="py-4 px-6 text-center">Service</th>
                 <th className="py-4 px-6 text-center">Status</th>
+                <th className="py-4 px-6 text-center">Session Feedback</th>
                 <th className="py-4 px-6 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {paginatedClients.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                  <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
                     No client records match your search filters
                   </td>
                 </tr>
@@ -167,6 +216,9 @@ export const ClientsView: React.FC = () => {
                         >
                           {c.status || 'Active'}
                         </span>
+                      </td>
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
+                        <FeedbackScoreBadge feedback={feedbackFor(c)[0]} />
                       </td>
                       <td className="py-4 px-6 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
@@ -368,6 +420,30 @@ export const ClientsView: React.FC = () => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Post-session feedback scores (out of 30) */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Session Feedback</h4>
+              {feedbackFor(selectedClient).length === 0 ? (
+                <p className="text-xs text-slate-400 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  No session feedback yet. The client is asked to rate each session after it is marked as completed.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {feedbackFor(selectedClient).map((f) => (
+                    <div key={f.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{f.serviceTitle} · {f.consultantName}</p>
+                        <p className="text-[11px] text-slate-500">
+                          {formatFeedbackDate(f.sessionDate || f.createdAt)} · Helpfulness {f.scores?.helpfulness}/10 · Goals & heard {f.scores?.goalsHeard}/10 · Approach {f.scores?.approach}/10
+                        </p>
+                      </div>
+                      <FeedbackScoreBadge feedback={f} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>,
