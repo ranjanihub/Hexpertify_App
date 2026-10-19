@@ -140,7 +140,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1. Fetch Users
     fetchWithFallback("/api/admin/users").then((data) => {
       if (data?.users && Array.isArray(data.users) && data.users.length > 0) {
-        const liveClients: Client[] = data.users.map((u: any) => ({
+        const liveClients: Client[] = data.users
+          // Therapist and admin accounts are not clients
+          .filter((u: any) => !["ADMIN", "SUPER_ADMIN", "CONSULTANT", "THERAPIST"].includes(String(u.role || "").toUpperCase()))
+          .map((u: any) => ({
           id: u.id || String(u._id),
           name: u.name || "Client User",
           email: u.email || "",

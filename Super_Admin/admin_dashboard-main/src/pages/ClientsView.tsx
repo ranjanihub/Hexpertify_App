@@ -5,25 +5,17 @@ import {
   Users,
   CheckCircle2,
   X,
-  Brain,
   Phone,
   Mail,
-  Calendar,
-  FileText,
-  Activity,
-  CheckSquare,
-  Download,
   UserCheck,
   ArrowRightLeft,
-  Award,
   Sparkles,
   ClipboardList,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  ShieldCheck,
-  Lock
+  ShieldCheck
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import type { Client } from '../types';
@@ -37,7 +29,6 @@ export const ClientsView: React.FC = () => {
   const [selectedTherapistId, setSelectedTherapistId] = useState<string>('');
   const [therapistSearch, setTherapistSearch] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'intake' | 'assessments' | 'goals_mood' | 'sessions_hw' | 'documents'>('intake');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
 
@@ -182,7 +173,6 @@ export const ClientsView: React.FC = () => {
                           <button
                             onClick={() => {
                               setSelectedClient(c);
-                              setActiveTab('intake');
                             }}
                             className="px-3.5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-sm shadow-[#5e2be2]/20 transition-all active:scale-95 cursor-pointer"
                           >
@@ -358,273 +348,27 @@ export const ClientsView: React.FC = () => {
               </button>
             </div>
 
-            {selectedClient.detailsRestricted ? (
-              <div className="flex flex-col items-center text-center gap-3 py-10 px-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <div className="w-12 h-12 rounded-full bg-[#5e2be2]/10 flex items-center justify-center">
-                  <Lock className="w-6 h-6 text-[#5e2be2]" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-800">Clinical details are private</h4>
-                <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                  Intake answers, assessments, goals, mood logs, sessions, homework and documents are visible only to
-                  this client's assigned therapist
-                  {selectedClient.assignedTherapistName ? <> (<strong className="text-slate-700">{selectedClient.assignedTherapistName}</strong>)</> : null}.
-                </p>
+            {/* Admins only see general details: clinical records belong to the assigned therapist */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">General Details</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { label: 'Full Name', value: selectedClient.name },
+                  { label: 'Client ID', value: selectedClient.id },
+                  { label: 'Email', value: selectedClient.email },
+                  { label: 'Phone', value: selectedClient.phone },
+                  { label: 'Status', value: selectedClient.status },
+                  { label: 'Service', value: selectedClient.service },
+                  { label: 'Joined', value: selectedClient.joinedDate },
+                  { label: 'Assigned Therapist', value: selectedClient.assignedTherapistName }
+                ].map((row) => (
+                  <div key={row.label} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{row.label}</p>
+                    <p className="text-sm font-semibold text-slate-800 break-words">{row.value || '—'}</p>
+                  </div>
+                ))}
               </div>
-            ) : (<>
-            {/* Modal Navigation Tabs */}
-            <div className="flex items-center gap-1.5 sm:gap-2 border-b border-slate-100 pb-3 overflow-x-auto text-xs scrollbar-none">
-              {[
-                { id: 'intake', label: 'AI Intake & Survey', icon: Brain },
-                { id: 'assessments', label: 'Clinical Assessments', icon: Award },
-                { id: 'goals_mood', label: 'Goals & Mood Tracker', icon: Activity },
-                { id: 'sessions_hw', label: 'Sessions & Homework', icon: Calendar },
-                { id: 'documents', label: 'Documents & Files', icon: FileText }
-              ].map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all whitespace-nowrap text-xs shrink-0 ${
-                      activeTab === tab.id
-                        ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
             </div>
-
-            {/* Tab 1: AI Intake & Survey Responses */}
-            {activeTab === 'intake' && (
-              <div className="space-y-6">
-                <div className="bg-purple-50/80 p-5 rounded-2xl border border-purple-100 space-y-2">
-                  <h4 className="text-xs font-extrabold text-[#5e2be2] uppercase tracking-wider flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#5e2be2]" />
-                    AI Intake Summary
-                  </h4>
-                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                    {selectedClient.aiIntakeSummary || `Patient record registered on ${selectedClient.joinedDate || 'recent date'}. Initial clinical intake pending client portal activity.`}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Client Intake Survey Responses</h4>
-                  {Object.keys(selectedClient.intakeResponses || {}).length === 0 ? (
-                    <div className="py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl space-y-1">
-                      <ClipboardList className="w-8 h-8 text-slate-300 mx-auto" />
-                      <h4 className="text-xs font-bold text-slate-600">No Intake Survey Responses</h4>
-                      <p className="text-[11px] text-slate-400">This client has not submitted the initial intake questionnaire yet.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {Object.entries(selectedClient.intakeResponses || {}).map(([key, val], idx) => (
-                        <div key={idx} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
-                          <span className="text-[11px] font-semibold text-slate-400 block">{key}</span>
-                          <span className="text-xs font-bold text-slate-900 mt-0.5 block">{String(val)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Tab 2: Clinical Assessment Scores */}
-            {activeTab === 'assessments' && (
-              <div className="space-y-4">
-                <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Standardized Clinical Assessments</h4>
-                {!selectedClient.assessmentScores || selectedClient.assessmentScores.length === 0 ? (
-                  <div className="py-12 text-center bg-slate-50 border border-dashed border-slate-200 rounded-3xl space-y-2">
-                    <Award className="w-10 h-10 text-slate-300 mx-auto" />
-                    <h4 className="text-sm font-extrabold text-slate-700">No Clinical Assessments Completed</h4>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      This client is newly registered and has not taken any standardized clinical assessments in the client portal yet.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {selectedClient.assessmentScores.map((a, idx) => (
-                      <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h5 className="font-extrabold text-sm text-slate-900">{a.name}</h5>
-                          <span className="text-xs px-3 py-1 bg-purple-100 text-purple-700 font-bold rounded-full">
-                            {a.severity}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                          <span>Date: <strong>{a.date}</strong></span>
-                          <span className="font-extrabold text-slate-900 text-sm">{a.score} / {a.maxScore || 10}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab 3: Therapy Goals & Mood Tracking */}
-            {activeTab === 'goals_mood' && (
-              <div className="space-y-6">
-                {/* Therapy Goals */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Therapy Goals</h4>
-                  {(!selectedClient.therapyGoals || selectedClient.therapyGoals.length === 0) && (!selectedClient.goals || selectedClient.goals.length === 0) ? (
-                    <div className="py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl space-y-1">
-                      <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto" />
-                      <h4 className="text-xs font-bold text-slate-600">No Therapy Goals Set</h4>
-                      <p className="text-[11px] text-slate-400">Goals will appear here once established during clinical sessions.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {(selectedClient.therapyGoals || selectedClient.goals?.map(g => g.title) || []).map((g, idx) => (
-                        <div key={idx} className="p-3.5 bg-emerald-50/60 rounded-2xl text-xs font-semibold text-slate-800 flex items-center gap-3 border border-emerald-100">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span>{g}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Mood Score Timeline */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Mood Score History (1-10 Scale)</h4>
-                  {(!selectedClient.moodScores || selectedClient.moodScores.length === 0) && (!selectedClient.moodLogs || selectedClient.moodLogs.length === 0) ? (
-                    <div className="py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl space-y-1">
-                      <Activity className="w-8 h-8 text-slate-300 mx-auto" />
-                      <h4 className="text-xs font-bold text-slate-600">No Mood Logs Recorded</h4>
-                      <p className="text-[11px] text-slate-400">The client has not logged daily mood check-ins in the client panel yet.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                      {(selectedClient.moodScores || selectedClient.moodLogs?.map(m => ({ date: m.date || 'Log', score: m.score })) || []).map((m, idx) => (
-                        <div key={idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-1">
-                          <span className="text-[10px] text-slate-400 block font-medium">{m.date}</span>
-                          <span className="text-lg font-extrabold text-[#5e2be2] block">{m.score}/10</span>
-                          <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-[#5e2be2] h-full rounded-full" style={{ width: `${(m.score / 10) * 100}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Tab 4: Sessions & Homework */}
-            {activeTab === 'sessions_hw' && (
-              <div className="space-y-6">
-                {/* Homework Assigned */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Assigned Exercises & Homework</h4>
-                  {(!selectedClient.homeworkAssigned || selectedClient.homeworkAssigned.length === 0) && (!selectedClient.homework || selectedClient.homework.length === 0) ? (
-                    <div className="py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl space-y-1">
-                      <CheckSquare className="w-8 h-8 text-slate-300 mx-auto" />
-                      <h4 className="text-xs font-bold text-slate-600">No Homework Assigned</h4>
-                      <p className="text-[11px] text-slate-400">No therapeutic exercises or tasks have been assigned to this client yet.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {(selectedClient.homeworkAssigned || selectedClient.homework?.map(h => ({ title: h.title, dueDate: h.dueDate, completed: h.status === 'Completed' })) || []).map((hw, idx) => (
-                        <div key={idx} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <CheckSquare className={`w-4 h-4 ${hw.completed ? 'text-emerald-600' : 'text-slate-400'}`} />
-                            <div>
-                              <p className="font-bold text-xs text-slate-900">{hw.title}</p>
-                              <span className="text-[10px] text-slate-400">Due: {hw.dueDate}</span>
-                            </div>
-                          </div>
-                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
-                            hw.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {hw.completed ? 'Completed' : 'Pending'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Session History Log */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Session Log History</h4>
-                  {(!selectedClient.sessionHistory || selectedClient.sessionHistory.length === 0) && (!selectedClient.sessions || selectedClient.sessions.length === 0) ? (
-                    <div className="py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl space-y-1">
-                      <Calendar className="w-8 h-8 text-slate-300 mx-auto" />
-                      <h4 className="text-xs font-bold text-slate-600">No Consultation History</h4>
-                      <p className="text-[11px] text-slate-400">No clinical consultations have been recorded for this client yet.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {(selectedClient.sessionHistory || selectedClient.sessions?.map((s: any) => ({
-                        id: s.id,
-                        summary: `${s.serviceName || selectedClient.service || 'Consultation'} (${s.status || 'CONFIRMED'})`,
-                        date: s.date || selectedClient.joinedDate || 'Recent',
-                        therapistNotes: `Consultation session conducted with ${s.therapistName || selectedClient.assignedTherapistName}. Practitioner verified patient progress and established key follow-up goals.`
-                      })) || []).map((s) => (
-                        <div key={s.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-extrabold text-xs text-slate-900">{s.summary}</span>
-                            <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
-                              {s.date}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-600 leading-relaxed italic">
-                            "{s.therapistNotes}"
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Tab 5: Documents & Files */}
-            {activeTab === 'documents' && (
-              <div className="space-y-3">
-                <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Uploaded Medical Files & Documents</h4>
-                {!selectedClient.documents || selectedClient.documents.length === 0 ? (
-                  <div className="py-12 text-center bg-slate-50 border border-dashed border-slate-200 rounded-3xl space-y-2">
-                    <FileText className="w-10 h-10 text-slate-300 mx-auto" />
-                    <h4 className="text-sm font-extrabold text-slate-700">No Uploaded Documents</h4>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      No medical files, assessment reports, or consent documents have been uploaded for this client yet.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedClient.documents.map((doc, idx) => (
-                      <div key={idx} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-purple-100 text-[#5e2be2] flex items-center justify-center font-bold text-xs">
-                            {doc.type}
-                          </div>
-                          <div>
-                            <p className="font-bold text-xs text-slate-900">{doc.name}</p>
-                            <span className="text-[10px] text-slate-400">{doc.size} · Uploaded {doc.date}</span>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => alert(`Downloading ${doc.name}`)}
-                          className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Download</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            </>)}
           </div>
         </div>,
         document.body
