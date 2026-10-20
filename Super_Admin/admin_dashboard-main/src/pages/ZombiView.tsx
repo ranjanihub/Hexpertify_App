@@ -73,7 +73,7 @@ const autoMetaDescription = (title: string) =>
 // The public website renders zombie pages; the editor previews drafts inside its header and footer
 const LIVE_SITE_URL = String(
   import.meta.env.VITE_LIVE_SITE_URL ||
-    (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://hexpertify.com')
+    (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://hexpertify-app.vercel.app')
 ).replace(/\/$/, '');
 
 /** Next free ZMB-<n> id (ids must stay unique: saving an existing id overwrites that page) */
