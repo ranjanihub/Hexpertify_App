@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 import { getActiveZombiePage } from "@/lib/zombie-pages";
+import ZombieArticle from "@/components/ZombieArticle";
 
 // Zombie pages are edited in the Super Admin panel; always render the latest version
 export const dynamic = "force-dynamic";
@@ -49,10 +50,7 @@ export default async function ZombiePageView({ params }: Props) {
       {structuredData && (
         <Script id={`zombie-schema-${page.id}`} type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
       )}
-      <article className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8">
-        {/* HTML authored by administrators in the Super Admin panel */}
-        <div dangerouslySetInnerHTML={{ __html: page.htmlChunk || `<h1>${page.pageTitle}</h1>` }} />
-      </article>
+      <ZombieArticle htmlChunk={page.htmlChunk} pageTitle={page.pageTitle} />
     </>
   );
 }

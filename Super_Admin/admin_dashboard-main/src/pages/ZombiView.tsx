@@ -65,6 +65,91 @@ const normalizeZombiePage = (p: any, index: number = 0): ZombiPage => {
   };
 };
 
+const slugify = (title: string) => '/' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+const autoMetaTitle = (title: string) => (title ? `${title} | Hexpertify Online Therapy` : '');
+const autoMetaDescription = (title: string) =>
+  title ? `Book confidential video sessions for ${title} on Hexpertify. Verified clinical psychologists & counselors.` : '';
+
+// The public website renders zombie pages; the editor previews drafts inside its header and footer
+const LIVE_SITE_URL = String(
+  import.meta.env.VITE_LIVE_SITE_URL ||
+    (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://hexpertify.com')
+).replace(/\/$/, '');
+
+/** Next free ZMB-<n> id (ids must stay unique: saving an existing id overwrites that page) */
+const nextZombieId = (pages: ZombiPage[]) => {
+  const highest = pages.reduce((max, p) => {
+    const n = Number(/^ZMB-(\d+)$/.exec(p.id)?.[1]);
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 100);
+  return `ZMB-${highest + 1}`;
+};
+
+/** Sends a change to the zombie_pages API and reports why it failed, if it did */
+async function sendZombieRequest(method: 'POST' | 'DELETE', query = '', body?: unknown): Promise<{ ok: boolean; data?: any; error?: string }> {
+  const init: RequestInit = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  };
+  let res = await fetch(`/api/admin/zombie-pages${query}`, init).catch(() => null);
+  if (!res) {
+    res = await fetch(`http://localhost:5000/api/admin/zombie-pages${query}`, init).catch(() => null);
+  }
+  const data = res ? await res.json().catch(() => null) : null;
+  if (res && res.ok && data?.success !== false) return { ok: true, data };
+  const error = !res
+    ? 'The server could not be reached. Check your connection and try again.'
+    : res.status === 401
+    ? 'Your admin session has expired. Please sign out and sign in again, then retry.'
+    : data?.error || `The server rejected the change (HTTP ${res.status}).`;
+  return { ok: false, error };
+}
+
+/**
+ * Shows a page the way visitors will see it: the website's /z/preview route renders the posted
+ * HTML inside the real site header and footer.
+ */
+const LiveSitePreview: React.FC<{ htmlChunk: string; pageTitle: string }> = ({ htmlChunk, pageTitle }) => {
+  const frameRef = React.useRef<HTMLIFrameElement>(null);
+  const [ready, setReady] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const siteOrigin = new URL(LIVE_SITE_URL).origin;
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin === siteOrigin && event.data?.type === 'hexpertify:zombie-preview-ready') setReady(true);
+    };
+    window.addEventListener('message', onMessage);
+    const timer = setTimeout(() => setTimedOut(true), 10000);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      clearTimeout(timer);
+    };
+  }, [siteOrigin]);
+
+  useEffect(() => {
+    if (!ready) return;
+    frameRef.current?.contentWindow?.postMessage({ type: 'hexpertify:zombie-preview', htmlChunk, pageTitle }, siteOrigin);
+  }, [ready, htmlChunk, pageTitle, siteOrigin]);
+
+  return (
+    <div className="space-y-2">
+      <iframe
+        ref={frameRef}
+        src={`${LIVE_SITE_URL}/z/preview`}
+        title="Website preview"
+        className="w-full h-[640px] bg-white rounded-2xl border border-slate-200"
+      />
+      {!ready && timedOut && (
+        <p className="text-[11px] text-amber-700 font-semibold">
+          The website preview did not respond ({LIVE_SITE_URL}/z/preview). Make sure the website is deployed with the latest changes.
+        </p>
+      )}
+    </div>
+  );
+};
+
 export const ZombiView: React.FC = () => {
   // Main Pages State from MongoDB Atlas (100% dynamic)
   const [zombiPagesList, setZombiPagesList] = useState<ZombiPage[]>(() => {
@@ -144,6 +229,7 @@ export const ZombiView: React.FC = () => {
 
   // Toast Notification state
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const showToast = (text: string, type: 'success' | 'warning' = 'success') => {
     setToastMessage({ text, type });
@@ -158,29 +244,26 @@ export const ZombiView: React.FC = () => {
     showToast('Target URL copied to clipboard!', 'success');
   };
 
-  const handleToggleLive = (id: string, targetStatus: 'Active' | 'Draft', e?: React.MouseEvent) => {
+  const storeList = (next: ZombiPage[]) => {
+    try {
+      localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(next));
+    } catch {}
+    return next;
+  };
+
+  const handleToggleLive = async (id: string, targetStatus: 'Active' | 'Draft', e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const today = new Date().toISOString().split('T')[0];
-    setZombiPagesList((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, status: targetStatus, updatedAt: today } : p));
-      try {
-        localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
 
     // Persist to MongoDB Atlas collection: zombie_pages
-    fetch('/api/admin/zombie-pages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status: targetStatus, updatedAt: today })
-    }).catch(() => {
-      fetch('http://localhost:5000/api/admin/zombie-pages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: targetStatus, updatedAt: today })
-      }).catch(() => {});
-    });
+    const result = await sendZombieRequest('POST', '', { id, status: targetStatus, updatedAt: today });
+    if (!result.ok) {
+      showToast(`Status not changed: ${result.error}`, 'warning');
+      return;
+    }
+    setZombiPagesList((prev) =>
+      storeList(prev.map((p) => (p.id === id ? { ...p, status: targetStatus, updatedAt: today } : p)))
+    );
 
     if (targetStatus === 'Active') {
       showToast(`Zombie Page ${id} is now LIVE & Saved to MongoDB Atlas (zombie_pages)!`, 'success');
@@ -231,10 +314,15 @@ export const ZombiView: React.FC = () => {
 
   const handleTitleOrSlugChange = (field: 'pageTitle' | 'slug', val: string) => {
     if (field === 'pageTitle') {
-      const generatedSlug = '/' + val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
       setFormData((prev: any) => {
-        const newSlug = prev?.slug && prev.slug !== '/' ? prev.slug : generatedSlug;
-        const target = `https://hexpertify.com${newSlug}`;
+        // Fields still holding the value generated from the previous title follow the new title;
+        // anything the admin typed by hand is kept
+        const prevTitle = prev?.pageTitle || '';
+        const prevAutoSlug = slugify(prevTitle);
+        const prevAutoTarget = `https://hexpertify.com${prevAutoSlug}`;
+        const follows = (current: string | undefined, generated: string) => !current || current === generated || current === '/';
+        const newSlug = follows(prev?.slug, prevAutoSlug) ? slugify(val) : prev.slug;
+        const target = follows(prev?.targetUrl, prevAutoTarget) ? `https://hexpertify.com${newSlug}` : prev.targetUrl;
         return {
           ...prev,
           pageTitle: val,
@@ -242,167 +330,110 @@ export const ZombiView: React.FC = () => {
           targetUrl: target,
           seo: {
             ...prev.seo!,
-            metaTitle: prev.seo?.metaTitle || (val ? `${val} | Hexpertify Online Therapy` : ''),
-            metaDescription: prev.seo?.metaDescription || (val ? `Book confidential video sessions for ${val} on Hexpertify. Verified clinical psychologists & counselors.` : ''),
-            canonicalUrl: prev.seo?.canonicalUrl || target
+            metaTitle: follows(prev.seo?.metaTitle, autoMetaTitle(prevTitle)) ? autoMetaTitle(val) : prev.seo.metaTitle,
+            metaDescription: follows(prev.seo?.metaDescription, autoMetaDescription(prevTitle))
+              ? autoMetaDescription(val)
+              : prev.seo.metaDescription,
+            canonicalUrl: follows(prev.seo?.canonicalUrl, prevAutoTarget) ? target : prev.seo.canonicalUrl
           }
         };
       });
     } else {
       const cleanSlug = val.startsWith('/') ? val : '/' + val;
       const target = `https://hexpertify.com${cleanSlug}`;
-      setFormData((prev: any) => ({
-        ...prev,
-        slug: cleanSlug,
-        targetUrl: target,
-        seo: {
-          ...prev.seo!,
-          canonicalUrl: prev.seo?.canonicalUrl || target
-        }
-      }));
+      setFormData((prev: any) => {
+        const prevTarget = `https://hexpertify.com${prev?.slug || ''}`;
+        return {
+          ...prev,
+          slug: cleanSlug,
+          targetUrl: !prev?.targetUrl || prev.targetUrl === prevTarget ? target : prev.targetUrl,
+          seo: {
+            ...prev.seo!,
+            canonicalUrl: !prev.seo?.canonicalUrl || prev.seo.canonicalUrl === prevTarget ? target : prev.seo.canonicalUrl
+          }
+        };
+      });
     }
   };
 
-  const handleSavePage = (overrideStatus?: 'Draft' | 'Active' | 'Archived', e?: React.FormEvent) => {
+  const handleSavePage = async (overrideStatus?: 'Draft' | 'Active' | 'Archived', e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!formData.pageTitle || !formData.slug) {
+    if (isSaving) return;
+    if (!formData.pageTitle?.trim() || !formData.slug || formData.slug === '/') {
       showToast('Please provide a Page Title and Slug.', 'warning');
       return;
     }
 
     const cleanSlug = formData.slug.startsWith('/') ? formData.slug : '/' + formData.slug;
+    const slugTaken = zombiPagesList.some(
+      (p) => p.id !== editingPageId && p.slug.toLowerCase() === cleanSlug.toLowerCase()
+    );
+    if (slugTaken) {
+      showToast(`Another Zombie Page already uses the slug ${cleanSlug}. Choose a different one.`, 'warning');
+      return;
+    }
+
     const finalTargetUrl = formData.targetUrl || `https://hexpertify.com${cleanSlug}`;
     const today = new Date().toISOString().split('T')[0];
     const finalStatus = overrideStatus || formData.status || 'Draft';
 
-    if (editingPageId) {
-      // Update existing
-      const updated: ZombiPage = {
-        id: editingPageId,
-        pageTitle: formData.pageTitle,
-        slug: cleanSlug,
-        targetUrl: finalTargetUrl,
-        htmlChunk: formData.htmlChunk || '',
-        status: finalStatus as any,
-        createdAt: formData.createdAt || today,
-        updatedAt: today,
-        viewsCount: formData.viewsCount || 0,
-        seo: {
-          metaTitle: formData.seo?.metaTitle || `${formData.pageTitle} | Hexpertify`,
-          metaDescription: formData.seo?.metaDescription || '',
-          keywords: formData.seo?.keywords || '',
-          canonicalUrl: formData.seo?.canonicalUrl || finalTargetUrl,
-          ogTitle: formData.seo?.ogTitle || formData.seo?.metaTitle,
-          ogDescription: formData.seo?.ogDescription || formData.seo?.metaDescription,
-          ogImageUrl: formData.seo?.ogImageUrl || '',
-          ogImageAltText: formData.seo?.ogImageAltText || '',
-          structuredData: formData.seo?.structuredData || ''
-        }
-      };
-
-      setZombiPagesList((prev) => {
-        const next = prev.map((p) => (p.id === editingPageId ? updated : p));
-        try {
-          localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-
-      // Persist to MongoDB Atlas collection: zombie_pages
-      fetch('/api/admin/zombie-pages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(() => {
-        fetch('http://localhost:5000/api/admin/zombie-pages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updated)
-        }).catch(() => {});
-      });
-
-      if (finalStatus === 'Active') {
-        showToast(`Zombie Page ${updated.id} published & saved to DB (zombie_pages)!`, 'success');
-      } else {
-        showToast(`Zombie Page ${updated.id} saved in Draft mode in DB (zombie_pages).`, 'warning');
+    const page: ZombiPage = {
+      id: editingPageId || nextZombieId(zombiPagesList),
+      pageTitle: formData.pageTitle.trim(),
+      slug: cleanSlug,
+      targetUrl: finalTargetUrl,
+      htmlChunk: formData.htmlChunk || '',
+      status: finalStatus as any,
+      createdAt: editingPageId ? formData.createdAt || today : today,
+      updatedAt: today,
+      viewsCount: editingPageId ? formData.viewsCount || 0 : 0,
+      seo: {
+        metaTitle: formData.seo?.metaTitle || `${formData.pageTitle} | Hexpertify`,
+        metaDescription: formData.seo?.metaDescription || '',
+        keywords: formData.seo?.keywords || '',
+        canonicalUrl: formData.seo?.canonicalUrl || finalTargetUrl,
+        ogTitle: formData.seo?.ogTitle || formData.seo?.metaTitle,
+        ogDescription: formData.seo?.ogDescription || formData.seo?.metaDescription,
+        ogImageUrl: formData.seo?.ogImageUrl || '',
+        ogImageAltText: formData.seo?.ogImageAltText || '',
+        structuredData: formData.seo?.structuredData || ''
       }
-    } else {
-      // Create new
-      const nextNum = 100 + zombiPagesList.length + 1;
-      const created: ZombiPage = {
-        id: `ZMB-${nextNum}`,
-        pageTitle: formData.pageTitle,
-        slug: cleanSlug,
-        targetUrl: finalTargetUrl,
-        htmlChunk: formData.htmlChunk || '',
-        status: finalStatus as any,
-        createdAt: today,
-        updatedAt: today,
-        viewsCount: 0,
-        seo: {
-          metaTitle: formData.seo?.metaTitle || `${formData.pageTitle} | Hexpertify`,
-          metaDescription: formData.seo?.metaDescription || '',
-          keywords: formData.seo?.keywords || '',
-          canonicalUrl: formData.seo?.canonicalUrl || finalTargetUrl,
-          ogTitle: formData.seo?.ogTitle || formData.seo?.metaTitle,
-          ogDescription: formData.seo?.ogDescription || formData.seo?.metaDescription,
-          ogImageUrl: formData.seo?.ogImageUrl || '',
-          ogImageAltText: formData.seo?.ogImageAltText || '',
-          structuredData: formData.seo?.structuredData || ''
-        }
-      };
+    };
 
-      setZombiPagesList((prev) => {
-        const next = [created, ...prev];
-        try {
-          localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-
-      // Persist to MongoDB Atlas collection: zombie_pages
-      fetch('/api/admin/zombie-pages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(created)
-      }).catch(() => {
-        fetch('http://localhost:5000/api/admin/zombie-pages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(created)
-        }).catch(() => {});
-      });
-
-      if (finalStatus === 'Active') {
-        showToast(`Zombie Page ${created.id} created & saved to DB (zombie_pages)!`, 'success');
-      } else {
-        showToast(`Zombie Page ${created.id} saved as Draft in DB (zombie_pages)!`, 'warning');
-      }
+    // Persist to MongoDB Atlas collection: zombie_pages (the list only changes once the server has it)
+    setIsSaving(true);
+    const result = await sendZombieRequest('POST', '', page);
+    setIsSaving(false);
+    if (!result.ok) {
+      showToast(`Zombie Page not saved: ${result.error}`, 'warning');
+      return;
     }
 
+    const saved = result.data?.page ? normalizeZombiePage(result.data.page) : page;
+    setZombiPagesList((prev) =>
+      storeList(editingPageId ? prev.map((p) => (p.id === editingPageId ? saved : p)) : [saved, ...prev])
+    );
+
+    const verb = editingPageId ? 'updated' : 'created';
+    if (finalStatus === 'Active') {
+      showToast(`Zombie Page ${saved.id} ${verb} & live at ${saved.slug}!`, 'success');
+    } else {
+      showToast(`Zombie Page ${saved.id} ${verb} as ${finalStatus}.`, 'warning');
+    }
     setViewMode('list');
   };
 
-  const handleDeletePage = (id: string) => {
+  const handleDeletePage = async (id: string) => {
     const target = zombiPagesList.find((p) => p.id === id);
-    setZombiPagesList((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      try {
-        localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
     setDeletingPage(null);
 
     // Delete from MongoDB Atlas collection: zombie_pages
-    fetch(`/api/admin/zombie-pages?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE'
-    }).catch(() => {
-      fetch(`http://localhost:5000/api/admin/zombie-pages?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE'
-      }).catch(() => {});
-    });
-
+    const result = await sendZombieRequest('DELETE', `?id=${encodeURIComponent(id)}`);
+    if (!result.ok) {
+      showToast(`Zombie Page not deleted: ${result.error}`, 'warning');
+      return;
+    }
+    setZombiPagesList((prev) => storeList(prev.filter((p) => p.id !== id)));
     showToast(`Zombie Page ${target?.id || id} deleted from DB (zombie_pages).`, 'warning');
   };
 
@@ -925,7 +956,8 @@ export const ZombiView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleSavePage('Draft')}
-                className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-2xs"
+                disabled={isSaving}
+                className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-2xs disabled:opacity-60 disabled:cursor-wait"
                 title="Save page in Draft status"
               >
                 <FileText className="w-4 h-4 text-amber-600" />
@@ -934,11 +966,12 @@ export const ZombiView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleSavePage('Active')}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs shadow-md shadow-emerald-600/25 transition-all active:scale-95 flex items-center gap-2"
+                disabled={isSaving}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs shadow-md shadow-emerald-600/25 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
                 title="Publish & make page live immediately"
               >
                 <Play className="w-4 h-4" />
-                <span>Make Live (Publish)</span>
+                <span>{isSaving ? 'Saving…' : 'Make Live (Publish)'}</span>
               </button>
             </div>
           </div>
@@ -1137,15 +1170,11 @@ export const ZombiView: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-5 bg-slate-100 rounded-2xl border border-slate-200 min-h-[250px]">
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2 font-mono">Rendered Output Preview</span>
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                        {formData.htmlChunk ? (
-                          <div dangerouslySetInnerHTML={{ __html: formData.htmlChunk }} />
-                        ) : (
-                          <p className="text-slate-400 text-center py-12">HTML chunk is empty. Add HTML code to render output.</p>
-                        )}
-                      </div>
+                    <div className="p-3 bg-slate-100 rounded-2xl border border-slate-200 min-h-[250px]">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2 font-mono">
+                        Rendered with the website header & footer
+                      </span>
+                      <LiveSitePreview htmlChunk={formData.htmlChunk || ''} pageTitle={formData.pageTitle || ''} />
                     </div>
                   )}
                 </div>
@@ -1365,29 +1394,20 @@ export const ZombiView: React.FC = () => {
             </div>
           </div>
 
-          {/* Preview Main Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* SERP Card Preview */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
-              <span className="font-extrabold text-slate-800 uppercase tracking-wider text-xs block">Google SERP Snippet Preview</span>
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-1.5">
-                <span className="text-xs text-emerald-700 font-mono font-semibold block">{inspectingPage.targetUrl}</span>
-                <h3 className="text-lg font-bold text-blue-700 leading-tight">{inspectingPage.seo?.metaTitle || inspectingPage.pageTitle}</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">{inspectingPage.seo?.metaDescription || 'No meta description provided.'}</p>
-              </div>
+          {/* SERP Card Preview */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
+            <span className="font-extrabold text-slate-800 uppercase tracking-wider text-xs block">Google SERP Snippet Preview</span>
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-1.5">
+              <span className="text-xs text-emerald-700 font-mono font-semibold block">{inspectingPage.targetUrl}</span>
+              <h3 className="text-lg font-bold text-blue-700 leading-tight">{inspectingPage.seo?.metaTitle || inspectingPage.pageTitle}</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">{inspectingPage.seo?.metaDescription || 'No meta description provided.'}</p>
             </div>
+          </div>
 
-            {/* Rendered HTML Chunk Output */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
-              <span className="font-extrabold text-slate-800 uppercase tracking-wider text-xs block">Rendered HTML Chunk Output</span>
-              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
-                {inspectingPage.htmlChunk ? (
-                  <div dangerouslySetInnerHTML={{ __html: inspectingPage.htmlChunk }} />
-                ) : (
-                  <p className="text-slate-400 text-center py-6">No HTML chunk provided for this Zombie Page.</p>
-                )}
-              </div>
-            </div>
+          {/* Page as visitors see it, inside the website header & footer */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
+            <span className="font-extrabold text-slate-800 uppercase tracking-wider text-xs block">Website Preview (with header & footer)</span>
+            <LiveSitePreview htmlChunk={inspectingPage.htmlChunk || ''} pageTitle={inspectingPage.pageTitle} />
           </div>
         </div>
       )}
