@@ -3,15 +3,42 @@ import { MailService } from './mail.service';
 import { sendPushToClient } from './push.service';
 import { createNotifications } from './notification.service';
 
+/** Sessions are booked in India time; servers run in UTC */
+const SESSION_TIME_ZONE = 'Asia/Kolkata';
+
+/**
+ * The session's date ("Oct 13, 2026") and time ("09:30 AM - 10:30 AM") for notifications and emails.
+ * Uses the booked slot when present, otherwise the scheduled instant in India time.
+ */
+export function formatSessionWhen(booking: any): { date: string; time: string } {
+  const when = booking?.scheduledAt ? new Date(booking.scheduledAt) : null;
+  const valid = !!when && !isNaN(when.getTime());
+
+  let date = String(booking?.date || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    // A calendar day, not an instant: format it without shifting time zones
+    date = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  } else if (!date) {
+    date = valid
+      ? when!.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: SESSION_TIME_ZONE })
+      : 'the scheduled date';
+  }
+
+  const time = String(booking?.time || '').trim() ||
+    (valid ? when!.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: SESSION_TIME_ZONE }) : 'the scheduled time');
+
+  return { date, time };
+}
+
 /** In-app "booking confirmed" notifications for the client, the therapist and the admins */
 export async function notifyBookingConfirmed(booking: any, consultantEmail: string, formattedDate: string, formattedTime: string): Promise<void> {
   const service = booking.serviceTitle || 'therapy';
   const therapist = booking.consultantName || 'your therapist';
   await createNotifications([
     { recipientRole: 'CLIENT', recipientId: booking.clientId, recipientEmail: booking.clientEmail, type: 'SESSION_SCHEDULED', bookingId: booking.id,
-      title: 'Therapy Session Confirmed 📅', message: `Your "${service}" consultation with ${therapist} is scheduled on ${formattedDate} at ${formattedTime}.` },
+      title: 'Therapy Session Confirmed', message: `Your "${service}" consultation with ${therapist} is scheduled on ${formattedDate} at ${formattedTime}.` },
     { recipientRole: 'CONSULTANT', recipientId: booking.consultantId, recipientEmail: consultantEmail, type: 'NEW_CLIENT_BOOKING', bookingId: booking.id,
-      title: 'New Client Appointment Booked 🩺', message: `${booking.clientName || 'A client'} booked a "${service}" consultation with you on ${formattedDate} at ${formattedTime}.` },
+      title: 'New Client Appointment Booked', message: `${booking.clientName || 'A client'} booked a "${service}" consultation with you on ${formattedDate} at ${formattedTime}.` },
     { recipientRole: 'ADMIN', type: 'NEW_BOOKING_ALERT', bookingId: booking.id,
       title: 'New Session Booking', message: `Client ${booking.clientName || 'Client'} booked a session with ${booking.consultantName || 'a therapist'} on ${formattedDate} at ${formattedTime}.` }
   ]);
@@ -41,8 +68,7 @@ export async function dispatchBookingConfirmed(newBooking: any, consultantEmailH
       consultantEmail = 'therapist@hexpertify.com';
     }
 
-    const formattedDate = newBooking.date || new Date(newBooking.scheduledAt || newBooking.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const formattedTime = newBooking.time || '10:00 AM';
+    const { date: formattedDate, time: formattedTime } = formatSessionWhen(newBooking);
 
     // Auto-assign user to this consultant if not assigned yet
     try {

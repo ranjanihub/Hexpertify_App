@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { MailService } from '../services/mail.service';
-import { dispatchBookingConfirmed } from '../services/booking-confirmation.service';
+import { dispatchBookingConfirmed, formatSessionWhen } from '../services/booking-confirmation.service';
 import { isAdminUser } from '../middlewares/auth.middleware';
 import { sendPushToClient } from '../services/push.service';
 import { createNotifications } from '../services/notification.service';
@@ -300,8 +300,7 @@ export class BookingsController {
         const clientName = existing.clientName || 'Client';
         const consultantName = existing.consultantName || 'Therapist';
         const serviceTitle = existing.serviceTitle || 'Individual Clinical Consultation';
-        const formattedDate = existing.date || new Date(existing.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const formattedTime = existing.time || '10:00 AM';
+        const { date: formattedDate, time: formattedTime } = formatSessionWhen(existing);
         const client = { email: clientEmail, id: existing.clientId };
 
         // 1. Cancellation Email & Notification
@@ -343,8 +342,12 @@ export class BookingsController {
 
         // 2. Reschedule Email & Notification
         if (isReschedule) {
-          const newDate = updates.date || (updates.scheduledAt ? new Date(updates.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : existing.date);
-          const newTime = updates.time || existing.time || '10:00 AM';
+          // A new scheduledAt without a new slot label makes the old date/time stale
+          const { date: newDate, time: newTime } = formatSessionWhen({
+            date: updates.date || (updates.scheduledAt ? undefined : existing.date),
+            time: updates.time || (updates.scheduledAt ? undefined : existing.time),
+            scheduledAt: updates.scheduledAt || existing.scheduledAt
+          });
 
           pending.push(MailService.sendBookingRescheduled({
             clientName,
@@ -448,8 +451,7 @@ export class BookingsController {
         const clientName = existing.clientName || 'Client';
         const consultantName = existing.consultantName || 'Therapist';
         const serviceTitle = existing.serviceTitle || 'Individual Clinical Consultation';
-        const formattedDate = existing.date || new Date(existing.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const formattedTime = existing.time || '10:00 AM';
+        const { date: formattedDate, time: formattedTime } = formatSessionWhen(existing);
         const emailPayload = {
           clientName,
           clientEmail,

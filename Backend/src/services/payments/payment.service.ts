@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { getDatabase } from '../../db/mongodb';
 import { config } from '../../config';
 import { cacheService } from '../cache.service';
-import { dispatchBookingConfirmed, notifyBookingConfirmed } from '../booking-confirmation.service';
+import { dispatchBookingConfirmed, formatSessionWhen, notifyBookingConfirmed } from '../booking-confirmation.service';
 import { sendPushToClient } from '../push.service';
 import { getActivePaymentProvider, getPaymentProvider } from './index';
 import { PaymentGatewayError, VerifyResult, WebhookEvent } from './provider';
@@ -291,9 +291,7 @@ export async function finalizePayment(payment: any, result: VerifyResult, opts: 
     });
   } else {
     // The live website sends its own emails; in-app and push notifications still go out
-    const when = updated.scheduledAt ? new Date(updated.scheduledAt) : null;
-    const date = updated.date || (when && !isNaN(when.getTime()) ? when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'the scheduled date');
-    const time = updated.time || (when && !isNaN(when.getTime()) ? when.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '');
+    const { date, time } = formatSessionWhen(updated);
     const consultant: any = updated.consultantId
       ? await getDatabase().collection('Consultant').findOne({ $or: [{ _id: updated.consultantId }, { id: updated.consultantId }] }).catch(() => null)
       : null;

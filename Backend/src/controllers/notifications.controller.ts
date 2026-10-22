@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { ClientViewer, resolveClientViewer } from '../services/client-access';
-import { defaultNotificationLink, newNotificationId, NotificationRole } from '../services/notification.service';
+import {
+  cleanNotificationTitle, defaultNotificationLink, DUPLICATE_WINDOW_MS, newNotificationId, NotificationRole
+} from '../services/notification.service';
 
 const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exact = (s: string) => new RegExp(`^${escapeRx(s)}$`, 'i');
@@ -75,15 +77,29 @@ function roleMatch(role: NotificationRole): any {
   return { recipientRole: 'ADMIN' };
 }
 
-/** Older code wrote some events twice; show each (title, message, booking) once */
+/**
+ * Older code wrote some events twice: with identical text, or (bookings) seconds apart with a
+ * fallback time. Shows each once, keeping the original, which carries the booked slot.
+ * Expects newest-first input and returns newest-first.
+ */
 function dedupe(list: any[]): any[] {
-  const seen = new Set<string>();
-  return list.filter((n) => {
-    const key = `${n.title}|${n.message}|${n.bookingId || ''}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const seenText = new Set<string>();
+  const lastEventAt = new Map<string, number>();
+  const kept: any[] = [];
+  for (const n of [...list].reverse()) {
+    const textKey = `${n.title}|${n.message}|${n.bookingId || ''}`;
+    if (seenText.has(textKey)) continue;
+    if (n.bookingId) {
+      const eventKey = `${n.bookingId}|${n.type}|${n.recipientRole || ''}`;
+      const at = new Date(n.createdAt).getTime() || 0;
+      const prev = lastEventAt.get(eventKey);
+      if (prev !== undefined && at - prev < DUPLICATE_WINDOW_MS) continue;
+      lastEventAt.set(eventKey, at);
+    }
+    seenText.add(textKey);
+    kept.push(n);
+  }
+  return kept.reverse();
 }
 
 export class NotificationsController {
@@ -107,6 +123,7 @@ export class NotificationsController {
       const notifications = dedupe(list).slice(0, LIST_LIMIT).map(({ _id, ...n }: any) => ({
         ...n,
         id: n.id || String(_id),
+        title: cleanNotificationTitle(n.title),
         link: n.link || defaultNotificationLink(scope.role, n.type)
       }));
 
@@ -141,7 +158,7 @@ export class NotificationsController {
         clientName: body.clientName || '',
         recipientRole,
         type: body.type || 'ALERT',
-        title: body.title || 'Notification',
+        title: cleanNotificationTitle(body.title) || 'Notification',
         message: body.message || '',
         link: body.link || defaultNotificationLink(recipientRole === 'THERAPIST' ? 'CONSULTANT' : recipientRole, body.type || ''),
         bookingId: body.bookingId || '',
