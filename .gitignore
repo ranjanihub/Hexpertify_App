@@ -36,3 +36,13 @@ Thumbs.db
 
 # Backups
 backups/
+
+# Vercel entry stubs from the client panel's public/ folder; its build copies them into
+# Backend/public, where they are not used (Live_Panel/public keeps its tracked copies)
+/Backend/public/api/
+/Backend/public/src/
+/Backend/public/app.js
+/Backend/public/server.js
+/Backend/public/index.js
+/Backend/public/index.cjs
+/Backend/public/index.mjs
