@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { redirectToPanel } from "@/lib/panel-redirect";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,14 @@ export function LoginForm({
 
   const [email, setEmail] = useState("sarah.jenkins@example.com");
   const [password, setPassword] = useState("password123");
+
+  // Google sign-in redirects back here with ?google_error=...&message=... when it is refused
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_error")) {
+      setErrorMsg(params.get("message") || "Google sign-in failed. Please try again.");
+    }
+  }, []);
 
   const handleRoleChange = (newRole: "client" | "therapist" | "admin") => {
     setRole(newRole);

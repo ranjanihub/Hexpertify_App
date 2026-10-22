@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { Db, ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { isAdminUser, isInternalRequest } from '../middlewares/auth.middleware';
 import { verifyAuthToken } from '../utils/jwt';
@@ -76,6 +77,35 @@ export function toBasicClient(client: any): any {
     if (client[key] !== undefined) basic[key] = client[key];
   }
   return basic;
+}
+
+/**
+ * Client panel rule: a client's login opens the client panel only after at least one completed session.
+ * Keep in sync with Live_Panel/app/api/auth/login/route.ts.
+ */
+export const CLIENT_PANEL_LOCKED_MESSAGE =
+  'Your client portal opens after your first completed session. Please book a session to get started.';
+
+const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export async function hasCompletedSession(db: Db, email: string, user?: any): Promise<boolean> {
+  const or: any[] = [];
+  if (email) or.push({ clientEmail: { $regex: `^${escapeRx(email)}$`, $options: 'i' } });
+
+  const ids: any[] = [];
+  [user?._id, user?.id, user?.clientId].filter(Boolean).forEach((v) => {
+    ids.push(String(v));
+    if (ObjectId.isValid(String(v))) ids.push(new ObjectId(String(v)));
+  });
+  if (ids.length) or.push({ clientId: { $in: ids } }, { userId: { $in: ids } });
+  if (!or.length) return false;
+
+  const filter = { $and: [{ $or: or }, { status: { $regex: '^completed$', $options: 'i' } }] };
+  for (const name of ['Booking', 'bookings']) {
+    const found = await db.collection(name).findOne(filter, { projection: { _id: 1 } }).catch(() => null);
+    if (found) return true;
+  }
+  return false;
 }
 
 /** Returns the record unchanged for the assigned therapist / the client, basic details for anyone else */

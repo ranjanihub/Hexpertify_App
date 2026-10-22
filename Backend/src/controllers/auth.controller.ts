@@ -5,9 +5,13 @@ import { OAuth2Client } from 'google-auth-library';
 import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
 import { tryIssueAuthToken } from '../utils/jwt';
+import { CLIENT_PANEL_LOCKED_MESSAGE, hasCompletedSession } from '../services/client-access';
 
 // In-memory single-use ticket registry
 const activeTickets = new Map<string, { payload: any; expiresAt: number; used: boolean }>();
+
+/** Thrown by handleVerifiedGoogleProfile when a client has no completed session yet */
+class ClientPanelLockedError extends Error {}
 
 export class AuthController {
   /**
@@ -246,6 +250,12 @@ export class AuthController {
           success: false,
           error: 'Invalid password. Please try again.'
         });
+        return;
+      }
+
+      // The client panel opens only after the client's first completed session
+      if (!(await hasCompletedSession(db, cleanEmail, user))) {
+        res.status(403).json({ success: false, code: 'NO_COMPLETED_SESSION', error: CLIENT_PANEL_LOCKED_MESSAGE });
         return;
       }
 
@@ -605,6 +615,11 @@ export class AuthController {
     let user = await db.collection<any>('User').findOne({ email: cleanEmail }) ||
                await db.collection<any>('users').findOne({ email: cleanEmail });
 
+    // The client panel opens only after the client's first completed session
+    if (!(await hasCompletedSession(db, cleanEmail, user))) {
+      throw new ClientPanelLockedError(CLIENT_PANEL_LOCKED_MESSAGE);
+    }
+
     // Look up assigned therapist or consultation records in Bookings
     const clientBooking = await db.collection<any>('Booking').findOne(
       { $or: [{ clientEmail: cleanEmail }, { clientId: user ? String(user._id || user.id) : '' }] },
@@ -833,6 +848,10 @@ export class AuthController {
       );
       res.redirect(`${hostPrefix}${redirectBase}?sso_ticket=${authResult.ssoTicket}&sso_user=${encodeURIComponent(JSON.stringify(ssoUser))}&google_auth=success`);
     } catch (error: any) {
+      if (error instanceof ClientPanelLockedError) {
+        res.redirect(`${config.frontendUrl || ''}/login?google_error=no_completed_session&message=${encodeURIComponent(error.message)}`);
+        return;
+      }
       res.redirect(`/login?google_error=callback_failed&message=${encodeURIComponent(error?.message || 'Google authentication failed')}`);
     }
   }
@@ -911,6 +930,10 @@ export class AuthController {
         message: 'Google authentication successful.'
       });
     } catch (error: any) {
+      if (error instanceof ClientPanelLockedError) {
+        res.status(403).json({ success: false, code: 'NO_COMPLETED_SESSION', error: error.message });
+        return;
+      }
       res.status(500).json({ success: false, error: error?.message || 'Failed to verify Google token' });
     }
   }

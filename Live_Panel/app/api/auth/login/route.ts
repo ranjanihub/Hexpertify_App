@@ -235,6 +235,36 @@ export async function POST(req: Request) {
       );
     }
 
+    // The client panel opens only after the client's first completed session
+    // (keep in sync with hasCompletedSession in Backend/src/services/client-access.ts)
+    // Raw query: bookings made through the Backend link the client by clientId / clientEmail, not userId
+    const completedSessions = (await prisma.booking.findRaw({
+      filter: {
+        $and: [
+          {
+            $or: [
+              { userId: user.id },
+              { clientId: user.id },
+              { clientEmail: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
+            ],
+          },
+          { status: { $regex: "^completed$", $options: "i" } },
+        ],
+      },
+      options: { limit: 1, projection: { _id: 1 } },
+    })) as unknown as unknown[];
+
+    if (!completedSessions?.length) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "NO_COMPLETED_SESSION",
+          error: "Your client portal opens after your first completed session. Please book a session to get started.",
+        },
+        { status: 403, headers: { "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+
     const latestBooking = user.bookings?.[0];
     const assignedTherapist = latestBooking?.consultant;
 
