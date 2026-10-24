@@ -5,13 +5,8 @@ import * as yup from "yup";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authConfig } from "@/lib/auth";
-import { sendMail } from "@/lib/mail";
+import { callBackend } from "@/lib/backend";
 import { activeServices, isConsultantPublic, isProfessionPublic, lowestPrice as lowestServicePrice } from "@/lib/visibility";
-import {
-  AdminBookingEmailHtml,
-  BookingConfirmationToConsultantHtml,
-  BookingConfirmationToCustomerHtml,
-} from "@/lib/email-templates";
 
 export const getConsultantByIdentifier = cache(async (
   professionIdentifier: string,
@@ -129,22 +124,6 @@ const bookingSchema = yup.object({
   serviceId: yup.string().required("Service ID is required"),
 });
 
-async function callBackend(path: string, body: Record<string, any>) {
-  const baseUrl = process.env.BACKEND_URL;
-  const internalKey = process.env.INTERNAL_API_KEY;
-  if (!baseUrl || !internalKey) {
-    throw new Error("Online payments are not configured. Please contact support.");
-  }
-  const res = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Internal-Key": internalKey },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
-}
-
 /**
  * Step 1: creates a booking awaiting payment and a gateway order for it.
  * The price is resolved on the server from the selected service.
@@ -218,8 +197,8 @@ export const initiateBookingPayment = async (data: any) => {
 };
 
 /**
- * Step 2: verifies the payment with the gateway (via the Backend) and, if this call
- * confirmed the booking, sends the confirmation emails.
+ * Step 2: verifies the payment with the gateway (via the Backend). The Backend confirms the
+ * booking and sends the confirmation emails to the client, the expert and the admins.
  */
 export const confirmBookingPayment = async (paymentId: string, gatewayResponse: Record<string, any> = {}) => {
   try {
@@ -244,85 +223,9 @@ export const confirmBookingPayment = async (paymentId: string, gatewayResponse: 
       },
     });
 
-    // Emails are sent only by whoever confirmed the payment first (this call or the gateway webhook)
-    if (booking && result.newlyConfirmed) {
-      await sendBookingEmails(booking);
-    }
-
     return { success: true, data: booking };
   } catch (err: any) {
     console.error("Confirm booking payment error:", err);
     return { success: false, error: err?.message || "Internal server error" };
   }
 };
-
-async function sendBookingEmails(booking: any) {
-  try {
-    const date = new Date().toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-
-    // 1. To Consultant
-    if (booking.consultant.email) {
-      const consultantHtml = BookingConfirmationToConsultantHtml({
-        consultantName: booking.consultant.name,
-        consultantImage: booking.consultant.photoUrl || undefined,
-        customerName: booking.user.name || "Customer",
-        planName: booking.service.name,
-        date: date,
-      });
-
-      await sendMail({
-        to: booking.consultant.email,
-        subject: "New Booking Received! 🚀",
-        html: consultantHtml,
-      });
-    }
-
-    // 2. To Customer
-    if (booking.user.email) {
-      const customerHtml = BookingConfirmationToCustomerHtml({
-        customerName: booking.user.name || "Customer",
-        consultantName: booking.consultant.name,
-        consultantImage: booking.consultant.photoUrl || undefined,
-        profession: booking.consultant.profession?.name || "Consultant",
-        experience: booking.consultant.experience,
-        planName: booking.service.name,
-        price: booking.amount ?? booking.service.price,
-      });
-
-      await sendMail({
-        to: booking.user.email,
-        subject: "Booking Confirmed! 🎉",
-        html: customerHtml,
-      });
-    }
-
-    // 3. To Admin
-    const adminEmail = process.env.ADMIN_EMAIL || "hexpertifyapp@gmail.com";
-    if (adminEmail) {
-      const adminHtml = AdminBookingEmailHtml({
-        booking: {
-          serviceName: booking.service.name,
-          consultantName: booking.consultant.name,
-          status: "CONFIRMED (PAID)",
-          date: date,
-          userName: booking.user.name || "N/A",
-          userEmail: booking.user.email || "N/A",
-          userPhone: booking.user.phoneNumber || "N/A",
-        },
-      });
-
-      await sendMail({
-        to: adminEmail,
-        subject: "New Booking Alert 🔔",
-        html: adminHtml,
-      });
-    }
-  } catch (emailError) {
-    console.error("Failed to send booking emails:", emailError);
-    // Don't fail the booking if email fails, just log it
-  }
-}

@@ -3,11 +3,7 @@
 import { BookingStatus } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { sendMail } from "@/lib/mail";
-import {
-  BookingConfirmationToCustomerHtml,
-  ConsultationCompletedToCustomerHtml,
-} from "@/lib/email-templates";
+import { backendConfigured, callBackend } from "@/lib/backend";
 
 // ------------------------------------------------------
 // ✅ 1. Get Paginated Bookings
@@ -72,7 +68,9 @@ export async function listBookings(
 }
 
 // ------------------------------------------------------
+// ------------------------------------------------------
 // ✅ 2. Update Booking Status (Approve / Confirm / Cancel)
+// The central Backend applies the change and emails the client, the expert and the admins.
 export async function updateBookingStatus(id: string, status: string) {
   try {
     const allowed: BookingStatus[] = [
@@ -86,13 +84,18 @@ export async function updateBookingStatus(id: string, status: string) {
       return { success: false, message: "Invalid booking status" };
     }
 
-    const previous = await prisma.booking.findUnique({ where: { id }, select: { status: true } });
-    // Re-saving the same status must not resend the status email
-    const statusChanged = previous?.status !== status;
+    if (backendConfigured()) {
+      const { ok, data } = await callBackend(`/api/bookings/${encodeURIComponent(id)}`, { status }, "PUT");
+      if (!ok || !data?.success) {
+        return { success: false, message: data?.error || "Could not update the booking" };
+      }
+    } else {
+      // Local development without the Backend: status changes only, no emails
+      await prisma.booking.update({ where: { id }, data: { status: status as BookingStatus } });
+    }
 
-    const updated = await prisma.booking.update({
+    const updated = await prisma.booking.findUnique({
       where: { id },
-      data: { status: status as BookingStatus },
       include: {
         user: true,
         consultant: {
@@ -103,50 +106,6 @@ export async function updateBookingStatus(id: string, status: string) {
         service: true,
       },
     });
-
-    // Send Email if Confirmed
-    if (statusChanged && status === BookingStatus.CONFIRMED && updated.user.email) {
-      try {
-        const html = BookingConfirmationToCustomerHtml({
-          customerName: updated.user.name || "Customer",
-          consultantName: updated.consultant.name,
-          consultantImage: updated.consultant.photoUrl || undefined,
-          profession: updated.consultant.profession?.name || "Consultant",
-          experience: updated.consultant.experience,
-          planName: updated.service.name,
-          price: updated.service.price,
-          status: "Confirmed",
-        });
-
-        await sendMail({
-          to: updated.user.email,
-          subject: "Booking Confirmed! ✅",
-          html,
-        });
-      } catch (emailError) {
-        console.error("Failed to send confirmation email:", emailError);
-      }
-    }
-
-    // Send Email if Completed
-    if (statusChanged && status === BookingStatus.COMPLETED && updated.user.email) {
-      try {
-        const html = ConsultationCompletedToCustomerHtml({
-          customerName: updated.user.name || "Customer",
-          consultantName: updated.consultant.name,
-          consultantImage: updated.consultant.photoUrl || undefined,
-          appointmentUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://hexpertify.com"}/dashboard/bookings`,
-        });
-
-        await sendMail({
-          to: updated.user.email,
-          subject: "Consultation Completed! 🎉",
-          html,
-        });
-      } catch (emailError) {
-        console.error("Failed to send completion email:", emailError);
-      }
-    }
 
     revalidatePath("/dashboard/bookings");
     revalidatePath("/"); // Revalidate homepage cache

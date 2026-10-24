@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
+import { MailService } from '../services/mail.service';
 
 export class PayoutsController {
   /**
@@ -155,7 +156,46 @@ export class PayoutsController {
     }
   }
 
+  /**
+   * POST /api/admin/payouts — records a released payout (by invoice) and emails the invoice to the therapist and admin.
+   * { action: 'resend-invoice', ... } only re-sends the email. Bodies with a payout id update that payout record.
+   */
   static async releasePayout(req: Request, res: Response): Promise<void> {
-    return PayoutsController.update(req, res);
+    const body = req.body || {};
+    if (!body.invoiceNumber) return PayoutsController.update(req, res);
+    try {
+      const invoice = {
+        invoiceNumber: String(body.invoiceNumber),
+        payoutDate: String(body.payoutDate || new Date().toISOString().split('T')[0]),
+        therapistName: String(body.therapistName || 'Therapist'),
+        therapistEmail: String(body.therapistEmail || '').toLowerCase().trim(),
+        profession: String(body.profession || ''),
+        sessionsCount: Number(body.sessionsCount) || (Array.isArray(body.sessions) ? body.sessions.length : 0),
+        grossAmount: Number(body.grossAmount) || 0,
+        platformFee: Number(body.platformFee) || 0,
+        netPayout: Number(body.netPayout) || 0,
+        paymentMethod: String(body.paymentMethod || ''),
+        accountNumber: String(body.accountNumber || ''),
+        transactionRef: String(body.transactionRef || ''),
+        sessions: Array.isArray(body.sessions) ? body.sessions : []
+      };
+
+      if (body.action !== 'resend-invoice') {
+        const db = getDatabase();
+        const now = new Date();
+        // Invoices live apart from the per-therapist Payout records the list above is built from
+        await db.collection('PayoutInvoice').updateOne(
+          { invoiceNumber: invoice.invoiceNumber },
+          { $set: { ...invoice, sessionIds: body.sessionIds || [], releasedBy: req.user?.email || '', updatedAt: now }, $setOnInsert: { createdAt: now } },
+          { upsert: true }
+        );
+        cacheService.invalidateTags(['payouts', 'stats']);
+      }
+
+      const mail = await MailService.sendPayoutInvoice(invoice);
+      res.json({ success: true, emailed: mail.success, message: 'Payout invoice recorded and emailed' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Failed to release payout' });
+    }
   }
 }

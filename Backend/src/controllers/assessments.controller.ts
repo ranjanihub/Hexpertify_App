@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { canViewFullClient, resolveClientViewer } from '../services/client-access';
+import { emailNotification } from '../services/notification.service';
 
 /** Results (scores, severity, answers, notes) are clinical details: only the assigned therapist and the client see them */
 const SUBMISSION_RESULT_FIELDS = ['score', 'totalScore', 'maxScore', 'severity', 'severityLabel', 'severityColor', 'flaggedRisk', 'answers', 'responses', 'notes', 'interpretation'];
@@ -319,19 +320,21 @@ export class AssessmentsController {
         await db.collection('users').updateOne(userFilter, { $push: { assessmentScores: scoreItem } } as any).catch(() => {});
       }
 
-      // In-app notification for the therapist
+      // In-app notification and email for the therapist
       try {
-        await db.collection('Notification').insertOne({
+        const alert = {
           id: `NOTIF-${Date.now().toString().slice(-6)}-ASC`,
           recipientId: consultantId,
-          recipientRole: 'CONSULTANT',
+          recipientRole: 'CONSULTANT' as const,
           type: 'ASSESSMENT_COMPLETED',
           title: `New Assessment Completed: ${clientName} 📋`,
           message: `${clientName} completed the ${type} assessment. Score: ${totalScore}/${maxScore} (${severityLabel}).`,
           read: false,
           createdAt: new Date(),
           updatedAt: new Date()
-        });
+        };
+        await db.collection('Notification').insertOne({ ...alert });
+        await emailNotification(alert);
       } catch {}
 
       res.status(201).json({
@@ -394,8 +397,9 @@ export class AssessmentsController {
           updatedAt: new Date()
         };
 
-        await db.collection('Notification').insertOne(notifDoc);
-        await db.collection('notifications').insertOne(notifDoc).catch(() => {});
+        await db.collection('Notification').insertOne({ ...notifDoc });
+        await db.collection('notifications').insertOne({ ...notifDoc }).catch(() => {});
+        await emailNotification({ ...notifDoc, recipientRole: 'CLIENT' });
       } catch (err) {
         console.error('Failed to create assessment assignment notification:', err);
       }

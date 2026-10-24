@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
+import { emailNotification } from '../services/notification.service';
 
 const DEFAULT_SEED_ACTIVITIES = [
   {
@@ -795,8 +796,9 @@ export class ActivitiesController {
       }
 
       if (notificationsToInsert.length > 0) {
-        await db.collection('Notification').insertMany(notificationsToInsert).catch(() => {});
-        await db.collection('notifications').insertMany(notificationsToInsert).catch(() => {});
+        await db.collection('Notification').insertMany(notificationsToInsert.map((n) => ({ ...n }))).catch(() => {});
+        await db.collection('notifications').insertMany(notificationsToInsert.map((n) => ({ ...n }))).catch(() => {});
+        await Promise.allSettled(notificationsToInsert.map((n) => emailNotification({ ...n, recipientRole: 'CLIENT' })));
       }
 
       cacheService.invalidateTags(['activities', 'stats', 'users']);

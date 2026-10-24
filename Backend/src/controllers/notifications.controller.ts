@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { ClientViewer, resolveClientViewer } from '../services/client-access';
 import {
-  cleanNotificationTitle, defaultNotificationLink, DUPLICATE_WINDOW_MS, newNotificationId, NotificationRole
+  cleanNotificationTitle, defaultNotificationLink, DUPLICATE_WINDOW_MS, emailNotification, newNotificationId, NotificationRole
 } from '../services/notification.service';
 
 const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -176,6 +176,14 @@ export class NotificationsController {
 
       const result = await db.collection('Notification').insertOne(newNotification);
       await db.collection('notifications').insertOne(newNotification).catch(() => {});
+
+      // Signed-in users' requests (custom slot, therapist switch) also reach the recipient by email
+      if (req.user || req.isInternal) {
+        await emailNotification({
+          ...newNotification,
+          recipientRole: (recipientRole === 'THERAPIST' ? 'CONSULTANT' : recipientRole) as NotificationRole
+        });
+      }
 
       res.status(201).json({
         success: true,

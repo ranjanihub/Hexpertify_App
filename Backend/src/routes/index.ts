@@ -22,6 +22,7 @@ import activitiesRoutes from './activities.routes';
 import blogRoutes from './blog.routes';
 import dashboardRoutes from './dashboard.routes';
 import logsRoutes from './logs.routes';
+import emailsRoutes from './emails.routes';
 
 const router = Router();
 
@@ -116,6 +117,8 @@ router.use('/push', pushRoutes);
 
 router.use('/payments', paymentsRoutes);
 router.use('/admin/payments', paymentsRoutes);
+
+router.use('/emails', emailsRoutes);
 
 router.use('/payouts', payoutsRoutes);
 router.use('/admin/payouts', payoutsRoutes);

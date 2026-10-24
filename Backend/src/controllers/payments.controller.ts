@@ -111,9 +111,7 @@ export class PaymentsController {
       const result = await provider.verifyPayment(payment, gatewayResponse);
 
       if (result.status === 'PAID') {
-        // The live website sends its own branded emails when it calls us with the internal key
-        const dispatchNotifications = !(payment.bookingSource === 'live' && req.isInternal);
-        const { newlyConfirmed } = await finalizePayment(payment, result, { dispatchNotifications });
+        const { newlyConfirmed } = await finalizePayment(payment, result);
         res.json({
           success: true,
           status: 'PAID',

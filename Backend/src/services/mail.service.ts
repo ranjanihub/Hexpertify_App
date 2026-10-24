@@ -1,5 +1,25 @@
 import nodemailer from 'nodemailer';
 import { getDatabase } from '../db/mongodb';
+import {
+  button,
+  callout,
+  details,
+  emailLayout,
+  esc,
+  heading,
+  paragraph,
+  personCard,
+  portalUrl,
+  raw,
+  Row,
+  rupees,
+  statusTracker,
+  textRows,
+  toneText,
+  WEBSITE_URL
+} from './email-layout';
+
+export { portalUrl } from './email-layout';
 
 export interface BookingEmailPayload {
   clientName: string;
@@ -18,41 +38,49 @@ export interface BookingEmailPayload {
   reason?: string;
   adminEmail?: string;
   therapistEmail?: string;
+  /** Website bookings are paid first; the team fixes the time afterwards */
+  toBeScheduled?: boolean;
+  amountPaid?: number;
+  consultantPhoto?: string;
+  consultantProfession?: string;
+  consultantExperience?: number;
+  /** Who cancelled, for the admin and therapist emails */
+  cancelledBy?: 'client' | 'therapist' | 'admin';
 }
 
-/** Absolute link into the panels: PORTAL_URL, else this Vercel project's domain, else local dev */
-export function portalUrl(path: string): string {
-  const base = process.env.PORTAL_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:5000');
-  return `${base.replace(/\/$/, '')}${path}`;
+export type MailResult = { success: boolean; error?: string; messageId?: string };
+
+/** Placeholder written on bookings that have no real meeting room yet */
+const PLACEHOLDER_MEETING_LINK = 'https://meet.google.com/hex-pert-ify';
+
+function meetingLinkOf(link?: string): string {
+  return link && /^https?:\/\//.test(link) && link !== PLACEHOLDER_MEETING_LINK ? link : '';
 }
 
-/** Shared layout for the short status emails */
-function statusEmailHtml(opts: { accent: string; subtitle: string; greeting: string; intro: string; rows: [string, string][]; ctaUrl?: string; ctaLabel?: string; outro?: string }): string {
-  const rows = opts.rows
-    .map(([label, value]) => `<tr><td style="padding:8px 0;color:#64748b;font-weight:600;font-size:14px;border-bottom:1px solid #f1f5f9;">${label}</td><td style="padding:8px 0;color:#0f172a;font-weight:700;font-size:14px;text-align:right;border-bottom:1px solid #f1f5f9;">${value}</td></tr>`)
-    .join('');
-  return `
-<!DOCTYPE html>
-<html>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background-color:#f8fafc;margin:0;padding:0;">
-  <div style="max-width:600px;margin:20px auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e2e8f0;">
-    <div style="background:${opts.accent};padding:32px 24px;text-align:center;color:#ffffff;">
-      <h1 style="margin:0 0 8px;font-size:24px;font-weight:800;">Hexpertify Therapy</h1>
-      <p style="margin:0;font-size:14px;opacity:0.9;">${opts.subtitle}</p>
-    </div>
-    <div style="padding:32px 24px;color:#1e293b;">
-      <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#0f172a;">${opts.greeting}</div>
-      <p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:20px;">${opts.intro}</p>
-      <table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px 20px;margin-bottom:24px;">${rows}</table>
-      ${opts.outro ? `<p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:20px;">${opts.outro}</p>` : ''}
-      ${opts.ctaUrl ? `<div style="text-align:center;margin:24px 0;"><a href="${opts.ctaUrl}" target="_blank" style="display:inline-block;background-color:#5e2be2;color:#ffffff;font-size:15px;font-weight:700;padding:14px 32px;border-radius:12px;text-decoration:none;">${opts.ctaLabel}</a></div>` : ''}
-    </div>
-    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 24px;text-align:center;font-size:12px;color:#94a3b8;"><p>© 2026 Hexpertify Healthcare. All rights reserved.</p></div>
-  </div>
-</body>
-</html>`;
+export function adminAlertEmail(): string {
+  return process.env.ADMIN_ALERT_EMAIL || process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.AUTH_EMAIL || 'admin@hexpertify.com';
 }
+
+function firstName(name: string): string {
+  return String(name || '').trim().split(/\s+/)[0] || 'there';
+}
+
+/** Session rows shared by the booking emails */
+function sessionRows(p: BookingEmailPayload, extra: Row[] = []): Row[] {
+  const when: Row[] = p.toBeScheduled
+    ? [['Date & time', 'Our team will share slots with you']]
+    : [['Date', p.scheduledDate], ['Time', p.scheduledTime]];
+  return [
+    ['Expert', p.consultantName],
+    ['Service', p.serviceTitle],
+    ...when,
+    ['Duration', p.durationMinutes ? `${p.durationMinutes} minutes` : undefined],
+    ...extra,
+    ['Booking ID', p.bookingId]
+  ];
+}
+
+const whenText = (p: BookingEmailPayload) => (p.toBeScheduled ? 'a time our team will confirm with you' : `${p.scheduledDate} at ${p.scheduledTime}`);
 
 export class MailService {
   private static transporter: nodemailer.Transporter | null = null;
@@ -75,616 +103,469 @@ export class MailService {
     return this.transporter;
   }
 
-  /**
-   * 1. Send Booking Confirmation Email to Client
-   */
-  static async sendBookingConfirmation(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  /** Sends (when SMTP is configured) and records the email in EmailLog; never throws */
+  private static async deliver(m: { to: string; toName: string; subject: string; html: string; text: string; ref?: string; logSubject?: string }): Promise<MailResult> {
     try {
-      if (!payload.clientEmail) {
-        return { success: false, error: 'No client email provided' };
-      }
-
-      const transporter = this.getTransporter();
-      const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>';
-      const meetingUrl = payload.meetingLink || 'https://meet.google.com/hex-pert-ify';
-
-      const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { background: linear-gradient(135deg, #5e2be2 0%, #7c3aed 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
-    .content { padding: 32px 24px; color: #1e293b; }
-    .details-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 24px; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #64748b; font-weight: 600; }
-    .detail-value { color: #0f172a; font-weight: 700; text-align: right; }
-    .cta-button { display: inline-block; background-color: #5e2be2; color: #ffffff !important; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(94, 43, 226, 0.35); }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 12px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Hexpertify Therapy</h1>
-      <p style="margin:0; font-size: 14px; opacity: 0.9;">Your session has been successfully confirmed</p>
-    </div>
-    <div class="content">
-      <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #0f172a;">Hi ${payload.clientName},</div>
-      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
-        Great news! Your consultation session with <strong>${payload.consultantName}</strong> is confirmed. Here are your appointment details:
-      </p>
-
-      <div class="details-box">
-        <div class="detail-row">
-          <span class="detail-label">Therapist:</span>
-          <span class="detail-value">${payload.consultantName}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Modality:</span>
-          <span class="detail-value">${payload.serviceTitle}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Date:</span>
-          <span class="detail-value">${payload.scheduledDate}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Time:</span>
-          <span class="detail-value">${payload.scheduledTime}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Duration:</span>
-          <span class="detail-value">${payload.durationMinutes} Minutes</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Booking Reference:</span>
-          <span class="detail-value">${payload.bookingId || 'CONFIRMED'}</span>
-        </div>
-      </div>
-
-      <div style="text-align: center; margin: 28px 0;">
-        <a href="${meetingUrl}" class="cta-button" target="_blank">Join Video Session</a>
-      </div>
-    </div>
-    <div class="footer">
-      <p>© 2026 Hexpertify Healthcare. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>
-      `;
-
+      if (!m.to) return { success: false, error: 'No recipient email provided' };
       let messageId = `msg-${Date.now()}`;
       if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-        const info = await transporter.sendMail({
-          from: fromAddress,
-          to: payload.clientEmail,
-          subject: `Session Confirmed: ${payload.serviceTitle} with ${payload.consultantName} 📅`,
-          html: emailHtml,
-          text: `Hi ${payload.clientName}, your session "${payload.serviceTitle}" with ${payload.consultantName} is confirmed for ${payload.scheduledDate} at ${payload.scheduledTime}.`
+        const info = await this.getTransporter().sendMail({
+          from: process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify" <support@hexpertify.com>',
+          to: m.to,
+          subject: m.subject,
+          html: m.html,
+          text: m.text
         });
         messageId = info.messageId;
       }
-
-      await this.logEmail(payload.clientEmail, payload.clientName, `Session Confirmed: ${payload.serviceTitle}`, payload.bookingId, messageId);
+      await this.logEmail(m.to, m.toName, m.logSubject || m.subject, m.ref, messageId);
       return { success: true, messageId };
     } catch (error: any) {
-      console.error('❌ [MailService] sendBookingConfirmation failed:', error);
+      console.error(`❌ [MailService] "${m.subject}" to ${m.to} failed:`, error);
       return { success: false, error: error?.message || 'Mail dispatch failed' };
     }
   }
 
   /**
-   * 2. Send New Booking Alert Email to Therapist
+   * Booking confirmed (paid) — to the client
    */
-  static async sendTherapistNewBookingAlert(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
-    try {
-      const recipient = payload.therapistEmail || payload.consultantEmail || process.env.THERAPIST_ALERT_EMAIL || 'sadaf.bhimani@hexpertify.com';
-      const transporter = this.getTransporter();
-      const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Portal" <support@hexpertify.com>';
-      const dashboardUrl = portalUrl('/consultant/calendar');
-
-      const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
-    .content { padding: 32px 24px; color: #1e293b; }
-    .details-box { background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 16px; padding: 20px; margin-bottom: 24px; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #d1fae5; font-size: 14px; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #065f46; font-weight: 600; }
-    .detail-value { color: #064e3b; font-weight: 700; text-align: right; }
-    .cta-button { display: inline-block; background-color: #059669; color: #ffffff !important; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35); }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 12px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>New Appointment Booked 🩺</h1>
-      <p style="margin:0; font-size: 14px; opacity: 0.95;">A client has scheduled a consultation with you</p>
-    </div>
-    <div class="content">
-      <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #0f172a;">Hello ${payload.consultantName},</div>
-      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
-        You have a new therapy session booking from <strong>${payload.clientName}</strong>. Here are the session details:
-      </p>
-
-      <div class="details-box">
-        <div class="detail-row">
-          <span class="detail-label">Client Name:</span>
-          <span class="detail-value">${payload.clientName}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Client Email:</span>
-          <span class="detail-value">${payload.clientEmail}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Modality:</span>
-          <span class="detail-value">${payload.serviceTitle}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Appointment Date:</span>
-          <span class="detail-value">${payload.scheduledDate}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Appointment Time:</span>
-          <span class="detail-value">${payload.scheduledTime}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Duration:</span>
-          <span class="detail-value">${payload.durationMinutes} Minutes</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Booking Reference:</span>
-          <span class="detail-value">${payload.bookingId || 'CONFIRMED'}</span>
-        </div>
-      </div>
-
-      <div style="text-align: center; margin: 28px 0;">
-        <a href="${dashboardUrl}" class="cta-button" target="_blank">View in Therapist Calendar</a>
-      </div>
-    </div>
-    <div class="footer">
-      <p>© 2026 Hexpertify Healthcare Ecosystem. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>
-      `;
-
-      let messageId = `msg-th-${Date.now()}`;
-      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-        const info = await transporter.sendMail({
-          from: fromAddress,
-          to: recipient,
-          subject: `New Session Booked: ${payload.clientName} on ${payload.scheduledDate} at ${payload.scheduledTime} 🩺`,
-          html: emailHtml,
-          text: `Hello ${payload.consultantName}, ${payload.clientName} (${payload.clientEmail}) has booked a "${payload.serviceTitle}" consultation on ${payload.scheduledDate} at ${payload.scheduledTime}.`
-        });
-        messageId = info.messageId;
-      }
-
-      await this.logEmail(recipient, payload.consultantName, `Therapist Alert: New Booking by ${payload.clientName}`, payload.bookingId, messageId);
-      return { success: true, messageId };
-    } catch (error: any) {
-      console.error('❌ [MailService] sendTherapistNewBookingAlert failed:', error);
-      return { success: false, error: error?.message || 'Mail dispatch failed' };
-    }
+  static async sendBookingConfirmation(p: BookingEmailPayload): Promise<MailResult> {
+    const join = meetingLinkOf(p.meetingLink);
+    const rows = sessionRows(p, [['Amount paid', p.amountPaid ? rupees(p.amountPaid) : undefined]]);
+    const html = emailLayout({
+      preheader: p.toBeScheduled
+        ? `Your consultation with ${p.consultantName} is booked. We'll share time slots shortly.`
+        : `Your session with ${p.consultantName} is on ${p.scheduledDate} at ${p.scheduledTime}.`,
+      headline: 'Woohoo! You\'re booked',
+      illustration: 'rocket',
+      intro: `Dear <strong class="tx">${esc(p.clientName)}</strong>,<br><br>Thank you for booking your consultation with Hexpertify. ` +
+        (p.toBeScheduled
+          ? 'Our team will contact you with the available slots shortly.'
+          : `Your session with <strong class="tx">${esc(p.consultantName)}</strong> is confirmed.`),
+      body: [
+        heading('Expert details'),
+        personCard({
+          name: p.consultantName,
+          photoUrl: p.consultantPhoto,
+          lines: [
+            p.consultantProfession,
+            p.consultantExperience ? `Experience: ${p.consultantExperience} years` : undefined,
+            `Plan: ${p.serviceTitle}`
+          ]
+        }),
+        statusTracker(2, `Your session with <strong class="tx">${esc(p.consultantName)}</strong> is confirmed.`),
+        heading('Session details'),
+        details(rows),
+        join ? button(join, 'Join video session') : paragraph('We\'ll email you the joining link before your session.')
+      ],
+      reason: 'You are receiving this email because you booked a consultation with Hexpertify.'
+    });
+    return this.deliver({
+      to: p.clientEmail,
+      toName: p.clientName,
+      subject: `Booking confirmed: ${p.serviceTitle} with ${p.consultantName} 🎉`,
+      logSubject: `Session Confirmed: ${p.serviceTitle}`,
+      html,
+      text: `Hi ${p.clientName}, your "${p.serviceTitle}" consultation with ${p.consultantName} is confirmed for ${whenText(p)}.\n\n${textRows(rows)}${join ? `\n\nJoin: ${join}` : ''}`,
+      ref: p.bookingId
+    });
   }
 
   /**
-   * 3. Send New Booking Alert Email to Super Admin
+   * New booking — to the therapist
    */
-  static async sendAdminNewBookingAlert(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
-    try {
-      const adminRecipient = payload.adminEmail || process.env.ADMIN_ALERT_EMAIL || process.env.SMTP_USER || 'admin@hexpertify.com';
-      const transporter = this.getTransporter();
-      const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Central" <support@hexpertify.com>';
-      const adminUrl = portalUrl('/admin/bookings');
-
-      const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
-    .content { padding: 32px 24px; color: #1e293b; }
-    .details-box { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 16px; padding: 20px; margin-bottom: 24px; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #475569; font-weight: 600; }
-    .detail-value { color: #0f172a; font-weight: 700; text-align: right; }
-    .cta-button { display: inline-block; background-color: #4338ca; color: #ffffff !important; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(67, 56, 202, 0.35); }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 12px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Hexpertify Admin Notification</h1>
-      <p style="margin:0; font-size: 14px; opacity: 0.95;">New Patient Appointment Created</p>
-    </div>
-    <div class="content">
-      <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #0f172a;">Platform Activity Alert:</div>
-      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
-        A new clinical session booking has been placed on the Hexpertify platform:
-      </p>
-
-      <div class="details-box">
-        <div class="detail-row">
-          <span class="detail-label">Therapist:</span>
-          <span class="detail-value">${payload.consultantName}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Client Name:</span>
-          <span class="detail-value">${payload.clientName}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Client Email:</span>
-          <span class="detail-value">${payload.clientEmail}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Modality:</span>
-          <span class="detail-value">${payload.serviceTitle}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Session Date:</span>
-          <span class="detail-value">${payload.scheduledDate}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Session Time:</span>
-          <span class="detail-value">${payload.scheduledTime}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Booking ID:</span>
-          <span class="detail-value">${payload.bookingId || 'CONFIRMED'}</span>
-        </div>
-      </div>
-
-      <div style="text-align: center; margin: 28px 0;">
-        <a href="${adminUrl}" class="cta-button" target="_blank">Manage in Super Admin Panel</a>
-      </div>
-    </div>
-    <div class="footer">
-      <p>© 2026 Hexpertify Central Administration. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>
-      `;
-
-      let messageId = `msg-ad-${Date.now()}`;
-      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-        const info = await transporter.sendMail({
-          from: fromAddress,
-          to: adminRecipient,
-          subject: `Admin Alert: New Booking - ${payload.clientName} with ${payload.consultantName} `,
-          html: emailHtml,
-          text: `Admin Alert: ${payload.clientName} booked a session with ${payload.consultantName} on ${payload.scheduledDate} at ${payload.scheduledTime}.`
-        });
-        messageId = info.messageId;
-      }
-
-      await this.logEmail(adminRecipient, 'Super Administrator', `Admin Alert: New Booking by ${payload.clientName}`, payload.bookingId, messageId);
-      return { success: true, messageId };
-    } catch (error: any) {
-      console.error('❌ [MailService] sendAdminNewBookingAlert failed:', error);
-      return { success: false, error: error?.message || 'Mail dispatch failed' };
-    }
+  static async sendTherapistNewBookingAlert(p: BookingEmailPayload): Promise<MailResult> {
+    const to = p.therapistEmail || p.consultantEmail || process.env.THERAPIST_ALERT_EMAIL || '';
+    const rows: Row[] = [
+      ['Client', p.clientName],
+      ['Client email', p.clientEmail],
+      ['Client phone', p.clientPhone],
+      ...sessionRows(p).filter(([label]) => label !== 'Expert')
+    ];
+    const html = emailLayout({
+      preheader: `${p.clientName} booked "${p.serviceTitle}" for ${whenText(p)}.`,
+      headline: 'New booking received',
+      illustration: 'rocket',
+      intro: `Hi <strong class="tx">${esc(firstName(p.consultantName))}</strong>,<br><br><strong class="tx">${esc(p.clientName)}</strong> has booked a consultation with you.` +
+        (p.toBeScheduled ? ' Our team will coordinate the time with you and the client.' : ''),
+      body: [details(rows), button(portalUrl('/consultant/calendar'), 'Open my calendar')],
+      reason: 'You are receiving this email because a client booked a session with you on Hexpertify.'
+    });
+    return this.deliver({
+      to,
+      toName: p.consultantName,
+      subject: `New booking: ${p.clientName}${p.toBeScheduled ? '' : ` on ${p.scheduledDate} at ${p.scheduledTime}`} 🚀`,
+      logSubject: `Therapist Alert: New Booking by ${p.clientName}`,
+      html,
+      text: `Hi ${p.consultantName}, ${p.clientName} booked "${p.serviceTitle}" with you for ${whenText(p)}.\n\n${textRows(rows)}`,
+      ref: p.bookingId
+    });
   }
 
   /**
-   * 4. Send Booking Rescheduled Email to Client
+   * New booking — to the admins
    */
-  static async sendBookingRescheduled(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
-    try {
-      if (!payload.clientEmail) {
-        return { success: false, error: 'No client email provided' };
-      }
-
-      const transporter = this.getTransporter();
-      const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>';
-      const meetingUrl = payload.meetingLink || 'https://meet.google.com/hex-pert-ify';
-
-      const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
-    .content { padding: 32px 24px; color: #1e293b; }
-    .details-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 24px; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #64748b; font-weight: 600; }
-    .detail-value { color: #0f172a; font-weight: 700; text-align: right; }
-    .cta-button { display: inline-block; background-color: #4f46e5; color: #ffffff !important; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 12px; text-decoration: none; }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 12px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Hexpertify Therapy</h1>
-      <p style="margin:0; font-size: 14px; opacity: 0.9;">Your session schedule has been updated</p>
-    </div>
-    <div class="content">
-      <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #0f172a;">Hi ${payload.clientName},</div>
-      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
-        Your consultation session with <strong>${payload.consultantName}</strong> has been rescheduled. Here is your updated schedule:
-      </p>
-
-      <div class="details-box">
-        <div class="detail-row">
-          <span class="detail-label">Therapist:</span>
-          <span class="detail-value">${payload.consultantName}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Modality:</span>
-          <span class="detail-value">${payload.serviceTitle}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">New Date:</span>
-          <span class="detail-value" style="color: #4f46e5;">${payload.scheduledDate}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">New Time:</span>
-          <span class="detail-value" style="color: #4f46e5;">${payload.scheduledTime}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Duration:</span>
-          <span class="detail-value">${payload.durationMinutes} Minutes</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Booking Reference:</span>
-          <span class="detail-value">${payload.bookingId || 'RESCHEDULED'}</span>
-        </div>
-      </div>
-
-      <div style="text-align: center; margin: 28px 0;">
-        <a href="${meetingUrl}" class="cta-button" target="_blank">Join Video Session</a>
-      </div>
-    </div>
-    <div class="footer">
-      <p>© 2026 Hexpertify Healthcare. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>
-      `;
-
-      let messageId = `msg-${Date.now()}`;
-      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-        const info = await transporter.sendMail({
-          from: fromAddress,
-          to: payload.clientEmail,
-          subject: `Session Rescheduled: ${payload.serviceTitle} with ${payload.consultantName} 🕒`,
-          html: emailHtml,
-          text: `Hi ${payload.clientName}, your session with ${payload.consultantName} has been rescheduled to ${payload.scheduledDate} at ${payload.scheduledTime}.`
-        });
-        messageId = info.messageId;
-      }
-
-      await this.logEmail(payload.clientEmail, payload.clientName, `Session Rescheduled: ${payload.serviceTitle}`, payload.bookingId, messageId);
-      return { success: true, messageId };
-    } catch (error: any) {
-      console.error('❌ [MailService] sendBookingRescheduled failed:', error);
-      return { success: false, error: error?.message || 'Mail dispatch failed' };
-    }
+  static async sendAdminNewBookingAlert(p: BookingEmailPayload): Promise<MailResult> {
+    const rows: Row[] = [
+      ['Client', p.clientName],
+      ['Client email', p.clientEmail],
+      ['Client phone', p.clientPhone],
+      ...sessionRows(p, [['Amount paid', p.amountPaid ? rupees(p.amountPaid) : undefined]]),
+      ['Status', toneText('Confirmed (paid)', 'success')]
+    ];
+    const html = emailLayout({
+      preheader: `${p.clientName} booked ${p.consultantName}.`,
+      headline: 'New booking alert',
+      intro: `A new consultation was booked on Hexpertify.${p.toBeScheduled ? ' <strong class="tx">The client is waiting for time slots.</strong>' : ''}`,
+      body: [details(rows), button(portalUrl('/admin/bookings'), 'Manage bookings')],
+      reason: 'You are receiving this email because you are a Hexpertify administrator.'
+    });
+    return this.deliver({
+      to: p.adminEmail || adminAlertEmail(),
+      toName: 'Super Administrator',
+      subject: `New booking: ${p.clientName} with ${p.consultantName} 🔔`,
+      logSubject: `Admin Alert: New Booking by ${p.clientName}`,
+      html,
+      text: `${p.clientName} booked ${p.consultantName} for ${whenText(p)}.\n\n${textRows(rows)}`,
+      ref: p.bookingId
+    });
   }
 
   /**
-   * 5. Send Booking Cancellation Email to Client
+   * Session rescheduled — to the client
    */
-  static async sendBookingCancellation(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
-    try {
-      if (!payload.clientEmail) {
-        return { success: false, error: 'No client email provided' };
-      }
+  static async sendBookingRescheduled(p: BookingEmailPayload): Promise<MailResult> {
+    const join = meetingLinkOf(p.meetingLink);
+    const rows = sessionRows(p, [
+      ['Previous slot', p.oldDate ? `${p.oldDate}${p.oldTime ? ` at ${p.oldTime}` : ''}` : undefined]
+    ]).map(([l, v]): Row => (l === 'Date' || l === 'Time') ? [`New ${l.toLowerCase()}`, toneText(String(v), 'brand')] : [l, v]);
+    const html = emailLayout({
+      preheader: `Your session with ${p.consultantName} is now on ${p.scheduledDate} at ${p.scheduledTime}.`,
+      headline: 'Your session has moved',
+      intro: `Hi <strong class="tx">${esc(p.clientName)}</strong>,<br><br>Your consultation with <strong class="tx">${esc(p.consultantName)}</strong> has been rescheduled. Here is your updated schedule.`,
+      body: [details(rows), join ? button(join, 'Join video session') : button(portalUrl('/client/sessions'), 'View my sessions')],
+      reason: 'You are receiving this email because you have a session booked on Hexpertify.'
+    });
+    return this.deliver({
+      to: p.clientEmail,
+      toName: p.clientName,
+      subject: `Session rescheduled: ${p.scheduledDate} at ${p.scheduledTime} 🕒`,
+      logSubject: `Session Rescheduled: ${p.serviceTitle}`,
+      html,
+      text: `Hi ${p.clientName}, your session with ${p.consultantName} has been rescheduled to ${p.scheduledDate} at ${p.scheduledTime}.\n\n${textRows(rows)}`,
+      ref: p.bookingId
+    });
+  }
 
-      const transporter = this.getTransporter();
-      const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>';
-      const sessionsUrl = portalUrl('/client/sessions');
+  /**
+   * Session rescheduled — to the therapist
+   */
+  static async sendTherapistRescheduledAlert(p: BookingEmailPayload): Promise<MailResult> {
+    const to = p.therapistEmail || p.consultantEmail || '';
+    const rows: Row[] = [
+      ['Client', p.clientName],
+      ['Service', p.serviceTitle],
+      ['Previous slot', p.oldDate ? `${p.oldDate}${p.oldTime ? ` at ${p.oldTime}` : ''}` : undefined],
+      ['New date', toneText(p.scheduledDate, 'brand')],
+      ['New time', toneText(p.scheduledTime, 'brand')],
+      ['Booking ID', p.bookingId]
+    ];
+    const html = emailLayout({
+      preheader: `${p.clientName}'s session is now on ${p.scheduledDate} at ${p.scheduledTime}.`,
+      headline: 'A session was rescheduled',
+      intro: `Hi <strong class="tx">${esc(firstName(p.consultantName))}</strong>,<br><br><strong class="tx">${esc(p.clientName)}</strong>'s session has moved to a new time.`,
+      body: [details(rows), button(portalUrl('/consultant/calendar'), 'Open my calendar')],
+      reason: 'You are receiving this email because you have a session booked on Hexpertify.'
+    });
+    return this.deliver({
+      to,
+      toName: p.consultantName,
+      subject: `Rescheduled: ${p.clientName} is now on ${p.scheduledDate} at ${p.scheduledTime} 🕒`,
+      html,
+      text: `Hi ${p.consultantName}, ${p.clientName}'s "${p.serviceTitle}" session is now on ${p.scheduledDate} at ${p.scheduledTime}.`,
+      ref: p.bookingId
+    });
+  }
 
-      const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
-    .content { padding: 32px 24px; color: #1e293b; }
-    .details-box { background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 16px; padding: 20px; margin-bottom: 24px; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ffe4e6; font-size: 14px; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #9f1239; font-weight: 600; }
-    .detail-value { color: #881337; font-weight: 700; text-align: right; }
-    .cta-button { display: inline-block; background-color: #5e2be2; color: #ffffff !important; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 12px; text-decoration: none; }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 12px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Hexpertify Therapy</h1>
-      <p style="margin:0; font-size: 14px; opacity: 0.9;">Session Cancellation Notice</p>
-    </div>
-    <div class="content">
-      <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #0f172a;">Hi ${payload.clientName},</div>
-      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
-        This is to notify you that your consultation session with <strong>${payload.consultantName}</strong> has been cancelled.
-      </p>
+  /**
+   * Session cancelled — to the client
+   */
+  static async sendBookingCancellation(p: BookingEmailPayload): Promise<MailResult> {
+    const rows = sessionRows(p, [['Status', toneText('Cancelled', 'danger')]]);
+    const html = emailLayout({
+      preheader: `Your session with ${p.consultantName} on ${whenText(p)} was cancelled.`,
+      headline: 'Session cancelled',
+      intro: `Hi <strong class="tx">${esc(p.clientName)}</strong>,<br><br>Your consultation with <strong class="tx">${esc(p.consultantName)}</strong> has been cancelled.`,
+      body: [
+        details(rows),
+        ...(p.reason ? [callout(`<strong>Reason:</strong> ${esc(p.reason)}`, 'danger')] : []),
+        paragraph('If you paid for this session, any refund is processed to your original payment method and we\'ll email you once it is on its way. You can book another time whenever you are ready.'),
+        button(`${WEBSITE_URL}`, 'Book a new session')
+      ],
+      reason: 'You are receiving this email because you had a session booked on Hexpertify.'
+    });
+    return this.deliver({
+      to: p.clientEmail,
+      toName: p.clientName,
+      subject: `Session cancelled: ${p.serviceTitle} with ${p.consultantName}`,
+      logSubject: `Session Cancelled: ${p.serviceTitle}`,
+      html,
+      text: `Hi ${p.clientName}, your "${p.serviceTitle}" session with ${p.consultantName} on ${whenText(p)} has been cancelled.${p.reason ? ` Reason: ${p.reason}` : ''}`,
+      ref: p.bookingId
+    });
+  }
 
-      <div class="details-box">
-        <div class="detail-row">
-          <span class="detail-label">Therapist:</span>
-          <span class="detail-value">${payload.consultantName}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Modality:</span>
-          <span class="detail-value">${payload.serviceTitle}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Cancelled Session Date:</span>
-          <span class="detail-value">${payload.scheduledDate}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Cancelled Session Time:</span>
-          <span class="detail-value">${payload.scheduledTime}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Booking Reference:</span>
-          <span class="detail-value">${payload.bookingId || 'CANCELLED'}</span>
-        </div>
-      </div>
+  /**
+   * Session cancelled by the client or an admin — to the therapist
+   */
+  static async sendTherapistCancellationAlert(p: BookingEmailPayload): Promise<MailResult> {
+    const to = p.therapistEmail || p.consultantEmail || '';
+    const by = p.cancelledBy === 'admin' ? 'the Hexpertify team' : p.clientName;
+    const rows: Row[] = [
+      ['Client', p.clientName],
+      ['Service', p.serviceTitle],
+      ['Date', p.toBeScheduled ? undefined : p.scheduledDate],
+      ['Time', p.toBeScheduled ? undefined : p.scheduledTime],
+      ['Cancelled by', by],
+      ['Booking ID', p.bookingId]
+    ];
+    const html = emailLayout({
+      preheader: `${p.clientName}'s session on ${whenText(p)} was cancelled.`,
+      headline: 'A session was cancelled',
+      intro: `Hi <strong class="tx">${esc(firstName(p.consultantName))}</strong>,<br><br>The following session was cancelled by ${esc(by)}. The time slot is free again in your calendar.`,
+      body: [details(rows), button(portalUrl('/consultant/calendar'), 'Open my calendar')],
+      reason: 'You are receiving this email because you had a session booked on Hexpertify.'
+    });
+    return this.deliver({
+      to,
+      toName: p.consultantName,
+      subject: `Session cancelled: ${p.clientName}${p.toBeScheduled ? '' : `, ${p.scheduledDate} ${p.scheduledTime}`}`,
+      logSubject: `Client Cancelled: ${p.serviceTitle}`,
+      html,
+      text: `Hi ${p.consultantName}, ${p.clientName}'s "${p.serviceTitle}" session on ${whenText(p)} was cancelled by ${by}.`,
+      ref: p.bookingId
+    });
+  }
 
-      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 24px;">
-        You can easily book another available time slot anytime from your client portal:
-      </p>
-
-      <div style="text-align: center; margin: 24px 0;">
-        <a href="${sessionsUrl}" class="cta-button" target="_blank">Book New Session</a>
-      </div>
-    </div>
-    <div class="footer">
-      <p>© 2026 Hexpertify Healthcare. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>
-      `;
-
-      let messageId = `msg-${Date.now()}`;
-      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-        const info = await transporter.sendMail({
-          from: fromAddress,
-          to: payload.clientEmail,
-          subject: `Session Cancelled: ${payload.serviceTitle} with ${payload.consultantName} ❌`,
-          html: emailHtml,
-          text: `Hi ${payload.clientName}, your session "${payload.serviceTitle}" with ${payload.consultantName} scheduled for ${payload.scheduledDate} at ${payload.scheduledTime} has been cancelled.`
-        });
-        messageId = info.messageId;
-      }
-
-      await this.logEmail(payload.clientEmail, payload.clientName, `Session Cancelled: ${payload.serviceTitle}`, payload.bookingId, messageId);
-      return { success: true, messageId };
-    } catch (error: any) {
-      console.error('❌ [MailService] sendBookingCancellation failed:', error);
-      return { success: false, error: error?.message || 'Mail dispatch failed' };
-    }
+  /**
+   * Session cancelled — to the admins (so refunds can be handled)
+   */
+  static async sendAdminCancellationAlert(p: BookingEmailPayload): Promise<MailResult> {
+    const by = p.cancelledBy === 'therapist' ? p.consultantName : p.cancelledBy === 'admin' ? 'An administrator' : p.clientName;
+    const rows: Row[] = [
+      ['Client', p.clientName],
+      ['Client email', p.clientEmail],
+      ...sessionRows(p, [['Amount paid', p.amountPaid ? rupees(p.amountPaid) : undefined]]),
+      ['Cancelled by', by]
+    ];
+    const html = emailLayout({
+      preheader: `${p.clientName}'s session with ${p.consultantName} was cancelled.`,
+      headline: 'Session cancelled',
+      intro: `A session was cancelled by <strong class="tx">${esc(by)}</strong>. Check whether the client needs a refund.`,
+      body: [details(rows), button(portalUrl('/admin/bookings'), 'Manage bookings')],
+      reason: 'You are receiving this email because you are a Hexpertify administrator.'
+    });
+    return this.deliver({
+      to: p.adminEmail || adminAlertEmail(),
+      toName: 'Super Administrator',
+      subject: `Cancelled: ${p.clientName} with ${p.consultantName}`,
+      html,
+      text: `${p.clientName}'s "${p.serviceTitle}" session with ${p.consultantName} on ${whenText(p)} was cancelled by ${by}.`,
+      ref: p.bookingId
+    });
   }
 
   /**
    * Session completed — to the client, inviting them to rate the session
    */
-  static async sendSessionCompleted(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
-    try {
-      if (!payload.clientEmail) return { success: false, error: 'No client email provided' };
-      const subject = `Session Completed: ${payload.serviceTitle} with ${payload.consultantName} ✅`;
-      const html = statusEmailHtml({
-        accent: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-        subtitle: 'Your session is complete',
-        greeting: `Hi ${payload.clientName},`,
-        intro: `Thank you for attending your session with <strong>${payload.consultantName}</strong> today.`,
-        rows: [
-          ['Therapist:', payload.consultantName],
-          ['Modality:', payload.serviceTitle],
-          ['Session Date:', payload.scheduledDate],
-          ['Session Time:', payload.scheduledTime],
-          ['Booking Reference:', payload.bookingId || 'COMPLETED']
-        ],
-        outro: 'How did it go? Open your client portal to rate today\'s session. It takes under a minute and helps your therapist shape your next session.',
-        ctaUrl: portalUrl('/client'),
-        ctaLabel: 'Rate Your Session'
-      });
-
-      let messageId = `msg-${Date.now()}`;
-      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-        const info = await this.getTransporter().sendMail({
-          from: process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>',
-          to: payload.clientEmail,
-          subject,
-          html,
-          text: `Hi ${payload.clientName}, your session "${payload.serviceTitle}" with ${payload.consultantName} on ${payload.scheduledDate} is complete. Rate it in your client portal: ${portalUrl('/client')}`
-        });
-        messageId = info.messageId;
-      }
-      await this.logEmail(payload.clientEmail, payload.clientName, `Session Completed: ${payload.serviceTitle}`, payload.bookingId, messageId);
-      return { success: true, messageId };
-    } catch (error: any) {
-      console.error('❌ [MailService] sendSessionCompleted failed:', error);
-      return { success: false, error: error?.message || 'Mail dispatch failed' };
-    }
+  static async sendSessionCompleted(p: BookingEmailPayload): Promise<MailResult> {
+    const rateUrl = portalUrl('/client');
+    const html = emailLayout({
+      preheader: `How was your session with ${p.consultantName}? Rate it in under a minute.`,
+      headline: 'Session completed',
+      illustration: 'namaste',
+      intro: `Dear <strong class="tx">${esc(p.clientName)}</strong>,<br><br>Thank you for attending your session with <strong class="tx">${esc(p.consultantName)}</strong>. We hope it helped.`,
+      body: [
+        statusTracker(3, `Your session with <strong class="tx">${esc(p.consultantName)}</strong> is complete.`),
+        details(sessionRows(p)),
+        paragraph('How did it go? Rating today\'s session takes under a minute and helps your expert shape your next one.'),
+        button(rateUrl, 'Rate your session')
+      ],
+      reason: 'You are receiving this email because you attended a consultation on Hexpertify.'
+    });
+    return this.deliver({
+      to: p.clientEmail,
+      toName: p.clientName,
+      subject: `How was your session with ${p.consultantName}? ✅`,
+      logSubject: `Session Completed: ${p.serviceTitle}`,
+      html,
+      text: `Hi ${p.clientName}, your "${p.serviceTitle}" session with ${p.consultantName} is complete. Rate it here: ${rateUrl}`,
+      ref: p.bookingId
+    });
   }
 
   /**
-   * Session cancelled by the client — to the therapist
+   * Upcoming session reminder — to the client or the therapist
    */
-  static async sendTherapistCancellationAlert(payload: BookingEmailPayload): Promise<{ success: boolean; error?: string; messageId?: string }> {
-    try {
-      const recipient = payload.therapistEmail || payload.consultantEmail;
-      if (!recipient) return { success: false, error: 'No therapist email provided' };
-      const subject = `Session Cancelled by ${payload.clientName}: ${payload.scheduledDate} ${payload.scheduledTime} ❌`;
-      const html = statusEmailHtml({
-        accent: 'linear-gradient(135deg, #e11d48 0%, #f43f5e 100%)',
-        subtitle: 'A client cancelled their session',
-        greeting: `Hi ${payload.consultantName},`,
-        intro: `<strong>${payload.clientName}</strong> has cancelled the following session. The time slot is free again in your calendar.`,
-        rows: [
-          ['Client:', payload.clientName],
-          ['Modality:', payload.serviceTitle],
-          ['Session Date:', payload.scheduledDate],
-          ['Session Time:', payload.scheduledTime],
-          ['Booking Reference:', payload.bookingId || 'CANCELLED']
-        ],
-        ctaUrl: portalUrl('/consultant/calendar'),
-        ctaLabel: 'Open Calendar'
-      });
-
-      let messageId = `msg-${Date.now()}`;
-      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-        const info = await this.getTransporter().sendMail({
-          from: process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Health" <support@hexpertify.com>',
-          to: recipient,
-          subject,
-          html,
-          text: `Hi ${payload.consultantName}, ${payload.clientName} cancelled their "${payload.serviceTitle}" session on ${payload.scheduledDate} at ${payload.scheduledTime}.`
-        });
-        messageId = info.messageId;
-      }
-      await this.logEmail(recipient, payload.consultantName, `Client Cancelled: ${payload.serviceTitle}`, payload.bookingId, messageId);
-      return { success: true, messageId };
-    } catch (error: any) {
-      console.error('❌ [MailService] sendTherapistCancellationAlert failed:', error);
-      return { success: false, error: error?.message || 'Mail dispatch failed' };
-    }
+  static async sendSessionReminder(p: BookingEmailPayload, opts: { audience: 'client' | 'therapist'; window: '24h' | '1h' }): Promise<MailResult> {
+    const join = meetingLinkOf(p.meetingLink);
+    const soon = opts.window === '1h';
+    const isClient = opts.audience === 'client';
+    const other = isClient ? p.consultantName : p.clientName;
+    const to = isClient ? p.clientEmail : (p.therapistEmail || p.consultantEmail || '');
+    const name = isClient ? p.clientName : p.consultantName;
+    const rows = isClient ? sessionRows(p) : [['Client', p.clientName] as Row, ...sessionRows(p).filter(([l]) => l !== 'Expert')];
+    const html = emailLayout({
+      preheader: `${soon ? 'Starting in about an hour' : 'Tomorrow'}: your session with ${other} at ${p.scheduledTime}.`,
+      headline: soon ? 'Your session starts soon' : 'Your session is tomorrow',
+      intro: `Hi <strong class="tx">${esc(firstName(name))}</strong>,<br><br>A reminder that your session with <strong class="tx">${esc(other)}</strong> is on <strong class="tx">${esc(p.scheduledDate)}</strong> at <strong class="tx">${esc(p.scheduledTime)}</strong>.`,
+      body: [
+        details(rows),
+        ...(isClient && !soon ? [paragraph('Find a quiet, private spot with a steady internet connection. Need to change the time? Reply to this email and we\'ll help.')] : []),
+        join ? button(join, 'Join video session') : button(isClient ? portalUrl('/client/sessions') : portalUrl('/consultant/calendar'), isClient ? 'View my sessions' : 'Open my calendar')
+      ],
+      reason: 'You are receiving this email because you have a session booked on Hexpertify.'
+    });
+    return this.deliver({
+      to,
+      toName: name,
+      subject: soon ? `Starting soon: your session with ${other} at ${p.scheduledTime} ⏰` : `Reminder: session with ${other} tomorrow at ${p.scheduledTime} 📅`,
+      html,
+      text: `Hi ${name}, your session with ${other} is on ${p.scheduledDate} at ${p.scheduledTime}.${join ? ` Join: ${join}` : ''}`,
+      ref: p.bookingId
+    });
   }
 
   /**
-   * 6. Send Payout Invoice — to Therapist (payment receipt) & Admin (financial audit copy)
+   * Payment failed — to the client
+   */
+  static async sendPaymentFailed(p: { clientName: string; clientEmail: string; consultantName?: string; serviceTitle?: string; amount?: number; reason?: string; paymentId?: string; retryUrl?: string }): Promise<MailResult> {
+    const rows: Row[] = [
+      ['Expert', p.consultantName],
+      ['Service', p.serviceTitle],
+      ['Amount', p.amount ? rupees(p.amount) : undefined],
+      ['Status', toneText('Payment failed', 'danger')],
+      ['Payment ID', p.paymentId]
+    ];
+    const html = emailLayout({
+      preheader: 'Your payment did not go through, and your session is not booked yet.',
+      headline: 'Payment didn\'t go through',
+      intro: `Hi <strong class="tx">${esc(p.clientName)}</strong>,<br><br>We couldn't complete your payment${p.consultantName ? ` for your session with <strong class="tx">${esc(p.consultantName)}</strong>` : ''}, so the session is not booked yet. If any money left your account, your bank will return it automatically within 5–7 working days.`,
+      body: [
+        details(rows),
+        ...(p.reason ? [callout(`<strong>Reason from the payment gateway:</strong> ${esc(p.reason)}`, 'danger')] : []),
+        button(p.retryUrl || WEBSITE_URL, 'Try booking again')
+      ],
+      reason: 'You are receiving this email because you tried to book a consultation on Hexpertify.'
+    });
+    return this.deliver({
+      to: p.clientEmail,
+      toName: p.clientName,
+      subject: 'Your payment didn\'t go through',
+      html,
+      text: `Hi ${p.clientName}, your payment${p.consultantName ? ` for the session with ${p.consultantName}` : ''} didn't go through, so the session is not booked.${p.reason ? ` Reason: ${p.reason}.` : ''} You can try again at ${p.retryUrl || WEBSITE_URL}.`,
+      ref: p.paymentId
+    });
+  }
+
+  /**
+   * Refund started / completed / failed — to the client
+   */
+  static async sendRefundUpdate(p: { clientName: string; clientEmail: string; amount: number; status: 'PENDING' | 'SUCCESS' | 'FAILED'; consultantName?: string; serviceTitle?: string; bookingId?: string; refundId?: string; reason?: string }): Promise<MailResult> {
+    const copy = {
+      PENDING: {
+        headline: 'Your refund is on its way',
+        intro: `We've started a refund of <strong class="tx">${rupees(p.amount)}</strong> to your original payment method. It usually reaches your account within 5–7 working days, depending on your bank.`,
+        status: toneText('Processing', 'warning'),
+        subject: `Refund of ${rupees(p.amount)} started`
+      },
+      SUCCESS: {
+        headline: 'Refund completed',
+        intro: `Your refund of <strong class="tx">${rupees(p.amount)}</strong> has been completed. Depending on your bank, it can take a couple of days to show in your statement.`,
+        status: toneText('Refunded', 'success'),
+        subject: `Refund of ${rupees(p.amount)} completed ✅`
+      },
+      FAILED: {
+        headline: 'We couldn\'t process your refund',
+        intro: `Your refund of <strong class="tx">${rupees(p.amount)}</strong> could not be processed. Our team has been notified and will contact you to sort it out.`,
+        status: toneText('Failed', 'danger'),
+        subject: `Update on your refund of ${rupees(p.amount)}`
+      }
+    }[p.status];
+    const rows: Row[] = [
+      ['Expert', p.consultantName],
+      ['Service', p.serviceTitle],
+      ['Refund amount', rupees(p.amount)],
+      ['Status', copy.status],
+      ['Refund ID', p.refundId],
+      ['Booking ID', p.bookingId]
+    ];
+    const html = emailLayout({
+      preheader: copy.subject,
+      headline: copy.headline,
+      intro: `Hi <strong class="tx">${esc(p.clientName)}</strong>,<br><br>${copy.intro}`,
+      body: [details(rows), ...(p.reason ? [callout(`<strong>Note:</strong> ${esc(p.reason)}`)] : [])],
+      reason: 'You are receiving this email because you made a payment on Hexpertify.'
+    });
+    return this.deliver({
+      to: p.clientEmail,
+      toName: p.clientName,
+      subject: copy.subject,
+      html,
+      text: `Hi ${p.clientName}, ${copy.intro.replace(/<[^>]+>/g, '')}\n\n${textRows(rows)}`,
+      ref: p.refundId || p.bookingId
+    });
+  }
+
+  /**
+   * Welcome — to a newly registered client
+   */
+  static async sendWelcome(p: { name: string; email: string }): Promise<MailResult> {
+    const html = emailLayout({
+      preheader: 'Your Hexpertify account is ready. Find the right expert, anytime, anywhere.',
+      headline: 'Welcome to Hexpertify',
+      illustration: 'namaste',
+      intro: `Hi <strong class="tx">${esc(firstName(p.name))}</strong>,<br><br>Thank you for joining Hexpertify. Your account is ready.`,
+      body: [
+        heading('What happens next'),
+        details([
+          ['1. Choose an expert', 'Browse verified experts'],
+          ['2. Book & pay securely', 'Pick a plan that suits you'],
+          ['3. Meet online', 'Join from your phone or laptop']
+        ]),
+        button(WEBSITE_URL, 'Find an expert')
+      ],
+      reason: 'You are receiving this email because you created an account on Hexpertify.'
+    });
+    return this.deliver({
+      to: p.email,
+      toName: p.name,
+      subject: 'Welcome to Hexpertify 👋',
+      html,
+      text: `Hi ${p.name}, welcome to Hexpertify! Your account is ready. Find an expert at ${WEBSITE_URL}.`
+    });
+  }
+
+  /**
+   * Short alert mirroring an in-app notification (assessments, activities, feedback, requests)
+   */
+  static async sendNotificationEmail(n: { to: string; toName: string; audience: 'CLIENT' | 'CONSULTANT' | 'ADMIN'; title: string; message: string; url: string; ctaLabel: string; ref?: string }): Promise<MailResult> {
+    const html = emailLayout({
+      preheader: n.message,
+      headline: n.title,
+      intro: `Hi <strong class="tx">${esc(firstName(n.toName))}</strong>,<br><br>${esc(n.message)}`,
+      body: [button(n.url, n.ctaLabel)],
+      reason: n.audience === 'ADMIN'
+        ? 'You are receiving this email because you are a Hexpertify administrator.'
+        : n.audience === 'CONSULTANT'
+          ? 'You are receiving this email because you are an expert on Hexpertify.'
+          : 'You are receiving this email because you are receiving care through Hexpertify.'
+    });
+    return this.deliver({ to: n.to, toName: n.toName, subject: n.title, html, text: `${n.message}\n\n${n.url}`, ref: n.ref });
+  }
+
+  /**
+   * Payout invoice — to the therapist (payment receipt) & admin (financial audit copy)
    */
   static async sendPayoutInvoice(payload: {
     invoiceNumber: string;
@@ -703,162 +584,63 @@ export class MailService {
     sessions?: Array<{ id: string; clientName: string; date: string; fee: number; commission: number; net: number }>;
   }): Promise<{ success: boolean; error?: string }> {
     try {
-      const transporter = this.getTransporter();
-      const fromAddress = process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify Finance" <finance@hexpertify.com>';
-      const adminRecipient = payload.adminEmail || process.env.ADMIN_ALERT_EMAIL || process.env.SMTP_USER || 'admin@hexpertify.com';
-      const therapistRecipient = payload.therapistEmail;
-
-      const sessionRows = (payload.sessions || []).map(s => `
-        <tr>
-          <td style="padding:10px 12px; font-family:monospace; font-weight:700; color:#5e2be2; font-size:12px;">${s.id}</td>
-          <td style="padding:10px 12px; font-weight:600; color:#1e293b; font-size:12px;">${s.clientName}</td>
-          <td style="padding:10px 12px; color:#64748b; font-size:12px;">${s.date}</td>
-          <td style="padding:10px 12px; font-weight:700; color:#1e293b; font-size:12px; text-align:right;">₹${s.fee.toLocaleString('en-IN')}</td>
-          <td style="padding:10px 12px; color:#e11d48; font-size:12px; text-align:right;">-₹${s.commission.toLocaleString('en-IN')}</td>
-          <td style="padding:10px 12px; font-weight:800; color:#059669; font-size:12px; text-align:right;">₹${s.net.toLocaleString('en-IN')}</td>
-        </tr>`).join('');
-
-      const buildHtml = (recipientRole: 'therapist' | 'admin') => `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hexpertify Payout Invoice ${payload.invoiceNumber}</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f1f5f9; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <div style="max-width:640px; margin:24px auto; background:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
-
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg, #1e1b4b 0%, #5e2be2 60%, #7c3aed 100%); padding:36px 32px; text-align:center;">
-      <div style="display:inline-block; background:rgba(255,255,255,0.12); border-radius:12px; padding:6px 16px; margin-bottom:12px;">
-        <span style="color:#c4b5fd; font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase;">Hexpertify Finance</span>
-      </div>
-      <h1 style="margin:0 0 6px; font-size:26px; font-weight:900; color:#ffffff;">Payout Invoice</h1>
-      <p style="margin:0; font-size:13px; color:rgba(255,255,255,0.75);">
-        ${recipientRole === 'admin' ? '📋 Admin Audit Copy — Financial Records' : '✅ Payment Successfully Disbursed'}
-      </p>
-    </div>
-
-    <!-- Invoice Meta -->
-    <div style="background:#f8fafc; padding:20px 32px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between;">
-      <div>
-        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px;">Invoice No.</div>
-        <div style="font-size:15px; font-weight:800; color:#5e2be2; margin-top:2px;">${payload.invoiceNumber}</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px;">Payout Date</div>
-        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-top:2px;">${payload.payoutDate}</div>
-      </div>
-    </div>
-
-    <!-- Consultant Info -->
-    <div style="padding:28px 32px;">
-      <div style="background:linear-gradient(135deg, #ede9fe, #f5f3ff); border:1px solid #ddd6fe; border-radius:16px; padding:20px; margin-bottom:24px;">
-        <div style="font-size:10px; font-weight:800; color:#7c3aed; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Consultant Details</div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <span style="font-size:13px; color:#6b7280; font-weight:600;">Name:</span>
-          <span style="font-size:13px; font-weight:800; color:#1e293b;">${payload.therapistName}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <span style="font-size:13px; color:#6b7280; font-weight:600;">Profession:</span>
-          <span style="font-size:13px; font-weight:700; color:#374151;">${payload.profession}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <span style="font-size:13px; color:#6b7280; font-weight:600;">Payment Method:</span>
-          <span style="font-size:13px; font-weight:700; color:#374151;">${payload.paymentMethod}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <span style="font-size:13px; color:#6b7280; font-weight:600;">${payload.paymentMethod === 'UPI' ? 'UPI ID' : 'Account'}:</span>
-          <span style="font-size:13px; font-weight:700; color:#374151; font-family:monospace;">${payload.accountNumber}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-          <span style="font-size:13px; color:#6b7280; font-weight:600;">Transaction Ref:</span>
-          <span style="font-size:13px; font-weight:800; color:#5e2be2; font-family:monospace;">${payload.transactionRef}</span>
-        </div>
-      </div>
-
-      ${sessionRows ? `
-      <!-- Session Breakdown Table -->
-      <div style="margin-bottom:24px;">
-        <div style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Session Breakdown</div>
-        <table style="width:100%; border-collapse:collapse; border-radius:12px; overflow:hidden; border:1px solid #e2e8f0;">
-          <thead>
-            <tr style="background:#f1f5f9;">
-              <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Session Code</th>
-              <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Client</th>
-              <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Date</th>
-              <th style="padding:10px 12px; text-align:right; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Fee</th>
-              <th style="padding:10px 12px; text-align:right; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Platform</th>
-              <th style="padding:10px 12px; text-align:right; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Net</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${sessionRows}
-          </tbody>
-        </table>
-      </div>` : ''}
-
-      <!-- Financial Summary -->
-      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:20px;">
-        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="font-size:13px; color:#64748b; font-weight:600;">Gross Sessions Total (${payload.sessionsCount} sessions):</span>
-          <span style="font-size:13px; font-weight:700; color:#0f172a;">₹${payload.grossAmount.toLocaleString('en-IN')}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="font-size:13px; color:#e11d48; font-weight:600;">Hexpertify Platform Fee:</span>
-          <span style="font-size:13px; font-weight:700; color:#e11d48;">-₹${payload.platformFee.toLocaleString('en-IN')}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:12px 0 4px; margin-top:4px; border-top:2px solid #e2e8f0;">
-          <span style="font-size:15px; font-weight:900; color:#0f172a;">Net Amount Disbursed:</span>
-          <span style="font-size:18px; font-weight:900; color:#059669;">₹${payload.netPayout.toLocaleString('en-IN')}</span>
-        </div>
-      </div>
-
-      <!-- Status Badge -->
-      <div style="text-align:center; margin-top:24px;">
-        <span style="display:inline-block; background:#dcfce7; color:#166534; font-size:12px; font-weight:800; padding:8px 20px; border-radius:50px; letter-spacing:0.5px;">
-          ✅ PAYMENT COMPLETED — ${payload.transactionRef}
-        </span>
-      </div>
-
-      ${recipientRole === 'admin' ? `
-      <div style="margin-top:20px; text-align:center;">
-        <a href="${portalUrl('/admin/payments')}" style="display:inline-block; background:#5e2be2; color:#ffffff; font-size:13px; font-weight:700; padding:12px 28px; border-radius:12px; text-decoration:none;">
-          View in Super Admin Panel
-        </a>
-      </div>` : `
-      <div style="margin-top:20px; text-align:center;">
-        <p style="font-size:12px; color:#94a3b8; margin:0;">This invoice has been automatically generated by the Hexpertify Finance system.<br>Please retain this for your accounting records.</p>
-      </div>`}
-    </div>
-
-    <!-- Footer -->
-    <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:20px 32px; text-align:center;">
-      <p style="margin:0; font-size:11px; color:#94a3b8;">© 2026 Hexpertify Healthcare. All rights reserved. | finance@hexpertify.com</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-      const therapistSubject = `✅ Payout Confirmed: ₹${payload.netPayout.toLocaleString('en-IN')} | ${payload.invoiceNumber}`;
-      const adminSubject = `📋 Payout Invoice [Admin Copy]: ${payload.therapistName} — ₹${payload.netPayout.toLocaleString('en-IN')} | ${payload.invoiceNumber}`;
-
-      const sendEmail = async (to: string, subject: string, html: string, role: 'therapist' | 'admin') => {
-        if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
-          const info = await transporter.sendMail({ from: fromAddress, to, subject, html });
-          await this.logEmail(to, role === 'therapist' ? payload.therapistName : 'Super Administrator', subject, payload.invoiceNumber, info.messageId);
-        } else {
-          await this.logEmail(to, role === 'therapist' ? payload.therapistName : 'Super Administrator', subject, payload.invoiceNumber, `mock-${Date.now()}`);
-        }
-      };
-
-      // Send both emails in parallel (fire-and-forget; don't fail payout if email fails)
-      await Promise.allSettled([
-        therapistRecipient ? sendEmail(therapistRecipient, therapistSubject, buildHtml('therapist'), 'therapist') : Promise.resolve(),
-        sendEmail(adminRecipient, adminSubject, buildHtml('admin'), 'admin')
+      const summary: Row[] = [
+        ['Invoice no.', payload.invoiceNumber],
+        ['Payout date', payload.payoutDate],
+        ['Expert', payload.therapistName],
+        ['Profession', payload.profession],
+        ['Payment method', payload.paymentMethod],
+        [payload.paymentMethod === 'UPI' ? 'UPI ID' : 'Account', payload.accountNumber],
+        ['Transaction ref', payload.transactionRef]
+      ];
+      const totals: Row[] = [
+        [`Gross (${payload.sessionsCount} sessions)`, rupees(payload.grossAmount)],
+        ['Hexpertify platform fee', toneText(`-${rupees(payload.platformFee)}`, 'danger')],
+        ['Net amount paid', toneText(rupees(payload.netPayout), 'success')]
+      ];
+      const sessions = (payload.sessions || []).map((s): Row => [
+        `${s.date} · ${s.clientName}`,
+        raw(`${esc(rupees(s.net))} <span class="tx-muted" style="font-weight:500;">(fee ${esc(rupees(s.fee))} − ${esc(rupees(s.commission))})</span>`)
       ]);
 
+      const build = (role: 'therapist' | 'admin') => emailLayout({
+        preheader: `Payout ${payload.invoiceNumber}: ${rupees(payload.netPayout)} sent.`,
+        headline: role === 'admin' ? 'Payout invoice (admin copy)' : 'Your payout is on its way',
+        intro: role === 'admin'
+          ? `A payout of <strong class="tx">${rupees(payload.netPayout)}</strong> was released to <strong class="tx">${esc(payload.therapistName)}</strong>. Keep this copy for your financial records.`
+          : `Hi <strong class="tx">${esc(firstName(payload.therapistName))}</strong>,<br><br>We've paid <strong class="tx">${rupees(payload.netPayout)}</strong> for your sessions. Please keep this invoice for your records.`,
+        body: [
+          details(summary),
+          ...(sessions.length ? [heading('Session breakdown'), details(sessions)] : []),
+          heading('Summary'),
+          details(totals),
+          ...(role === 'admin' ? [button(portalUrl('/admin/payments'), 'View payouts')] : [])
+        ],
+        reason: role === 'admin'
+          ? 'You are receiving this email because you are a Hexpertify administrator.'
+          : 'You are receiving this email because Hexpertify released a payout to you.'
+      });
+
+      const text = `${textRows(summary)}\n\n${textRows(totals)}`;
+      const adminTo = payload.adminEmail || adminAlertEmail();
+      await Promise.allSettled([
+        payload.therapistEmail ? this.deliver({
+          to: payload.therapistEmail,
+          toName: payload.therapistName,
+          subject: `Payout sent: ${rupees(payload.netPayout)} | ${payload.invoiceNumber} ✅`,
+          html: build('therapist'),
+          text,
+          ref: payload.invoiceNumber
+        }) : Promise.resolve(),
+        this.deliver({
+          to: adminTo,
+          toName: 'Super Administrator',
+          subject: `Payout invoice [admin copy]: ${payload.therapistName}, ${rupees(payload.netPayout)} | ${payload.invoiceNumber}`,
+          html: build('admin'),
+          text,
+          ref: payload.invoiceNumber
+        })
+      ]);
       return { success: true };
     } catch (error: any) {
       console.error('❌ [MailService] sendPayoutInvoice failed:', error);

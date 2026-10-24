@@ -3,6 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { sendWelcomeEmail } from "@/lib/backend";
 
 // Define the shape of the return object
 interface ActionResult {
@@ -53,6 +54,8 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
         role: "USER",
       },
     });
+
+    await sendWelcomeEmail(cleanName, cleanEmail);
 
     // --- 4. Return success ---
     return { success: true, message: "Account created successfully!" };

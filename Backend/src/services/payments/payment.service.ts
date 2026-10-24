@@ -2,8 +2,9 @@ import crypto from 'crypto';
 import { getDatabase } from '../../db/mongodb';
 import { config } from '../../config';
 import { cacheService } from '../cache.service';
-import { dispatchBookingConfirmed, formatSessionWhen, notifyBookingConfirmed } from '../booking-confirmation.service';
-import { sendPushToClient } from '../push.service';
+import { dispatchBookingConfirmed } from '../booking-confirmation.service';
+import { MailService } from '../mail.service';
+import { portalUrl, WEBSITE_URL } from '../email-layout';
 import { getActivePaymentProvider, getPaymentProvider } from './index';
 import { PaymentGatewayError, VerifyResult, WebhookEvent } from './provider';
 
@@ -249,7 +250,7 @@ export async function getPayment(paymentId: string): Promise<any> {
  * Idempotently marks a payment PAID and confirms its booking.
  * Returns newlyConfirmed=true only for the caller that performed the transition.
  */
-export async function finalizePayment(payment: any, result: VerifyResult, opts: { dispatchNotifications: boolean }) {
+export async function finalizePayment(payment: any, result: VerifyResult) {
   const db = getDatabase();
   const updated: any = await db.collection(PAYMENTS).findOneAndUpdate(
     { id: payment.id, status: { $in: FINALIZABLE } },
@@ -276,36 +277,34 @@ export async function finalizePayment(payment: any, result: VerifyResult, opts: 
     paymentId: updated.id
   });
 
-  if (opts.dispatchNotifications) {
-    await dispatchBookingConfirmed({
-      id: updated.bookingId,
-      clientId: updated.clientId,
-      clientName: updated.clientName,
-      clientEmail: updated.clientEmail,
-      consultantId: updated.consultantId,
-      consultantName: updated.consultantName,
-      serviceTitle: updated.serviceTitle,
-      scheduledAt: updated.scheduledAt,
-      date: updated.date,
-      time: updated.time
-    });
-  } else {
-    // The live website sends its own emails; in-app and push notifications still go out
-    const { date, time } = formatSessionWhen(updated);
-    const consultant: any = updated.consultantId
-      ? await getDatabase().collection('Consultant').findOne({ $or: [{ _id: updated.consultantId }, { id: updated.consultantId }] }).catch(() => null)
-      : null;
-    await Promise.allSettled([
-      notifyBookingConfirmed({ ...updated, id: updated.bookingId }, consultant?.email || '', date, time),
-      sendPushToClient({ email: updated.clientEmail, id: updated.clientId }, {
-        title: 'Session confirmed 📅',
-        body: `Your payment was received and your ${updated.serviceTitle || 'therapy'} session${updated.consultantName ? ` with ${updated.consultantName}` : ''} is confirmed.`,
-        tag: `booking-${updated.bookingId}`
-      })
-    ]);
-  }
+  // Website bookings carry no session time yet (the team schedules them after payment)
+  const isLive = updated.bookingSource === 'live';
+  const booking: any = isLive ? null : await getDatabase().collection('Booking').findOne({ id: updated.bookingId }).catch(() => null);
+  await dispatchBookingConfirmed({
+    id: updated.bookingId,
+    clientId: updated.clientId,
+    clientName: updated.clientName,
+    clientEmail: updated.clientEmail,
+    clientPhone: updated.clientPhone,
+    consultantId: updated.consultantId,
+    consultantName: updated.consultantName,
+    consultantAvatar: booking?.consultantAvatar,
+    serviceTitle: updated.serviceTitle,
+    scheduledAt: updated.scheduledAt,
+    date: updated.date,
+    time: updated.time,
+    durationMinutes: booking?.durationMinutes,
+    meetingLink: booking?.meetingLink,
+    amountPaid: toRupees(updated.amount),
+    toBeScheduled: isLive
+  });
 
   return { newlyConfirmed: true, payment: updated };
+}
+
+/** Where a client can try booking again after a failed payment */
+function retryUrlFor(payment: any): string {
+  return payment.bookingSource === 'live' ? WEBSITE_URL : portalUrl('/client/sessions');
 }
 
 export async function markPaymentFailed(payment: any, reason?: string, providerPaymentId?: string): Promise<void> {
@@ -316,7 +315,34 @@ export async function markPaymentFailed(payment: any, reason?: string, providerP
   );
   if (res.modifiedCount) {
     await updateBooking(payment, { paymentStatus: 'FAILED' });
+    if (payment.clientEmail) {
+      await MailService.sendPaymentFailed({
+        clientName: payment.clientName || 'there',
+        clientEmail: payment.clientEmail,
+        consultantName: payment.consultantName,
+        serviceTitle: payment.serviceTitle,
+        amount: toRupees(payment.amount),
+        reason,
+        paymentId: payment.id,
+        retryUrl: retryUrlFor(payment)
+      });
+    }
   }
+}
+
+/** Emails the client about a refund's progress */
+async function emailRefund(payment: any, refund: { id?: string; amount: number; status: 'PENDING' | 'SUCCESS' | 'FAILED'; reason?: string }): Promise<void> {
+  if (!payment?.clientEmail || !(refund.amount > 0)) return;
+  await MailService.sendRefundUpdate({
+    clientName: payment.clientName || 'there',
+    clientEmail: payment.clientEmail,
+    amount: toRupees(refund.amount),
+    status: refund.status,
+    consultantName: payment.consultantName,
+    serviceTitle: payment.serviceTitle,
+    bookingId: payment.bookingId,
+    refundId: refund.id
+  });
 }
 
 /** Recomputes refundedAmount/status from the refunds array and mirrors it onto the booking */
@@ -376,6 +402,7 @@ export async function refundPayment(paymentId: string, amountRupees: number | un
       } as any
     }
   );
+  await emailRefund(payment, { id: refundId, amount: amountPaise, status: result.status });
   return syncRefundState(paymentId);
 }
 
@@ -390,7 +417,7 @@ export async function applyWebhookEvent(providerName: string, event: WebhookEven
     const payment: any = await db.collection(PAYMENTS).findOne({ provider: providerName, providerOrderId: event.providerOrderId });
     if (!payment) return;
     if (event.type === 'PAID') {
-      await finalizePayment(payment, { status: 'PAID', providerPaymentId: event.providerPaymentId, method: event.method }, { dispatchNotifications: true });
+      await finalizePayment(payment, { status: 'PAID', providerPaymentId: event.providerPaymentId, method: event.method });
     } else {
       await markPaymentFailed(payment, event.reason, event.providerPaymentId);
     }
@@ -412,18 +439,21 @@ export async function applyWebhookEvent(providerName: string, event: WebhookEven
   );
 
   if (existing) {
-    await db.collection(PAYMENTS).updateOne(
-      { id: payment.id, 'refunds.id': existing.id },
+    const res = await db.collection(PAYMENTS).updateOne(
+      { id: payment.id, refunds: { $elemMatch: { id: existing.id, status: { $ne: event.status } } } },
       { $set: { 'refunds.$.status': event.status, 'refunds.$.providerRefundId': event.providerRefundId || existing.providerRefundId, 'refunds.$.updatedAt': new Date() } }
     );
+    // Only the delivery that changed the status emails the client (gateways retry webhooks)
+    if (res.modifiedCount) await emailRefund(payment, { id: existing.id, amount: existing.amount, status: event.status });
   } else {
     // Refund initiated outside the admin panel (e.g. from the gateway dashboard)
+    const refundId = event.refundId || newId('RFD');
     await db.collection(PAYMENTS).updateOne(
       { id: payment.id },
       {
         $push: {
           refunds: {
-            id: event.refundId || newId('RFD'),
+            id: refundId,
             providerRefundId: event.providerRefundId,
             amount: event.amountPaise || 0,
             status: event.status,
@@ -434,6 +464,7 @@ export async function applyWebhookEvent(providerName: string, event: WebhookEven
         } as any
       }
     );
+    await emailRefund(payment, { id: refundId, amount: event.amountPaise || 0, status: event.status });
   }
   await syncRefundState(payment.id);
 }

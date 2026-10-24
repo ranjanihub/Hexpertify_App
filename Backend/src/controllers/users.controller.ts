@@ -5,6 +5,7 @@ import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
 import { AuthController } from './auth.controller';
 import { cacheService } from '../services/cache.service';
+import { MailService } from '../services/mail.service';
 import { applyClientPrivacy, resolveClientViewer } from '../services/client-access';
 import { verifyAuthToken } from '../utils/jwt';
 
@@ -300,6 +301,8 @@ export class UsersController {
 
       // Invalidate caches
       cacheService.invalidateTags(['users', 'stats', 'bookings']);
+
+      if (isUserRole) await MailService.sendWelcome({ name: newUser.name, email: newUser.email });
 
       const safeUser = {
         id: String(newUser._id || newUser.id),

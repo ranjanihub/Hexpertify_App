@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from './cache.service';
+import { adminAlertEmail, MailService, portalUrl } from './mail.service';
 
 /**
  * In-app notifications (the bell in the client, consultant and admin panels).
@@ -51,6 +52,67 @@ export const DUPLICATE_WINDOW_MS = 60 * 1000;
 
 export function newNotificationId(): string {
   return `NOTIF-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+}
+
+/**
+ * Notification types that are also emailed, with the email's button label.
+ * Booking and payment events have their own emails; frequent ones (messages, daily activity check-ins) stay in-app.
+ */
+const EMAILED_TYPES: Record<string, string> = {
+  ASSESSMENT_ASSIGNED: 'Start assessment',
+  ASSESSMENT_COMPLETED: 'View results',
+  ACTIVITY_ASSIGNED: 'Start activity',
+  SESSION_FEEDBACK_ALERT: 'Review feedback',
+  CUSTOM_SLOT_REQUEST: 'Open my calendar',
+  THERAPIST_SWITCH_REQUEST: 'Review request'
+};
+
+/**
+ * Emails a copy of an in-app notification when its type is in EMAILED_TYPES; never throws.
+ * Therapist addresses come from the Consultant record, so a request body can't redirect them.
+ */
+export async function emailNotification(n: NewNotification): Promise<void> {
+  const type = String(n.type || '').toUpperCase();
+  const ctaLabel = EMAILED_TYPES[type];
+  if (!ctaLabel) return;
+  try {
+    const db = getDatabase();
+    let to = '';
+    let toName = '';
+    if (n.recipientRole === 'ADMIN') {
+      to = adminAlertEmail();
+      toName = 'Admin';
+    } else if (n.recipientRole === 'CONSULTANT') {
+      const id = String(n.recipientId || '');
+      const consultant: any = id
+        ? await db.collection('Consultant').findOne({ $or: [{ id }, { _id: id as any }] }).catch(() => null)
+        : await db.collection('Consultant').findOne({ email: String(n.recipientEmail || '').toLowerCase() }).catch(() => null);
+      to = consultant?.email || '';
+      toName = consultant?.name || '';
+    } else {
+      const id = String(n.recipientId || '');
+      const email = String(n.recipientEmail || '').toLowerCase();
+      const user: any = await db.collection('User').findOne({ $or: [...(email ? [{ email }] : []), ...(id ? [{ id }, { _id: id as any }] : [])] }).catch(() => null);
+      to = email || user?.email || '';
+      toName = user?.name || '';
+    }
+    if (!to) return;
+
+    const link = n.link || defaultNotificationLink(n.recipientRole, type);
+    const url = portalUrl(n.recipientRole === 'ADMIN' ? `/admin/${link.replace(/^\//, '')}` : link);
+    await MailService.sendNotificationEmail({
+      to,
+      toName,
+      audience: n.recipientRole,
+      title: cleanNotificationTitle(n.title),
+      message: n.message,
+      url,
+      ctaLabel,
+      ref: n.bookingId
+    });
+  } catch (err: any) {
+    console.warn('[Notifications] Email failed:', err?.message);
+  }
 }
 
 /** Creates one notification per entry; never throws (notifications are best-effort) */

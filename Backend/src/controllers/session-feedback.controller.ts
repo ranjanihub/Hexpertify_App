@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
 import { resolveClientViewer } from '../services/client-access';
+import { emailNotification } from '../services/notification.service';
 
 /**
  * Post-session feedback (Session Rating Scale, 3 items).
@@ -204,8 +205,9 @@ export class SessionFeedbackController {
           updatedAt: now
         };
         await Promise.all([
-          getDatabase().collection('Notification').insertOne(alert).catch(() => {}),
-          getDatabase().collection('notifications').insertOne({ ...alert }).catch(() => {})
+          getDatabase().collection('Notification').insertOne({ ...alert }).catch(() => {}),
+          getDatabase().collection('notifications').insertOne({ ...alert }).catch(() => {}),
+          emailNotification({ ...alert, recipientRole: 'CONSULTANT' })
         ]);
       }
 
