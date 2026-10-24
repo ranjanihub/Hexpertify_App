@@ -691,24 +691,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                     key={item.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/70 hover:bg-slate-50 border border-slate-100 rounded-2xl gap-3 transition-colors"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="px-3 py-1.5 bg-purple-100 text-[#5e2be2] font-bold text-xs rounded-xl shrink-0">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="px-3 py-1.5 bg-purple-100 text-[#5e2be2] font-bold text-xs rounded-xl shrink-0 whitespace-nowrap">
                         {item.time.split(' - ')[0] || item.time}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm text-slate-900">{item.clientName}</h4>
-                          <span className="text-[10px] text-slate-400 font-mono">#{item.bookingCode}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h4 className="font-bold text-sm text-slate-900 truncate">{item.clientName}</h4>
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0">#{item.bookingCode}</span>
                         </div>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-500 truncate" title={`${item.service} · ${item.therapistName}`}>
                           {item.service} · <span className="font-semibold text-slate-700">{item.therapistName}</span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* Status and View Details keep fixed widths so they line up across rows; Mark Done sits to their left */}
+                    <div className="flex items-center justify-end gap-2 shrink-0">
+                      {item.status === 'Scheduled' && (
+                        <button
+                          type="button"
+                          onClick={() => updateBookingStatus(item.id, 'Completed')}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 whitespace-nowrap"
+                          title="Mark Session as Completed"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Mark Done</span>
+                        </button>
+                      )}
+
                       <span
-                        className={`text-xs px-3 py-1 rounded-full font-bold ${
+                        className={`w-28 text-center text-xs px-3 py-1 rounded-full font-bold whitespace-nowrap ${
                           item.status === 'Completed'
                             ? 'bg-emerald-100 text-emerald-700'
                             : item.status === 'Scheduled'
@@ -719,21 +732,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                         {item.status}
                       </span>
 
-                      {item.status === 'Scheduled' && (
-                        <button
-                          type="button"
-                          onClick={() => updateBookingStatus(item.id, 'Completed')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg shadow-xs transition-all active:scale-95"
-                          title="Mark Session as Completed"
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Mark Done</span>
-                        </button>
-                      )}
-
                       <button
                         onClick={() => onSelectPage('bookings')}
-                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold rounded-xl shadow-2xs"
+                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold rounded-xl shadow-2xs whitespace-nowrap"
                       >
                         View Details
                       </button>
