@@ -24,8 +24,10 @@ const seoMetaSchema = yup.object({
   htmlChunk: yup.string().nullable().optional(),
 });
 
-// Review schema for form input (without authorId - we'll add admin ID server-side)
+// Review schema for form input. Reviews entered here are admin reviews (authorId null);
+// reviews written by clients are kept as they are and never edited from this form.
 const reviewInputSchema = yup.object({
+  id: yup.string().optional(),
   clientName: yup.string().required("Client name is required"),
   clientTitle: yup.string().nullable().optional(),
   rating: yup.number().integer().min(1).max(5).required("Rating is required"),
@@ -149,6 +151,74 @@ function handleError(error: unknown) {
   return { success: false, error: "An unknown error occurred." };
 }
 
+// -----------------------------------------------------
+// SHARED-DATABASE HELPERS
+// (the Backend reads these documents too; keep in sync with Backend/src/services/live-content.ts)
+// -----------------------------------------------------
+
+type RawDoc = Record<string, any>;
+const rawId = (doc: RawDoc) =>
+  String(doc?._id?.$oid ?? doc?._id ?? doc?.id ?? "");
+
+/** Client-written reviews carry authorId, clientId or verified; admin reviews have none of them */
+function isClientReview(r: RawDoc) {
+  return Boolean((r?.authorId && r.authorId !== "ADMIN") || r?.clientId || r?.verified);
+}
+
+/** The consultant's reviews split into admin-entered and client-written ids */
+async function reviewIdsByAuthorship(consultantId: string) {
+  const raw = (await prisma.review.findRaw({
+    filter: { consultantId },
+    options: { projection: { _id: 1, authorId: 1, clientId: 1, verified: 1 } },
+  })) as unknown as RawDoc[];
+  const list = Array.isArray(raw) ? raw : [];
+  return {
+    admin: list.filter((r) => !isClientReview(r)).map(rawId),
+    client: new Set(list.filter(isClientReview).map(rawId)),
+  };
+}
+
+/** Lowest price among plans that are actually offered (not retired, above ₹0) */
+function lowestOfferedPrice(services: { price: number; retired?: boolean | null }[]) {
+  const prices = services
+    .filter((s) => !s.retired && Number(s.price) > 0)
+    .map((s) => Number(s.price));
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/** Another consultant already using this website slug */
+async function identifierTaken(identifier: string | undefined, exceptId?: string) {
+  if (!identifier) return false;
+  const clash = await prisma.consultant.findFirst({
+    where: { identifier, ...(exceptId ? { NOT: { id: exceptId } } : {}) },
+    select: { id: true },
+  });
+  return Boolean(clash);
+}
+
+/**
+ * Keeps the copies other panels read equal to the website's fields: the profession name next to
+ * professionId, bio next to about, and the older photo names next to photoUrl.
+ */
+async function syncConsultantCopies(id: string) {
+  const c = await prisma.consultant.findUnique({
+    where: { id },
+    select: { about: true, photoUrl: true, profession: { select: { name: true } } },
+  });
+  if (!c) return;
+  const set: Record<string, unknown> = {
+    bio: c.about ?? null,
+    photo: c.photoUrl ?? null,
+    image: c.photoUrl ?? null,
+    avatarUrl: c.photoUrl ?? null,
+  };
+  if (c.profession?.name) set.profession = c.profession.name;
+  await prisma.$runCommandRaw({
+    update: "Consultant",
+    updates: [{ q: { _id: id }, u: { $set: set } }],
+  } as any);
+}
+
 function revalidateConsultantPaths(consultant: {
   id: string;
   identifier: string;
@@ -183,6 +253,10 @@ export async function createConsultant(input: ConsultantInput) {
         stripUnknown: true,
       });
 
+    if (await identifierTaken(consultantData.identifier)) {
+      return { success: false, error: "This identifier is already in use by another consultant." };
+    }
+
     const certificateUrls = (certificateImages || []).map((img) => img.url);
     const certificateAltTexts = (certificateImages || []).map(
       (img) => img.alt || "",
@@ -199,12 +273,6 @@ export async function createConsultant(input: ConsultantInput) {
       seoMetaId = newSeoMeta.id;
     }
 
-    // Get current logged-in user ID for reviews
-    const lowestService = services?.reduce(
-      (min, s) => (s.price < min.price ? s : min),
-      services[0],
-    );
-
     const consultant = await prisma.consultant.create({
       data: {
         sequence: Number(consultantData.sequence) || null,
@@ -212,12 +280,12 @@ export async function createConsultant(input: ConsultantInput) {
         certificateUrls,
         certificateAltTexts,
         seoMetaId: seoMetaId, // Link the newly created SeoMeta
-        minPrice: lowestService?.price ?? 0,
+        minPrice: lowestOfferedPrice(services || []),
       },
       include: { seoMeta: true, profession: true },
     });
 
-    // Create reviews if provided
+    // Create reviews if provided (admin-entered: no author)
     if (reviews && reviews.length > 0) {
       await prisma.review.createMany({
         data: reviews.map((review) => ({
@@ -225,7 +293,6 @@ export async function createConsultant(input: ConsultantInput) {
           comment: review.comment,
           clientName: review.clientName,
           clientTitle: review.clientTitle,
-          authorId: "ADMIN",
           consultantId: consultant.id,
           imageUrls: (review.reviewImages || []).map((img) => img.url),
           imageAltTexts: (review.reviewImages || []).map(
@@ -250,6 +317,7 @@ export async function createConsultant(input: ConsultantInput) {
       });
     }
 
+    await syncConsultantCopies(consultant.id);
     revalidateConsultantPaths(consultant);
     return { success: true, data: consultant };
   } catch (error) {
@@ -276,7 +344,18 @@ export async function getConsultant(id: string) {
       return { success: false, error: "Consultant not found." };
     }
 
-    return { success: true, data: consultant };
+    // The edit form shows the plans currently offered (retired plans are kept only for past
+    // bookings) and the admin-entered reviews (client reviews are not edited here)
+    const { client } = await reviewIdsByAuthorship(id);
+    return {
+      success: true,
+      data: {
+        ...consultant,
+        services: consultant.services.filter((s) => !s.retired),
+        reviews: consultant.reviews.filter((r) => !client.has(r.id)),
+        clientReviewCount: client.size,
+      },
+    };
   } catch (error) {
     return handleError(error);
   }
@@ -359,14 +438,16 @@ export async function updateConsultant(
     if (!existing) {
       return { success: false, error: "Consultant not found." };
     }
+    if (await identifierTaken(consultantData.identifier, id)) {
+      return { success: false, error: "This identifier is already in use by another consultant." };
+    }
 
     const consultantUpdates = { ...consultantData } as typeof consultantData & {
       seoMetaId?: string;
+      minPrice?: number | null;
     };
-    const lowestService = services?.reduce(
-      (min, s) => (s.price < min.price ? s : min),
-      services[0],
-    );
+    // Only offered plans (not retired, above ₹0) set the starting price
+    if (services !== undefined) consultantUpdates.minPrice = lowestOfferedPrice(services);
     // Prepare certificate arrays if provided
     let certificateUpdates = {};
     if (certificateImages) {
@@ -400,27 +481,29 @@ export async function updateConsultant(
       data: {
         ...consultantUpdates,
         ...certificateUpdates,
-        minPrice: lowestService?.price ?? 0,
       },
       include: { seoMeta: true, profession: true },
     });
 
     // --- Handle Reviews Update ---
     if (reviews !== undefined) {
-      // Delete all existing reviews for this consultant
-      await prisma.review.deleteMany({
-        where: { consultantId: id },
-      });
+      // Replace only the admin-entered reviews; client-written reviews are kept untouched
+      const { admin, client } = await reviewIdsByAuthorship(id);
+      if (admin.length > 0) {
+        await prisma.review.deleteMany({
+          where: { id: { in: admin } },
+        });
+      }
 
-      // Create new reviews if provided
-      if (reviews.length > 0) {
+      // Entries that are client reviews are not re-created (prevents duplicates)
+      const adminReviews = reviews.filter((r) => !(r.id && client.has(r.id)));
+      if (adminReviews.length > 0) {
         await prisma.review.createMany({
-          data: reviews.map((review) => ({
+          data: adminReviews.map((review) => ({
             rating: review.rating,
             comment: review.comment,
             clientName: review.clientName,
             clientTitle: review.clientTitle,
-            authorId: "ADMIN", // Use logged-in user ID
             consultantId: id,
             imageUrls: (review.reviewImages || []).map((img) => img.url),
             imageAltTexts: (review.reviewImages || []).map(
@@ -436,29 +519,46 @@ export async function updateConsultant(
 
     // --- Handle Services Update ---
     if (services !== undefined) {
-      // 1. Get existing services
+      // 1. Get existing services (retired plans are not in the form and stay retired)
       const existingServices = await prisma.service.findMany({
         where: { consultantId: id },
-        select: { id: true },
+        select: { id: true, retired: true },
       });
       const existingIds = existingServices.map((s) => s.id);
+      const offeredIds = existingServices.filter((s) => !s.retired).map((s) => s.id);
 
-      // 2. Identify services to update, create, and delete
+      // 2. Identify services to update, create, and remove (ids stay stable)
       const incomingIds = services
         .filter((s) => s.id)
         .map((s) => s.id as string);
-      const servicesToCreate = services.filter((s) => !s.id);
+      const servicesToCreate = services.filter(
+        (s) => !s.id || !existingIds.includes(s.id),
+      );
       const servicesToUpdate = services.filter(
         (s) => s.id && existingIds.includes(s.id),
       );
-      const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
+      const idsToRemove = offeredIds.filter((sid) => !incomingIds.includes(sid));
 
-      // 3. Delete removed services
-      if (idsToDelete.length > 0) {
-        // Note: This might fail if bookings exist. We catch this in handleError.
-        await prisma.service.deleteMany({
-          where: { id: { in: idsToDelete } },
-        });
+      // 3. Removed plans: booked ones are retired (kept for past bookings), unused ones deleted
+      if (idsToRemove.length > 0) {
+        const booked = (await prisma.booking.findRaw({
+          filter: { serviceId: { $in: idsToRemove } },
+          options: { projection: { serviceId: 1 } },
+        })) as unknown as RawDoc[];
+        const bookedIds = new Set((Array.isArray(booked) ? booked : []).map((b) => String(b.serviceId)));
+        const toRetire = idsToRemove.filter((sid) => bookedIds.has(sid));
+        const toDelete = idsToRemove.filter((sid) => !bookedIds.has(sid));
+        if (toRetire.length > 0) {
+          await prisma.service.updateMany({
+            where: { id: { in: toRetire } },
+            data: { retired: true },
+          });
+        }
+        if (toDelete.length > 0) {
+          await prisma.service.deleteMany({
+            where: { id: { in: toDelete } },
+          });
+        }
       }
 
       // 4. Create new services
@@ -492,6 +592,7 @@ export async function updateConsultant(
       }
     }
 
+    await syncConsultantCopies(id);
     revalidateConsultantPaths(existing);
     revalidateConsultantPaths(updatedConsultant);
     return { success: true, data: updatedConsultant };
@@ -505,6 +606,15 @@ export async function updateConsultant(
 // -----------------------------------------------------
 export async function deleteConsultant(id: string) {
   try {
+    // Booking history must stay intact (same rule as the Backend's DELETE /api/consultants)
+    const bookings = await prisma.booking.count({ where: { consultantId: id } });
+    if (bookings > 0) {
+      return {
+        success: false,
+        error: `This consultant has ${bookings} booking(s). Archive or hide them from the website instead of deleting, so booking history stays intact.`,
+      };
+    }
+
     const deletedConsultant = await prisma.$transaction(async (tx) => {
       const consultant = await tx.consultant.findUnique({
         where: { id },
@@ -515,11 +625,7 @@ export async function deleteConsultant(id: string) {
         throw new Error("Consultant not found.");
       }
 
-      // 1. Delete all dependent records (Child of Child first)
-      // Bookings depend on Services and Consultants, so delete them first
-      await tx.booking.deleteMany({ where: { consultantId: id } });
-
-      // 2. Delete direct children
+      // 1. Delete direct children
       await tx.review.deleteMany({ where: { consultantId: id } });
       await tx.service.deleteMany({ where: { consultantId: id } });
 
@@ -537,6 +643,12 @@ export async function deleteConsultant(id: string) {
 
       return deleted;
     });
+
+    // The older lowercase `consultants` copy read by the panels goes too
+    await prisma.$runCommandRaw({
+      delete: "consultants",
+      deletes: [{ q: { $or: [{ _id: id }, { id }] }, limit: 0 }],
+    } as any);
 
     revalidatePath("/dashboard/consultants");
     revalidatePath(`/dashboard/consultants/${deletedConsultant.identifier}`);

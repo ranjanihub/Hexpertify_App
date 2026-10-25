@@ -42,13 +42,13 @@ export const getPageData = async () => {
         .map((p) => ({ ...p, consultants: p.consultants.filter(isConsultantPublic) }));
     }, []),
 
-    // Top consultants by admin-defined sequence
+    // Top consultants by admin-defined sequence; consultants without a sequence come after the ranked ones
     section("topConsultants", async () => {
-      const list = await prisma.consultant.findMany({
-        orderBy: { sequence: "asc" },
-        take: 30,
+      const all = await prisma.consultant.findMany({
+        orderBy: { createdAt: "asc" },
         select: {
           id: true,
+          sequence: true,
           name: true,
           identifier: true,
           photoUrl: true,
@@ -60,6 +60,8 @@ export const getPageData = async () => {
           profession: { select: { name: true, identifier: true, status: true, visibility: true } },
         },
       });
+      const ranked = all.filter((c) => typeof c.sequence === "number").sort((a, b) => (a.sequence as number) - (b.sequence as number));
+      const list = [...ranked, ...all.filter((c) => typeof c.sequence !== "number")];
       return list.filter((c) => isConsultantPublic(c) && (!c.profession || isProfessionPublic(c.profession))).slice(0, 10);
     }, []),
 

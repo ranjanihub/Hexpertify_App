@@ -1,7 +1,25 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
-import { emailNotification } from '../services/notification.service';
+import { idQuery } from '../services/live-content';
+import { createNotifications, emailNotification, newNotificationId } from '../services/notification.service';
+
+/** One document per (activity template, client) assignment */
+const ACTIVITY_ASSIGNMENTS = 'ActivityAssignment';
+
+/** Keeps a client's activity answers as plain JSON, capped so one submission cannot bloat the document */
+const MAX_SUBMISSION_BYTES = 20000;
+function sanitizeSubmission(value: unknown): any {
+  if (value === undefined || value === null) return null;
+  try {
+    const json = JSON.stringify(value);
+    if (!json || json.length > MAX_SUBMISSION_BYTES) return { truncated: true, text: String(json || '').slice(0, MAX_SUBMISSION_BYTES) };
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
 
 const DEFAULT_SEED_ACTIVITIES = [
   {
@@ -548,7 +566,9 @@ export class ActivitiesController {
 
         if (activities.length === 0) {
           // Auto-seed default clinical activities in MongoDB Atlas
-          await db.collection('Activity').insertMany(DEFAULT_SEED_ACTIVITIES as any[]).catch(() => {});
+          // Templates only: the seed's sample assignees are not real clients
+          const templates = DEFAULT_SEED_ACTIVITIES.map(({ assignedClientName, assignedTherapistName, assignedInfo, assignedTo, clientAssignments, ...t }) => t);
+          await db.collection('Activity').insertMany(templates as any[]).catch(() => {});
           activities = await db.collection('Activity').find({}).toArray();
         }
 
@@ -656,7 +676,11 @@ export class ActivitiesController {
         query = { $or: [{ _id: new ObjectId(id) }, { id }] };
       }
 
-      await db.collection('Activity').updateOne(query, { $set: updates }, { upsert: true });
+      const result = await db.collection('Activity').updateOne(query, { $set: updates });
+      if (!result.matchedCount) {
+        res.status(404).json({ success: false, error: 'Activity not found' });
+        return;
+      }
       cacheService.invalidateTags(['activities', 'stats']);
 
       res.json({
@@ -670,147 +694,262 @@ export class ActivitiesController {
 
   /**
    * POST /api/activities/assign
-   * Assign activity to clients and dispatch notifications to client panels
+   * Assigns a template to clients: one ActivityAssignment per client. The shared template is only
+   * matched by its id/_id and never renamed or replaced; its legacy assignedTo/clientAssignments
+   * lists are appended to so older readers keep working.
    */
   static async assign(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
       const body = req.body || {};
 
-      const activityId = String(body.activityId || body.id || '');
-      const activityTitle = body.activityTitle || body.title || 'Morning Mindfulness Meditation';
-      const activityCategory = body.activityCategory || body.category || 'MINDFULNESS';
-      const consultantId = String(body.consultantId || '');
-      const consultantName = body.consultantName || body.therapistName || 'Your Consultant';
+      const activityId = String(body.activityId || body.id || '').trim();
       const clients = Array.isArray(body.clients) ? body.clients : [];
-      const assignedToNames = Array.isArray(body.assignedTo) 
-        ? body.assignedTo 
-        : clients.map((c: any) => c.clientName || c.name).filter(Boolean);
 
-      if (!activityId && !activityTitle) {
-        res.status(400).json({ success: false, error: 'Activity ID or Title is required' });
+      if (!activityId) {
+        res.status(400).json({ success: false, error: 'Activity ID is required' });
+        return;
+      }
+      if (clients.length === 0) {
+        res.status(400).json({ success: false, error: 'At least one client is required' });
         return;
       }
 
-      const searchConditions: any[] = [];
-      if (activityId) {
-        searchConditions.push({ id: activityId });
-        searchConditions.push({ id: Number(activityId) || -1 });
-        searchConditions.push({ id: `ACT-0${activityId}` });
-        if (ObjectId.isValid(activityId)) {
-          searchConditions.push({ _id: new ObjectId(activityId) });
-        }
+      const template: any = await db.collection('Activity').findOne(idQuery(activityId));
+      if (!template) {
+        res.status(404).json({ success: false, error: 'Activity template not found' });
+        return;
       }
-      if (activityTitle) {
-        const safeRegex = new RegExp(`^${activityTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-        searchConditions.push({ name: activityTitle });
-        searchConditions.push({ title: activityTitle });
-        searchConditions.push({ name: { $regex: safeRegex } });
-        searchConditions.push({ title: { $regex: safeRegex } });
-      }
+      const templateId = String(template.id || template._id);
+      const activityTitle = template.title || template.name || String(body.activityTitle || body.title || 'Activity');
 
-      const query = searchConditions.length > 0 ? { $or: searchConditions } : { id: activityId };
+      // The therapist is identified by their Consultant record (custom id, string _id or email)
+      const bodyConsultantId = String(body.consultantId || body.therapistId || '').trim();
+      const bodyConsultantEmail = String(body.consultantEmail || '').toLowerCase().trim();
+      const consultantOr: any[] = [
+        ...(bodyConsultantId ? idQuery(bodyConsultantId).$or : []),
+        ...(bodyConsultantEmail ? [{ email: bodyConsultantEmail }] : [])
+      ];
+      const consultant: any = consultantOr.length
+        ? await db.collection('Consultant').findOne({ $or: consultantOr }).catch(() => null)
+        : null;
+      const consultantId = consultant ? String(consultant.id || consultant._id) : bodyConsultantId;
+      const consultantName = consultant?.name || body.consultantName || body.therapistName || 'Your Consultant';
 
-      const updateFields: any = {
-        id: activityId || '1',
-        name: activityTitle,
-        title: activityTitle,
-        categoryTag: activityCategory,
-        category: activityCategory,
-        assignedTo: assignedToNames,
-        clientAssignments: clients,
-        assignedTherapistId: consultantId,
-        assignedTherapistName: consultantName,
-        frequency: clients[0]?.frequency || body.frequency || 'Daily',
-        timeOfDay: clients[0]?.timeOfDay || body.timeOfDay || 'Morning (8:00 AM)',
-        updatedAt: new Date()
-      };
+      const now = new Date();
+      const created: any[] = [];
+      const skipped: any[] = [];
 
-      if (body.description) updateFields.description = body.description;
-      if (body.duration) updateFields.duration = body.duration;
-      if (body.difficulty) updateFields.difficulty = body.difficulty;
-      if (body.imageUrl) updateFields.imageUrl = body.imageUrl;
-      if (body.instructions) updateFields.instructions = body.instructions;
-      if (body.dueDate) updateFields.dueDate = body.dueDate;
-
-      // Update or upsert the activity in MongoDB Atlas
-      await Promise.all([
-        db.collection('Activity').updateMany(
-          query,
-          {
-            $set: updateFields,
-            $setOnInsert: {
-              createdAt: new Date(),
-              status: 'pending',
-              isVisible: true
-            }
-          },
-          { upsert: true }
-        ),
-        db.collection('activities').updateMany(
-          query,
-          {
-            $set: updateFields,
-            $setOnInsert: {
-              createdAt: new Date(),
-              status: 'pending',
-              isVisible: true
-            }
-          },
-          { upsert: true }
-        ).catch(() => {})
-      ]);
-
-      // Create in-app notifications for each assigned client
-      const notificationsToInsert: any[] = [];
       for (const client of clients) {
-        const clientEmail = String(client.clientEmail || client.email || '').toLowerCase().trim();
-        const clientId = String(client.clientId || client.id || '');
-        const clientName = client.clientName || client.name || 'Client';
-        const freq = client.frequency || 'Daily';
-        const timeSlot = client.timeOfDay || 'Morning (8:00 AM)';
+        const rawEmail = String(client.clientEmail || client.email || '').toLowerCase().trim();
+        const rawId = String(client.clientId || client.id || '').trim();
+        if (!rawEmail && !rawId) continue;
 
-        const notifDoc = {
-          id: `NOTIF-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-          recipientId: clientId,
-          recipientEmail: clientEmail,
-          clientEmail: clientEmail,
-          clientName: clientName,
-          recipientRole: 'CLIENT',
-          type: 'ACTIVITY_ASSIGNED',
-          title: `New Activity Assigned: ${activityTitle} ⚡`,
-          message: `Your consultant ${consultantName} assigned you "${activityTitle}" (${freq} • ${timeSlot}). Tap to start your therapeutic exercise.`,
-          link: '/activities',
-          activityId: activityId,
-          activityTitle: activityTitle,
-          frequency: freq,
-          timeOfDay: timeSlot,
-          consultantId: consultantId,
-          consultantName: consultantName,
-          read: false,
-          createdAt: new Date(),
-          updatedAt: new Date()
+        const user: any = await db.collection('User').findOne({
+          $or: [...(rawEmail ? [{ email: rawEmail }] : []), ...(rawId ? idQuery(rawId).$or : [])]
+        }).catch(() => null);
+        const clientId = user ? String(user.id || user._id) : rawId;
+        const clientEmail = String(user?.email || rawEmail).toLowerCase();
+        const clientName = user?.name || client.clientName || client.name || 'Client';
+
+        const existing = await db.collection(ACTIVITY_ASSIGNMENTS).findOne({
+          activityId: templateId,
+          status: 'pending',
+          $or: [...(clientEmail ? [{ clientEmail }] : []), ...(clientId ? [{ clientId }] : [])]
+        });
+        if (existing) {
+          skipped.push({ ...existing, reason: 'already assigned' });
+          continue;
+        }
+
+        const assignment = {
+          id: `ACTA-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+          activityId: templateId,
+          activityTitle,
+          clientId,
+          clientEmail,
+          clientName,
+          consultantId,
+          consultantName,
+          frequency: client.frequency || body.frequency || template.frequency || 'Daily',
+          timeOfDay: client.timeOfDay || body.timeOfDay || template.timeOfDay || 'Any Time',
+          status: 'pending' as const,
+          assignedAt: now,
+          completedAt: null,
+          submission: null,
+          createdAt: now,
+          updatedAt: now
         };
-
-        notificationsToInsert.push(notifDoc);
+        await db.collection(ACTIVITY_ASSIGNMENTS).insertOne({ ...assignment });
+        created.push(assignment);
       }
+
+      if (created.length > 0) {
+        // Legacy readers still look at the template's lists: append, never replace
+        const legacyUpdate: any = {
+          $addToSet: { assignedTo: { $each: [...new Set(created.map((a) => a.clientName))] } },
+          $push: {
+            clientAssignments: {
+              $each: created.map((a) => ({
+                clientId: a.clientId,
+                clientEmail: a.clientEmail,
+                clientName: a.clientName,
+                frequency: a.frequency,
+                timeOfDay: a.timeOfDay,
+                consultantId: a.consultantId,
+                assignmentId: a.id
+              }))
+            }
+          },
+          $set: { updatedAt: now }
+        };
+        await Promise.all([
+          db.collection('Activity').updateOne({ _id: template._id }, legacyUpdate).catch(() => {}),
+          db.collection('activities').updateOne(idQuery(templateId), legacyUpdate).catch(() => {})
+        ]);
+      }
+
+      // Create in-app notifications for each newly assigned client
+      const notificationsToInsert = created.map((a) => ({
+        id: newNotificationId(),
+        recipientId: a.clientId,
+        recipientEmail: a.clientEmail,
+        clientEmail: a.clientEmail,
+        clientName: a.clientName,
+        recipientRole: 'CLIENT',
+        type: 'ACTIVITY_ASSIGNED',
+        title: `New Activity Assigned: ${activityTitle}`,
+        message: `Your consultant ${consultantName} assigned you "${activityTitle}" (${a.frequency} • ${a.timeOfDay}). Tap to start your therapeutic exercise.`,
+        link: '/activities',
+        activityId: templateId,
+        activityTitle,
+        assignmentId: a.id,
+        frequency: a.frequency,
+        timeOfDay: a.timeOfDay,
+        consultantId,
+        consultantName,
+        read: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }));
 
       if (notificationsToInsert.length > 0) {
         await db.collection('Notification').insertMany(notificationsToInsert.map((n) => ({ ...n }))).catch(() => {});
         await db.collection('notifications').insertMany(notificationsToInsert.map((n) => ({ ...n }))).catch(() => {});
         await Promise.allSettled(notificationsToInsert.map((n) => emailNotification({ ...n, recipientRole: 'CLIENT' })));
+        cacheService.invalidateTags(['notifications']);
       }
 
       cacheService.invalidateTags(['activities', 'stats', 'users']);
 
       res.status(200).json({
         success: true,
-        message: `Activity assigned and ${notificationsToInsert.length} client notification(s) dispatched.`,
-        assignedCount: notificationsToInsert.length,
+        message: `Activity assigned to ${created.length} client(s)${skipped.length ? `; ${skipped.length} already had it` : ''}.`,
+        assignedCount: created.length,
+        assignments: created,
+        skipped,
         notifications: notificationsToInsert
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to assign activity' });
+    }
+  }
+
+  /**
+   * GET /api/activities/assignments?clientEmail=|clientId=|consultantId=&status=
+   * A client's assignments match by email or id; a therapist's by their consultant id.
+   */
+  static async getAssignments(req: Request, res: Response): Promise<void> {
+    try {
+      const db = getDatabase();
+      const clientEmail = String(req.query.clientEmail || req.query.email || '').toLowerCase().trim();
+      const clientId = String(req.query.clientId || '').trim();
+      const consultantId = String(req.query.consultantId || req.query.therapistId || '').trim();
+      const status = String(req.query.status || '').toLowerCase().trim();
+
+      if (!clientEmail && !clientId && !consultantId) {
+        res.status(400).json({ success: false, error: 'clientEmail, clientId or consultantId is required' });
+        return;
+      }
+
+      const and: any[] = [];
+      if (clientEmail || clientId) {
+        and.push({ $or: [...(clientEmail ? [{ clientEmail }] : []), ...(clientId ? [{ clientId }] : [])] });
+      }
+      if (consultantId) {
+        // A therapist may be referenced by their custom id or by their Consultant _id
+        const consultant: any = await db.collection('Consultant').findOne(idQuery(consultantId)).catch(() => null);
+        const ids = [...new Set([consultantId, consultant?.id, consultant?._id].filter(Boolean).map(String))];
+        and.push({ consultantId: { $in: ids } });
+      }
+      if (status === 'pending' || status === 'completed') and.push({ status });
+
+      const assignments = await db.collection(ACTIVITY_ASSIGNMENTS)
+        .find(and.length === 1 ? and[0] : { $and: and })
+        .sort({ assignedAt: -1 })
+        .toArray();
+
+      res.json({
+        success: true,
+        count: assignments.length,
+        assignments: assignments.map(({ _id, ...a }: any) => ({ ...a, id: a.id || String(_id) }))
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch activity assignments' });
+    }
+  }
+
+  /**
+   * POST /api/activities/assignments/:id/complete { submission, clientEmail?, clientId? }
+   * Marks the client's assignment completed and tells their therapist in-app.
+   */
+  static async completeAssignment(req: Request, res: Response): Promise<void> {
+    try {
+      const db = getDatabase();
+      const id = String(req.params.id || '').trim();
+      const body = req.body || {};
+      const assignment: any = id ? await db.collection(ACTIVITY_ASSIGNMENTS).findOne(idQuery(id)) : null;
+      if (!assignment) {
+        res.status(404).json({ success: false, error: 'Activity assignment not found' });
+        return;
+      }
+
+      // When the client identifies itself, it must be the assigned client
+      const callerEmail = String(body.clientEmail || '').toLowerCase().trim();
+      const callerId = String(body.clientId || '').trim();
+      const isOwner = (!callerEmail && !callerId) ||
+        (callerEmail && callerEmail === String(assignment.clientEmail || '').toLowerCase()) ||
+        (callerId && callerId === String(assignment.clientId || ''));
+      if (!isOwner) {
+        res.status(403).json({ success: false, error: 'This activity is assigned to another client' });
+        return;
+      }
+
+      // A client may keep their answers private: the therapist then only learns it was completed
+      const isPrivate = Boolean(body.isPrivate) || body.sharingPreference === 'private';
+      const submission = isPrivate ? null : sanitizeSubmission(body.submission);
+      const now = new Date();
+      const completion = { status: 'completed', completedAt: now, submission, isPrivate, updatedAt: now };
+      await db.collection(ACTIVITY_ASSIGNMENTS).updateOne({ _id: assignment._id }, { $set: completion });
+      const updated = { ...assignment, ...completion };
+      delete updated._id;
+
+      if (assignment.status !== 'completed' && assignment.consultantId) {
+        const consultant: any = await db.collection('Consultant').findOne(idQuery(String(assignment.consultantId))).catch(() => null);
+        await createNotifications([{
+          recipientRole: 'CONSULTANT',
+          recipientId: String(consultant?.id || consultant?._id || assignment.consultantId),
+          recipientEmail: consultant?.email || '',
+          type: 'ACTIVITY_COMPLETED',
+          title: `Activity Completed: ${assignment.clientName || 'Client'}`,
+          message: `${assignment.clientName || 'Your client'} completed "${assignment.activityTitle || 'an activity'}"${isPrivate ? ' and kept their responses private' : ''}.`,
+          link: '/consultant/activities'
+        }]);
+      }
+
+      res.json({ success: true, assignment: updated, message: 'Activity marked as completed' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Failed to complete activity' });
     }
   }
 

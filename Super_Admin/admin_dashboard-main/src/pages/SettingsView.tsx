@@ -17,6 +17,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { launchConsultantPanel } from '../lib/auth';
+import { api } from '../lib/apiClient';
 
 export interface AdminUser {
   id: string;
@@ -36,33 +37,19 @@ export interface ConsultantUser {
   createdAt: string;
 }
 
-const INITIAL_ADMINS: AdminUser[] = [
-  { id: 'ADM-1', name: 'Dr. Alex Harrison', role: 'Super Admin', email: 'alex.admin@hexpertify.com', status: 'Active', createdAt: '2025-01-15' },
-  { id: 'ADM-2', name: 'Finance Manager', role: 'Finance Admin', email: 'finance@hexpertify.com', status: 'Active', createdAt: '2025-02-01' },
-  { id: 'ADM-3', name: 'Ops Team Lead', role: 'Operations Admin', email: 'ops@hexpertify.com', status: 'Active', createdAt: '2025-03-10' }
-];
-
-const INITIAL_CONSULTANTS: ConsultantUser[] = [
-  { id: 'CON-1', name: 'Dr. Evelyn Reed, PhD', profession: 'Licensed Clinical Psychologist', email: 'dr.evelyn@hexpertify.com', status: 'Active', createdAt: '2025-01-10' },
-  { id: 'CON-2', name: 'Dr. Alex Harrison', profession: 'Licensed Clinical Psychologist', email: 'alex.harrison@hexpertify.com', status: 'Active', createdAt: '2025-01-12' },
-  { id: 'CON-3', name: 'Dr. Elena Rostova', profession: 'Marriage & Family Therapist', email: 'elena.rostova@hexpertify.com', status: 'Active', createdAt: '2025-02-05' },
-  { id: 'CON-4', name: 'Marcus Vance', profession: 'Adolescent & Teen Counselor', email: 'marcus.vance@hexpertify.com', status: 'Active', createdAt: '2025-03-01' },
-  { id: 'CON-5', name: 'Marcus Thorne', profession: 'Intuitive & Career Counselor', email: 'marcus.thorne@hexpertify.com', status: 'Active', createdAt: '2025-03-05' },
-  { id: 'CON-6', name: 'Sophia Chakra', profession: 'Holistic Wellness & Mindfulness Expert', email: 'sophia.chakra@hexpertify.com', status: 'Active', createdAt: '2025-03-12' },
-  { id: 'CON-7', name: 'Dr. Priya Sharma, PsyD', profession: 'Clinical Neuropsychologist', email: 'priya.sharma@hexpertify.com', status: 'Active', createdAt: '2025-03-18' },
-  { id: 'CON-8', name: 'Dr. David Miller, MD', profession: 'Adult & Child Psychiatrist', email: 'david.miller@hexpertify.com', status: 'Active', createdAt: '2025-03-22' },
-  { id: 'CON-9', name: 'Dr. Aris Thorne', profession: 'Trauma & Somatic Psychotherapist', email: 'aris.thorne@hexpertify.com', status: 'Active', createdAt: '2025-03-25' }
-];
-
 export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'admins' | 'consultants'>('admins');
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [isLoadingDb, setIsLoadingDb] = useState(false);
 
-  // Admin users state
+  // Admin users state (real accounts only: the last loaded list until the database answers)
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(() => {
-    const saved = localStorage.getItem('hexpertify_admin_users');
-    return saved ? JSON.parse(saved) : INITIAL_ADMINS;
+    try {
+      const parsed = JSON.parse(localStorage.getItem('hexpertify_admin_users') || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   // Consultant users state
@@ -71,12 +58,12 @@ export const SettingsView: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= INITIAL_CONSULTANTS.length) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       } catch (e) {}
     }
-    return INITIAL_CONSULTANTS;
+    return [];
   });
 
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
@@ -86,6 +73,8 @@ export const SettingsView: React.FC = () => {
   const [editingConsultant, setEditingConsultant] = useState<ConsultantUser | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Sign-in details of the admin just created; shown once until dismissed
+  const [newAdminCredentials, setNewAdminCredentials] = useState<{ email: string; password: string } | null>(null);
 
   // Admin Form fields
   const [adminFormData, setAdminFormData] = useState<{
@@ -125,12 +114,8 @@ export const SettingsView: React.FC = () => {
     setIsLoadingDb(true);
     try {
       // 1. Fetch Consultants from MongoDB Atlas
-      let resCons = await fetch('/api/admin/consultants').catch(() => null);
-      if (!resCons || !resCons.ok) {
-        resCons = await fetch('http://localhost:5000/api/admin/consultants').catch(() => null);
-      }
-      if (resCons && resCons.ok) {
-        const dataCons = await resCons.json();
+      const dataCons: any = await api.get('/api/admin/consultants').catch(() => null);
+      if (dataCons) {
         if (dataCons?.consultants && Array.isArray(dataCons.consultants) && dataCons.consultants.length > 0) {
           const liveCons: ConsultantUser[] = dataCons.consultants.map((c: any) => ({
             id: c.id || `CON-${String(c._id || '').slice(-4)}`,
@@ -150,12 +135,8 @@ export const SettingsView: React.FC = () => {
 
     try {
       // 2. Fetch Admin Users from MongoDB Atlas
-      let resUsers = await fetch('/api/admin/users').catch(() => null);
-      if (!resUsers || !resUsers.ok) {
-        resUsers = await fetch('http://localhost:5000/api/admin/users').catch(() => null);
-      }
-      if (resUsers && resUsers.ok) {
-        const dataUsers = await resUsers.json();
+      const dataUsers: any = await api.get('/api/admin/users').catch(() => null);
+      if (dataUsers) {
         if (dataUsers?.users && Array.isArray(dataUsers.users)) {
           const adminOnly = dataUsers.users.filter((u: any) => String(u.role).toUpperCase() === 'ADMIN');
           if (adminOnly.length > 0) {
@@ -224,15 +205,11 @@ export const SettingsView: React.FC = () => {
         if (id) queryParams.set('id', id);
         if (email) queryParams.set('email', email);
 
-        let res = await fetch(`/api/admin/users?${queryParams.toString()}`, {
-          method: 'DELETE'
-        }).catch(() => null);
-        if (!res || !res.ok) {
-          await fetch(`http://localhost:5000/api/admin/users?${queryParams.toString()}`, {
-            method: 'DELETE'
-          }).catch(() => null);
-        }
-      } catch (e) {}
+        await api.delete(`/api/admin/users?${queryParams.toString()}`);
+      } catch (err: any) {
+        showToast(`Not removed on the server: ${err?.message || 'request failed'}`);
+        fetchLiveDatabaseData();
+      }
     }
   };
 
@@ -247,19 +224,13 @@ export const SettingsView: React.FC = () => {
     showToast(`Status updated to ${nextStatus} for ${usr.name}.`);
 
     try {
-      let res = await fetch('/api/admin/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, email: email || usr.email, status: nextStatus })
-      }).catch(() => null);
-      if (!res || !res.ok) {
-        await fetch('http://localhost:5000/api/admin/users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, email: email || usr.email, status: nextStatus })
-        }).catch(() => null);
-      }
-    } catch (e) {}
+      await api.put('/api/admin/users', { id, email: email || usr.email, status: nextStatus });
+    } catch (err: any) {
+      showToast(`Status not saved: ${err?.message || 'request failed'}`);
+      setAdminUsers((prev) =>
+        prev.map((u) => (u.id === id || (email && u.email === email) ? { ...u, status: usr.status } : u))
+      );
+    }
   };
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -280,82 +251,67 @@ export const SettingsView: React.FC = () => {
       return;
     }
 
+    const cleanName = adminFormData.name.trim();
+    const cleanEmail = adminFormData.email.trim().toLowerCase();
+
     if (editingAdmin) {
+      try {
+        await api.put('/api/admin/users', {
+          id: editingAdmin.id,
+          name: cleanName,
+          email: cleanEmail,
+          role: 'ADMIN'
+        });
+      } catch (err: any) {
+        setErrors({ email: `Not saved: ${err?.message || 'the server could not save this admin'}` });
+        return;
+      }
       setAdminUsers((prev) =>
         prev.map((usr) =>
           usr.id === editingAdmin.id
             ? {
                 ...usr,
-                name: adminFormData.name.trim(),
-                email: adminFormData.email.trim(),
+                name: cleanName,
+                email: cleanEmail,
                 role: adminFormData.role,
                 status: adminFormData.status
               }
             : usr
         )
       );
-      showToast(`Admin user "${adminFormData.name.trim()}" updated successfully.`);
-
-      try {
-        let res = await fetch('/api/admin/users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: editingAdmin.id,
-            name: adminFormData.name.trim(),
-            email: adminFormData.email.trim(),
-            role: 'ADMIN'
-          })
-        }).catch(() => null);
-        if (!res || !res.ok) {
-          await fetch('http://localhost:5000/api/admin/users', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: editingAdmin.id,
-              name: adminFormData.name.trim(),
-              email: adminFormData.email.trim(),
-              role: 'ADMIN'
-            })
-          }).catch(() => null);
-        }
-      } catch (e) {}
+      showToast(`Admin user "${cleanName}" updated successfully.`);
     } else {
+      // Sent with the admin's token; the Backend generates a temporary password and returns it once
+      let data: any;
+      try {
+        data = await api.post('/api/admin/users', {
+          name: cleanName,
+          email: cleanEmail,
+          role: 'ADMIN',
+          status: adminFormData.status
+        });
+      } catch (err: any) {
+        setErrors({ email: `Not saved: ${err?.message || 'the server could not create this admin'}` });
+        return;
+      }
+      if (data?.user?.role && data.user.role !== 'admin') {
+        setErrors({ email: 'The account was created without administrator rights. Please sign in again as a Super Admin and retry.' });
+        fetchLiveDatabaseData();
+        return;
+      }
       const newAdmin: AdminUser = {
-        id: `ADM-${Date.now().toString().slice(-4)}`,
-        name: adminFormData.name.trim(),
-        email: adminFormData.email.trim(),
+        id: data?.user?.id || `ADM-${Date.now().toString().slice(-4)}`,
+        name: cleanName,
+        email: cleanEmail,
         role: adminFormData.role,
         status: adminFormData.status,
         createdAt: new Date().toISOString().split('T')[0]
       };
-      setAdminUsers((prev) => [newAdmin, ...prev]);
+      setAdminUsers((prev) => [newAdmin, ...prev.filter((u) => u.email !== cleanEmail)]);
+      if (data?.temporaryPassword) {
+        setNewAdminCredentials({ email: cleanEmail, password: String(data.temporaryPassword) });
+      }
       showToast(`New admin user "${newAdmin.name}" added successfully.`);
-
-      try {
-        let res = await fetch('/api/admin/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: newAdmin.id,
-            name: newAdmin.name,
-            email: newAdmin.email,
-            role: 'ADMIN'
-          })
-        }).catch(() => null);
-        if (!res || !res.ok) {
-          await fetch('http://localhost:5000/api/admin/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: newAdmin.id,
-              name: newAdmin.name,
-              email: newAdmin.email,
-              role: 'ADMIN'
-            })
-          }).catch(() => null);
-        }
-      } catch (e) {}
     }
 
     setIsAdminModalOpen(false);
@@ -392,15 +348,11 @@ export const SettingsView: React.FC = () => {
       showToast(`Consultant user "${name}" removed successfully.`);
 
       try {
-        let res = await fetch(`/api/admin/consultants?id=${encodeURIComponent(id)}`, {
-          method: 'DELETE'
-        }).catch(() => null);
-        if (!res || !res.ok) {
-          await fetch(`http://localhost:5000/api/admin/consultants?id=${encodeURIComponent(id)}`, {
-            method: 'DELETE'
-          }).catch(() => null);
-        }
-      } catch (e) {}
+        await api.delete(`/api/admin/consultants?id=${encodeURIComponent(id)}`);
+      } catch (err: any) {
+        showToast(`Not removed on the server: ${err?.message || 'request failed'}`);
+        fetchLiveDatabaseData();
+      }
     }
   };
 
@@ -415,25 +367,11 @@ export const SettingsView: React.FC = () => {
     showToast(`Status updated to ${nextStatus} for ${usr.name}.`);
 
     try {
-      let res = await fetch('/api/admin/consultants', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id,
-          accountStatus: nextStatus
-        })
-      }).catch(() => null);
-      if (!res || !res.ok) {
-        await fetch('http://localhost:5000/api/admin/consultants', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id,
-            accountStatus: nextStatus
-          })
-        }).catch(() => null);
-      }
-    } catch (e) {}
+      await api.put('/api/admin/consultants', { id, accountStatus: nextStatus });
+    } catch (err: any) {
+      showToast(`Not updated on the server: ${err?.message || 'request failed'}`);
+      fetchLiveDatabaseData();
+    }
   };
 
   const handleConsultantSubmit = async (e: React.FormEvent) => {
@@ -474,31 +412,17 @@ export const SettingsView: React.FC = () => {
       showToast(`Consultant "${consultantFormData.name.trim()}" updated successfully in Database.`);
 
       try {
-        let res = await fetch('/api/admin/consultants', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: editingConsultant.id,
-            name: consultantFormData.name.trim(),
-            email: consultantFormData.email.trim(),
-            profession: consultantFormData.profession.trim(),
-            accountStatus: consultantFormData.status
-          })
-        }).catch(() => null);
-        if (!res || !res.ok) {
-          await fetch('http://localhost:5000/api/admin/consultants', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: editingConsultant.id,
-              name: consultantFormData.name.trim(),
-              email: consultantFormData.email.trim(),
-              profession: consultantFormData.profession.trim(),
-              accountStatus: consultantFormData.status
-            })
-          }).catch(() => null);
-        }
-      } catch (e) {}
+        await api.put('/api/admin/consultants', {
+          id: editingConsultant.id,
+          name: consultantFormData.name.trim(),
+          email: consultantFormData.email.trim(),
+          profession: consultantFormData.profession.trim(),
+          accountStatus: consultantFormData.status
+        });
+      } catch (err: any) {
+        showToast(`Not updated on the server: ${err?.message || 'request failed'}`);
+        fetchLiveDatabaseData();
+      }
     } else {
       const newConsultant: ConsultantUser = {
         id: `CON-${Date.now().toString().slice(-4)}`,
@@ -512,35 +436,23 @@ export const SettingsView: React.FC = () => {
       showToast(`New consultant user "${newConsultant.name}" saved to MongoDB Atlas database.`);
 
       try {
-        let res = await fetch('/api/admin/consultants', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: newConsultant.id,
-            name: newConsultant.name,
-            email: newConsultant.email,
-            profession: newConsultant.profession,
-            accountStatus: newConsultant.status,
-            isCertified: true,
-            platformFeePerSession: 500
-          })
-        }).catch(() => null);
-        if (!res || !res.ok) {
-          await fetch('http://localhost:5000/api/admin/consultants', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: newConsultant.id,
-              name: newConsultant.name,
-              email: newConsultant.email,
-              profession: newConsultant.profession,
-              accountStatus: newConsultant.status,
-              isCertified: true,
-              platformFeePerSession: 500
-            })
-          }).catch(() => null);
+        // Sent with the admin's token; the Backend assigns the consultant's id
+        const data: any = await api.post('/api/admin/consultants', {
+          name: newConsultant.name,
+          email: newConsultant.email,
+          profession: newConsultant.profession,
+          accountStatus: newConsultant.status,
+          isCertified: true,
+          platformFeePerSession: 500
+        });
+        const savedId = data?.consultant?.id;
+        if (savedId) {
+          setConsultantUsers((prev) => prev.map((usr) => (usr.id === newConsultant.id ? { ...usr, id: savedId } : usr)));
         }
-      } catch (e) {}
+      } catch (err: any) {
+        showToast(`Not saved on the server: ${err?.message || 'request failed'}`);
+        fetchLiveDatabaseData();
+      }
     }
 
     setIsConsultantModalOpen(false);
@@ -553,6 +465,37 @@ export const SettingsView: React.FC = () => {
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-bounce">
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
           <span className="text-xs font-bold">{toastMessage}</span>
+        </div>
+      )}
+
+      {newAdminCredentials && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-xs text-amber-900 space-y-1">
+            <p className="font-bold">Admin account created. Share these sign-in details with them — the password is shown only once.</p>
+            <p>
+              Email: <span className="font-mono font-semibold">{newAdminCredentials.email}</span> · Temporary password:{' '}
+              <span className="font-mono font-semibold select-all">{newAdminCredentials.password}</span>
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(newAdminCredentials.password).catch(() => {});
+                showToast('Temporary password copied.');
+              }}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700"
+            >
+              Copy password
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewAdminCredentials(null)}
+              className="px-3 py-1.5 rounded-lg border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100"
+            >
+              Done
+            </button>
+          </div>
         </div>
       )}
 

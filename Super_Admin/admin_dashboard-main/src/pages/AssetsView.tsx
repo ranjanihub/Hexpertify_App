@@ -26,6 +26,63 @@ import {
   Loader2
 } from 'lucide-react';
 import type { MediaAsset } from '../types';
+import { api } from '../lib/apiClient';
+
+/** Admin labels → the website's AssetCategory enum (Live_Panel/prisma/schema.prisma) */
+const toAssetCategoryEnum = (label: string): string => {
+  switch (label) {
+    case 'Professional':
+    case 'Client':
+      return 'PROFESSIONAL';
+    case 'Blog':
+      return 'BLOG';
+    case 'Consultant':
+      return 'CONSULTANT';
+    case 'Banner':
+      return 'BANNER';
+    case 'Certificate':
+      return 'CERTIFICATE';
+    case 'Icon':
+      return 'ICON';
+    default:
+      return 'OTHER';
+  }
+};
+
+const ASSET_LABELS = ['Banner', 'Consultant', 'Icon', 'Professional', 'Client', 'Certificate', 'Blog', 'PDF File', 'Video', 'Audio', 'Notes', 'Other'];
+const ENUM_LABELS: Record<string, string> = {
+  PROFESSIONAL: 'Professional',
+  BLOG: 'Blog',
+  CONSULTANT: 'Consultant',
+  BANNER: 'Banner',
+  CERTIFICATE: 'Certificate',
+  ICON: 'Icon'
+};
+
+/**
+ * The admin label of an asset. `type` keeps the label for assets added here; assets added on the
+ * website only have the AssetCategory enum in `category` (and may have a MIME type in `type`).
+ */
+const assetLabel = (a: { type?: string; category?: string }): string => {
+  if (a.type && ASSET_LABELS.includes(a.type)) return a.type;
+  const fromEnum = ENUM_LABELS[String(a.category || '').toUpperCase()];
+  if (fromEnum) return fromEnum;
+  const mime = String(a.type || '').toLowerCase();
+  if (mime.includes('pdf')) return 'PDF File';
+  if (mime.startsWith('video/')) return 'Video';
+  if (mime.startsWith('audio/')) return 'Audio';
+  return 'Other';
+};
+
+/** Assets from the API in the shape this view shows (label in `type`, readable size and date) */
+const normalizeAsset = (a: any): MediaAsset => ({
+  ...a,
+  id: a.id || String(a._id || ''),
+  type: assetLabel(a),
+  size: typeof a.size === 'number' ? (a.size / (1024 * 1024)).toFixed(1) + ' MB' : a.size || '',
+  uploadedDate: a.uploadedDate || (a.createdAt ? String(a.createdAt).split('T')[0] : ''),
+  category: a.category || ''
+});
 
 export const AssetsView: React.FC = () => {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
@@ -45,7 +102,7 @@ export const AssetsView: React.FC = () => {
         if (res && res.ok) {
           const data = await res.json();
           if (data?.assets && Array.isArray(data.assets)) {
-            setAssets(data.assets);
+            setAssets(data.assets.map(normalizeAsset));
           }
         }
       } catch (err) {
@@ -66,6 +123,8 @@ export const AssetsView: React.FC = () => {
   // Form Fields
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  // Hosted (e.g. Cloudinary) URL; preferred over embedding the file itself
+  const [hostedUrl, setHostedUrl] = useState<string>('');
   const [assetName, setAssetName] = useState<string>('');
   const [assetCategory, setAssetCategory] = useState<MediaAsset['type']>('Professional');
 
@@ -149,6 +208,7 @@ export const AssetsView: React.FC = () => {
   const handleOpenModal = () => {
     setSelectedFile(null);
     setPreviewUrl('');
+    setHostedUrl('');
     setAssetName('');
     setAssetCategory('Banner');
     setIsModalOpen(true);
@@ -158,6 +218,7 @@ export const AssetsView: React.FC = () => {
     setIsModalOpen(false);
     setSelectedFile(null);
     setPreviewUrl('');
+    setHostedUrl('');
     setAssetName('');
   };
 
@@ -169,68 +230,71 @@ export const AssetsView: React.FC = () => {
       return;
     }
 
-    const fileSizeFormatted = selectedFile
-      ? (selectedFile.size / (1024 * 1024)).toFixed(1) + ' MB'
-      : '1.2 MB';
+    const url = hostedUrl.trim() || previewUrl;
+    if (!url) {
+      alert('Please choose a file or paste the hosted URL of the asset.');
+      return;
+    }
 
-    const generatedUrl = previewUrl || `https://res.cloudinary.com/ddgvdabyf/image/upload/v1766863367/uploads/${assetName.trim().replace(/\s+/g, '_')}.webp`;
+    const fileSizeFormatted = selectedFile && !hostedUrl.trim()
+      ? (selectedFile.size / (1024 * 1024)).toFixed(1) + ' MB'
+      : '';
+
+    let saved: any;
+    try {
+      // The website reads `category` as its AssetCategory enum; `type` keeps the admin label
+      const data = await api.post('/api/admin/assets', {
+        name: assetName.trim(),
+        type: assetCategory,
+        category: toAssetCategoryEnum(assetCategory),
+        url,
+        size: fileSizeFormatted,
+        uploadedDate: new Date().toISOString().split('T')[0]
+      });
+      saved = data?.asset;
+    } catch (err: any) {
+      console.error('Error creating asset in DB:', err);
+      triggerToast(`Not uploaded: ${err?.message || 'the server could not save the asset'}`);
+      return;
+    }
 
     const newAsset: MediaAsset = {
-      id: `AST-${Date.now()}`,
-      name: assetName.trim(),
-      type: assetCategory,
-      url: generatedUrl,
-      size: fileSizeFormatted,
-      uploadedDate: new Date().toISOString().split('T')[0],
-      category: assetCategory
+      id: saved?.id || String(saved?._id || `AST-${Date.now()}`),
+      name: saved?.name || assetName.trim(),
+      type: assetLabel({ type: saved?.type || assetCategory, category: saved?.category }),
+      url: saved?.url || url,
+      size: saved?.size || fileSizeFormatted,
+      uploadedDate: saved?.uploadedDate || new Date().toISOString().split('T')[0],
+      category: saved?.category || toAssetCategoryEnum(assetCategory)
     };
 
-    // Persist to MongoDB Atlas
-    fetch("/api/admin/assets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newAsset)
-    }).catch(() => {
-      fetch("http://localhost:5000/api/admin/assets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newAsset)
-      }).catch((err) => console.error("Error creating asset in DB:", err));
-    });
-
-    setAssets([newAsset, ...assets]);
+    setAssets((prev) => [newAsset, ...prev]);
     handleCloseModal();
     setActivePreviewAsset(newAsset);
-    triggerToast(`Asset uploaded to MongoDB Atlas! URL copied.`);
-    navigator.clipboard.writeText(generatedUrl);
+    triggerToast(`Asset saved. URL copied.`);
+    navigator.clipboard.writeText(newAsset.url).catch(() => {});
   };
 
   const handleDeleteAsset = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete asset "${name}" from MongoDB Atlas?`)) {
       try {
-        let res = await fetch(`/api/admin/assets?id=${encodeURIComponent(id)}`, {
-          method: "DELETE"
-        }).catch(() => null);
-        if (!res || !res.ok) {
-          await fetch(`http://localhost:5000/api/admin/assets?id=${encodeURIComponent(id)}`, {
-            method: "DELETE"
-          }).catch(() => null);
-        }
+        await api.delete(`/api/admin/assets?id=${encodeURIComponent(id)}`);
         setAssets((prev) => prev.filter((a) => a.id !== id));
         triggerToast(`Asset "${name}" deleted from MongoDB Atlas.`);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error deleting asset:", err);
-        setAssets((prev) => prev.filter((a) => a.id !== id));
-        triggerToast(`Asset deleted.`);
+        triggerToast(`Not deleted: ${err?.message || 'the server could not delete the asset'}`);
       }
     }
   };
 
   // Filtered Assets
   const filteredAssets = assets.filter((a) => {
-    const matchesCat = selectedCategory === 'All' || a.type === selectedCategory || a.category === selectedCategory;
+    const label = assetLabel(a);
+    const matchesCat = selectedCategory === 'All' || label === selectedCategory;
     const matchesQuery =
       (a.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      label.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (a.category || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesQuery;
   });
@@ -527,6 +591,19 @@ export const AssetsView: React.FC = () => {
                     </>
                   )}
                 </div>
+              </div>
+
+              {/* Hosted URL (preferred: the website loads it directly) */}
+              <div className="space-y-1.5">
+                <label className="font-extrabold text-slate-700 block">Or paste a hosted URL</label>
+                <input
+                  type="url"
+                  placeholder="https://res.cloudinary.com/.../image/upload/v123/folder/file.webp"
+                  value={hostedUrl}
+                  onChange={(e) => setHostedUrl(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                />
+                <p className="text-[10px] text-slate-400">Used instead of the chosen file. Without it, the file itself is stored with the asset.</p>
               </div>
 
               {/* 2. Asset Name Field */}

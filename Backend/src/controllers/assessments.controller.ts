@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { canViewFullClient, resolveClientViewer } from '../services/client-access';
+import { idQuery } from '../services/live-content';
 import { emailNotification } from '../services/notification.service';
 
 /** Results (scores, severity, answers, notes) are clinical details: only the assigned therapist and the client see them */
@@ -48,17 +49,16 @@ export class AssessmentsController {
       const scoreQuery: any = {};
       const assignQuery: any = {};
 
-      if (clientEmail) {
-        scoreQuery.$or = [
-          { clientEmail: String(clientEmail).toLowerCase() },
-          { email: String(clientEmail).toLowerCase() }
+      // A client is matched by email OR id (older records carry only one of them)
+      if (clientEmail || clientId) {
+        const email = String(clientEmail || '').toLowerCase().trim();
+        const id = String(clientId || '').trim();
+        const clientOr = [
+          ...(email ? [{ clientEmail: email }, { email }] : []),
+          ...(id ? [{ clientId: id }, { userId: id }] : [])
         ];
-        assignQuery.clientEmail = String(clientEmail).toLowerCase();
-      }
-
-      if (clientId) {
-        scoreQuery.clientId = String(clientId);
-        assignQuery.clientId = String(clientId);
+        scoreQuery.$or = clientOr;
+        assignQuery.$or = clientOr;
       }
 
       let assignedUsers: any[] = [];
@@ -122,8 +122,15 @@ export class AssessmentsController {
           cConditions.push({ userId: { $in: Array.from(assignedIds) } });
         }
 
-        scoreQuery.$or = cConditions;
-        assignQuery.$or = cConditions;
+        // Combined with a client filter, both must hold
+        for (const q of [scoreQuery, assignQuery]) {
+          if (q.$or) {
+            q.$and = [{ $or: q.$or }, { $or: cConditions }];
+            delete q.$or;
+          } else {
+            q.$or = cConditions;
+          }
+        }
       }
 
       // Fetch submissions from AssessmentScore / assessment_scores collection
@@ -178,9 +185,9 @@ export class AssessmentsController {
                   clientId: String(u.id || u._id || ''),
                   clientName: u.name || 'Client User',
                   clientEmail: userEmail,
-                  consultantId: String(consultantId || u.assignedTherapistId || 'doc-1'),
-                  consultantName: String(consultantName || u.assignedTherapistName || 'Dr. Jayakumar'),
-                  therapistName: String(consultantName || u.assignedTherapistName || 'Dr. Jayakumar'),
+                  consultantId: String(u.assignedTherapistId || consultantId || ''),
+                  consultantName: String(u.assignedTherapistName || consultantName || ''),
+                  therapistName: String(u.assignedTherapistName || consultantName || ''),
                   totalScore,
                   score: totalScore,
                   maxScore,
@@ -230,31 +237,26 @@ export class AssessmentsController {
       const title = body.assessmentTitle || body.title || 'Clinical Assessment';
       const clientName = body.clientName || 'Client';
       const clientEmail = (body.clientEmail || '').toLowerCase().trim();
-      let consultantId = String(body.consultantId || body.therapistId || '').trim();
-      let consultantName = String(body.consultantName || body.therapistName || '').trim();
+      const bodyClientId = String(body.clientId || body.userId || '').trim();
 
-      // Auto-heal missing assigned consultant from User or Booking
-      if (!consultantName || !consultantId) {
-        const u = await db.collection('User').findOne({
-          $or: [
-            ...(clientEmail ? [{ email: clientEmail }] : []),
-            ...(body.clientId ? [{ id: body.clientId }, { _id: body.clientId }] : [])
-          ]
-        }) || await db.collection('users').findOne({
-          $or: [
-            ...(clientEmail ? [{ email: clientEmail }] : []),
-            ...(body.clientId ? [{ id: body.clientId }, { _id: body.clientId }] : [])
-          ]
-        });
+      // The therapist always comes from the client's own assignment; a client-sent consultant id is
+      // used only when no assignment exists and it names a real Consultant
+      const userOr: any[] = [
+        ...(clientEmail ? [{ email: clientEmail }] : []),
+        ...(bodyClientId ? idQuery(bodyClientId).$or : [])
+      ];
+      const u: any = userOr.length
+        ? await db.collection('User').findOne({ $or: userOr }) || await db.collection('users').findOne({ $or: userOr })
+        : null;
+      const clientId = u ? String(u.id || u._id) : bodyClientId;
 
-        if (u) {
-          consultantId = consultantId || u.assignedTherapistId || 'doc-1';
-          consultantName = consultantName || u.assignedTherapistName || 'Dr. Jayakumar';
-        } else {
-          consultantId = consultantId || 'doc-1';
-          consultantName = consultantName || 'Dr. Jayakumar';
-        }
-      }
+      const findConsultant = async (ref: string) =>
+        ref ? await db.collection('Consultant').findOne(idQuery(ref)).catch(() => null) : null;
+      const consultant: any =
+        await findConsultant(String(u?.assignedTherapistId || '').trim()) ||
+        await findConsultant(String(body.consultantId || body.therapistId || '').trim());
+      const consultantId = consultant ? String(consultant.id || consultant._id) : '';
+      const consultantName = consultant?.name || '';
 
       let severityLabel = body.severityLabel || body.severity || 'Mild';
       let severityColor = body.severityColor || 'bg-emerald-500 text-white';
@@ -277,7 +279,7 @@ export class AssessmentsController {
         assessmentId: body.assessmentId || `ASS-${type}`,
         assessmentAcronym: type,
         assessmentTitle: title,
-        clientId: body.clientId || body.userId || '',
+        clientId,
         clientName,
         clientEmail,
         consultantId,
@@ -300,14 +302,32 @@ export class AssessmentsController {
       const result = await db.collection('AssessmentScore').insertOne(newScoreDoc);
       await db.collection('assessment_scores').insertOne(newScoreDoc).catch(() => {});
 
+      // The matching pending assignment (this client, this assessment) is now completed
+      let completedAssignment: any = null;
+      const assignmentClientOr: any[] = [
+        ...(clientEmail ? [{ clientEmail }] : []),
+        ...[...new Set([clientId, bodyClientId].filter(Boolean))].map((id) => ({ clientId: id }))
+      ];
+      if (assignmentClientOr.length) {
+        const assessmentOr: any[] = [{ assessmentAcronym: type }];
+        if (body.assessmentId) assessmentOr.push({ assessmentId: String(body.assessmentId) });
+        const assignmentFilter: any = body.assignmentId
+          ? { $and: [idQuery(String(body.assignmentId)), { $or: assignmentClientOr }] }
+          : { $and: [{ $or: assignmentClientOr }, { $or: assessmentOr }, { status: { $regex: '^pending$', $options: 'i' } }] };
+        const completion = { status: 'Completed', scoreId: newScoreDoc.id, completedAt: new Date(), updatedAt: new Date() };
+        completedAssignment = await db.collection('AssessmentAssignment').findOneAndUpdate(
+          assignmentFilter,
+          { $set: completion },
+          { sort: { assignedDate: 1, createdAt: 1 }, returnDocument: 'after' }
+        ).catch(() => null);
+        if (completedAssignment) {
+          await db.collection('assessment_assignments').updateOne(idQuery(String(completedAssignment.id || completedAssignment._id)), { $set: completion }).catch(() => {});
+        }
+      }
+
       // Sync into client's User document assessmentScores array
-      if (clientEmail || body.clientId) {
-        const userFilter: any = {
-          $or: [
-            ...(clientEmail ? [{ email: clientEmail }] : []),
-            ...(body.clientId ? [{ id: body.clientId }, { _id: body.clientId }] : [])
-          ]
-        };
+      if (userOr.length) {
+        const userFilter: any = { $or: userOr };
         const scoreItem = {
           name: type,
           score: totalScore,
@@ -321,10 +341,11 @@ export class AssessmentsController {
       }
 
       // In-app notification and email for the therapist
-      try {
+      if (consultantId) try {
         const alert = {
           id: `NOTIF-${Date.now().toString().slice(-6)}-ASC`,
           recipientId: consultantId,
+          recipientEmail: String(consultant?.email || '').toLowerCase(),
           recipientRole: 'CONSULTANT' as const,
           type: 'ASSESSMENT_COMPLETED',
           title: `New Assessment Completed: ${clientName} 📋`,
@@ -340,6 +361,7 @@ export class AssessmentsController {
       res.status(201).json({
         success: true,
         score: { ...newScoreDoc, _id: result.insertedId },
+        assignment: completedAssignment,
         message: 'Assessment score saved in AssessmentScore collection.'
       });
     } catch (error: any) {
@@ -355,14 +377,20 @@ export class AssessmentsController {
       const db = getDatabase();
       const body = req.body || {};
 
+      // Store the client's real User id/email (panels may send only one of them)
+      const rawClientEmail = String(body.clientEmail || '').toLowerCase().trim();
+      const rawClientId = String(body.clientId || '').trim();
+      const clientOr: any[] = [...(rawClientEmail ? [{ email: rawClientEmail }] : []), ...(rawClientId ? idQuery(rawClientId).$or : [])];
+      const client: any = clientOr.length ? await db.collection('User').findOne({ $or: clientOr }).catch(() => null) : null;
+
       const newAssignment = {
         id: `ASN-${Date.now().toString().slice(-6)}`,
         assessmentId: body.assessmentId || 'ASS-01',
         assessmentAcronym: body.assessmentAcronym || 'GAD-7',
         assessmentTitle: body.assessmentTitle || 'Clinical Screener',
-        clientId: body.clientId || '',
-        clientName: body.clientName || 'Client',
-        clientEmail: (body.clientEmail || '').toLowerCase().trim(),
+        clientId: client ? String(client.id || client._id) : rawClientId,
+        clientName: client?.name || body.clientName || 'Client',
+        clientEmail: String(client?.email || rawClientEmail).toLowerCase(),
         consultantId: body.consultantId || '',
         consultantName: body.consultantName || 'Therapist',
         therapistName: body.consultantName || 'Therapist',

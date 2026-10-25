@@ -43,6 +43,9 @@ const formatDateTime = (value?: string) =>
 const refundableAmount = (p: Payment) =>
   Math.max(0, p.amount - (p.refunds || []).filter((r) => r.status !== 'FAILED').reduce((sum, r) => sum + r.amount, 0));
 
+/** Bookings an admin marked paid without a gateway payment (listed by the Backend as provider 'manual') */
+const isManualPayment = (p: Payment) => (p as { manual?: boolean }).manual === true || String(p.provider) === 'manual';
+
 export const TransactionsView: React.FC = () => {
   const [data, setData] = useState<PaymentsListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -266,7 +269,7 @@ export const TransactionsView: React.FC = () => {
                       <p className="text-[11px] font-semibold text-rose-600">−{formatINR(p.refundedAmount)} refunded</p>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-slate-600 capitalize">{p.method || '—'}</td>
+                  <td className="py-3 px-4 text-slate-600 capitalize">{isManualPayment(p) ? 'Manual' : p.method || '—'}</td>
                   <td className="py-3 px-4">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${STATUS_STYLES[p.status] || 'bg-slate-100 text-slate-700'}`}>
                       {STATUS_LABELS[p.status] || p.status}
@@ -277,10 +280,15 @@ export const TransactionsView: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 font-mono text-[10px] text-slate-500 space-y-0.5">
                     <p title="Booking">{p.bookingId}</p>
-                    <p title="Gateway payment ID">{p.providerPaymentId || p.providerOrderId}</p>
+                    {isManualPayment(p) ? (
+                      <p title="Marked paid by an administrator">Recorded manually</p>
+                    ) : (
+                      <p title="Gateway payment ID">{p.providerPaymentId || p.providerOrderId}</p>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    {REFUNDABLE.includes(p.status) && refundableAmount(p) > 0 ? (
+                    {/* Manual entries have no gateway payment to refund */}
+                    {!isManualPayment(p) && REFUNDABLE.includes(p.status) && refundableAmount(p) > 0 ? (
                       <button
                         onClick={() => openRefund(p)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-100 font-bold hover:bg-rose-100 cursor-pointer"

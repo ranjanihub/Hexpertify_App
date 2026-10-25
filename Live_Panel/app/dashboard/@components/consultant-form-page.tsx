@@ -216,6 +216,8 @@ export function ConsultantFormPage({
 }: ConsultantFormPageProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(mode === "edit");
+  // Reviews written by clients are managed by the clients and not edited here
+  const [clientReviewCount, setClientReviewCount] = useState(0);
   const [professions, setProfessions] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -287,6 +289,7 @@ export function ConsultantFormPage({
 
       if (result.success) {
         const data = (result as any).data;
+        setClientReviewCount(Number(data.clientReviewCount) || 0);
 
         // Transform the data to match form structure - explicitly map only form fields
         const formValues = {
@@ -1496,6 +1499,13 @@ export function ConsultantFormPage({
                   <CardDescription>
                     Add and manage client reviews and testimonials
                   </CardDescription>
+                  {clientReviewCount > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {clientReviewCount} client review
+                      {clientReviewCount === 1 ? " is" : "s are"} managed by
+                      clients and not shown here.
+                    </p>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {formik.values.reviews.map((review, index) => (

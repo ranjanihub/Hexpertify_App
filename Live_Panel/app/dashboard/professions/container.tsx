@@ -182,11 +182,11 @@ export default function ProfessionsContainer({
 }) {
   const handleDelete = async (id: string) => {
     try {
-      const { success } = await deleteProfession(id);
-      if (!success) throw new Error("Failed to delete profession");
+      const result = await deleteProfession(id);
+      if (!result.success) throw new Error((result as { error?: string }).error || "Failed to delete profession");
       toast.success("Profession deleted successfully");
     } catch (error) {
-      toast.error("Failed to delete profession");
+      toast.error(error instanceof Error ? error.message : "Failed to delete profession");
     }
   };
 

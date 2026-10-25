@@ -128,12 +128,21 @@ export async function resolveProfession(ref: unknown): Promise<any | null> {
 // Consultant services (Service collection) and reviews (Review collection)
 // ---------------------------------------------------------------------------
 
-/** Replaces the consultant's Service documents with the admin's list; returns the lowest price */
+/**
+ * Saves the admin's plan list into the Service collection and returns the lowest price.
+ * Plans are matched by their id so ids stay stable (bookings and open website checkouts keep
+ * working); plans missing from the list are retired when booked and deleted otherwise.
+ */
 export async function replaceConsultantServices(consultantId: string, services: unknown): Promise<number | null> {
   const db = getDatabase();
-  const list = (Array.isArray(services) ? services : [])
-    .map((s: any) => ({
-      _id: newId() as any,
+  const now = new Date();
+  const existing = await db.collection('Service').find({ consultantId }).toArray();
+  const byId = new Map<string, any>(existing.map((e: any) => [String(e._id), e]));
+  const kept = new Set<string>();
+  const prices: number[] = [];
+
+  for (const s of (Array.isArray(services) ? services : []) as any[]) {
+    const fields = {
       name: str(s?.serviceName ?? s?.name).trim() || 'Consultation',
       price: toFloat(s?.sessionFee ?? s?.price, 0),
       duration: toInt(s?.durationMinutes ?? s?.duration, 50),
@@ -141,30 +150,61 @@ export async function replaceConsultantServices(consultantId: string, services: 
       platform: str(s?.platform).trim() || 'G-Meet',
       platformFee: toFloat(s?.platformFee, 0),
       description: str(s?.description),
-      consultantId,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }))
-    .filter((s) => s.price > 0);
-
-  // Existing plans referenced by bookings must keep their ids; replace only unused ones
-  const existing = await db.collection('Service').find({ consultantId }).project({ _id: 1 }).toArray();
-  const used = new Set(
-    (await db.collection('Booking').distinct('serviceId', { serviceId: { $in: existing.map((e: any) => e._id) } })).map(String)
-  );
-  await db.collection('Service').deleteMany({ consultantId, _id: { $nin: [...used] as any[] } });
-  if (used.size) {
-    // Booked plans stay readable for past bookings but are no longer offered
-    await db.collection('Service').updateMany({ consultantId, _id: { $in: [...used] as any[] } }, { $set: { retired: true, updatedAt: new Date() } });
+      retired: false,
+      updatedAt: now
+    };
+    if (fields.price <= 0) continue;
+    const incomingId = str(s?.id ?? s?._id).trim();
+    const match = incomingId && !kept.has(incomingId) ? byId.get(incomingId) : undefined;
+    if (match) {
+      await db.collection('Service').updateOne({ _id: match._id }, { $set: fields });
+      kept.add(String(match._id));
+    } else {
+      const id = newId();
+      await db.collection('Service').insertOne({ _id: id as any, ...fields, consultantId, createdAt: now });
+      kept.add(id);
+    }
+    prices.push(fields.price);
   }
-  if (list.length) await db.collection('Service').insertMany(list);
-  return list.length ? Math.min(...list.map((s) => s.price)) : null;
+
+  // Plans no longer offered: booked ones stay readable for past bookings, unused ones are removed
+  const removed = existing.filter((e: any) => !kept.has(String(e._id))).map((e: any) => e._id);
+  if (removed.length) {
+    const used = new Set((await db.collection('Booking').distinct('serviceId', { serviceId: { $in: removed } })).map(String));
+    const unused = removed.filter((id: any) => !used.has(String(id)));
+    const booked = removed.filter((id: any) => used.has(String(id)));
+    if (unused.length) await db.collection('Service').deleteMany({ _id: { $in: unused } });
+    if (booked.length) await db.collection('Service').updateMany({ _id: { $in: booked } }, { $set: { retired: true, updatedAt: now } });
+  }
+  return prices.length ? Math.min(...prices) : null;
 }
 
-/** Replaces the admin-entered reviews (no authorId); reviews written by signed-in clients are kept */
+/**
+ * One authorship rule for reviews: admin-entered reviews have no author (authorId null, or the
+ * legacy "ADMIN" marker) and no clientId; reviews written by clients carry authorId, clientId or verified.
+ */
+export function isClientReview(r: any): boolean {
+  return Boolean((r?.authorId && r.authorId !== 'ADMIN') || r?.clientId || r?.verified);
+}
+
+/** Mongo filter matching admin-entered reviews only */
+export const ADMIN_REVIEW_FILTER = {
+  $and: [{ $or: [{ authorId: null }, { authorId: 'ADMIN' }] }, { clientId: null }, { verified: { $ne: true } }]
+};
+
+/** Replaces the admin-entered reviews; reviews written by clients are never changed, dropped or duplicated */
 export async function replaceAdminReviews(consultantId: string, reviews: unknown): Promise<void> {
   const db = getDatabase();
-  const list = (Array.isArray(reviews) ? reviews : [])
+  const incoming = (Array.isArray(reviews) ? reviews : []) as any[];
+  // The admin panel lists client reviews too; those entries come back and are skipped
+  const incomingIds = incoming.map((r) => str(r?.id ?? r?._id).trim()).filter(Boolean);
+  const clientReviewIds = new Set(
+    (incomingIds.length ? await db.collection('Review').find({ _id: { $in: incomingIds as any[] } }).toArray() : [])
+      .filter(isClientReview)
+      .map((r: any) => String(r._id))
+  );
+  const list = incoming
+    .filter((r) => !clientReviewIds.has(str(r?.id ?? r?._id).trim()) && !isClientReview(r) && !r?.isVerifiedClient)
     .map((r: any) => {
       const created = r?.date ? new Date(r.date) : new Date();
       return {
@@ -182,8 +222,60 @@ export async function replaceAdminReviews(consultantId: string, reviews: unknown
       };
     })
     .filter((r) => r.comment || r.clientName);
-  await db.collection('Review').deleteMany({ consultantId, $or: [{ authorId: null }, { authorId: { $exists: false } }] });
+  await db.collection('Review').deleteMany({ consultantId, ...ADMIN_REVIEW_FILTER });
   if (list.length) await db.collection('Review').insertMany(list);
+}
+
+/** Average rating (one decimal) and number of reviews; both 0 when there are none */
+export function reviewStats(reviews: any[]): { rating: number; reviewCount: number } {
+  if (!reviews.length) return { rating: 0, reviewCount: 0 };
+  const sum = reviews.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
+  return { rating: Math.round((sum / reviews.length) * 10) / 10, reviewCount: reviews.length };
+}
+
+// ---------------------------------------------------------------------------
+// Consultant status switches (set in the Super Admin panel)
+// ---------------------------------------------------------------------------
+
+const isAccountOff = (c: any) => ['inactive', 'suspended'].includes(String(c?.accountStatus || 'Active').trim().toLowerCase());
+
+/** Listed on the public website (same rule as isConsultantPublic in Live_Panel/lib/visibility.ts) */
+export function isConsultantPublic(c: any): boolean {
+  return Boolean(c) && !c.isHiddenFromLive && !c.isArchived && !isAccountOff(c);
+}
+
+/**
+ * Whether new sessions can be booked: not archived, account not Inactive/Suspended, and booking not
+ * switched off (isBookingGreyedOut). Hiding a profile from the website (isHiddenFromLive) only
+ * removes it from public listings; it does not block bookings.
+ */
+export function isConsultantBookable(c: any): boolean {
+  return consultantBookingBlockReason(c) === null;
+}
+
+/** Why a consultant cannot be booked, or null when they can */
+export function consultantBookingBlockReason(c: any): string | null {
+  if (!c) return 'This therapist was not found.';
+  if (c.isArchived) return 'This therapist is no longer available for booking.';
+  if (isAccountOff(c)) return 'This therapist is not accepting bookings right now.';
+  if (c.isBookingGreyedOut) return 'Booking is currently switched off for this therapist.';
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Consultant privacy
+// ---------------------------------------------------------------------------
+
+/** Never returned by any endpoint */
+const SECRET_CONSULTANT_FIELDS = ['password', 'passwordHash', 'hashedPassword', 'resetToken', 'resetPasswordToken', 'resetPasswordExpires', 'otp', 'otpExpires', 'refreshToken'];
+/** Returned only to administrators, internal callers and the consultant themself */
+const PRIVATE_CONSULTANT_FIELDS = ['bankName', 'bankAccountNumber', 'bankIfsc', 'accountHolderName', 'upiId', 'assignedClientIds', 'alternateEmail'];
+
+export function stripConsultantPrivateFields<T extends Record<string, any>>(c: T, includePrivate: boolean): T {
+  const out: Record<string, any> = { ...c };
+  SECRET_CONSULTANT_FIELDS.forEach((k) => delete out[k]);
+  if (!includePrivate) PRIVATE_CONSULTANT_FIELDS.forEach((k) => delete out[k]);
+  return out as T;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,9 +284,18 @@ export async function replaceAdminReviews(consultantId: string, reviews: unknown
 
 const CONSULTANT_FLAGS = ['isHiddenFromLive', 'isArchived', 'isBookingGreyedOut'] as const;
 
+/** Invalid admin input; controllers answer with `status` and the message */
+export class ContentInputError extends Error {
+  constructor(message: string, public status = 400) {
+    super(message);
+    this.name = 'ContentInputError';
+  }
+}
+
 /**
  * Prisma-shaped $set for the fields present in the admin payload. Only provided fields are
  * returned, so partial updates (toggles) never clear other data.
+ * Throws ContentInputError when a profession is sent that does not exist.
  */
 export async function consultantFieldsFromAdmin(body: any): Promise<Record<string, any>> {
   const set: Record<string, any> = {};
@@ -206,12 +307,19 @@ export async function consultantFieldsFromAdmin(body: any): Promise<Record<strin
   if (has('notificationTitle')) set.notificationTitle = str(body.notificationTitle).trim() || null;
   if (has('sequence')) set.sequence = body.sequence === '' || body.sequence === null ? null : toInt(body.sequence);
   if (has('photo') || has('photoUrl')) {
+    // photoUrl is what the website reads; the other names are kept equal for older readers
     set.photoUrl = str(body.photo ?? body.photoUrl).trim() || null;
     set.photo = set.photoUrl;
+    set.image = set.photoUrl;
+    set.avatarUrl = set.photoUrl;
   }
   if (has('photoAltText')) set.photoAltText = str(body.photoAltText).trim() || null;
   if (has('youtubeUrl')) set.youtubeUrl = str(body.youtubeUrl).trim() || null;
-  if (has('about') || has('bio')) set.about = str(body.about ?? body.bio).trim() || null;
+  if (has('about') || has('bio')) {
+    // `about` is the website's field; `bio` is the same text for the panels
+    set.about = str(body.about ?? body.bio).trim() || null;
+    set.bio = set.about;
+  }
   if (has('isCertified')) set.isCertified = Boolean(body.isCertified);
   if (has('experienceYears') || has('experience')) set.experience = toInt(body.experienceYears ?? body.experience, 0);
   if (has('clientsServed') || has('clientCount')) set.clientCount = toInt(body.clientsServed ?? body.clientCount, 0);
@@ -227,12 +335,17 @@ export async function consultantFieldsFromAdmin(body: any): Promise<Record<strin
     set.certificateAltTexts = certs.map((c: any, i: number) => c.name || `Certificate ${i + 1}`);
   }
   if (has('profession') || has('professionId')) {
-    const prof = await resolveProfession(body.professionId || body.profession);
-    if (prof) {
+    // professionId is preferred; a profession id, identifier or name also resolves. The stored
+    // name always mirrors the Profession document, and an unknown value is rejected.
+    const byId = str(body.professionId).trim();
+    const byName = str(body.profession).trim();
+    if (byId || byName) {
+      const prof = (byId && await resolveProfession(byId)) || (byName && await resolveProfession(byName)) || null;
+      if (!prof) {
+        throw new ContentInputError(`Profession "${byId || byName}" does not exist. Choose one from the professions list.`);
+      }
       set.professionId = String(prof._id);
       set.profession = prof.name;
-    } else if (has('profession')) {
-      set.profession = str(body.profession);
     }
   }
   if (has('accountStatus')) set.accountStatus = str(body.accountStatus);
@@ -295,10 +408,14 @@ export async function consultantToAdmin(c: any): Promise<any> {
       comment: r.comment || '',
       date: r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : '',
       images: r.imageUrls || [],
-      isVerifiedClient: Boolean(r.authorId)
+      isVerifiedClient: isClientReview(r)
     })),
+    ...reviewStats(reviews),
     seo: seoToAdmin(seo),
     professionName: profession?.name,
+    about: c.about ?? c.bio ?? '',
+    bio: c.about ?? c.bio ?? '',
+    isBookable: isConsultantBookable(c),
     photo: c.photoUrl || c.photo || '',
     specializations: c.specialties || c.specializations || [],
     clientsServed: c.clientCount ?? c.clientsServed ?? 0,

@@ -4,6 +4,8 @@ import { ActivitiesController } from '../controllers/activities.controller';
 const router = Router();
 
 router.get('/', ActivitiesController.getAll);
+router.get('/assignments', ActivitiesController.getAssignments);
+router.post('/assignments/:id/complete', ActivitiesController.completeAssignment);
 router.get('/:id', ActivitiesController.getById);
 router.post('/assign', ActivitiesController.assign);
 router.post('/', ActivitiesController.create);

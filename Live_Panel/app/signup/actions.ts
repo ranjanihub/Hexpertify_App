@@ -45,15 +45,23 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
     // --- 3. Hash password and create user ---
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    const cleanPhone = phoneNumber?.trim() || null;
+    const created = await prisma.user.create({
       data: {
         email: cleanEmail,
         name: cleanName,
-        phoneNumber: phoneNumber?.trim() || null,
+        phoneNumber: cleanPhone,
         password: hashedPassword,
         role: "USER",
       },
     });
+
+    // The panels read `phone` (not in the Prisma model): keep both fields in sync
+    if (cleanPhone) {
+      await prisma
+        .$runCommandRaw({ update: "User", updates: [{ q: { _id: created.id }, u: { $set: { phone: cleanPhone } } }] })
+        .catch(() => {});
+    }
 
     await sendWelcomeEmail(cleanName, cleanEmail);
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendWelcomeEmail } from "@/lib/backend";
+import { forwardAuthToBackend } from "../forward";
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -17,6 +18,11 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+
+    // The Backend creates the account (both user collections) and sends the welcome email itself
+    const forwarded = await forwardAuthToBackend(req, "/api/auth/register", body);
+    if (forwarded) return forwarded;
+
     const { name, email, phone, password } = body || {};
 
     if (!email || !name) {
@@ -66,6 +72,13 @@ export async function POST(req: Request) {
         role: "USER",
       },
     });
+
+    // The panels read `phone` (not in the Prisma model): keep both fields in sync
+    if (phone) {
+      await prisma
+        .$runCommandRaw({ update: "User", updates: [{ q: { _id: user.id }, u: { $set: { phone: String(phone) } } }] })
+        .catch(() => {});
+    }
 
     await sendWelcomeEmail(user.name || name, cleanEmail);
 

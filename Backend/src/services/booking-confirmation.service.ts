@@ -154,7 +154,7 @@ export async function bookingContact(b: any) {
     clientEmail,
     clientName: b.clientName || user?.name || 'Client',
     consultantName: b.consultantName || consultant?.name || 'Therapist',
-    serviceTitle: b.serviceTitle || service?.name || 'Individual Clinical Consultation',
+    serviceTitle: b.serviceTitle || service?.name || service?.title || 'Individual Clinical Consultation',
     bookingId: String(b.id || b._id),
     durationMinutes: b.durationMinutes || service?.duration || 50,
     // Website bookings are paid before a time is fixed

@@ -102,6 +102,40 @@ function dedupe(list: any[]): any[] {
   return kept.reverse();
 }
 
+/** Request details kept with a notification (therapist switch: current therapist, reason, urgency…) */
+const DETAIL_KEYS = [
+  'currentTherapistName', 'currentTherapistId', 'currentTherapistEmail', 'reason', 'reasonId', 'notes',
+  'preferredSpecialties', 'urgency', 'status', 'requestedDate', 'requestedTime', 'preferredTimes'
+];
+const MAX_DETAIL_STRING = 1000;
+const MAX_DETAILS_BYTES = 4000;
+
+/** Plain strings, numbers, booleans and short lists of them, from known keys and body.details; size-limited */
+function notificationDetails(body: any): Record<string, unknown> | null {
+  const clean = (v: unknown): unknown => {
+    if (typeof v === 'string') return v.slice(0, MAX_DETAIL_STRING);
+    if (typeof v === 'number' || typeof v === 'boolean') return v;
+    if (Array.isArray(v)) return v.slice(0, 20).map(clean).filter((x) => x !== undefined && typeof x !== 'object');
+    return undefined;
+  };
+  const source: Record<string, unknown> = {};
+  if (body?.details && typeof body.details === 'object' && !Array.isArray(body.details)) Object.assign(source, body.details);
+  DETAIL_KEYS.forEach((k) => { if (body?.[k] !== undefined) source[k] = body[k]; });
+
+  const details: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(source).slice(0, 30)) {
+    if (!/^[A-Za-z][\w]{0,40}$/.test(key)) continue;
+    const v = clean(value);
+    if (v === undefined || v === '') continue;
+    details[key] = v;
+    if (JSON.stringify(details).length > MAX_DETAILS_BYTES) {
+      delete details[key];
+      break;
+    }
+  }
+  return Object.keys(details).length ? details : null;
+}
+
 export class NotificationsController {
   /**
    * GET /api/notifications — the caller's own notifications (newest first)
@@ -169,6 +203,7 @@ export class NotificationsController {
         isPrivate: !!body.isPrivate,
         sharingPreference: body.sharingPreference || 'full',
         submissionData: body.submissionData || null,
+        details: notificationDetails(body),
         read: false,
         createdAt: new Date(),
         updatedAt: new Date()

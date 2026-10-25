@@ -20,12 +20,9 @@ import {
   Layers,
   HelpCircle
 } from 'lucide-react';
-import {
-  mockAssessments,
-  mockAssessmentAssignments,
-  mockClients
-} from '../data/mockData';
+import { mockAssessments } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import { api } from '../lib/apiClient';
 import type {
   ClinicalAssessment,
   AssessmentQuestion,
@@ -34,31 +31,44 @@ import type {
   AssessmentAssignment
 } from '../types';
 
+const ASSIGNMENT_FREQUENCIES: AssessmentAssignment['frequency'][] = ['One-time', 'Weekly', 'Bi-weekly', 'Monthly'];
+
+/** AssessmentAssignment document (Backend) → the shape this page displays */
+function toAdminAssignment(a: any): AssessmentAssignment {
+  const status = String(a?.status || 'Pending');
+  const dueDate = String(a?.dueDate || '');
+  const isOverdue = status === 'Pending' && dueDate && dueDate < new Date().toISOString().split('T')[0];
+  return {
+    id: String(a?.id || a?._id || ''),
+    assessmentId: String(a?.assessmentId || ''),
+    assessmentAcronym: String(a?.assessmentAcronym || ''),
+    assessmentTitle: String(a?.assessmentTitle || ''),
+    clientId: String(a?.clientId || ''),
+    clientName: String(a?.clientName || a?.clientEmail || 'Client'),
+    clientAvatar: a?.clientAvatar || undefined,
+    therapistName: String(a?.consultantName || a?.therapistName || ''),
+    assignedDate: String(a?.assignedDate || (a?.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : '')),
+    dueDate,
+    frequency: ASSIGNMENT_FREQUENCIES.find((f) => String(a?.frequency || '').startsWith(f)) || 'One-time',
+    status: status === 'Completed' ? 'Completed' : isOverdue ? 'Overdue' : status === 'Overdue' ? 'Overdue' : 'Pending'
+  };
+}
+
 export const AssessmentsView: React.FC = () => {
   const { clients } = useAppContext();
   // Main State
   const [assessments, setAssessments] = useState<ClinicalAssessment[]>(mockAssessments);
-  const [assignments, setAssignments] = useState<AssessmentAssignment[]>(mockAssessmentAssignments);
+  const [assignments, setAssignments] = useState<AssessmentAssignment[]>([]);
 
-  // Fetch live assignments and submissions from MongoDB Atlas
+  // Fetch live assignments from MongoDB Atlas ({ submissions, assignments })
   React.useEffect(() => {
-    const fetchAssessmentsData = async () => {
-      try {
-        let res = await fetch('/api/admin/assessments').catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch('http://localhost:5000/api/admin/assessments').catch(() => null);
+    api.get('/api/admin/assessments')
+      .then((data: any) => {
+        if (Array.isArray(data?.assignments)) {
+          setAssignments(data.assignments.map(toAdminAssignment));
         }
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data?.assignments && Array.isArray(data.assignments) && data.assignments.length > 0) {
-            setAssignments(data.assignments);
-          }
-        }
-      } catch (e) {
-        console.error('Error loading assessments data:', e);
-      }
-    };
-    fetchAssessmentsData();
+      })
+      .catch((e) => console.error('Error loading assessments data:', e));
   }, []);
 
   // Active Navigation Tab: 'library' | 'builder' | 'assignments'
@@ -239,52 +249,45 @@ export const AssessmentsView: React.FC = () => {
   // Handle Assigning Assessment to Client
   const handleConfirmAssignment = async () => {
     if (!assignModalAssessment || !assignClientId) return;
-    const clientList = clients && clients.length > 0 ? clients : mockClients;
-    const clientObj = clientList.find((c) => c.id === assignClientId);
-    const newAssignment: AssessmentAssignment = {
-      id: `ASN-${Date.now().toString().slice(-4)}`,
-      assessmentId: assignModalAssessment.id,
-      assessmentAcronym: assignModalAssessment.acronym,
-      assessmentTitle: assignModalAssessment.title,
-      clientId: assignClientId,
-      clientName: clientObj ? clientObj.name : 'Selected Client',
-      clientAvatar: (clientObj as any)?.avatar || undefined,
-      therapistName: clientObj ? clientObj.assignedTherapistName : 'Dr. Alex Harrison',
-      assignedDate: new Date().toISOString().split('T')[0],
-      dueDate: assignDueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-      frequency: assignFrequency,
-      status: 'Pending'
-    };
+    const clientObj = clients.find((c) => c.id === assignClientId);
+    if (!clientObj) {
+      showToast('Please select a client from the list.');
+      return;
+    }
+    const dueDate = assignDueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
 
-    setAssignments([newAssignment, ...assignments]);
+    // Persist to MongoDB Atlas AssessmentAssignment collection (the client panel reads it by id/email)
+    let saved: any;
+    try {
+      const data = await api.post('/api/admin/assessments/assign', {
+        assessmentId: assignModalAssessment.id,
+        assessmentAcronym: assignModalAssessment.acronym,
+        assessmentTitle: assignModalAssessment.title,
+        clientId: clientObj.id,
+        clientName: clientObj.name,
+        clientEmail: clientObj.email,
+        consultantId: clientObj.assignedTherapistId || '',
+        consultantName: clientObj.assignedTherapistName || '',
+        dueDate,
+        frequency: assignFrequency
+      });
+      saved = data?.assignment;
+    } catch (e: any) {
+      console.error('Error persisting assignment to MongoDB:', e);
+      showToast(`Not assigned: ${e?.message || 'the server could not save the assignment'}`);
+      return;
+    }
+
+    const newAssignment: AssessmentAssignment = toAdminAssignment({
+      ...saved,
+      clientAvatar: clientObj.avatar || clientObj.avatarUrl,
+      frequency: assignFrequency
+    });
+
+    setAssignments((prev) => [newAssignment, ...prev]);
     setAssignModalAssessment(null);
     setAssignClientId('');
     showToast(`Successfully assigned ${assignModalAssessment.acronym} to ${newAssignment.clientName}!`);
-
-    // Persist to MongoDB Atlas AssessmentAssignment collection
-    try {
-      let res = await fetch('/api/admin/assessments/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newAssignment,
-          clientEmail: clientObj?.email
-        })
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        await fetch('http://localhost:5000/api/admin/assessments/assign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...newAssignment,
-            clientEmail: clientObj?.email
-          })
-        }).catch(() => null);
-      }
-    } catch (e) {
-      console.error('Error persisting assignment to MongoDB:', e);
-    }
   };
 
   // Handle Creating Custom Assessment from Builder
@@ -1319,7 +1322,7 @@ export const AssessmentsView: React.FC = () => {
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800"
                 >
                   <option value="">-- Choose Client --</option>
-                  {(clients && clients.length > 0 ? clients : mockClients).map((c) => (
+                  {clients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.service || 'Individual Therapy'})
                     </option>
