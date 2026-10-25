@@ -33,6 +33,7 @@ export function defaultNotificationLink(role: NotificationRole, type: string): s
     return '/progress';
   }
   if (role === 'CONSULTANT') {
+    if (t.startsWith('BLOG')) return '/consultant/blog';
     if (t.includes('FEEDBACK')) return '/consultant';
     if (t.includes('MESSAGE')) return '/consultant/messages';
     if (t.startsWith('ASSESSMENT')) return '/consultant/assessments';
@@ -64,7 +65,15 @@ const EMAILED_TYPES: Record<string, string> = {
   ACTIVITY_ASSIGNED: 'Start activity',
   SESSION_FEEDBACK_ALERT: 'Review feedback',
   CUSTOM_SLOT_REQUEST: 'Open my calendar',
-  THERAPIST_SWITCH_REQUEST: 'Review request'
+  THERAPIST_SWITCH_REQUEST: 'Review request',
+  BLOG_POST_APPROVED: 'View my articles',
+  BLOG_POST_REJECTED: 'See feedback',
+  BLOG_POST_STATUS: 'View my articles',
+  BLOG_POST_DELETED: 'View my articles',
+  BLOG_OUTLINE_APPROVED: 'Start writing',
+  BLOG_OUTLINE_REJECTED: 'See feedback',
+  BLOG_OUTLINE_STATUS: 'View my outlines',
+  BLOG_OUTLINE_DELETED: 'View my outlines'
 };
 
 /**
