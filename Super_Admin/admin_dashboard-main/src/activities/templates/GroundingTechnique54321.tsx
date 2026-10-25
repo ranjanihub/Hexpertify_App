@@ -25,6 +25,14 @@ export const GroundingTechnique54321: React.FC<BaseActivityComponentProps> = ({
   onComplete,
   isReadOnly = false
 }) => {
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.scrollTop = 0;
+  }, []);
+
   // Session Stages: 'pre_check' | 'sensory_flow' | 'post_check' | 'completed'
   const [stage, setStage] = useState<'pre_check' | 'sensory_flow' | 'post_check' | 'completed'>('pre_check');
   const [step, setStep] = useState(1);

@@ -4,7 +4,31 @@ class TherapeuticAudioEngine {
   private ctx: AudioContext | null = null;
   public soundEnabled: boolean = true;
   public voiceEnabled: boolean = true;
-  private lastSpeakTime: number = 0;
+  private voices: SpeechSynthesisVoice[] = [];
+  private activeUtterance: SpeechSynthesisUtterance | null = null;
+  private pendingSpeakTimeout: any = null;
+
+  // Bookmarking state for resuming speech from the exact paused word/sentence
+  private currentFullText: string = '';
+  private currentSpokenCharIndex: number = 0;
+  private isCurrentSpeechCompleted: boolean = true;
+  private currentCustomRate: number = 1.0;
+  private speechStartTime: number = 0;
+
+  constructor() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.initVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => this.initVoices();
+      }
+    }
+  }
+
+  private initVoices() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.voices = window.speechSynthesis.getVoices() || [];
+    }
+  }
 
   private getAudioContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -20,30 +44,82 @@ class TherapeuticAudioEngine {
     return this.ctx;
   }
 
-  // 1. Spoken Voice Guidance Coach (Web Speech Synthesis API) - Calmed, gentle, slow therapeutic cadence
-  public speak(text: string, priority: boolean = false, customRate: number = 0.72) {
+  public setVoiceEnabled(enabled: boolean) {
+    this.voiceEnabled = enabled;
+    if (!enabled) {
+      this.pauseSpeaking();
+    }
+  }
+
+  public setSoundEnabled(enabled: boolean) {
+    this.soundEnabled = enabled;
+    if (!enabled) {
+      this.stopSpeaking();
+    }
+  }
+
+  // 1. Spoken Voice Guidance Coach (Web Speech Synthesis API) - Calmed, synchronized therapeutic cadence
+  public speak(
+    text: string,
+    priorityOrCallback?: boolean | (() => void),
+    customRate: number = 1.0,
+    startCharOffset: number = 0,
+    onComplete?: () => void
+  ) {
+    let priority = false;
+    let completeCallback = onComplete;
+    if (typeof priorityOrCallback === 'function') {
+      completeCallback = priorityOrCallback;
+      priority = false;
+    } else if (typeof priorityOrCallback === 'boolean') {
+      priority = priorityOrCallback;
+    }
+
     if (!this.voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      this.stopSpeaking();
+      if (completeCallback) completeCallback();
       return;
     }
 
-    // Debounce rapid successive calls
-    const now = Date.now();
-    if (!priority && now - this.lastSpeakTime < 600) {
+    // Cancel any current utterance and pending timeout immediately
+    this.stopRawSpeech();
+
+    if (!this.voiceEnabled) {
+      if (completeCallback) completeCallback();
       return;
     }
-    this.lastSpeakTime = now;
+
+    if (startCharOffset === 0) {
+      this.currentFullText = text;
+      this.currentCustomRate = customRate;
+      this.currentSpokenCharIndex = 0;
+      this.isCurrentSpeechCompleted = false;
+    }
+
+    const textToSpeak = startCharOffset > 0 ? text.slice(startCharOffset).trim() : text;
+    if (!textToSpeak) {
+      this.isCurrentSpeechCompleted = true;
+      if (completeCallback) completeCallback();
+      return;
+    }
 
     try {
-      if (window.speechSynthesis.speaking || priority) {
-        window.speechSynthesis.cancel();
+      if (this.voices.length === 0) {
+        this.initVoices();
       }
 
-      const utterance = new SpeechSynthesisUtterance(text);
+      // Resume if paused (browser bug workaround)
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      this.activeUtterance = utterance;
+      (window as any).__lastUtterance = utterance;
 
       // Select warm, natural english voice
-      const voices = window.speechSynthesis.getVoices();
       const naturalVoice =
-        voices.find(
+        this.voices.find(
           (v) =>
             (v.name.includes('Natural') ||
               v.name.includes('Google') ||
@@ -51,26 +127,150 @@ class TherapeuticAudioEngine {
               v.name.includes('Karen') ||
               v.name.includes('Female')) &&
             v.lang.startsWith('en')
-        ) || voices.find((v) => v.lang.startsWith('en'));
+        ) || this.voices.find((v) => v.lang.startsWith('en'));
 
       if (naturalVoice) {
         utterance.voice = naturalVoice;
       }
 
-      // Ultra calm, slow, relaxed pacing (0.72 = soothing meditation pace, not rushed)
-      utterance.rate = Math.max(0.65, Math.min(customRate, 0.85));
-      utterance.pitch = 0.95; // Slightly lower, warm, soothing pitch
-      utterance.volume = 0.9;
+      // Clear, synchronized pacing
+      utterance.rate = Math.max(0.9, Math.min(customRate, 1.15));
+      utterance.pitch = 1.0; // Warm, natural pitch
+      utterance.volume = 0.95;
 
-      window.speechSynthesis.speak(utterance);
+      utterance.onstart = () => {
+        this.speechStartTime = Date.now();
+      };
+
+      utterance.onboundary = (e: SpeechSynthesisEvent) => {
+        if (typeof e.charIndex === 'number') {
+          this.currentSpokenCharIndex = startCharOffset + e.charIndex;
+        }
+      };
+
+      utterance.onend = () => {
+        this.isCurrentSpeechCompleted = true;
+        this.currentSpokenCharIndex = this.currentFullText.length;
+        if (this.activeUtterance === utterance) {
+          this.activeUtterance = null;
+        }
+        if (completeCallback) {
+          try {
+            completeCallback();
+          } catch (err) {
+            console.warn('completeCallback error:', err);
+          }
+        }
+      };
+
+      utterance.onerror = (e) => {
+        if (this.activeUtterance === utterance) {
+          this.activeUtterance = null;
+        }
+        if (e.error !== 'canceled' && e.error !== 'interrupted') {
+          console.warn('Speech synthesis error:', e.error);
+          if (completeCallback) {
+            try {
+              completeCallback();
+            } catch (err) {
+              console.warn(err);
+            }
+          }
+        }
+      };
+
+      // Small delay to allow previous cancel to settle in Chromium engines
+      this.pendingSpeakTimeout = setTimeout(() => {
+        this.pendingSpeakTimeout = null;
+        try {
+          if (this.voiceEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            window.speechSynthesis.speak(utterance);
+          } else if (completeCallback) {
+            completeCallback();
+          }
+        } catch (err) {
+          console.warn('Speech speak error:', err);
+          if (completeCallback) completeCallback();
+        }
+      }, 20);
     } catch (e) {
       console.warn('Speech synthesis error:', e);
+      if (completeCallback) completeCallback();
     }
   }
 
-  public stopSpeaking() {
+  public pauseSpeaking() {
+    if (this.activeUtterance && !this.isCurrentSpeechCompleted && this.speechStartTime > 0) {
+      const elapsedSeconds = (Date.now() - this.speechStartTime) / 1000;
+      const estimatedChars = Math.floor(elapsedSeconds * 15 * this.currentCustomRate);
+      if (estimatedChars > this.currentSpokenCharIndex) {
+        this.currentSpokenCharIndex = Math.min(this.currentFullText.length, estimatedChars);
+      }
+    }
+    this.stopRawSpeech();
+  }
+
+  public resumeSpeaking() {
+    if (!this.voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return;
+    }
+
+    if (this.isCurrentSpeechCompleted || !this.currentFullText) {
+      return;
+    }
+
+    let targetIndex = this.currentSpokenCharIndex;
+    if (targetIndex > 0 && targetIndex < this.currentFullText.length) {
+      while (targetIndex > 0 && this.currentFullText[targetIndex - 1] !== ' ' && this.currentFullText[targetIndex - 1] !== '\n') {
+        targetIndex--;
+      }
+    }
+
+    const remainingText = this.currentFullText.slice(targetIndex).trim();
+    if (remainingText.length > 0) {
+      this.speak(this.currentFullText, true, this.currentCustomRate, targetIndex);
+    } else {
+      this.isCurrentSpeechCompleted = true;
+    }
+  }
+
+  public isSpeechActive(): boolean {
+    return !this.isCurrentSpeechCompleted && !!this.currentFullText;
+  }
+
+  private stopRawSpeech() {
+    if (this.pendingSpeakTimeout) {
+      clearTimeout(this.pendingSpeakTimeout);
+      this.pendingSpeakTimeout = null;
+    }
+
+    if (this.activeUtterance) {
+      this.activeUtterance.onend = null;
+      this.activeUtterance.onerror = null;
+      this.activeUtterance.onstart = null;
+      this.activeUtterance.onboundary = null;
+      this.activeUtterance.onpause = null;
+      this.activeUtterance.onresume = null;
+      this.activeUtterance = null;
+    }
+
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        window.speechSynthesis.cancel();
+      } catch { }
+    }
+  }
+
+  public stopSpeaking(clearBookmark: boolean = true) {
+    this.stopRawSpeech();
+    if (clearBookmark) {
+      this.currentFullText = '';
+      this.currentSpokenCharIndex = 0;
+      this.isCurrentSpeechCompleted = true;
+      this.speechStartTime = 0;
     }
   }
 
@@ -159,7 +359,8 @@ class TherapeuticAudioEngine {
       case 'singing_bowl': {
         const freqs = [528, 528 * 1.5, 528 * 2.0];
         const masterGain = ctx.createGain();
-        masterGain.gain.setValueAtTime(0.22, now);
+        masterGain.gain.setValueAtTime(0.0001, now);
+        masterGain.gain.linearRampToValueAtTime(0.22, now + 0.008);
         masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
         masterGain.connect(ctx.destination);
 
@@ -169,7 +370,8 @@ class TherapeuticAudioEngine {
           osc.frequency.setValueAtTime(f, now);
 
           const g = ctx.createGain();
-          g.gain.setValueAtTime(idx === 0 ? 0.8 : 0.2, now);
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.linearRampToValueAtTime(idx === 0 ? 0.8 : 0.2, now + 0.008);
           osc.connect(g);
           g.connect(masterGain);
 
@@ -344,4 +546,3 @@ class TherapeuticAudioEngine {
 }
 
 export const audioEngine = new TherapeuticAudioEngine();
-

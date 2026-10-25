@@ -4,7 +4,7 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["vite/client"],
+    "types": ["node", "vite/client"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
@@ -16,9 +16,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    /* Linting (unused-code checks off, as in the client and consultant apps, which share src/activities with this app) */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
