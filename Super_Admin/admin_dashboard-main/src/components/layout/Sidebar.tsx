@@ -257,7 +257,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
           <button
             onClick={() => {
               logoutAdmin();
-              window.location.href = '/client/login';
+              window.location.href = '/login?role=admin';
             }}
             title="Sign Out"
             className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
