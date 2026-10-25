@@ -5,7 +5,13 @@ import { OAuth2Client } from 'google-auth-library';
 import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
 import { tryIssueAuthToken } from '../utils/jwt';
-import { CLIENT_PANEL_LOCKED_MESSAGE, hasCompletedSession } from '../services/client-access';
+import { Db } from 'mongodb';
+import {
+  CLIENT_PANEL_LOCKED_MESSAGE,
+  consultantAssignment,
+  hasCompletedSession,
+  resolveClientConsultant
+} from '../services/client-access';
 
 // In-memory single-use ticket registry
 const activeTickets = new Map<string, { payload: any; expiresAt: number; used: boolean }>();
@@ -84,10 +90,11 @@ export class AuthController {
         };
 
         if (isMasterAdminEmail) {
-          // Record in User collection if not exists
-          await db.collection('User').updateOne(
+          // Record in User collection if not exists (string uuid _id, as Prisma expects)
+          const newId = crypto.randomUUID();
+          await db.collection<any>('User').updateOne(
             { email: cleanEmail },
-            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', updatedAt: new Date() }, $setOnInsert: { _id: newId, id: newId, createdAt: new Date() } },
             { upsert: true }
           );
         }
@@ -106,36 +113,16 @@ export class AuthController {
       }
 
       // 2. THERAPIST / CONSULTANT LOGIN (Strict verification against MongoDB Consultant collection)
-      const isTherapistIntent = role === 'therapist' || role === 'consultant' || cleanEmail.includes('evelyn') || cleanEmail.includes('therapist') || cleanEmail.startsWith('dr.');
+      const escapedEmail = cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const looksLikeTherapist = role === 'therapist' || role === 'consultant' || cleanEmail.includes('therapist') || cleanEmail.startsWith('dr.');
+      // Only the consultant registered with this exact email (never a demo or "first" consultant)
+      const consultant: any = looksLikeTherapist
+        ? await db.collection('Consultant').findOne({ email: { $regex: `^${escapedEmail}$`, $options: 'i' } }) ||
+          await db.collection('consultants').findOne({ email: { $regex: `^${escapedEmail}$`, $options: 'i' } })
+        : null;
+      const isTherapistIntent = role === 'therapist' || role === 'consultant' || Boolean(consultant);
       if (isTherapistIntent) {
-        let consultant = await db.collection('Consultant').findOne({ 
-          $or: [
-            { email: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
-            ...(cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail.includes('evelyn') ? [
-              { email: { $regex: 'evelyn', $options: 'i' } },
-              { name: { $regex: 'evelyn', $options: 'i' } },
-              { id: 'doc-1' },
-              { id: 'CON-1' }
-            ] : [])
-          ]
-        }) || await db.collection('consultants').findOne({
-          $or: [
-            { email: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
-            ...(cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail.includes('evelyn') ? [
-              { email: { $regex: 'evelyn', $options: 'i' } },
-              { name: { $regex: 'evelyn', $options: 'i' } },
-              { id: 'doc-1' },
-              { id: 'CON-1' }
-            ] : [])
-          ]
-        });
-
-        // Fallback for default demo practitioner
-        if (!consultant && (cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail === 'evelyn.reed@example.com')) {
-          consultant = await db.collection('Consultant').findOne({}) || await db.collection('consultants').findOne({});
-        }
-
-        if (!consultant && role === 'therapist' && !cleanEmail.includes('evelyn')) {
+        if (!consultant) {
           res.status(403).json({
             success: false,
             error: `Therapist email "${cleanEmail}" was not found in the practitioner directory. Only therapists registered in the Super Admin panel can access the Consultant Suite.`
@@ -144,23 +131,14 @@ export class AuthController {
         }
 
         // Look up corresponding practitioner record in User collection for hashed password
-        const therapistUserDoc = await db.collection('User').findOne({ email: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } }) ||
-                                 await db.collection('users').findOne({ email: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } });
+        const therapistUserDoc = await db.collection('User').findOne({ email: { $regex: `^${escapedEmail}$`, $options: 'i' } }) ||
+                                 await db.collection('users').findOne({ email: { $regex: `^${escapedEmail}$`, $options: 'i' } });
 
         const storedTherapistHash = consultant?.password || therapistUserDoc?.password;
         let therapistPassMatches = false;
         if (storedTherapistHash) {
           therapistPassMatches = await bcrypt.compare(password, storedTherapistHash);
         }
-        if (!therapistPassMatches && (cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail.includes('evelyn')) && (password === 'doctor123' || password === 'password123')) {
-          therapistPassMatches = true;
-          const newHash = await bcrypt.hash(password, 10);
-          await Promise.all([
-            db.collection('User').updateOne({ email: cleanEmail }, { $set: { password: newHash } }),
-            db.collection('Consultant').updateOne({ email: cleanEmail }, { $set: { password: newHash } })
-          ]).catch(() => {});
-        }
-
         if (!therapistPassMatches) {
           res.status(401).json({
             success: false,
@@ -170,13 +148,13 @@ export class AuthController {
         }
 
         const therapistUser = {
-          id: String(consultant?._id || consultant?.id || 'doc-1'),
-          name: consultant?.name || 'Dr. Evelyn Reed, PhD',
-          email: consultant?.email || cleanEmail,
-          title: consultant?.profession || consultant?.title || 'Licensed Clinical Psychologist',
-          profession: consultant?.profession || consultant?.title || 'Licensed Clinical Psychologist',
+          id: String(consultant._id || consultant.id),
+          name: consultant.name || 'Practitioner',
+          email: consultant.email || cleanEmail,
+          title: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
+          profession: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
           role: 'therapist' as const,
-          avatarInitials: (consultant?.name || 'Dr. Evelyn Reed')
+          avatarInitials: (consultant.name || 'Practitioner')
             .split(' ')
             .map((n: string) => n[0])
             .join('')
@@ -268,62 +246,23 @@ export class AuthController {
         { sort: { scheduledAt: -1, createdAt: -1 } }
       );
 
-      // Resolve the legitimate consultant (from booking or default active consultant)
-      let targetConsultant: any = null;
-      const cId = clientBooking?.consultantId || clientBooking?.therapistId || user?.assignedTherapistId;
-      const cName = clientBooking?.consultantName || clientBooking?.therapistName || user?.assignedTherapistName;
-
-      if (cId) {
-        targetConsultant = await db.collection<any>('Consultant').findOne({ id: String(cId) }) ||
-                          await db.collection<any>('consultants').findOne({ id: String(cId) });
-      }
-      if (!targetConsultant && cName) {
-        const clean = cName.replace(/^dr\.?\s*/i, '').trim();
-        targetConsultant = await db.collection<any>('Consultant').findOne({ name: { $regex: clean, $options: 'i' } }) ||
-                          await db.collection<any>('consultants').findOne({ name: { $regex: clean, $options: 'i' } });
-      }
-      if (!targetConsultant) {
-        targetConsultant = await db.collection<any>('Consultant').findOne({}) ||
-                          await db.collection<any>('consultants').findOne({});
-      }
-
-      const assignedId = targetConsultant?.id || String(targetConsultant?._id || 'doc-1');
-      const assignedName = targetConsultant?.name || 'Dr. Evelyn Reed';
-      const assignedEmail = targetConsultant?.email || 'dr.evelyn@hexpertify.com';
-      const assignedPhoto = targetConsultant?.photoUrl || targetConsultant?.avatarUrl || targetConsultant?.image || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
-
-      if (!user.assignedTherapistId || !user.assignedTherapistEmail) {
-        // Backfill assigned consultant if missing
-        await Promise.all([
-          db.collection<any>('User').updateOne(
-            { _id: user._id },
-            { $set: { assignedTherapistId: assignedId, assignedTherapistName: assignedName, assignedTherapistEmail: assignedEmail, assignedTherapistPhoto: assignedPhoto, updatedAt: new Date() } }
-          ),
-          db.collection<any>('users').updateOne(
-            { _id: user._id },
-            { $set: { assignedTherapistId: assignedId, assignedTherapistName: assignedName, assignedTherapistEmail: assignedEmail, assignedTherapistPhoto: assignedPhoto, updatedAt: new Date() } }
-          )
-        ]).catch(() => {});
-        user.assignedTherapistId = assignedId;
-        user.assignedTherapistName = assignedName;
-        user.assignedTherapistEmail = assignedEmail;
-        user.assignedTherapistPhoto = assignedPhoto;
-      }
+      // Resolve the client's real consultant (booking or stored assignment); nothing is guessed
+      const assigned = await AuthController.backfillClientConsultant(db, user, clientBooking);
 
       const clientUser = {
         id: String(user._id || user.id),
         name: user.name || 'Client User',
         email: user.email,
         role: 'client' as const,
-        phone: user.phone || user.phoneNumber || '',
+        phone: user.phoneNumber || user.phone || '',
         avatarUrl: user.image || user.avatarUrl || '',
         age: user.age ? String(user.age) : '',
         gender: user.gender || 'Male',
         preferredLanguage: user.preferredLanguage || 'English',
-        assignedTherapistId: user.assignedTherapistId || assignedId,
-        assignedTherapistName: user.assignedTherapistName || assignedName,
-        assignedTherapistEmail: user.assignedTherapistEmail || assignedEmail,
-        assignedTherapistPhoto: user.assignedTherapistPhoto || assignedPhoto,
+        assignedTherapistId: user.assignedTherapistId || assigned?.assignedTherapistId || '',
+        assignedTherapistName: user.assignedTherapistName || assigned?.assignedTherapistName || '',
+        assignedTherapistEmail: user.assignedTherapistEmail || assigned?.assignedTherapistEmail || '',
+        assignedTherapistPhoto: user.assignedTherapistPhoto || assigned?.assignedTherapistPhoto || '',
         firstConsultationCompleted: true,
         goals: user.goals || [],
         therapyGoals: user.therapyGoals || [],
@@ -491,6 +430,25 @@ export class AuthController {
   }
 
   /**
+   * Resolves the client's real consultant (latest booking or stored assignment) and stores it on the client
+   * when their assignment is missing. Returns null when nothing resolves (no consultant is guessed).
+   */
+  static async backfillClientConsultant(db: Db, user: any, booking: any) {
+    const consultant = await resolveClientConsultant(db, user, booking);
+    if (!consultant) return null;
+    const assigned = consultantAssignment(consultant);
+    if (!user.assignedTherapistId || !user.assignedTherapistEmail) {
+      const $set = { ...assigned, updatedAt: new Date() };
+      await Promise.all([
+        db.collection<any>('User').updateOne({ _id: user._id }, { $set }),
+        db.collection<any>('users').updateOne({ _id: user._id }, { $set })
+      ]).catch(() => {});
+      Object.assign(user, assigned);
+    }
+    return assigned;
+  }
+
+  /**
    * Helper to issue cryptographically signed HMAC-SHA256 single-use ticket (60s validity)
    */
   static issueSsoTicket(user: any, targetRole?: string): string {
@@ -562,15 +520,17 @@ export class AuthController {
       };
 
       if (isMasterAdminEmail) {
+        // String uuid _id on insert, as Prisma expects; the same id in both collections
+        const newId = crypto.randomUUID();
         await Promise.all([
-          db.collection('User').updateOne(
+          db.collection<any>('User').updateOne(
             { email: cleanEmail },
-            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, avatarUrl: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { _id: newId, id: newId, createdAt: new Date() } },
             { upsert: true }
           ),
-          db.collection('users').updateOne(
+          db.collection<any>('users').updateOne(
             { email: cleanEmail },
-            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+            { $set: { email: cleanEmail, name: adminUser.name, role: 'ADMIN', image: adminUser.avatarUrl, avatarUrl: adminUser.avatarUrl, updatedAt: new Date() }, $setOnInsert: { _id: newId, id: newId, createdAt: new Date() } },
             { upsert: true }
           )
         ]);
@@ -581,13 +541,9 @@ export class AuthController {
     }
 
     // 2. Check if user is a registered Consultant / Therapist in MongoDB directory
-    let consultant = await db.collection('Consultant').findOne({ email: cleanEmail }) ||
-                     await db.collection('consultants').findOne({ email: cleanEmail });
-
-    if (!consultant && (cleanEmail === 'dr.evelyn@hexpertify.com' || cleanEmail.includes('evelyn'))) {
-      consultant = await db.collection('Consultant').findOne({ email: 'evelyn.reed@example.com' }) ||
-                   await db.collection('consultants').findOne({ email: 'evelyn.reed@example.com' });
-    }
+    // Only the consultant registered with this exact email
+    const consultant = await db.collection('Consultant').findOne({ email: cleanEmail }) ||
+                       await db.collection('consultants').findOne({ email: cleanEmail });
 
     if (consultant) {
       const therapistUser = {
@@ -629,61 +585,39 @@ export class AuthController {
       { sort: { scheduledAt: -1, createdAt: -1 } }
     );
 
-    let targetConsultant: any = null;
-    const cId = clientBooking?.consultantId || clientBooking?.therapistId || user?.assignedTherapistId;
-    const cName = clientBooking?.consultantName || clientBooking?.therapistName || user?.assignedTherapistName;
-
-    if (cId) {
-      targetConsultant = await db.collection<any>('Consultant').findOne({ id: String(cId) }) ||
-                        await db.collection<any>('consultants').findOne({ id: String(cId) });
-    }
-    if (!targetConsultant && cName) {
-      const clean = cName.replace(/^dr\.?\s*/i, '').trim();
-      targetConsultant = await db.collection<any>('Consultant').findOne({ name: { $regex: clean, $options: 'i' } }) ||
-                        await db.collection<any>('consultants').findOne({ name: { $regex: clean, $options: 'i' } });
-    }
-    if (!targetConsultant) {
-      targetConsultant = await db.collection<any>('Consultant').findOne({}) ||
-                        await db.collection<any>('consultants').findOne({});
-    }
-
-    const assignedId = targetConsultant?.id || String(targetConsultant?._id || 'doc-1');
-    const assignedName = targetConsultant?.name || 'Dr. Evelyn Reed';
-    const assignedEmail = targetConsultant?.email || 'dr.evelyn@hexpertify.com';
-    const assignedPhoto = targetConsultant?.photoUrl || targetConsultant?.avatarUrl || targetConsultant?.image || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
+    const targetConsultant = await resolveClientConsultant(db, user, clientBooking);
+    const assigned = targetConsultant ? consultantAssignment(targetConsultant) : null;
 
     const clientDisplayName = profile.name || (cleanEmail.split('@')[0].replace(/[^a-zA-Z]/g, ' ').trim() || 'Client User');
-    const clientAvatar = profile.picture || user?.image || user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+    const clientAvatar = user?.image || user?.avatarUrl || profile.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
 
     if (!user) {
-      const newDoc = {
+      // String uuid ids, like accounts created by the website (Prisma) and the Backend
+      const userId = crypto.randomUUID();
+      const newDoc: any = {
+        _id: userId,
+        id: userId,
         email: cleanEmail,
         name: clientDisplayName,
         role: 'USER',
-        image: clientAvatar,
-        avatarUrl: clientAvatar,
-        assignedTherapistId: assignedId,
-        assignedTherapistName: assignedName,
-        assignedTherapistEmail: assignedEmail,
-        assignedTherapistPhoto: assignedPhoto,
+        emailVerified: new Date(),
+        ...(profile.picture ? { image: profile.picture, avatarUrl: profile.picture } : {}),
+        ...(assigned || {}),
         firstConsultationCompleted: true,
         createdAt: new Date(),
         updatedAt: new Date()
       };
 
-      const result = await db.collection<any>('User').insertOne(newDoc);
+      await db.collection<any>('User').insertOne(newDoc);
       await db.collection<any>('users').insertOne(newDoc).catch(() => {});
-      user = { ...newDoc, _id: result.insertedId };
+      user = newDoc;
     } else {
-      // Update missing therapist assignment or photo
+      // Fill a missing therapist assignment or photo (existing values are never overwritten)
       const updates: any = { updatedAt: new Date() };
-      if (!user.assignedTherapistId || !user.assignedTherapistEmail) {
-        updates.assignedTherapistId = assignedId;
-        updates.assignedTherapistName = assignedName;
-        updates.assignedTherapistEmail = assignedEmail;
-        updates.assignedTherapistPhoto = assignedPhoto;
+      if (assigned && (!user.assignedTherapistId || !user.assignedTherapistEmail)) {
+        Object.assign(updates, assigned);
       }
-      if (profile.picture && !user.image) {
+      if (profile.picture && !user.image && !user.avatarUrl) {
         updates.image = profile.picture;
         updates.avatarUrl = profile.picture;
       }
@@ -699,16 +633,16 @@ export class AuthController {
       name: user.name || clientDisplayName,
       email: user.email,
       role: 'client' as const,
-      phone: user.phone || user.phoneNumber || '',
+      phone: user.phoneNumber || user.phone || '',
       avatarUrl: user.image || user.avatarUrl || clientAvatar,
       photoUrl: user.image || user.avatarUrl || clientAvatar,
       age: user.age ? String(user.age) : '',
       gender: user.gender || 'Male',
       preferredLanguage: user.preferredLanguage || 'English',
-      assignedTherapistId: user.assignedTherapistId || assignedId,
-      assignedTherapistName: user.assignedTherapistName || assignedName,
-      assignedTherapistEmail: user.assignedTherapistEmail || assignedEmail,
-      assignedTherapistPhoto: user.assignedTherapistPhoto || assignedPhoto,
+      assignedTherapistId: user.assignedTherapistId || assigned?.assignedTherapistId || '',
+      assignedTherapistName: user.assignedTherapistName || assigned?.assignedTherapistName || '',
+      assignedTherapistEmail: user.assignedTherapistEmail || assigned?.assignedTherapistEmail || '',
+      assignedTherapistPhoto: user.assignedTherapistPhoto || assigned?.assignedTherapistPhoto || '',
       firstConsultationCompleted: true,
       goals: user.goals || [],
       therapyGoals: user.therapyGoals || [],

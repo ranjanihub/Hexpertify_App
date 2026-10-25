@@ -8,7 +8,7 @@ import { bookingContact, formatSessionWhen } from '../services/booking-confirmat
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 /** Statuses that are not upcoming sessions */
-const NOT_UPCOMING = ['CANCELLED', 'COMPLETED', 'PENDING_PAYMENT', 'EXPIRED', 'NO_SHOW', 'NO-SHOW'];
+const NOT_UPCOMING = ['CANCELLED', 'COMPLETED', 'PENDING_PAYMENT', 'EXPIRED', 'NO_SHOW', 'NO-SHOW', 'NO_SHOW_CLIENT', 'NO_SHOW_CONSULTANT', 'Cancelled', 'Completed'];
 
 const welcomeSchema = z.object({ name: z.string().trim().min(1).max(200), email: z.string().trim().email() });
 

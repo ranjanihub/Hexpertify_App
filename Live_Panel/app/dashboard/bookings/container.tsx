@@ -77,15 +77,50 @@ function ConfirmDialog({
   );
 }
 
-type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+type BookingStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "RESCHEDULED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "NO_SHOW_CLIENT"
+  | "NO_SHOW_CONSULTANT";
 
 interface Booking {
   id: string;
   status: BookingStatus;
-  user: { name: string; email: string };
-  consultant: { name: string };
-  service: { name: string; platform: string; price: number; duration: number };
+  user: { name: string; email: string } | null;
+  consultant: { name: string } | null;
+  service: { name: string; platform: string; price: number; duration: number } | null;
+  amount?: number | null;
+  date?: string | null;
+  time?: string | null;
+  scheduledAt?: string | Date | null;
   createdAt: string;
+}
+
+/** The session's India-time date and time, or "To be scheduled" (website bookings are paid first) */
+function sessionLabel(booking: Booking): string {
+  if (booking.date) return `${booking.date}${booking.time ? ` ${booking.time}` : ""}`;
+  const when = booking.scheduledAt ? new Date(booking.scheduledAt) : null;
+  if (!when || isNaN(when.getTime())) return "To be scheduled";
+  return when.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
+}
+
+/** Export row: the amount the client paid, not the plan's list price */
+function exportRow(booking: Booking) {
+  return [
+    booking.user?.name ?? "",
+    booking.user?.email ?? "",
+    booking.consultant?.name ?? "",
+    booking.service?.name ?? "",
+    booking.service?.platform ?? "",
+    String(booking.service?.duration ?? ""),
+    String(booking.amount ?? booking.service?.price ?? ""),
+    booking.status,
+    sessionLabel(booking),
+    booking.createdAt,
+  ];
 }
 
 export default function BookingContainer({
@@ -169,21 +204,12 @@ export default function BookingContainer({
       "Service",
       "Platform",
       "Duration (min)",
-      "Price ($)",
+      "Amount (₹)",
       "Status",
+      "Session",
       "Created At",
     ];
-    const rows = bookings.map((booking) => [
-      booking.user.name,
-      booking.user.email,
-      booking.consultant.name,
-      booking.service.name,
-      booking.service.platform,
-      booking.service.duration.toString(),
-      booking.service.price.toString(),
-      booking.status,
-      booking.createdAt,
-    ]);
+    const rows = bookings.map(exportRow);
 
     const csvContent = [
       headers.join(","),
@@ -219,21 +245,12 @@ export default function BookingContainer({
       "Service",
       "Platform",
       "Duration (min)",
-      "Price ($)",
+      "Amount (₹)",
       "Status",
+      "Session",
       "Created At",
     ];
-    const rows = bookings.map((booking) => [
-      booking.user.name,
-      booking.user.email,
-      booking.consultant.name,
-      booking.service.name,
-      booking.service.platform,
-      booking.service.duration,
-      booking.service.price,
-      booking.status,
-      booking.createdAt,
-    ]);
+    const rows = bookings.map(exportRow);
 
     let tableHTML = "<table><thead><tr>";
     headers.forEach((header) => {
@@ -315,7 +332,7 @@ export default function BookingContainer({
             </CardHeader>
             <CardContent>
               <BookingTable
-                bookings={bookings || []}
+                bookings={(bookings || []) as any}
                 onStatusUpdate={(id, status) => openConfirmDialog(id, status)}
                 currentPage={currentPage}
                 pageSize={pageSize}

@@ -2,10 +2,14 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { BookingEmailPayload, MailService } from '../services/mail.service';
-import { bookingContact, dispatchBookingConfirmed, formatSessionWhen } from '../services/booking-confirmation.service';
+import { bookingContact, formatSessionWhen } from '../services/booking-confirmation.service';
 import { isAdminUser } from '../middlewares/auth.middleware';
 import { sendPushToClient } from '../services/push.service';
 import { createNotifications } from '../services/notification.service';
+import { BookingInputError, createBooking } from '../services/booking-create';
+import { consultantIds, resolveConsultant } from '../services/booking-refs';
+import { bookingStatusOf, normalizeBookingStatus, normalizePaymentStatus } from '../services/booking-status';
+import { bookingInstant, isDateLabel, istLabels, resolveScheduledAt, ScheduleError } from '../services/booking-time';
 
 // Bookings awaiting gateway payment (or abandoned) are not real sessions yet
 const UNSETTLED_STATUSES = new Set(['PENDING_PAYMENT', 'EXPIRED']);
@@ -25,7 +29,9 @@ async function consultantEmailFor(booking: any): Promise<string> {
 }
 
 /** Who changed the booking, for the cancellation/reschedule emails */
-function actorOf(req: Request): 'client' | 'therapist' | 'admin' {
+function actorOf(req: Request, hint?: unknown): 'client' | 'therapist' | 'admin' {
+  // The website server calls with the internal key on behalf of a signed-in client (body `actor: 'client'`)
+  if (req.isInternal && hint === 'client') return 'client';
   if (req.user?.role === 'therapist') return 'therapist';
   if (isAdminUser(req.user) || req.isInternal) return 'admin';
   return 'client';
@@ -56,9 +62,10 @@ export class BookingsController {
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const { clientEmail, clientId, consultantId, status } = req.query;
-      const isConsultantQuery = Boolean(consultantId || req.query.therapistId);
-      const cacheKey = `bookings:all:${clientEmail || ''}:${clientId || ''}:${consultantId || ''}:${status || ''}`;
+      const { clientEmail, clientId, status, consultantEmail } = req.query;
+      const consultantId = req.query.consultantId || req.query.therapistId;
+      const isConsultantQuery = Boolean(consultantId || consultantEmail);
+      const cacheKey = `bookings:all:${clientEmail || ''}:${clientId || ''}:${consultantId || ''}:${consultantEmail || ''}:${status || ''}`;
 
       const responseData = await cacheService.wrap(cacheKey, ['bookings', 'users', 'consultants'], 15, async () => {
         const db = getDatabase();
@@ -92,14 +99,15 @@ export class BookingsController {
           const c = consultantMap.get(String(b.consultantId || b.therapistId));
           const s = serviceMap.get(String(b.serviceId));
 
-          const bookingDate = b.scheduledAt || b.date || b.createdAt;
-          const dObj = new Date(bookingDate || Date.now());
-          const timeStr = b.time || dObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-          const dateStr = dObj.toISOString().split('T')[0];
+          // Session time in India time; website bookings are paid first and scheduled later (never the purchase time)
+          const when = bookingInstant(b);
+          const labels = when ? istLabels(when) : null;
+          const dateStr: string | null = (isDateLabel(b.date) ? b.date : null) || labels?.date || null;
+          const timeStr: string | null = b.time || labels?.time || null;
 
           let rawConsultantName = b.consultantName || c?.name;
           let consultantName = 'Assigned Therapist';
-          let inferredService = b.serviceTitle || s?.title;
+          let inferredService = b.serviceTitle || s?.name || s?.title;
 
           if (rawConsultantName) {
             if (rawConsultantName.includes(' - By ')) {
@@ -126,7 +134,10 @@ export class BookingsController {
             duration: b.durationMinutes || s?.duration || 50,
             date: dateStr,
             time: timeStr,
-            status: (b.status || 'CONFIRMED').toUpperCase()
+            scheduledAt: when ? when.toISOString() : null,
+            toBeScheduled: !when && !dateStr,
+            status: bookingStatusOf(b),
+            paymentStatus: b.paymentStatus ? (normalizePaymentStatus(b.paymentStatus) || String(b.paymentStatus).toUpperCase()) : b.paymentStatus
           };
         });
 
@@ -138,18 +149,26 @@ export class BookingsController {
         }
         if (clientId) {
           const cId = String(clientId);
-          filtered = filtered.filter((b: any) => String(b.clientId || b.userId) === cId);
+          filtered = filtered.filter((b: any) => String(b.clientId) === cId || String(b.userId) === cId);
         }
-        if (consultantId) {
-          const consId = String(consultantId).toLowerCase().trim();
+        if (consultantId || consultantEmail) {
+          // Accept the consultant's _id, legacy id or email
+          const consEmail = String(consultantEmail || '').toLowerCase().trim();
+          const consIds = new Set<string>();
+          if (consultantId) consIds.add(String(consultantId).toLowerCase().trim());
+          consultants.forEach((c: any) => {
+            const ids = consultantIds(c).map((v) => v.toLowerCase());
+            const email = String(c.email || '').toLowerCase().trim();
+            if (ids.some((v) => consIds.has(v)) || (consEmail && email === consEmail)) ids.forEach((v) => consIds.add(v));
+          });
           filtered = filtered.filter((b: any) => {
             const bCid = String(b.consultantId || b.therapistId || '').toLowerCase().trim();
-            return bCid === consId;
+            return consIds.has(bCid);
           });
         }
         if (status) {
-          const st = String(status).toUpperCase();
-          filtered = filtered.filter((b: any) => (b.status || '').toUpperCase() === st);
+          const st = normalizeBookingStatus(status) || String(status).toUpperCase();
+          filtered = filtered.filter((b: any) => b.status === st);
         } else {
           filtered = filtered.filter((b: any) => !UNSETTLED_STATUSES.has((b.status || '').toUpperCase()));
         }
@@ -173,60 +192,29 @@ export class BookingsController {
   static async create(req: Request, res: Response): Promise<void> {
     try {
       const body = req.body || {};
-      const db = getDatabase();
-      // Only administrators may record a booking as paid; customer payments go through /api/payments
-      const canSetPayment = isAdminUser(req.user);
-
-      const newBooking = {
-        id: body.id || `BK-${Date.now().toString().slice(-5)}`,
-        clientId: body.clientId,
-        clientName: body.clientName || 'Client',
-        clientEmail: body.clientEmail,
-        clientPhone: body.clientPhone || '',
-        consultantId: body.consultantId || body.therapistId,
-        consultantName: body.consultantName || body.therapistName,
-        consultantAvatar: body.consultantAvatar || body.therapistAvatar,
-        serviceId: body.serviceId,
-        serviceTitle: body.serviceTitle || body.service || 'Individual Clinical Consultation',
-        date: body.date,
-        time: body.time,
-        scheduledAt: body.scheduledAt || (body.date ? new Date(body.date) : new Date()),
-        durationMinutes: body.durationMinutes || 50,
-        amount: canSetPayment ? (Number(body.amount) || 1500) : (Number(body.amount) || undefined),
-        paymentStatus: canSetPayment ? (body.paymentStatus || 'PAID') : 'UNPAID',
-        status: (body.status || 'CONFIRMED').toUpperCase(),
-        meetingLink: body.meetingLink || body.meetingUrl || 'https://meet.google.com/hex-pert-ify',
-        channel: body.channel || 'Video Call (Google Meet)',
-        notes: body.notes || '',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      // A repeated POST with the same booking ID (double submit, client retry) must not create a second booking or resend emails
-      const result = await db.collection('Booking').updateOne(
-        { id: newBooking.id },
-        { $setOnInsert: newBooking },
-        { upsert: true }
-      );
-      if (!result.upsertedId) {
-        const existing = await db.collection('Booking').findOne({ id: newBooking.id });
-        res.status(200).json({ success: true, booking: existing, duplicate: true, message: 'Booking already exists.' });
+      // Only administrators may record a booking as paid; customer payments go through /api/payments.
+      // A repeated POST with the same booking ID (double submit, client retry) must not create a second booking or resend emails.
+      const { booking, duplicate } = await createBooking(body, {
+        canSetPayment: isAdminUser(req.user),
+        consultantEmailHint: body.consultantEmail,
+        // Admins and the website server may still book a consultant who is not open for booking
+        requireBookable: !isAdminUser(req.user) && !req.isInternal
+      });
+      if (duplicate) {
+        res.status(200).json({ success: true, booking, duplicate: true, message: 'Booking already exists.' });
         return;
       }
-      await db.collection('bookings').insertOne({ ...newBooking, _id: result.upsertedId }).catch(() => {});
-
-      // Invalidate cache tags
-      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
-
-      // Send notifications and emails
-      await dispatchBookingConfirmed(newBooking, body.consultantEmail);
 
       res.status(201).json({
         success: true,
-        booking: { ...newBooking, _id: result.upsertedId },
+        booking,
         message: 'Booking confirmed. Client, Therapist, and Super Admin notifications and emails dispatched successfully.'
       });
     } catch (error: any) {
+      if (error instanceof BookingInputError) {
+        res.status(error.status).json({ success: false, error: error.message });
+        return;
+      }
       res.status(500).json({ success: false, error: error?.message || 'Failed to create booking' });
     }
   }
@@ -257,8 +245,31 @@ export class BookingsController {
       if (updates.serviceTitle && !updates.service) updates.service = updates.serviceTitle;
       if (updates.therapistName && !updates.consultantName) updates.consultantName = updates.therapistName;
       if (updates.consultantName && !updates.therapistName) updates.therapistName = updates.consultantName;
-      if (updates.amount) updates.amount = Number(updates.amount);
-      if (updates.status) updates.status = String(updates.status).toUpperCase();
+      const actorHint = updates.actor;
+      delete updates.actor;
+      const reject = (error: string, status = 400) => { res.status(status).json({ success: false, error }); };
+
+      // Canonical values only: labels like "Scheduled", "Completed", "NO SHOW - CLIENT" or "Paid" are mapped
+      if (updates.status !== undefined) {
+        const status = normalizeBookingStatus(updates.status);
+        if (!status) return reject(`Unknown booking status "${updates.status}"`);
+        updates.status = status;
+      }
+      if (updates.paymentStatus !== undefined) {
+        const paymentStatus = normalizePaymentStatus(updates.paymentStatus);
+        if (!paymentStatus) return reject(`Unknown payment status "${updates.paymentStatus}"`);
+        updates.paymentStatus = paymentStatus;
+      }
+      if (updates.amount !== undefined) {
+        const amount = Number(updates.amount);
+        if (!Number.isFinite(amount) || amount < 0) return reject('Amount must be a number');
+        updates.amount = amount;
+      }
+      if (updates.durationMinutes !== undefined) {
+        const minutes = Math.round(Number(updates.durationMinutes));
+        if (!(minutes > 0)) return reject('durationMinutes must be a positive number');
+        updates.durationMinutes = minutes;
+      }
 
       const db = getDatabase();
       const orConditions: any[] = [{ id }, { _id: id }, { bookingId: id }, { bookingCode: id }];
@@ -268,6 +279,36 @@ export class BookingsController {
       const query = { $or: orConditions };
 
       const existing = await db.collection('Booking').findOne(query) || await db.collection('bookings').findOne(query);
+      if (!existing) return reject('Booking not found', 404);
+
+      // A reassigned booking stores the real Consultant _id, never a User id or a placeholder
+      if (updates.consultantId !== undefined || updates.therapistId !== undefined) {
+        const consultant = await resolveConsultant({ id: updates.consultantId || updates.therapistId, email: updates.consultantEmail });
+        if (!consultant) return reject('Unknown consultant');
+        updates.consultantId = String(consultant._id);
+        if (existing.therapistId !== undefined || updates.therapistId !== undefined) updates.therapistId = updates.consultantId;
+        updates.consultantName = updates.consultantName || consultant.name;
+        updates.consultantEmail = String(consultant.email || '').toLowerCase() || undefined;
+        if (!updates.consultantEmail) delete updates.consultantEmail;
+      }
+
+      // The session instant is a Date, computed in India time from date + time when only the labels are sent
+      let newInstant: Date | undefined;
+      try {
+        newInstant = resolveScheduledAt(updates, existing);
+      } catch (err) {
+        if (err instanceof ScheduleError) return reject(err.message);
+        throw err;
+      }
+      const oldInstant = bookingInstant(existing);
+      const moved = !!newInstant && (!oldInstant || oldInstant.getTime() !== newInstant.getTime());
+      if (newInstant) {
+        updates.scheduledAt = newInstant;
+        // Keep the India-time labels in step with a new instant
+        if (moved && updates.date === undefined && updates.time === undefined) Object.assign(updates, istLabels(newInstant));
+      } else {
+        delete updates.scheduledAt;
+      }
 
       // Emails go out only for a real change, so repeated or concurrent requests don't resend them
       let isNewCancellation = false;
@@ -296,8 +337,8 @@ export class BookingsController {
       }
       const changed = (field: string) => updates[field] !== undefined && String(updates[field]) !== String(existing?.[field] ?? '');
       const isReschedule = updates.status !== 'CANCELLED' &&
-        (changed('date') || changed('time') || (updates.scheduledAt !== undefined && new Date(updates.scheduledAt).getTime() !== new Date(existing?.scheduledAt).getTime()) ||
-         (updates.status === 'RESCHEDULED' && existing?.status !== 'RESCHEDULED'));
+        (moved || (!newInstant && (changed('date') || changed('time'))) ||
+         (updates.status === 'RESCHEDULED' && bookingStatusOf(existing) !== 'RESCHEDULED'));
 
       await Promise.all([
         db.collection('Booking').updateMany(query, { $set: updates }),
@@ -305,13 +346,13 @@ export class BookingsController {
       ]);
 
       // Invalidate cache
-      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
+      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants', 'revenue', 'payouts', 'payments']);
 
       // Automatically dispatch cancellation, reschedule, confirmation or completion emails, push and in-app notifications.
       // Awaited before responding: serverless functions may be frozen once the response is sent.
       const pending: Promise<unknown>[] = [];
       const contact = await bookingContact(existing);
-      const actor = actorOf(req);
+      const actor = actorOf(req, actorHint);
       if (existing && contact) {
         const { clientEmail, clientName, consultantName, serviceTitle, bookingId } = contact;
         const { date: formattedDate, time: formattedTime } = formatSessionWhen(existing);
@@ -466,7 +507,7 @@ export class BookingsController {
       if (existing && contact) {
         const { clientEmail, clientName, consultantName, serviceTitle, bookingId } = contact;
         const { date: formattedDate, time: formattedTime } = formatSessionWhen(existing);
-        const actor = actorOf(req);
+        const actor = actorOf(req, req.body?.actor);
         const emailPayload: BookingEmailPayload = {
           clientName,
           clientEmail,

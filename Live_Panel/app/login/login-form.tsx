@@ -79,7 +79,8 @@ export function LoginForm({
     }
 
     try {
-      const endpoints = ["http://localhost:5000/api/auth/login", "/api/auth/login"];
+      // Same-origin route; it forwards to the Backend
+      const endpoints = ["/api/auth/login"];
       let res: Response | null = null;
       let data: any = null;
 

@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
+import { classifyBooking } from '../services/booking-finance';
+import { bookingStatusOf, UPCOMING_STATUSES } from '../services/booking-status';
+import { bookingInstant, isDateLabel, istLabels, istToday } from '../services/booking-time';
 
 export class DashboardController {
   /**
@@ -87,18 +90,19 @@ export class DashboardController {
 
         const totalClientsCount = clientSet.size;
 
-        // Calculate sessions today
-        const todayIso = new Date().toISOString().split('T')[0];
+        // Sessions today (India time) that are still on, and upcoming = a future session time with an active status
+        const todayIso = istToday();
+        const now = Date.now();
         const sessionsToday = filteredBookings.filter((b: any) => {
-          const d = String(b.sessionDate || b.date || b.scheduledAt || '');
-          const cleanDate = d.includes('T') ? d.split('T')[0] : d;
-          const status = String(b.status || '').toLowerCase();
-          return cleanDate === todayIso && status !== 'cancelled';
+          if (!UPCOMING_STATUSES.has(bookingStatusOf(b)) && bookingStatusOf(b) !== 'COMPLETED') return false;
+          const when = bookingInstant(b);
+          const day = (isDateLabel(b.date) ? b.date : null) || (when ? istLabels(when).date : null);
+          return day === todayIso;
         }).length;
 
         const upcomingSessionsCount = filteredBookings.filter((b: any) => {
-          const status = String(b.status || '').toLowerCase();
-          return status !== 'cancelled' && status !== 'completed';
+          const when = bookingInstant(b);
+          return !!when && when.getTime() > now && UPCOMING_STATUSES.has(bookingStatusOf(b));
         }).length;
 
         // Filter activities assigned to this consultant's clients
@@ -163,10 +167,10 @@ export class DashboardController {
           averageRating = Math.round((sum / totalReviews) * 10) / 10;
         }
 
-        // Total Revenue
+        // Total Revenue: the same classification as the revenue report (paid, net of refunds)
         const totalRevenue = filteredBookings.reduce((sum: number, b: any) => {
-          const price = Number(b.price || b.amount || b.fee || 0);
-          return sum + price;
+          const financial = classifyBooking(b);
+          return financial.kind === 'paid' ? sum + financial.net : sum;
         }, 0);
 
         return {

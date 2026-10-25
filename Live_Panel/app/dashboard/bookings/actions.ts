@@ -39,7 +39,7 @@ export async function listBookings(
       ];
     }
 
-    const [data, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       prisma.booking.findMany({
         skip,
         take: limit,
@@ -53,6 +53,32 @@ export async function listBookings(
       }),
       prisma.booking.count({ where }),
     ]);
+
+    // Bookings made in the panels may have no website account or plan: use the client/service they store
+    const missing = rows.filter((b) => !b.user || !b.service).map((b) => b.id);
+    const stored = new Map<string, any>();
+    if (missing.length) {
+      const raw = (await prisma.booking.findRaw({
+        filter: { _id: { $in: missing } },
+        options: { projection: { clientName: 1, clientEmail: 1, clientPhone: 1, serviceTitle: 1 } },
+      })) as unknown as any[];
+      raw.forEach((r) => stored.set(String(r._id), r));
+    }
+    const data = rows.map((b) => {
+      const s = stored.get(b.id) || {};
+      return {
+        ...b,
+        user: b.user ?? { name: s.clientName || "Client", email: s.clientEmail || "", phoneNumber: s.clientPhone || null },
+        service: b.service ?? {
+          name: s.serviceTitle || "Consultation",
+          platform: "G-Meet",
+          duration: b.durationMinutes ?? 50,
+          price: b.amount ?? 0,
+        },
+        // When the session happens (India-time labels / instant); null until a website booking is scheduled
+        toBeScheduled: !b.scheduledAt && !b.date,
+      };
+    });
 
     return {
       success: true,
@@ -76,8 +102,11 @@ export async function updateBookingStatus(id: string, status: string) {
     const allowed: BookingStatus[] = [
       BookingStatus.PENDING,
       BookingStatus.CONFIRMED,
+      BookingStatus.RESCHEDULED,
       BookingStatus.COMPLETED,
       BookingStatus.CANCELLED,
+      BookingStatus.NO_SHOW_CLIENT,
+      BookingStatus.NO_SHOW_CONSULTANT,
     ];
 
     if (!allowed.includes(status as BookingStatus)) {

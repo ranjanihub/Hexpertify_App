@@ -44,6 +44,8 @@ const DEFAULT_CONTEXT_OPTIONS = [
   { id: "g-2", name: "CBT Skills Group", type: "Group" },
 ];
 
+const ADMIN_BOOKMARKS_KEY = 'hexpertify_admin_resource_bookmarks';
+
 export const ResourcesView: React.FC = () => {
   const [resources, setResources] = useState<ResourceItem[]>(() => {
     const saved = localStorage.getItem('hexpertify_admin_resources');
@@ -53,7 +55,12 @@ export const ResourcesView: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('All Resources');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
-    return resources.filter((r) => r.isSaved).map((r) => r.id);
+    try {
+      const saved = JSON.parse(localStorage.getItem(ADMIN_BOOKMARKS_KEY) || '[]');
+      return Array.isArray(saved) ? saved.map(String) : [];
+    } catch {
+      return [];
+    }
   });
 
   const [selectedResource, setSelectedResource] = useState<ResourceItem | null>(null);
@@ -78,7 +85,6 @@ export const ResourcesView: React.FC = () => {
         const data = await api.get('/api/admin/resources');
         if (data?.resources && Array.isArray(data.resources)) {
           setResources(data.resources);
-          setBookmarkedIds(data.resources.filter((r: any) => r.isSaved).map((r: any) => r.id));
           try {
             localStorage.setItem('hexpertify_admin_resources', JSON.stringify(data.resources));
           } catch {}
@@ -129,17 +135,11 @@ export const ResourcesView: React.FC = () => {
       ? [...bookmarkedIds, id]
       : bookmarkedIds.filter((item) => item !== id);
 
+    // Saving is per user: the admin's own bookmarks stay in this browser and never change the shared resource
     setBookmarkedIds(updatedIds);
-
-    const updatedResources = resources.map((r) =>
-      r.id === id ? { ...r, isSaved: willBeSaved } : r
-    );
-    saveToLocalStorage(updatedResources);
-
-    // Persist to MongoDB Atlas
-    api.put('/api/admin/resources', { id, isSaved: willBeSaved }).catch((err) => {
-      console.error('Error toggling bookmark in DB:', err);
-    });
+    try {
+      localStorage.setItem(ADMIN_BOOKMARKS_KEY, JSON.stringify(updatedIds));
+    } catch {}
 
     const targetRes = resources.find((r) => r.id === id);
     if (targetRes) {
@@ -306,7 +306,9 @@ export const ResourcesView: React.FC = () => {
     saveToLocalStorage(updatedList);
 
     // Persist to MongoDB Atlas
-    api.put('/api/admin/resources', editingResource).catch((err) => {
+    // isSaved is per user (client/therapist bookmarks), never set globally from the admin panel
+    const { isSaved: _perUserFlag, ...resourceUpdate } = editingResource;
+    api.put('/api/admin/resources', resourceUpdate).catch((err) => {
       console.error('Error updating resource in DB:', err);
     });
 
@@ -871,15 +873,6 @@ export const ResourcesView: React.FC = () => {
                     className="w-4 h-4 text-[#5e2be2] rounded"
                   />
                   <span>Recommended by Therapist</span>
-                </label>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingResource.isSaved || false}
-                    onChange={(e) => setEditingResource({ ...editingResource, isSaved: e.target.checked })}
-                    className="w-4 h-4 text-[#5e2be2] rounded"
-                  />
-                  <span>Saved in Library</span>
                 </label>
               </div>
 

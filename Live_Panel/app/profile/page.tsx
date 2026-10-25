@@ -31,12 +31,21 @@ interface Booking {
   id: string;
   status: string;
   createdAt: Date;
+  amount: number | null;
+  paymentStatus: string | null;
+  refundedAmount: number | null;
+  date: string | null;
+  time: string | null;
+  scheduledAt: Date | null;
+  meetingLink: string | null;
+  durationMinutes: number | null;
   consultant: {
     id: string;
     name: string;
     photoUrl: string | null;
     email: string;
   };
+  // Bookings made in the panels may have no plan
   service: {
     id: string;
     name: string;
@@ -44,7 +53,46 @@ interface Booking {
     duration: number;
     sessionCount: number;
     platform: string;
-  };
+  } | null;
+}
+
+const SESSION_TIME_ZONE = "Asia/Kolkata";
+const PAID_STATUSES = ["PAID", "PARTIALLY_REFUNDED", "REFUND_PENDING", "REFUNDED"];
+const CANCELLABLE_STATUSES = ["PENDING", "CONFIRMED", "RESCHEDULED"];
+
+/** The session's date and time in India time, or null while it is not scheduled yet (website bookings are paid first) */
+function sessionWhen(booking: Booking): { date: string; time: string } | null {
+  const when = booking.scheduledAt ? new Date(booking.scheduledAt) : null;
+  const valid = !!when && !isNaN(when.getTime());
+  let date = "";
+  if (booking.date && /^\d{4}-\d{2}-\d{2}$/.test(booking.date)) {
+    // A calendar day, not an instant: format it without shifting time zones
+    date = new Date(`${booking.date}T12:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  } else if (valid) {
+    date = when!.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: SESSION_TIME_ZONE });
+  }
+  if (!date) return null;
+  const time = booking.time ||
+    (valid ? when!.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: SESSION_TIME_ZONE }) : "");
+  return { date, time };
+}
+
+/** "Paid ₹1,400", "Refunded ₹1,400", "Payment pending"… */
+function paymentLabel(booking: Booking): string {
+  const status = String(booking.paymentStatus || "").toUpperCase();
+  const amount = Number(booking.amount) || 0;
+  const refunded = Number(booking.refundedAmount) || 0;
+  const rupees = (v: number) => `₹${v.toLocaleString("en-IN")}`;
+  if (status === "REFUNDED") return `Refunded ${rupees(refunded || amount)}`;
+  if (PAID_STATUSES.includes(status)) {
+    const paid = amount > 0 ? `Paid ${rupees(amount)}` : "Paid";
+    if (status === "REFUND_PENDING") return `${paid} · refund in progress`;
+    return refunded > 0 ? `${paid} · ${rupees(refunded)} refunded` : paid;
+  }
+  if (status === "PENDING") return "Payment pending";
+  if (status === "FAILED") return "Payment failed";
+  if (status === "UNPAID") return "Unpaid";
+  return status ? status.replace(/_/g, " ").toLowerCase() : "";
 }
 
 export default function ProfilePage() {
@@ -150,8 +198,11 @@ export default function ProfilePage() {
       case "PENDING":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "CONFIRMED":
+      case "RESCHEDULED":
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "CANCELLED":
+      case "NO_SHOW_CLIENT":
+      case "NO_SHOW_CONSULTANT":
         return "bg-red-100 text-red-800 border-red-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
@@ -354,7 +405,7 @@ export default function ProfilePage() {
                           )}
                           <div className="flex-1">
                             <h3 className="font-semibold text-lg text-gray-900">
-                              {booking.service.name}
+                              {booking.service?.name || "Consultation"}
                             </h3>
                             <p className="text-gray-600 mb-1">
                               with{" "}
@@ -362,20 +413,54 @@ export default function ProfilePage() {
                                 {booking.consultant.name}
                               </span>
                             </p>
+                            {(() => {
+                              const when = sessionWhen(booking);
+                              const upcoming = CANCELLABLE_STATUSES.includes(booking.status);
+                              return (
+                                <p className="text-sm font-medium text-gray-800 mb-1">
+                                  {when
+                                    ? `${when.date}${when.time ? ` · ${when.time}` : ""}`
+                                    : "To be scheduled · our team will share time slots"}
+                                  {when && upcoming && booking.meetingLink && (
+                                    <>
+                                      {" · "}
+                                      <a
+                                        href={booking.meetingLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-purple-600 underline"
+                                      >
+                                        Join meeting
+                                      </a>
+                                    </>
+                                  )}
+                                </p>
+                              );
+                            })()}
                             <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                              <span>₹{booking.service.price}</span>
-                              <span>•</span>
-                              <span>{booking.service.duration} min</span>
-                              <span>•</span>
+                              {paymentLabel(booking) && (
+                                <>
+                                  <span>{paymentLabel(booking)}</span>
+                                  <span>•</span>
+                                </>
+                              )}
                               <span>
-                                {booking.service.sessionCount} session(s)
+                                {booking.durationMinutes || booking.service?.duration || 50} min
                               </span>
-                              <span>•</span>
-                              <span>{booking.service.platform}</span>
+                              {booking.service && (
+                                <>
+                                  <span>•</span>
+                                  <span>
+                                    {booking.service.sessionCount} session(s)
+                                  </span>
+                                  <span>•</span>
+                                  <span>{booking.service.platform}</span>
+                                </>
+                              )}
                             </div>
                             <p className="text-xs text-gray-400 mt-2">
                               Booked on{" "}
-                              {new Date(booking.createdAt).toLocaleDateString()}
+                              {new Date(booking.createdAt).toLocaleDateString("en-IN")}
                             </p>
                           </div>
                         </div>
@@ -386,12 +471,11 @@ export default function ProfilePage() {
                               booking.status,
                             )}`}
                           >
-                            {booking.status}
+                            {booking.status.replace(/_/g, " ")}
                           </span>
 
                           {/* Action Buttons */}
-                          {booking.status !== "CANCELLED" &&
-                            booking.status !== "COMPLETED" && (
+                          {CANCELLABLE_STATUSES.includes(booking.status) && (
                               <div className="flex gap-2 mt-2">
                                 <button
                                   onClick={() => openCancelModal(booking.id)}

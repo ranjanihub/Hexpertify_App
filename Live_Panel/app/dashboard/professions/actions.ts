@@ -125,6 +125,7 @@ export async function updateProfession(id: string, data: any) {
     const validated = await professionSchema.validate(data, {
       abortEarly: false,
     });
+    const before = await prisma.profession.findUnique({ where: { id }, select: { name: true } });
 
     const result = await prisma.profession.update({
       where: { id },
@@ -164,6 +165,14 @@ export async function updateProfession(id: string, data: any) {
       },
     });
 
+    // Consultants keep a copy of their profession name for the other panels
+    if (before && before.name !== result.name) {
+      await prisma.$runCommandRaw({
+        update: "Consultant",
+        updates: [{ q: { professionId: id }, u: { $set: { profession: result.name } }, multi: true }],
+      } as any);
+    }
+
     revalidatePath(`/admin/professions/${id}`);
     revalidatePath("/"); // Revalidate homepage cache
     revalidatePath("/services");
@@ -176,6 +185,15 @@ export async function updateProfession(id: string, data: any) {
 // ✅ DELETE PROFESSION
 export async function deleteProfession(id: string) {
   try {
+    // Same rule as the Backend: therapists must not be left without a profession
+    const linked = await prisma.consultant.count({ where: { professionId: id } });
+    if (linked > 0) {
+      return {
+        success: false,
+        error: `${linked} consultant(s) still belong to this profession. Move them to another profession first, or archive the profession to hide it.`,
+      };
+    }
+
     await prisma.profession.delete({ where: { id } });
     revalidatePath("/admin/professions");
     revalidatePath("/"); // Revalidate homepage cache

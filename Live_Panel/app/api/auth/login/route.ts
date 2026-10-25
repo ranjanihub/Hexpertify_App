@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { forwardAuthToBackend } from "../forward";
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -16,6 +17,11 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+
+    // The central Backend is the login service (full profile, API token, SSO ticket); this is only a fallback
+    const forwarded = await forwardAuthToBackend(req, "/api/auth/login", body);
+    if (forwarded) return forwarded;
+
     const { email, password, role } = body || {};
 
     if (!email || !password) {
@@ -140,14 +146,16 @@ export async function POST(req: Request) {
         where: { email: cleanEmail },
       });
 
-      let therapistPassMatches = false;
-      if (therapistUserDoc?.password) {
-        therapistPassMatches = await bcrypt.compare(password, therapistUserDoc.password);
-      }
-      if (!therapistPassMatches && (cleanEmail === "dr.evelyn@hexpertify.com" || cleanEmail.includes("evelyn")) && (password === "doctor123" || password === "password123")) {
-        therapistPassMatches = true;
-      }
+      // The Backend stores practitioner passwords on the Consultant record (not in the Prisma model)
+      const rawConsultant = ((await prisma.consultant
+        .findRaw({ filter: { _id: consultant.id }, options: { limit: 1, projection: { password: 1 } } })
+        .catch(() => [])) as unknown as any[])[0];
+      const storedTherapistHash = rawConsultant?.password || therapistUserDoc?.password;
 
+      let therapistPassMatches = false;
+      if (storedTherapistHash) {
+        therapistPassMatches = await bcrypt.compare(password, storedTherapistHash);
+      }
       if (!therapistPassMatches) {
         return NextResponse.json(
           { success: false, error: "Invalid email or password." },
@@ -191,15 +199,9 @@ export async function POST(req: Request) {
     // 3. CLIENT LOGIN
     // Client who takes consultation; accesses sessions, activities, assessments.
     // ─────────────────────────────────────────────────────────────
+    // No bookings→consultant include: one booking with a missing consultant would fail the whole query
     let user = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      include: {
-        bookings: {
-          include: {
-            consultant: true,
-          },
-        },
-      },
     });
 
     if (!user) {
@@ -265,21 +267,49 @@ export async function POST(req: Request) {
       );
     }
 
-    const latestBooking = user.bookings?.[0];
-    const assignedTherapist = latestBooking?.consultant;
+    // Fields the Backend / panels write that are not in the Prisma model (phone, avatarUrl, assignment)
+    const rawUser = ((await prisma.user
+      .findRaw({ filter: { _id: user.id }, options: { limit: 1 } })
+      .catch(() => [])) as unknown as any[])[0] || {};
+
+    // Therapist: the stored assignment, else the consultant of the client's latest booking (never a default)
+    let therapistName: string = rawUser.assignedTherapistName || "";
+    let therapistPhoto: string = rawUser.assignedTherapistPhoto || "";
+    if (!therapistName) {
+      const latestBooking = ((await prisma.booking
+        .findRaw({
+          filter: {
+            $or: [
+              { userId: user.id },
+              { clientId: user.id },
+              { clientEmail: { $regex: `^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
+            ],
+          },
+          options: { sort: { createdAt: -1 }, limit: 1 },
+        })
+        .catch(() => [])) as unknown as any[])[0];
+      const consultantRef = latestBooking?.consultantId || latestBooking?.therapistId;
+      const bookedConsultant = consultantRef
+        ? await prisma.consultant.findUnique({ where: { id: String(consultantRef?.$oid || consultantRef) } }).catch(() => null)
+        : null;
+      therapistName = bookedConsultant?.name || latestBooking?.consultantName || "";
+      therapistPhoto = bookedConsultant?.photoUrl || "";
+    }
 
     const clientUser = {
       id: user.id,
       name: user.name || "Client User",
       email: user.email,
       role: "client",
-      phone: user.phoneNumber || "",
+      phone: user.phoneNumber || rawUser.phone || "",
       avatarUrl:
         user.image ||
+        rawUser.avatarUrl ||
         "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-      assignedTherapistName: assignedTherapist?.name || "Dr. Evelyn Reed, PhD",
-      assignedTherapistPhoto: assignedTherapist?.photoUrl || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
-      firstConsultationCompleted: (user.bookings && user.bookings.length > 0) || true,
+      assignedTherapistId: rawUser.assignedTherapistId || "",
+      assignedTherapistName: therapistName,
+      assignedTherapistPhoto: therapistPhoto,
+      firstConsultationCompleted: true,
     };
 
     return NextResponse.json(

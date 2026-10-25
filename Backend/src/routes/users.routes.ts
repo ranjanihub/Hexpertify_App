@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { UsersController } from '../controllers/users.controller';
+import { optionalAuth } from '../middlewares/auth.middleware';
 
 const router = Router();
+
+// Identifies the caller (never rejects) so staff-only fields are honoured only for staff
+router.use(optionalAuth);
 
 router.get('/', UsersController.getAll);
 router.get('/client-data', UsersController.getClientData);

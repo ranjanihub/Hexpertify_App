@@ -1,30 +1,20 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
-
-const PAID_PAYMENT_STATUSES = new Set(['PAID', 'PARTIALLY_REFUNDED', 'REFUND_PENDING']);
-// Abandoned/failed checkouts and manually scheduled unpaid sessions carry no revenue
-const NON_FINANCIAL_PAYMENT_STATUSES = new Set(['FAILED', 'EXPIRED', 'UNPAID']);
+import { classifyBooking, platformCommissionRate, splitFee } from '../services/booking-finance';
+import { normalizePaymentStatus } from '../services/booking-status';
+import { bookingInstant, isDateLabel, istLabels, toValidDate } from '../services/booking-time';
 
 /**
- * Classifies a booking financially. Bookings created before gateway integration have no
- * paymentStatus and are treated as paid once confirmed/completed.
+ * The booking's financial date (YYYY-MM-DD, India time): the session day, or the purchase day for
+ * website bookings that are paid but not scheduled yet. Null when neither is a valid date.
  */
-function classifyBooking(b: any, servicePrice?: number) {
-  const statusStr = String(b.status || '').toUpperCase();
-  const paymentStatusStr = String(b.paymentStatus || '').toUpperCase();
-  const isLegacy = !paymentStatusStr;
-  const fee = Number(b.amount ?? b.fee ?? b.price ?? servicePrice ?? 0);
-  const refunded = Number(b.refundedAmount || 0);
-
-  if (statusStr === 'PENDING_PAYMENT' && paymentStatusStr !== 'PENDING') return { kind: 'ignore' as const, fee, net: 0 };
-  if (statusStr === 'EXPIRED' || NON_FINANCIAL_PAYMENT_STATUSES.has(paymentStatusStr)) return { kind: 'ignore' as const, fee, net: 0 };
-  if (paymentStatusStr === 'REFUNDED') return { kind: 'refunded' as const, fee, net: 0 };
-  if (PAID_PAYMENT_STATUSES.has(paymentStatusStr) || (isLegacy && (statusStr === 'CONFIRMED' || statusStr === 'COMPLETED'))) {
-    return { kind: 'paid' as const, fee, net: Math.max(0, fee - refunded) };
-  }
-  if (paymentStatusStr === 'PENDING' || (isLegacy && statusStr === 'PENDING')) return { kind: 'pending' as const, fee, net: 0 };
-  return { kind: 'ignore' as const, fee, net: 0 };
+function financialDate(b: any): { date: string | null; toBeScheduled: boolean } {
+  const when = bookingInstant(b);
+  const sessionDate = (isDateLabel(b.date) ? b.date : null) || (when ? istLabels(when).date : null);
+  if (sessionDate) return { date: sessionDate, toBeScheduled: false };
+  const created = toValidDate(b.createdAt);
+  return { date: created ? istLabels(created).date : null, toBeScheduled: true };
 }
 
 export class RevenueController {
@@ -100,8 +90,24 @@ export class RevenueController {
         let pendingPayments = 0;
         let completedConsultations = 0;
         let therapyHours = 0;
+        let platformCommission = 0;
+        let therapistEarnings = 0;
 
         const transactions: any[] = [];
+        const serviceTotals = new Map<string, { service: string; revenue: number; count: number }>();
+
+        // Last six months, keyed YYYY-MM (India time) so the same month of different years never merges
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const [thisYear, thisMonth] = istLabels(new Date()).date.split('-').map(Number);
+        const monthKeys: string[] = [];
+        for (let i = 5; i >= 0; i--) {
+          const total = thisYear * 12 + (thisMonth - 1) - i;
+          monthKeys.push(`${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`);
+        }
+        const monthlyDataMap: Record<string, { revenue: number; consultations: number; hours: number }> = {};
+        monthKeys.forEach((k) => {
+          monthlyDataMap[k] = { revenue: 0, consultations: 0, hours: 0 };
+        });
 
         relevantBookings.forEach((b: any, idx: number) => {
           const u = userMap.get(String(b.userId || b.clientId));
@@ -111,70 +117,65 @@ export class RevenueController {
           const clientName = b.clientName || u?.name || u?.email?.split('@')[0] || `Client #${idx + 1}`;
           const rawClientEmail = b.clientEmail || u?.email || '';
           const therapistName = b.consultantName || b.therapistName || c?.name || 'Specialist Consultant';
+          const serviceTitle = b.serviceTitle || s?.name || s?.title || 'Consultation';
 
           const financial = classifyBooking(b, s?.price);
           if (financial.kind === 'ignore') return;
           const rawFee = financial.fee;
           const isPaid = financial.kind === 'paid';
           const isPending = financial.kind === 'pending';
+          const durationMinutes = Number(b.durationMinutes);
+          const hours = Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes / 60 : 1;
+          const { date, toBeScheduled } = financialDate(b);
 
           if (isPaid) {
+            const split = splitFee(financial.net);
             totalRevenue += financial.net;
+            platformCommission += split.platform;
+            therapistEarnings += split.therapist;
             completedConsultations += 1;
-            therapyHours += Number(b.durationHours ?? (b.durationMinutes ? b.durationMinutes / 60 : 1));
+            therapyHours += hours;
+
+            const service = serviceTotals.get(serviceTitle) || { service: serviceTitle, revenue: 0, count: 0 };
+            service.revenue += financial.net;
+            service.count += 1;
+            serviceTotals.set(serviceTitle, service);
+
+            const month = date ? monthlyDataMap[date.slice(0, 7)] : undefined;
+            if (month) {
+              month.revenue += financial.net;
+              month.consultations += 1;
+              month.hours += hours;
+            }
           } else if (isPending) {
             pendingPayments += rawFee;
           }
 
-          const dateStr = b.sessionDate || b.scheduledAt || b.date || b.createdAt;
-          const formattedDate = dateStr ? new Date(dateStr).toISOString().split('T')[0] : '2026-08-30';
-
           transactions.push({
             id: b.id || String(b._id) || `TXN-${idx + 1}`,
-            date: formattedDate,
+            bookingId: String(b.id || b._id),
+            date,
+            toBeScheduled,
+            createdAt: b.createdAt,
             clientName,
             clientEmail: isConsultantView ? undefined : rawClientEmail,
             therapistName,
+            therapistId: String(b.consultantId || b.therapistId || ''),
+            serviceTitle,
             amount: isPaid ? financial.net : rawFee,
             status: isPaid ? 'paid' : isPending ? 'pending' : 'refunded',
-            paymentStatus: b.paymentStatus,
+            paymentStatus: normalizePaymentStatus(b.paymentStatus) || b.paymentStatus,
             paymentId: b.paymentId,
             invoiceNumber: `INV-${String(b.customId || b.bookingId || b.id || b._id).replace('BK-', '').replace('HEX-', '').slice(-6)}`
           });
         });
 
-        // Monthly aggregation from real data
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const currentMonthIndex = new Date().getMonth();
-        const last6Months: string[] = [];
-        for (let i = 5; i >= 0; i--) {
-          const mIdx = (currentMonthIndex - i + 12) % 12;
-          last6Months.push(months[mIdx]);
-        }
-
-        const monthlyDataMap: Record<string, { revenue: number; consultations: number; hours: number }> = {};
-        last6Months.forEach((m) => {
-          monthlyDataMap[m] = { revenue: 0, consultations: 0, hours: 0 };
-        });
-
-        relevantBookings.forEach((b: any) => {
-          const d = new Date(b.scheduledAt || b.date || b.createdAt || Date.now());
-          if (!isNaN(d.getTime())) {
-            const mName = months[d.getMonth()];
-            const financial = classifyBooking(b, serviceMap.get(String(b.serviceId))?.price);
-            if (monthlyDataMap[mName] && financial.kind === 'paid') {
-              monthlyDataMap[mName].revenue += financial.net;
-              monthlyDataMap[mName].consultations += 1;
-              monthlyDataMap[mName].hours += Number(b.durationHours ?? (b.durationMinutes ? b.durationMinutes / 60 : 1));
-            }
-          }
-        });
-
-        const monthlyAnalytics = last6Months.map((month) => ({
-          month,
-          revenue: monthlyDataMap[month].revenue,
-          consultations: monthlyDataMap[month].consultations,
-          hours: Math.round(monthlyDataMap[month].hours * 10) / 10
+        const monthlyAnalytics = monthKeys.map((key) => ({
+          month: months[Number(key.slice(5, 7)) - 1],
+          key,
+          revenue: monthlyDataMap[key].revenue,
+          consultations: monthlyDataMap[key].consultations,
+          hours: Math.round(monthlyDataMap[key].hours * 10) / 10
         }));
 
         return {
@@ -183,8 +184,12 @@ export class RevenueController {
             totalRevenue,
             pendingPayments,
             completedConsultations,
-            therapyHours: Math.round(therapyHours * 10) / 10
+            therapyHours: Math.round(therapyHours * 10) / 10,
+            platformCommission,
+            therapistEarnings,
+            commissionRate: platformCommissionRate()
           },
+          serviceBreakdown: Array.from(serviceTotals.values()).sort((x, y) => y.revenue - x.revenue),
           monthlyAnalytics,
           transactions
         };
