@@ -3,6 +3,14 @@ import { BlogController } from '../controllers/blog.controller';
 
 const router = Router();
 
+// Blog Outlines / Pitches endpoints (registered before the root-level '/:id' aliases, which would
+// otherwise capture '/outlines')
+router.get('/outlines', BlogController.getAllOutlines);
+router.post('/outlines', BlogController.createOutline);
+router.put('/outlines/:id/review', BlogController.reviewOutline);
+router.patch('/outlines/:id/review', BlogController.reviewOutline);
+router.delete('/outlines/:id', BlogController.deleteOutline);
+
 // Blog Posts endpoints
 router.get('/posts', BlogController.getAllPosts);
 router.get('/posts/:id', BlogController.getPostById);
@@ -20,12 +28,5 @@ router.post('/', BlogController.createPost);
 router.put('/:id/review', BlogController.reviewPost);
 router.patch('/:id/review', BlogController.reviewPost);
 router.delete('/:id', BlogController.deletePost);
-
-// Blog Outlines / Pitches endpoints
-router.get('/outlines', BlogController.getAllOutlines);
-router.post('/outlines', BlogController.createOutline);
-router.put('/outlines/:id/review', BlogController.reviewOutline);
-router.patch('/outlines/:id/review', BlogController.reviewOutline);
-router.delete('/outlines/:id', BlogController.deleteOutline);
 
 export default router;
