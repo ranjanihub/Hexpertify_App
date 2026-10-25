@@ -30,41 +30,6 @@ import { mockProfessions, mockTherapists } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
 import type { Booking } from '../types';
 
-/** Display labels → the canonical statuses the Backend stores */
-const STATUS_TO_CANONICAL: Record<string, string> = {
-  Scheduled: 'CONFIRMED',
-  Upcoming: 'CONFIRMED',
-  Completed: 'COMPLETED',
-  Cancelled: 'CANCELLED',
-  Rescheduled: 'RESCHEDULED',
-  'No Show - Client': 'NO_SHOW_CLIENT',
-  'No Show - Consultant': 'NO_SHOW_CONSULTANT',
-  Pending: 'PENDING',
-  'Pending Payment': 'PENDING_PAYMENT',
-  Expired: 'EXPIRED'
-};
-
-const PAYMENT_TO_CANONICAL: Record<string, string> = {
-  Paid: 'PAID',
-  // The client paid; only the therapist payout is outstanding
-  'Pending Payout': 'PAID',
-  Unpaid: 'UNPAID',
-  Refunded: 'REFUNDED',
-  Pending: 'PENDING',
-  Failed: 'FAILED',
-  'Refund Pending': 'REFUND_PENDING',
-  'Partially Refunded': 'PARTIALLY_REFUNDED'
-};
-
-const toCanonical = (map: Record<string, string>, label: string): string =>
-  map[label] || String(label || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
-
-const isDateLabel = (value?: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(value || '');
-
-/** The session date/time as stored, or '' for website bookings that are not scheduled yet */
-const scheduledDateOf = (b: Booking): string => (b.toBeScheduled || !isDateLabel(b.date) ? '' : b.date);
-const scheduledTimeOf = (b: Booking): string => (b.toBeScheduled ? '' : b.time || '');
-
 export const BookingsView: React.FC = () => {
   const { bookings, therapists, clients, refreshAllData } = useAppContext();
   const [bookingsList, setBookingsList] = useState<Booking[]>(bookings);
@@ -97,8 +62,6 @@ export const BookingsView: React.FC = () => {
 
   const getTherapistProfession = (booking: Booking): string => {
     if (booking.therapistProfession) return booking.therapistProfession;
-    const byId = booking.consultantId ? therapists.find((t) => t.id === booking.consultantId) : undefined;
-    if (byId?.profession) return byId.profession;
     if (!booking.therapistName) return 'Consultant';
 
     const cleanName = booking.therapistName.trim().toLowerCase();
@@ -164,8 +127,7 @@ export const BookingsView: React.FC = () => {
     service: '',
     date: new Date().toISOString().split('T')[0],
     time: '09:00 AM - 10:00 AM',
-    // 0 = no fee typed: the Backend uses the service price
-    amount: 0,
+    amount: 150,
     paymentStatus: 'Paid',
     status: 'Scheduled'
   });
@@ -184,7 +146,7 @@ export const BookingsView: React.FC = () => {
       setNewBooking((prev) => ({
         ...prev,
         service: professionsList[0].serviceName,
-        amount: Number((professionsList[0] as any).price) || 0
+        amount: (professionsList[0] as any).price || 150
       }));
     }
   }, [professionsList]);
@@ -206,60 +168,20 @@ export const BookingsView: React.FC = () => {
   const handleSaveBookingEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editBookingData) return;
-    const original = bookingsList.find((b) => b.id === editBookingData.id) || selectedBooking;
-    if (!original) return;
-
-    // Only canonical, changed fields: display values (codes, avatars, labels) are never written back
-    const changes: Record<string, unknown> = {};
-    if (editBookingData.clientName.trim() && editBookingData.clientName.trim() !== original.clientName) {
-      changes.clientName = editBookingData.clientName.trim();
-    }
-    if (editBookingData.therapistName !== original.therapistName) {
-      const therapist = therapists.find((t) => t.name === editBookingData.therapistName);
-      if (!therapist) {
-        showToast('Pick a therapist from the consultant list', 'warning');
-        return;
-      }
-      changes.consultantId = therapist.id;
-      changes.consultantName = therapist.name;
-    }
-    if (editBookingData.service && editBookingData.service !== original.service) {
-      changes.serviceTitle = editBookingData.service;
-    }
-    const newDateValue = scheduledDateOf(editBookingData);
-    const newTimeValue = scheduledTimeOf(editBookingData);
-    if (newDateValue && newDateValue !== scheduledDateOf(original)) changes.date = newDateValue;
-    if (newTimeValue && newTimeValue !== scheduledTimeOf(original)) changes.time = newTimeValue;
-    if ((changes.date || changes.time) && (!newDateValue || !newTimeValue)) {
-      showToast('Pick both a session date and a time slot', 'warning');
-      return;
-    }
-    const amount = Number(editBookingData.amount);
-    if (Number.isFinite(amount) && amount >= 0 && amount !== Number(original.amount)) changes.amount = amount;
-    if (editBookingData.paymentStatus !== original.paymentStatus) {
-      changes.paymentStatus = toCanonical(PAYMENT_TO_CANONICAL, editBookingData.paymentStatus);
-    }
-    if (editBookingData.status !== original.status) {
-      changes.status = toCanonical(STATUS_TO_CANONICAL, editBookingData.status);
-    }
-
-    if (Object.keys(changes).length === 0) {
-      setIsEditingSelectedBooking(false);
-      showToast('No changes to save', 'warning');
-      return;
-    }
 
     try {
-      await api.put(`/api/admin/bookings/${editBookingData.id}`, changes);
-
-      const saved: Booking = {
+      await api.put(`/api/admin/bookings/${editBookingData.id}`, {
         ...editBookingData,
-        toBeScheduled: original.toBeScheduled && !(changes.date && changes.time)
-      };
+        serviceTitle: editBookingData.service,
+        consultantName: editBookingData.therapistName,
+        amount: Number(editBookingData.amount) || 1500,
+        status: (editBookingData.status || 'Scheduled').toUpperCase()
+      });
+
       setBookingsList((prev) =>
-        prev.map((b) => (b.id === editBookingData.id ? saved : b))
+        prev.map((b) => (b.id === editBookingData.id ? editBookingData : b))
       );
-      setSelectedBooking(saved);
+      setSelectedBooking(editBookingData);
       setIsEditingSelectedBooking(false);
       showToast(`Booking ${editBookingData.bookingCode} updated successfully in database!`, 'success');
 
@@ -278,10 +200,7 @@ export const BookingsView: React.FC = () => {
   };
 
   const canRescheduleBooking = (booking: Booking | null): boolean => {
-    if (!booking) return false;
-    // Website bookings are paid first; scheduling them is always allowed
-    if (booking.toBeScheduled) return true;
-    if (!booking.date) return false;
+    if (!booking || !booking.date) return false;
     try {
       const startTimeStr = booking.time ? booking.time.split('-')[0].trim() : '00:00 AM';
       const dateParts = booking.date.split('-');
@@ -321,8 +240,8 @@ export const BookingsView: React.FC = () => {
       return;
     }
     setRescheduleBooking(booking);
-    setNewDate(scheduledDateOf(booking) || new Date().toISOString().split('T')[0]);
-    setNewTime(scheduledTimeOf(booking) || '02:00 PM');
+    setNewDate(booking.date || '2026-08-20');
+    setNewTime(booking.time || '02:00 PM');
     setRescheduleReason('');
   };
 
@@ -330,22 +249,19 @@ export const BookingsView: React.FC = () => {
     e.preventDefault();
     if (!rescheduleBooking) return;
 
-    // A website booking getting its first slot is scheduled, not rescheduled
-    const firstSchedule = Boolean(rescheduleBooking.toBeScheduled);
     const updatedBooking: Booking = {
       ...rescheduleBooking,
       date: newDate,
       time: newTime,
-      toBeScheduled: false,
-      status: firstSchedule ? rescheduleBooking.status : ('Rescheduled' as const)
+      status: 'Rescheduled' as const
     };
 
     try {
-      // The Backend computes the session instant (India time) from the date and time slot
       await api.put(`/api/admin/bookings/${rescheduleBooking.id}`, {
         date: newDate,
         time: newTime,
-        ...(firstSchedule ? {} : { status: 'RESCHEDULED' })
+        status: 'RESCHEDULED',
+        scheduledAt: `${newDate}T${newTime}`
       });
 
       setBookingsList((prev) =>
@@ -446,31 +362,23 @@ export const BookingsView: React.FC = () => {
     const selectedTherapist = therapists.find((t) => t.name === newBooking.therapistName);
     const selectedClient = clients.find((c) => c.name.toLowerCase() === newBooking.clientName.toLowerCase());
 
-    if (!selectedTherapist) {
-      showToast('Pick a therapist from the consultant list', 'warning');
-      return;
-    }
-
-    // Canonical fields only; the Backend resolves ids, the service price and the India-time session instant
-    const payload: Record<string, unknown> = {
-      clientName: newBooking.clientName.trim() || selectedClient?.name || 'New Client',
-      consultantId: selectedTherapist.id,
-      consultantName: selectedTherapist.name,
-      date: newBooking.date,
-      time: newBooking.time,
-      paymentStatus: toCanonical(PAYMENT_TO_CANONICAL, newBooking.paymentStatus),
-      status: toCanonical(STATUS_TO_CANONICAL, newBooking.status)
-    };
-    if (selectedClient) {
-      payload.clientId = selectedClient.id;
-      if (selectedClient.email) payload.clientEmail = selectedClient.email;
-    }
-    if (newBooking.service) payload.serviceTitle = newBooking.service;
-    const typedAmount = Number(newBooking.amount);
-    if (Number.isFinite(typedAmount) && typedAmount > 0) payload.amount = typedAmount;
-
     try {
-      const data = await api.post('/api/admin/bookings', payload);
+      const data = await api.post('/api/admin/bookings', {
+        clientName: newBooking.clientName || 'New Client',
+        userId: selectedClient?.id,
+        clientId: selectedClient?.id,
+        clientEmail: selectedClient?.email,
+        therapistName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
+        consultantName: newBooking.therapistName || (therapists[0]?.name ?? 'Dr. Specialist'),
+        consultantId: selectedTherapist?.id,
+        service: newBooking.service || 'Individual Therapy',
+        serviceTitle: newBooking.service || 'Individual Therapy',
+        date: newBooking.date,
+        time: newBooking.time,
+        amount: Number(newBooking.amount) || 1500,
+        paymentStatus: newBooking.paymentStatus,
+        status: (newBooking.status || 'SCHEDULED').toUpperCase()
+      });
 
       if (data?.booking) {
         setBookingsList((prev) => [data.booking, ...prev]);
@@ -492,7 +400,7 @@ export const BookingsView: React.FC = () => {
       service: professionsList[0]?.serviceName || 'Individual Therapy',
       date: new Date().toISOString().split('T')[0],
       time: '09:00 AM - 10:00 AM',
-      amount: Number((professionsList[0] as any)?.price) || 0,
+      amount: 1500,
       paymentStatus: 'Paid',
       status: 'Scheduled'
     });
@@ -824,14 +732,12 @@ export const BookingsView: React.FC = () => {
                       <div className="space-y-1">
                         <p className="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs whitespace-nowrap">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{b.toBeScheduled ? 'To be scheduled' : b.date}</span>
+                          <span>{b.date}</span>
                         </p>
-                        {!b.toBeScheduled && b.time && (
-                          <p className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 whitespace-nowrap">
-                            <Clock className="w-3 h-3 text-[#5e2be2]" />
-                            <span>{b.time}</span>
-                          </p>
-                        )}
+                        <p className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 whitespace-nowrap">
+                          <Clock className="w-3 h-3 text-[#5e2be2]" />
+                          <span>{b.time}</span>
+                        </p>
                       </div>
                     </td>
 
@@ -1038,9 +944,7 @@ export const BookingsView: React.FC = () => {
                     <span className="text-slate-500 font-semibold">Session Date & Time:</span>
                     <div className="text-right">
                       <span className="font-extrabold text-slate-900 block">
-                        {selectedBooking.toBeScheduled
-                          ? 'To be scheduled'
-                          : `${selectedBooking.date}${selectedBooking.time ? ` (${selectedBooking.time})` : ''}`}
+                        {selectedBooking.date} ({selectedBooking.time})
                       </span>
                       {!canRescheduleBooking(selectedBooking) && selectedBooking.status === 'Scheduled' && (
                         <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
@@ -1107,7 +1011,7 @@ export const BookingsView: React.FC = () => {
                       onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, therapistName: e.target.value } : null))}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
                     >
-                      {therapists.map((t) => (
+                      {(therapists.length > 0 ? therapists : mockTherapists).map((t) => (
                         <option key={t.id} value={t.name}>
                           {t.name} ({t.profession || 'Specialist'})
                         </option>
@@ -1135,20 +1039,19 @@ export const BookingsView: React.FC = () => {
                     <label className="font-extrabold text-slate-700">Session Date *</label>
                     <input
                       type="date"
-                      required={!editBookingData?.toBeScheduled}
-                      value={editBookingData ? scheduledDateOf(editBookingData) : ''}
-                      onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, date: e.target.value, toBeScheduled: false } : null))}
+                      required
+                      value={editBookingData?.date || ''}
+                      onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, date: e.target.value } : null))}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="font-extrabold text-slate-700">Time Slot *</label>
                     <select
-                      value={editBookingData ? scheduledTimeOf(editBookingData) : ''}
-                      onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, time: e.target.value, ...(prev.toBeScheduled ? { date: '', toBeScheduled: false } : {}) } : null))}
+                      value={editBookingData?.time || ''}
+                      onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, time: e.target.value } : null))}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
                     >
-                      <option value="" disabled>To be scheduled</option>
                       <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM</option>
                       <option value="10:30 AM - 11:30 AM">10:30 AM - 11:30 AM</option>
                       <option value="01:00 PM - 02:00 PM">01:00 PM - 02:00 PM</option>
@@ -1305,7 +1208,7 @@ export const BookingsView: React.FC = () => {
             <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 text-xs space-y-1">
               <p className="font-extrabold text-amber-900">{rescheduleBooking.bookingCode} · {rescheduleBooking.clientName}</p>
               <p className="text-slate-600 font-medium">Therapist: {rescheduleBooking.therapistName}</p>
-              <p className="text-slate-500 text-[11px]">Current: {rescheduleBooking.toBeScheduled ? 'To be scheduled' : `${rescheduleBooking.date} (${rescheduleBooking.time})`}</p>
+              <p className="text-slate-500 text-[11px]">Current: {rescheduleBooking.date} ({rescheduleBooking.time})</p>
             </div>
 
             <form onSubmit={handleConfirmReschedule} className="space-y-4">
@@ -1532,10 +1435,12 @@ export const BookingsView: React.FC = () => {
                   <select
                     value={newBooking.therapistName}
                     onChange={(e) => {
-                      // The platform fee is not the session price; the fee comes from the service
+                      const tName = e.target.value;
+                      const selected = therapists.find((t) => t.name === tName);
                       setNewBooking({
                         ...newBooking,
-                        therapistName: e.target.value
+                        therapistName: tName,
+                        amount: selected?.platformFeePerSession || newBooking.amount
                       });
                     }}
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
@@ -1603,12 +1508,11 @@ export const BookingsView: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
-                  <label className="font-extrabold text-slate-700 block">Session Fee (₹)</label>
+                  <label className="font-extrabold text-slate-700 block">Session Fee (₹) *</label>
                   <input
                     type="number"
-                    min={0}
-                    placeholder="Service price"
-                    value={newBooking.amount || ''}
+                    required
+                    value={newBooking.amount}
                     onChange={(e) => setNewBooking({ ...newBooking, amount: Number(e.target.value) })}
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
                   />

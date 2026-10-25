@@ -81,8 +81,8 @@ export const PaymentsView: React.FC = () => {
     activeBookings.forEach((b) => {
       const therapistName = b.therapistName || 'Dr. Specialist';
       const matchingTherapist =
-        (b.consultantId ? therapists.find((t) => t.id === b.consultantId) : undefined) ||
-        therapists.find((t) => t.name.toLowerCase().trim() === therapistName.toLowerCase().trim()) || {
+        therapists.find((t) => t.name.toLowerCase().trim() === therapistName.toLowerCase().trim()) ||
+        therapists.find((t) => t.id === (b as any).consultantId || t.id === (b as any).therapistId) || {
           id: `t-${b.id.slice(0, 6)}`,
           name: therapistName,
           email: `${therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@hexpertify.com`,

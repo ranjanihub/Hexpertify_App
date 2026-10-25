@@ -44,9 +44,7 @@ function sendError(res: Response, error: any, fallback: string): void {
     return;
   }
   if (error instanceof PaymentGatewayError) {
-    // Use the error's own HTTP status when it has one (e.g. SlotUnavailableError → 409)
-    const status = Number((error as any).status);
-    res.status(status >= 400 && status < 600 ? status : 400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: error.message });
     return;
   }
   console.error(`[Payments] ${fallback}:`, error);

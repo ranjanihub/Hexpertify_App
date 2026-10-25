@@ -2,11 +2,8 @@
 
 import { authConfig } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { backendConfigured, callBackend } from "@/lib/backend";
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function updateUserProfile(data: {
   name: string;
@@ -19,62 +16,15 @@ export async function updateUserProfile(data: {
     if (!session?.user?.id) {
       return { success: false, error: "Not authenticated" };
     }
-    const userId = session.user.id;
-
-    const current = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (!current) {
-      return { success: false, error: "User not found" };
-    }
-
-    // Emails are stored lowercased and must belong to one account only
-    const oldEmail = current.email || "";
-    const email = String(data.email || "").trim().toLowerCase() || oldEmail;
-    if (email && !EMAIL_RE.test(email)) {
-      return { success: false, error: "Please enter a valid email address" };
-    }
-    const emailChanged = email.toLowerCase() !== oldEmail.toLowerCase();
-    if (emailChanged) {
-      const taken = await prisma.user.findFirst({
-        where: { email: { equals: email, mode: "insensitive" }, NOT: { id: userId } },
-        select: { id: true },
-      });
-      if (taken) {
-        return { success: false, error: "This email is already used by another account" };
-      }
-    }
-
-    const phone = String(data.phoneNumber || "").trim() || null;
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: session.user.id },
       data: {
         name: data.name,
-        email: email || null,
-        phoneNumber: phone,
+        email: data.email,
+        phoneNumber: data.phoneNumber || null,
       },
     });
-
-    // The panels read `phone`; the website reads `phoneNumber`
-    await prisma.$runCommandRaw({
-      update: "User",
-      updates: [{ q: { _id: userId }, u: { $set: { phone } } }],
-    });
-
-    // Bookings carry the client's email for notifications: keep them in step
-    if (emailChanged && email) {
-      const oldEmails = Array.from(new Set([oldEmail, oldEmail.toLowerCase()].filter(Boolean)));
-      const match: any[] = [{ userId }, { clientId: userId }];
-      if (oldEmails.length) match.push({ clientEmail: { $in: oldEmails } });
-      for (const collection of ["Booking", "bookings"]) {
-        await prisma.$runCommandRaw({
-          update: collection,
-          updates: [{ q: { $or: match }, u: { $set: { clientEmail: email } }, multi: true }],
-        });
-      }
-    }
 
     revalidatePath("/profile");
     return { success: true, user: updatedUser };
@@ -125,8 +75,7 @@ export async function getUserBookings() {
     }
 
     const bookings = await prisma.booking.findMany({
-      // Unpaid/abandoned checkouts are not real bookings yet
-      where: { userId: session.user.id, status: { notIn: ["PENDING_PAYMENT", "EXPIRED"] } },
+      where: { userId: session.user.id },
       include: {
         consultant: {
           select: {
@@ -136,7 +85,6 @@ export async function getUserBookings() {
             email: true,
           },
         },
-        // Optional: bookings made in the panels may have no plan
         service: {
           select: {
             id: true,
@@ -160,7 +108,6 @@ export async function getUserBookings() {
   }
 }
 
-/** The client cancels their own booking. The central Backend applies it and emails the client, the expert and the admins. */
 export async function cancelBooking(bookingId: string) {
   try {
     const session = await getServerSession(authConfig);
@@ -171,7 +118,6 @@ export async function cancelBooking(bookingId: string) {
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { id: true, userId: true, status: true },
     });
 
     if (!booking) {
@@ -182,29 +128,13 @@ export async function cancelBooking(bookingId: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!["PENDING", "CONFIRMED", "RESCHEDULED"].includes(booking.status)) {
-      return { success: false, error: "This booking can no longer be cancelled" };
-    }
-
-    if (backendConfigured()) {
-      const { ok, data } = await callBackend(
-        `/api/bookings/${encodeURIComponent(bookingId)}`,
-        { status: "CANCELLED", actor: "client" },
-        "PUT",
-      );
-      if (!ok || !data?.success) {
-        return { success: false, error: data?.error || "Failed to cancel booking" };
-      }
-    } else {
-      // Local development without the Backend: status change only, no emails
-      await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: "CANCELLED" },
-      });
-    }
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: "CANCELLED" },
+    });
 
     revalidatePath("/profile");
-    return { success: true };
+    return { success: true, booking: updatedBooking };
   } catch (error) {
     console.error("Error canceling booking:", error);
     return { success: false, error: "Failed to cancel booking" };

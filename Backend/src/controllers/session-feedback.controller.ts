@@ -62,7 +62,7 @@ async function findClientCompletedBookings(identity: { email: string; ids: strin
 
   const since = new Date(Date.now() - PENDING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const bookings = await db.collection('Booking')
-    .find({ $and: [{ $or: or }, { status: { $regex: '^completed$', $options: 'i' } }, { updatedAt: { $gte: since } }] })
+    .find({ $and: [{ $or: or }, { status: { $in: ['COMPLETED', 'completed'] } }, { updatedAt: { $gte: since } }] })
     .sort({ updatedAt: -1 })
     .toArray();
   return bookings.map((b) => ({ ...b, _client: db_user }));

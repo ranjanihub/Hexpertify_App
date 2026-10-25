@@ -61,18 +61,11 @@ export interface Booking {
   time: string;
   duration: string;
   sessionType: 'Individual' | 'Couple' | 'Teen' | 'Family' | 'Career';
-  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'No Show - Client' | 'No Show - Consultant' | 'Pending' | 'Pending Payment' | 'Expired';
+  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'No Show - Client' | 'No Show - Consultant';
   amount: number;
   paymentStatus: 'Paid' | 'Pending Payout' | 'Refunded' | 'Pending' | 'Failed' | 'Refund Pending' | 'Partially Refunded' | 'Unpaid';
   /** Gateway payment backing this booking, when paid online */
   paymentId?: string;
-  /** Booked on the website without a session time yet (date shows "To be scheduled") */
-  toBeScheduled?: boolean;
-  clientId?: string;
-  clientEmail?: string;
-  /** The booked consultant's id (preferred over matching by name) */
-  consultantId?: string;
-  durationMinutes?: number;
 }
 
 export type GatewayPaymentStatus =
@@ -99,7 +92,7 @@ export interface Payment {
   id: string;
   bookingId: string;
   bookingSource: 'backend' | 'live';
-  provider: 'razorpay' | 'cashfree' | 'manual';
+  provider: 'razorpay' | 'cashfree';
   providerOrderId: string;
   providerPaymentId?: string;
   method?: string;
@@ -164,10 +157,6 @@ export interface TherapistReviewItem {
   comment: string;
   date: string;
   images?: string[];
-  /** Set by the Backend for reviews written by signed-in clients; the admin never re-saves these */
-  isVerifiedClient?: boolean;
-  verified?: boolean;
-  clientId?: string;
 }
 
 export interface TherapistFAQItem {
@@ -204,7 +193,6 @@ export interface Therapist {
   photo: string;
   photoAltText?: string;
   profession: string;
-  professionId?: string;
   rating: number;
   reviewCount: number;
   activeClientsCount: number;

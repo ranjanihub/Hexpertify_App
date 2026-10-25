@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, ArrowRight } from 'lucide-react';
-import { useAppContext } from '../../context/AppContext';
-import { api } from '../../lib/apiClient';
-import type { ResourceItem } from '../../types';
+import { mockTherapists, mockClients, mockBookings, mockResources } from '../../data/mockData';
 import type { PageId } from '../../types';
 
 interface GlobalSearchModalProps {
@@ -18,20 +16,6 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
   onSelectPage
 }) => {
   const [query, setQuery] = useState('');
-  // Search covers the live records loaded by the app
-  const { therapists, clients, bookings } = useAppContext();
-  const [resources, setResources] = useState<ResourceItem[]>([]);
-  const [resourcesLoaded, setResourcesLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen || resourcesLoaded) return;
-    api.get('/api/admin/resources')
-      .then((data: any) => {
-        setResources(Array.isArray(data?.resources) ? data.resources : []);
-        setResourcesLoaded(true);
-      })
-      .catch(() => {});
-  }, [isOpen, resourcesLoaded]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -49,26 +33,26 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
 
   if (!isOpen) return null;
 
-  const filteredTherapists = therapists.filter((t) =>
-    (t.name || '').toLowerCase().includes(query.toLowerCase()) ||
-    (t.profession || '').toLowerCase().includes(query.toLowerCase())
+  const filteredTherapists = mockTherapists.filter((t) =>
+    t.name.toLowerCase().includes(query.toLowerCase()) ||
+    t.profession.toLowerCase().includes(query.toLowerCase())
   );
 
-  const filteredClients = clients.filter((c) =>
-    (c.name || '').toLowerCase().includes(query.toLowerCase()) ||
-    (c.email || '').toLowerCase().includes(query.toLowerCase())
+  const filteredClients = mockClients.filter((c) =>
+    c.name.toLowerCase().includes(query.toLowerCase()) ||
+    c.email.toLowerCase().includes(query.toLowerCase())
   );
 
-  const filteredBookings = bookings.filter((b) =>
-    (b.clientName || '').toLowerCase().includes(query.toLowerCase()) ||
-    (b.therapistName || '').toLowerCase().includes(query.toLowerCase()) ||
-    (b.bookingCode || '').toLowerCase().includes(query.toLowerCase())
+  const filteredBookings = mockBookings.filter((b) =>
+    b.clientName.toLowerCase().includes(query.toLowerCase()) ||
+    b.therapistName.toLowerCase().includes(query.toLowerCase()) ||
+    b.bookingCode.toLowerCase().includes(query.toLowerCase())
   );
 
-  const filteredResources = resources.filter((r) =>
-    (r.title || '').toLowerCase().includes(query.toLowerCase()) ||
-    (r.description || '').toLowerCase().includes(query.toLowerCase()) ||
-    (r.tags || []).some((t) => (t || '').toLowerCase().includes(query.toLowerCase()))
+  const filteredResources = mockResources.filter((r) =>
+    r.title.toLowerCase().includes(query.toLowerCase()) ||
+    r.description.toLowerCase().includes(query.toLowerCase()) ||
+    r.tags.some((t) => t.toLowerCase().includes(query.toLowerCase()))
   );
 
   return createPortal(

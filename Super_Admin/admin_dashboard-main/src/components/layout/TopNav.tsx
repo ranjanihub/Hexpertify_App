@@ -13,9 +13,7 @@ import {
 } from 'lucide-react';
 
 import type { PageId } from '../../types';
-import { useAppContext } from '../../context/AppContext';
-import { api } from '../../lib/apiClient';
-import type { ResourceItem } from '../../types';
+import { mockTherapists, mockClients, mockBookings, mockResources } from '../../data/mockData';
 import { getAdminAuth, getApiAuthHeaders } from '../../lib/auth';
 
 /** Pages a notification may open */
@@ -36,17 +34,6 @@ export const TopNav: React.FC<TopNavProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  // Search covers the live records loaded by the app
-  const { therapists, clients, bookings } = useAppContext();
-  const [resources, setResources] = useState<ResourceItem[]>([]);
-  const resourcesRequested = useRef(false);
-  useEffect(() => {
-    if (!searchQuery.trim() || resourcesRequested.current) return;
-    resourcesRequested.current = true;
-    api.get('/api/admin/resources')
-      .then((data: any) => setResources(Array.isArray(data?.resources) ? data.resources : []))
-      .catch(() => { resourcesRequested.current = false; });
-  }, [searchQuery]);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -119,25 +106,25 @@ export const TopNav: React.FC<TopNavProps> = ({
 
   const displayNotifications = liveNotifications;
 
-  const filteredTherapists = therapists.filter((t) =>
-    (t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (t.profession || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTherapists = mockTherapists.filter((t) =>
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.profession.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredClients = clients.filter((c) =>
-    (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredClients = mockClients.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredBookings = bookings.filter((b) =>
-    (b.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (b.therapistName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (b.bookingCode || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBookings = mockBookings.filter((b) =>
+    b.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b.therapistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b.bookingCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredResources = resources.filter((r) =>
-    (r.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (r.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredResources = mockResources.filter((r) =>
+    r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const hasResults =

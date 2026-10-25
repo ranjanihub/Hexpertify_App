@@ -35,11 +35,8 @@ enum BookingStatus {
   PENDING_PAYMENT
   EXPIRED
   CONFIRMED
-  RESCHEDULED
   COMPLETED
   CANCELLED
-  NO_SHOW_CLIENT
-  NO_SHOW_CONSULTANT
 }
 
 enum Role {
@@ -269,22 +266,14 @@ model Review {
 model Booking {
   id     String        @id @default(uuid()) @map("_id")
   status BookingStatus @default(PENDING)
-  // Optional: bookings created in the panels may have no website account or plan
-  userId String?
-  user   User?         @relation(fields: [userId], references: [id])
+  userId String
+  user   User          @relation(fields: [userId], references: [id])
 
   consultantId String
   consultant   Consultant @relation(fields: [consultantId], references: [id])
 
-  serviceId String?
-  service   Service? @relation(fields: [serviceId], references: [id])
-
-  // Session time (India time labels + instant), set when the session is scheduled; website bookings are paid first
-  date            String?
-  time            String?
-  scheduledAt     DateTime?
-  meetingLink     String?
-  durationMinutes Int?
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
 
   // Payment fields are written by the central Backend payment service
   amount         Float?

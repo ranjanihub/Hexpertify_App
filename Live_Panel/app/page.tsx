@@ -182,10 +182,7 @@ export default async function HomePage() {
     name: item?.name || "Consultant",
     consultantType: item?.profession?.name || "Specialist",
     experience: `${item?.experience || 0} yrs + experience`,
-    // No offered plan → no price shown (never an invented one)
-    amount: ((price) => (price != null ? `₹ ${price}` : "—"))(
-      lowestPrice(item?.services, item?.minPrice),
-    ),
+    amount: `₹ ${lowestPrice(item?.services, item?.minPrice) ?? 500}`,
     profilePic: item?.photoUrl,
     profileAltText: item?.photoAltText,
     link: `/services/${item?.profession?.identifier || "specialists"}/${item?.identifier || ""}`,

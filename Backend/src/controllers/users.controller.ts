@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import crypto from 'crypto';
 import { ObjectId } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { getDatabase } from '../db/mongodb';
@@ -7,18 +6,7 @@ import { config } from '../config';
 import { AuthController } from './auth.controller';
 import { cacheService } from '../services/cache.service';
 import { MailService } from '../services/mail.service';
-import {
-  applyClientPrivacy,
-  canViewFullClient,
-  CLIENT_PANEL_LOCKED_MESSAGE,
-  ClientViewer,
-  consultantAssignment,
-  findConsultantById,
-  findConsultantByName,
-  hasCompletedSession,
-  resolveClientConsultant,
-  resolveClientViewer
-} from '../services/client-access';
+import { applyClientPrivacy, resolveClientViewer } from '../services/client-access';
 import { verifyAuthToken } from '../utils/jwt';
 
 /**
@@ -40,38 +28,6 @@ function sanitizeClientForConsultant(u: any): any {
     clone.intakeResponses = safeIntake;
   }
   return clone;
-}
-
-/**
- * Privacy for a client record: basic details unless the viewer may see the full record; consultant views
- * additionally hide contact details unless the viewer is the client's assigned therapist.
- */
-function protectClient(viewer: ClientViewer, u: any, consultantView: boolean): any {
-  const visible = applyClientPrivacy(viewer, u);
-  return consultantView && !canViewFullClient(viewer, u) ? sanitizeClientForConsultant(visible) : visible;
-}
-
-const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const emailFilter = (email: string) => ({ email: { $regex: `^${escapeRx(email)}$`, $options: 'i' } });
-
-/** Profile fields staff may set when creating a client (intake form) */
-const INTAKE_FIELDS = [
-  'age', 'gender', 'preferredLanguage', 'communicationPreference', 'dateOfBirth', 'location', 'occupation',
-  'primaryGoal', 'primaryConcern', 'presentingProblems', 'therapyGoals', 'goals', 'therapyTimeline',
-  'aiIntakeSummary', 'summary', 'notes', 'service', 'emergencyContactName', 'emergencyContactPhone', 'intakeResponses'
-];
-
-/** Fields only staff (admin / internal) may change through the profile update endpoints */
-const STAFF_ONLY_FIELDS = [
-  'role', 'password', 'firstConsultationCompleted',
-  'assignedTherapistId', 'assignedTherapistName', 'assignedTherapistEmail', 'assignedTherapistPhoto'
-];
-
-/** Matches a user by custom `id`, string `_id` or ObjectId `_id` */
-function userIdQuery(id: string): any {
-  const or: any[] = [{ id }, { _id: id }];
-  if (/^[0-9a-f]{24}$/i.test(id)) or.push({ _id: new ObjectId(id) });
-  return { $or: or };
 }
 
 /**
@@ -126,7 +82,14 @@ export class UsersController {
           });
         }
 
-        // Show the consultant from the client's booking when no assignment is stored (never a guessed one)
+        const defaultConsultant: any = consList[0] || {
+          id: 'doc-1',
+          name: 'Dr. Evelyn Reed',
+          email: 'dr.evelyn@hexpertify.com',
+          photoUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80'
+        };
+
+        // Ensure every client has assigned consultant
         for (const u of users) {
           if (!u.assignedTherapistId && !u.assignedTherapistName) {
             const uEmail = String(u.email || '').toLowerCase().trim();
@@ -138,16 +101,22 @@ export class UsersController {
               return (uEmail && bEmail === uEmail) || (uId && bId === uId);
             });
 
+            let assignedC: any = defaultConsultant;
             if (userBooking && (userBooking.consultantId || userBooking.consultantName || userBooking.therapistId || userBooking.therapistName)) {
               const bCid = String(userBooking.consultantId || userBooking.therapistId || '').toLowerCase();
               const bCname = String(userBooking.consultantName || userBooking.therapistName || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
               const matched = consList.find((c: any) => {
-                const cIds = [c.id, c._id].filter(Boolean).map((v: any) => String(v).toLowerCase());
+                const cId = String(c.id || c._id || '').toLowerCase();
                 const cName = String(c.name || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
-                return (bCid && cIds.includes(bCid)) || (bCname && cName.includes(bCname));
+                return (bCid && cId === bCid) || (bCname && cName.includes(bCname));
               });
-              if (matched) Object.assign(u, consultantAssignment(matched));
+              if (matched) assignedC = matched;
             }
+
+            u.assignedTherapistId = assignedC.id || String(assignedC._id || 'doc-1');
+            u.assignedTherapistName = assignedC.name;
+            u.assignedTherapistEmail = assignedC.email || '';
+            u.assignedTherapistPhoto = assignedC.photoUrl || assignedC.photo || assignedC.avatarUrl || '';
           }
         }
 
@@ -159,12 +128,12 @@ export class UsersController {
           if (therapistId) matchedConsultantIds.add(therapistId.toLowerCase());
 
           consList.forEach((c: any) => {
-            // The consultant can be named by its custom `id` or its `_id`
-            const cIds = [c.id, c._id].filter(Boolean).map((v: any) => String(v).toLowerCase());
+            const cId = String(c.id || c._id || '').toLowerCase();
             const cName = String(c.name || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
-            if ((therapistId && cIds.includes(therapistId.toLowerCase())) ||
+            if ((therapistId && cId === therapistId.toLowerCase()) ||
                 (cleanName && cName.includes(cleanName)) ||
                 (cleanName && cleanName.includes(cName) && cName.length > 2)) {
+              matchedConsultantIds.add(cId);
               if (c.id) matchedConsultantIds.add(String(c.id).toLowerCase());
               if (c._id) matchedConsultantIds.add(String(c._id).toLowerCase());
             }
@@ -183,7 +152,13 @@ export class UsersController {
           users = matchedUsers;
         }
 
-        const finalUsers = users.map((u: any) => ({ ...u, id: u.id || String(u._id) }));
+        const finalUsers = users.map((u: any) => {
+          const formatted = { ...u, id: u.id || String(u._id) };
+          if (isConsultantView) {
+            return sanitizeClientForConsultant(formatted);
+          }
+          return formatted;
+        });
 
         return {
           success: true,
@@ -194,7 +169,7 @@ export class UsersController {
 
       // Full client records only for the assigned therapist (applied after the shared cache)
       const viewer = await resolveClientViewer(req);
-      res.json({ ...responseData, users: responseData.users.map((u: any) => protectClient(viewer, u, isConsultantView)) });
+      res.json({ ...responseData, users: responseData.users.map((u: any) => applyClientPrivacy(viewer, u)) });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch users' });
     }
@@ -209,8 +184,10 @@ export class UsersController {
       const consultantId = String(req.query.consultantId || req.query.therapistId || '').trim();
       const db = getDatabase();
 
-      // Prisma / website users only have a string `_id`
-      const query = userIdQuery(id);
+      let query: any = { id };
+      if (ObjectId.isValid(id)) {
+        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      }
 
       const user = await db.collection('User').findOne(query) ||
                    await db.collection('users').findOne(query);
@@ -220,11 +197,14 @@ export class UsersController {
         return;
       }
 
-      const formattedUser = { ...user, id: user.id || String(user._id) };
+      let formattedUser = { ...user, id: user.id || String(user._id) };
+      if (consultantId) {
+        formattedUser = sanitizeClientForConsultant(formattedUser);
+      }
 
       res.json({
         success: true,
-        user: protectClient(await resolveClientViewer(req), formattedUser, Boolean(consultantId))
+        user: applyClientPrivacy(await resolveClientViewer(req), formattedUser)
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch user' });
@@ -244,25 +224,16 @@ export class UsersController {
         return;
       }
 
-      // Staff (admin / therapist / internal) may create accounts without a password and with intake details;
-      // only admins (or internal calls) may create administrators
-      const viewer = await resolveClientViewer(req);
-      const isPrivileged = viewer.kind === 'admin' || viewer.kind === 'internal';
-      const isStaff = isPrivileged || viewer.kind === 'therapist';
-
-      let temporaryPassword = '';
-      if (!password && isStaff) {
-        temporaryPassword = crypto.randomBytes(9).toString('base64url');
-      } else if (!password || String(password).length < 6) {
+      if (!password || String(password).length < 6) {
         res.status(400).json({ success: false, error: 'Password is required and must be at least 6 characters' });
         return;
       }
 
-      const cleanEmail = String(email).toLowerCase().trim();
+      const cleanEmail = email.toLowerCase().trim();
       const db = getDatabase();
 
-      const existingUser = await db.collection('User').findOne(emailFilter(cleanEmail)) ||
-                           await db.collection('users').findOne(emailFilter(cleanEmail));
+      const existingUser = await db.collection('User').findOne({ email: cleanEmail }) ||
+                           await db.collection('users').findOne({ email: cleanEmail });
 
       if (existingUser) {
         res.status(409).json({
@@ -272,47 +243,57 @@ export class UsersController {
         return;
       }
 
-      const hashedPassword = await bcrypt.hash(String(password || temporaryPassword), 10);
-      const isUserRole = !isPrivileged || (role !== 'ADMIN' && role !== 'Super Admin');
+      const hashedPassword = await bcrypt.hash(String(password), 10);
+      const isUserRole = (role !== 'ADMIN' && role !== 'Super Admin');
+      let assignedTherapistId = body.assignedTherapistId || '';
+      let assignedTherapistName = body.assignedTherapistName || body.therapist || '';
+      let assignedTherapistEmail = body.assignedTherapistEmail || '';
+      let assignedTherapistPhoto = body.assignedTherapistPhoto || '';
 
-      // Assign a consultant only when the given one is real (never a guessed "first consultant")
-      const consultant = isUserRole
-        ? (await findConsultantById(db, body.assignedTherapistId) ||
-           (!body.assignedTherapistId ? await findConsultantByName(db, body.assignedTherapistName || body.therapist) : null))
-        : null;
+      if (isUserRole && (!assignedTherapistId || !assignedTherapistName || !assignedTherapistEmail)) {
+        let consultant: any = null;
+        if (assignedTherapistId) {
+          consultant = await db.collection('Consultant').findOne({ id: assignedTherapistId }) ||
+                       await db.collection('consultants').findOne({ id: assignedTherapistId });
+        }
+        if (!consultant && assignedTherapistName) {
+          const clean = assignedTherapistName.replace(/^dr\.?\s*/i, '').trim();
+          consultant = await db.collection('Consultant').findOne({ name: { $regex: clean, $options: 'i' } }) ||
+                       await db.collection('consultants').findOne({ name: { $regex: clean, $options: 'i' } });
+        }
+        if (!consultant) {
+          consultant = await db.collection('Consultant').findOne({}) ||
+                       await db.collection('consultants').findOne({});
+        }
+        if (consultant) {
+          assignedTherapistId = consultant.id || String(consultant._id || 'doc-1');
+          assignedTherapistName = consultant.name || 'Dr. Evelyn Reed';
+          assignedTherapistEmail = consultant.email || 'dr.evelyn@hexpertify.com';
+          assignedTherapistPhoto = consultant.photoUrl || consultant.avatarUrl || consultant.image || '';
+        }
+      }
 
-      const userId = String(body.id || crypto.randomUUID());
-      const phone = String(body.phone || body.phoneNumber || '').trim();
-      const photo = body.image || body.avatarUrl || '';
+      const userId = body.id || `USR-${Date.now().toString().slice(-4)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       const newUser: any = {
         _id: userId,
         id: userId,
-        name: String(name).trim(),
+        name: name.trim(),
         email: cleanEmail,
         password: hashedPassword,
         role: isUserRole ? 'USER' : 'ADMIN',
         status: body.status || 'Active',
-        emailVerified: null,
+        image: body.image || body.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        phone: body.phone || '+1 555-019-2834',
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      if (phone) {
-        newUser.phone = phone;
-        newUser.phoneNumber = phone;
-      }
-      if (photo) {
-        newUser.image = photo;
-        newUser.avatarUrl = photo;
-      }
 
       if (isUserRole) {
-        if (isStaff) {
-          for (const key of INTAKE_FIELDS) {
-            if (body[key] !== undefined && body[key] !== '') newUser[key] = body[key];
-          }
-        }
-        if (consultant) Object.assign(newUser, consultantAssignment(consultant));
-        newUser.firstConsultationCompleted = false;
+        newUser.assignedTherapistId = assignedTherapistId;
+        newUser.assignedTherapistName = assignedTherapistName;
+        newUser.assignedTherapistEmail = assignedTherapistEmail;
+        newUser.assignedTherapistPhoto = assignedTherapistPhoto;
+        newUser.firstConsultationCompleted = true;
       }
 
       await db.collection('User').insertOne(newUser);
@@ -328,17 +309,16 @@ export class UsersController {
         name: newUser.name,
         email: newUser.email,
         role: isUserRole ? 'client' as const : 'admin' as const,
-        phone: newUser.phone || '',
-        avatarUrl: newUser.image || '',
-        assignedTherapistId: newUser.assignedTherapistId || '',
-        assignedTherapistName: newUser.assignedTherapistName || '',
-        assignedTherapistEmail: newUser.assignedTherapistEmail || '',
-        assignedTherapistPhoto: newUser.assignedTherapistPhoto || '',
-        firstConsultationCompleted: !isUserRole
+        phone: newUser.phone,
+        avatarUrl: newUser.image,
+        assignedTherapistId: newUser.assignedTherapistId,
+        assignedTherapistName: newUser.assignedTherapistName,
+        assignedTherapistEmail: newUser.assignedTherapistEmail,
+        assignedTherapistPhoto: newUser.assignedTherapistPhoto,
+        firstConsultationCompleted: true
       };
 
-      // A new client's portal opens after their first completed session, so no sign-in ticket for clients
-      const ssoTicket = isUserRole ? undefined : AuthController.issueSsoTicket(safeUser, 'super_admin');
+      const ssoTicket = AuthController.issueSsoTicket(safeUser, isUserRole ? 'client' : 'super_admin');
 
       res.status(201).json({
         success: true,
@@ -346,10 +326,7 @@ export class UsersController {
         role: safeUser.role,
         redirectUrl: isUserRole ? '/client' : '/admin',
         ssoTicket,
-        ...(isUserRole ? { clientPanelAccess: false, notice: CLIENT_PANEL_LOCKED_MESSAGE } : {}),
-        // Returned once to the staff member who created the account so it can be passed on to the user
-        ...(temporaryPassword ? { temporaryPassword } : {}),
-        message: isUserRole ? 'Client registered successfully in MongoDB Atlas' : 'Administrator created successfully'
+        message: 'Client registered successfully in MongoDB Atlas'
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to create user' });
@@ -361,106 +338,64 @@ export class UsersController {
    */
   static async update(req: Request, res: Response): Promise<void> {
     try {
-      const body = req.body || {};
-      const id = String(req.params.id || body.id || body._id || req.query.id || '').trim();
-      const bearerIdentity = legacyBearerIdentity(String(req.headers.authorization || '').trim());
-      const lookupEmail = String(body.email || req.query.email || (bearerIdentity.includes('@') ? bearerIdentity : '')).toLowerCase().trim();
+      const id = String(req.params.id || req.body?.id || req.body?._id || req.query.id || '').trim();
+      const email = String(req.body?.email || req.query.email || '').toLowerCase().trim();
+      const updates = { ...req.body, updatedAt: new Date() };
+      delete updates.id;
+      delete updates._id;
 
-      if (!id && !lookupEmail) {
+      if (!id && !email) {
         res.status(400).json({ success: false, error: 'User ID or email is required' });
         return;
       }
 
       const db = getDatabase();
-
-      // Resolve exactly one account: by id when one is given (the body email may be a new address), else by email
-      const lookup = id
-        ? (id.includes('@') ? emailFilter(id.toLowerCase()) : userIdQuery(id))
-        : emailFilter(lookupEmail);
-      const target = await db.collection('User').findOne(lookup) || await db.collection('users').findOne(lookup);
-
-      if (!target) {
-        res.status(404).json({ success: false, error: 'User not found' });
-        return;
-      }
-
-      const updates: any = { ...body };
-      delete updates.id;
-      delete updates._id;
-      delete updates.createdAt;
-
-      // Role, password and therapist assignment are staff-only (clients update their own profile here)
-      const viewer = await resolveClientViewer(req);
-      const isPrivileged = viewer.kind === 'admin' || viewer.kind === 'internal';
-      if (!isPrivileged) {
-        for (const key of STAFF_ONLY_FIELDS) delete updates[key];
-      } else if (updates.password) {
-        updates.password = String(updates.password).startsWith('$2')
-          ? updates.password
-          : await bcrypt.hash(String(updates.password), 10);
-      } else {
-        delete updates.password;
-      }
-
-      // Website (Prisma) reads phoneNumber / image, the panels read phone / avatarUrl: keep both in sync
-      if (updates.phone !== undefined || updates.phoneNumber !== undefined) {
-        const phone = String(updates.phone ?? updates.phoneNumber ?? '').trim();
-        updates.phone = phone;
-        updates.phoneNumber = phone;
-      }
-      if (updates.image !== undefined || updates.avatarUrl !== undefined) {
-        const photo = updates.image || updates.avatarUrl || '';
-        updates.image = photo;
-        updates.avatarUrl = photo;
-      }
-
-      // Email changes: normalised, unique, and carried over to the user's bookings
-      const oldEmail = String(target.email || '').toLowerCase().trim();
-      let emailChanged = false;
-      if (updates.email !== undefined) {
-        const newEmail = String(updates.email || '').toLowerCase().trim();
-        if (!newEmail) {
-          delete updates.email;
-        } else {
-          updates.email = newEmail;
-          if (newEmail !== oldEmail) {
-            const taken = await db.collection('User').findOne({ ...emailFilter(newEmail), _id: { $ne: target._id } }) ||
-                          await db.collection('users').findOne({ ...emailFilter(newEmail), _id: { $ne: target._id } });
-            if (taken) {
-              res.status(409).json({ success: false, error: 'Another account already uses this email address.' });
-              return;
-            }
-            emailChanged = true;
-          }
+      const orClauses: any[] = [];
+      if (id) {
+        orClauses.push({ id }, { _id: id });
+        if (ObjectId.isValid(id)) {
+          try { orClauses.push({ _id: new ObjectId(id) }); } catch {}
         }
+        if (id.includes('@')) {
+          orClauses.push({ email: id.toLowerCase().trim() });
+        }
+      }
+      if (email) {
+        orClauses.push({ email });
       }
 
       // If assigning or reassigning a consultant, resolve full canonical consultant info
       if (updates.assignedTherapistId || updates.assignedTherapistName) {
-        const consDoc = await findConsultantById(db, updates.assignedTherapistId) ||
-                        (!updates.assignedTherapistId ? await findConsultantByName(db, updates.assignedTherapistName) : null);
-        if (consDoc) {
-          const assignment = consultantAssignment(consDoc);
-          updates.assignedTherapistId = assignment.assignedTherapistId;
-          updates.assignedTherapistName = assignment.assignedTherapistName;
-          updates.assignedTherapistEmail = assignment.assignedTherapistEmail || updates.assignedTherapistEmail || '';
-          updates.assignedTherapistPhoto = assignment.assignedTherapistPhoto || updates.assignedTherapistPhoto || '';
+        const tId = String(updates.assignedTherapistId || '').trim();
+        const tName = String(updates.assignedTherapistName || '').replace(/^dr\.?\s*/i, '').trim();
+
+        const consQuery: any[] = [];
+        if (tId) {
+          consQuery.push({ id: tId }, { _id: tId });
+          if (ObjectId.isValid(tId)) {
+            try { consQuery.push({ _id: new ObjectId(tId) }); } catch {}
+          }
+        }
+        if (tName) {
+          consQuery.push({ name: { $regex: tName, $options: 'i' } });
+        }
+
+        if (consQuery.length > 0) {
+          const consDoc = await db.collection('Consultant').findOne({ $or: consQuery }) ||
+                          await db.collection('consultants').findOne({ $or: consQuery });
+          if (consDoc) {
+            updates.assignedTherapistId = consDoc.id || String(consDoc._id);
+            updates.assignedTherapistName = consDoc.name;
+            updates.assignedTherapistEmail = consDoc.email || updates.assignedTherapistEmail || '';
+            updates.assignedTherapistPhoto = consDoc.photoUrl || consDoc.photo || consDoc.avatarUrl || updates.assignedTherapistPhoto || '';
+          }
         }
       }
 
-      updates.updatedAt = new Date();
-      const query = { _id: target._id };
+      const query = { $or: orClauses };
 
-      await db.collection('User').updateOne(query, { $set: updates });
-      await db.collection('users').updateOne(query, { $set: updates }).catch(() => {});
-
-      if (emailChanged && oldEmail) {
-        const bookingFilter = { clientEmail: { $regex: `^${escapeRx(oldEmail)}$`, $options: 'i' } };
-        await Promise.all([
-          db.collection('Booking').updateMany(bookingFilter, { $set: { clientEmail: updates.email } }),
-          db.collection('bookings').updateMany(bookingFilter, { $set: { clientEmail: updates.email } })
-        ]).catch(() => {});
-      }
+      await db.collection('User').updateMany(query, { $set: updates });
+      await db.collection('users').updateMany(query, { $set: updates }).catch(() => {});
 
       // Invalidate caches
       cacheService.invalidateTags(['users', 'stats', 'bookings']);
@@ -557,12 +492,11 @@ export class UsersController {
         orClauses.push({ email });
       }
 
-      // Without an id or email there is no client to show (never fall back to some other client)
-      if (orClauses.length === 0) {
-        res.status(400).json({ success: false, error: 'Client id or email is required' });
-        return;
+      if (orClauses.length > 0) {
+        query = { $or: orClauses };
+      } else {
+        query = { role: { $in: ['USER', 'user', 'client', 'CLIENT'] } };
       }
-      query = { $or: orClauses };
 
       let user = await db.collection('User').findOne(query);
       if (!user) {
@@ -686,25 +620,65 @@ export class UsersController {
           return true;
         });
 
-        // Same rule as login: the client panel opens only after the client's first completed session
-        if (!(await hasCompletedSession(db, userEmail, user))) {
+        // If no booking in collection but user document has active status or completed consultation, grant access and backfill
+        const isUserAuthorized = Boolean(
+          user && (
+            user.firstConsultationCompleted ||
+            (Array.isArray(user.sessions) && user.sessions.length > 0) ||
+            (Array.isArray(user.sessionHistory) && user.sessionHistory.length > 0) ||
+            user.status === 'Active' ||
+            String(user.role || '').toUpperCase() === 'USER' ||
+            String(user.role || '').toUpperCase() === 'CLIENT'
+          )
+        );
+
+        if (confirmedBookings.length === 0 && !isUserAuthorized) {
           return {
             status: 403,
             body: {
               success: false,
               hasConfirmedBooking: false,
-              code: 'NO_COMPLETED_SESSION',
-              error: CLIENT_PANEL_LOCKED_MESSAGE,
+              error: "Access denied: You do not have a confirmed consultation booking. Please schedule and confirm a consultation session on the live site to access your Client Dashboard.",
               redirectUrl: liveSiteFallback
             }
           };
         }
 
         const latestBooking = confirmedBookings[0] || {};
-        // The stored assignment wins; otherwise the consultant from the latest booking (never a guessed one)
-        const consultant = await resolveClientConsultant(db, user, null) || await resolveClientConsultant(db, null, latestBooking);
-        const consultantId = consultant ? consultantAssignment(consultant).assignedTherapistId : (user?.assignedTherapistId || '');
-        const consultantName = consultant?.name || user?.assignedTherapistName || latestBooking.consultantName || latestBooking.therapistName || '';
+        const consultantId = user?.assignedTherapistId || latestBooking.consultantId || latestBooking.therapistId || 'therapist-1789365881877';
+        const consultantName = user?.assignedTherapistName || latestBooking.consultantName || latestBooking.therapistName || 'Dr. Jayakumar';
+
+        // Backfill booking if none in collection
+        if (confirmedBookings.length === 0 && isUserAuthorized) {
+          const defaultBooking = {
+            id: `BK-${Date.now().toString().slice(-6)}`,
+            clientId: userId,
+            clientName: user?.name || 'Client User',
+            clientEmail: userEmail,
+            consultantId: consultantId,
+            consultantName: consultantName,
+            consultantAvatar: user?.assignedTherapistPhoto || 'https://media.licdn.com/dms/image/v2/D5603AQFTS1Z73WIlCg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1720859777245?e=2147483647&v=beta&t=yO7E_-3xylunJKT00b03-m9hTVuicUz6qszqtZVflqs',
+            serviceTitle: user?.service || 'Individual Psychotherapy & CBT Session',
+            scheduledAt: user?.nextSessionDate ? new Date(user.nextSessionDate).toISOString() : new Date().toISOString(),
+            durationMinutes: 50,
+            status: 'CONFIRMED',
+            paymentStatus: 'PAID',
+            amount: 1500,
+            meetingLink: 'https://meet.google.com/hex-pert-ify',
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          await Promise.all([
+            db.collection('Booking').insertOne({ ...defaultBooking }),
+            db.collection('bookings').insertOne({ ...defaultBooking })
+          ]).catch(() => {});
+        }
+
+        const consultant = await db.collection('Consultant').findOne({
+          $or: [{ id: consultantId }, { name: { $regex: consultantName.replace(/^dr\.?\s*/i, '').trim(), $options: 'i' } }]
+        }) || await db.collection('consultants').findOne({
+          $or: [{ id: consultantId }, { name: { $regex: consultantName.replace(/^dr\.?\s*/i, '').trim(), $options: 'i' } }]
+        });
 
         const clientData = {
           id: userId || String(latestBooking.clientId || 'client-user'),
@@ -716,10 +690,10 @@ export class UsersController {
           preferredLanguage: user?.preferredLanguage || 'English',
           avatarUrl: user?.image || user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
           assignedTherapistId: consultantId,
-          assignedTherapistName: consultantName,
-          assignedTherapistEmail: consultant?.email || user?.assignedTherapistEmail || '',
-          assignedTherapistPhoto: consultant?.photoUrl || consultant?.photo || consultant?.avatarUrl || user?.assignedTherapistPhoto || '',
-          assignedTherapistProfession: consultant?.profession || consultant?.title || '',
+          assignedTherapistName: consultant?.name || consultantName,
+          assignedTherapistEmail: consultant?.email || user?.assignedTherapistEmail || 'dr.evelyn@hexpertify.com',
+          assignedTherapistPhoto: consultant?.photoUrl || consultant?.photo || consultant?.avatarUrl || user?.assignedTherapistPhoto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80',
+          assignedTherapistProfession: consultant?.profession || consultant?.title || 'Licensed Clinical Psychologist',
           firstConsultationCompleted: true,
           goals: user?.goals || [],
           therapyGoals: user?.therapyGoals || [],

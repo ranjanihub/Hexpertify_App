@@ -108,57 +108,6 @@ export async function hasCompletedSession(db: Db, email: string, user?: any): Pr
   return false;
 }
 
-/**
- * Finds a consultant by its custom `id`, string `_id` or ObjectId `_id`
- * (consultants created through the Backend / Prisma only have `_id`).
- */
-export async function findConsultantById(db: Db, ref: unknown): Promise<any | null> {
-  const id = String(ref ?? '').trim();
-  if (!id) return null;
-  const or: any[] = [{ id }, { _id: id }];
-  if (/^[0-9a-f]{24}$/i.test(id)) or.push({ _id: new ObjectId(id) });
-  for (const name of ['Consultant', 'consultants']) {
-    const found = await db.collection(name).findOne({ $or: or }).catch(() => null);
-    if (found) return found;
-  }
-  return null;
-}
-
-/** Finds a consultant by display name (a leading "Dr." is ignored); never guesses on an empty name */
-export async function findConsultantByName(db: Db, rawName: unknown): Promise<any | null> {
-  const clean = String(rawName ?? '').replace(/^dr\.?\s*/i, '').trim();
-  if (clean.length < 3) return null;
-  const filter = { name: { $regex: `^(dr\\.?\\s*)?${escapeRx(clean)}`, $options: 'i' } };
-  for (const name of ['Consultant', 'consultants']) {
-    const found = await db.collection(name).findOne(filter).catch(() => null);
-    if (found) return found;
-  }
-  return null;
-}
-
-/** The client's real consultant: from their latest booking or their stored assignment; null when none resolves */
-export async function resolveClientConsultant(db: Db, user: any, booking?: any): Promise<any | null> {
-  for (const ref of [booking?.consultantId, booking?.therapistId, user?.assignedTherapistId]) {
-    const found = await findConsultantById(db, ref);
-    if (found) return found;
-  }
-  for (const name of [booking?.consultantName, booking?.therapistName, user?.assignedTherapistName]) {
-    const found = await findConsultantByName(db, name);
-    if (found) return found;
-  }
-  return null;
-}
-
-/** The assignedTherapist* fields stored on a client for this consultant */
-export function consultantAssignment(consultant: any) {
-  return {
-    assignedTherapistId: consultant.id || String(consultant._id),
-    assignedTherapistName: consultant.name || '',
-    assignedTherapistEmail: consultant.email || '',
-    assignedTherapistPhoto: consultant.photoUrl || consultant.photo || consultant.avatarUrl || consultant.image || ''
-  };
-}
-
 /** Returns the record unchanged for the assigned therapist / the client, basic details for anyone else */
 export function applyClientPrivacy(viewer: ClientViewer, user: any): any {
   if (!user || !isClientRecord(user) || canViewFullClient(viewer, user)) return user;

@@ -1,11 +1,6 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
-import { isAdminUser } from '../middlewares/auth.middleware';
-import { BookingInputError, createBooking } from '../services/booking-create';
-import { resolveConsultant } from '../services/booking-refs';
-import { getDaySlots } from '../services/booking-slots';
-import { bookingInstant, isDateLabel, istLabels, weekdayOf } from '../services/booking-time';
 
 const DAYS_MAP = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -73,13 +68,10 @@ export class AvailabilityController {
       // 1. Transform all MongoDB bookings into availability slots
       bookings.forEach((b: any) => {
         const c = consultantMap.get(String(b.consultantId || b.therapistId)) || consultantMap.get((b.consultantName || '').toLowerCase());
-        // Website bookings that are not scheduled yet hold no slot
-        const when = bookingInstant(b);
-        const labels = when ? istLabels(when) : null;
-        const dateStr = (isDateLabel(b.date) ? b.date : null) || labels?.date;
-        if (!dateStr) return;
-        const dayOfWeek = DAYS_MAP[weekdayOf(dateStr)] || 'Monday';
-        const startTime = b.time || labels?.time || '10:00 AM';
+        const dObj = new Date(b.scheduledAt || b.date || b.createdAt || Date.now());
+        const dayOfWeek = DAYS_MAP[dObj.getDay()] || 'Monday';
+        const dateStr = !isNaN(dObj.getTime()) ? dObj.toISOString().split('T')[0] : (b.date || '2026-08-30');
+        const startTime = b.time || (!isNaN(dObj.getTime()) ? dObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '10:00 AM');
 
         const therapistId = String(c?.id || c?._id || b.consultantId || b.therapistId || '');
         const therapistName = b.consultantName || b.therapistName || c?.name || 'Therapist';
@@ -158,7 +150,7 @@ export class AvailabilityController {
         slots = slots.filter((s) => {
           const sCid = String(s.therapistId || '').toLowerCase();
           const sCname = String(s.therapistName || '').toLowerCase();
-          return (cIdStr && sCid === cIdStr) || (cNameStr && sCname.includes(cNameStr));
+          return (cIdStr && sCid.includes(cIdStr)) || (cNameStr && sCname.includes(cNameStr));
         });
       }
 
@@ -216,71 +208,48 @@ export class AvailabilityController {
   static async assign(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const body = req.body || {};
-      const { slotId, clientName, clientEmail } = body;
+      const { slotId, clientName, clientEmail, serviceTitle, therapistId, therapistName, date, time } = req.body || {};
 
-      // Same path as POST /api/bookings: real consultant/client/service ids, server price, both collections, notifications.
-      // An assigned slot is unpaid unless the admin records a payment.
-      const { booking, duplicate } = await createBooking(
-        {
-          ...body,
-          consultantId: body.consultantId || body.therapistId,
-          consultantName: body.consultantName || body.therapistName,
-          paymentStatus: body.paymentStatus || 'UNPAID'
-        },
-        { canSetPayment: isAdminUser(req.user), requireBookable: !isAdminUser(req.user) && !req.isInternal, overrides: slotId ? { slotId } : undefined }
-      );
+      const bookingRecord = {
+        id: `BK-${Date.now().toString().slice(-6)}`,
+        slotId,
+        clientName: clientName || 'Client User',
+        clientEmail: clientEmail || '',
+        therapistId,
+        consultantId: therapistId,
+        therapistName,
+        consultantName: therapistName,
+        serviceTitle: serviceTitle || 'Individual Clinical Psychology',
+        date,
+        time,
+        scheduledAt: date ? new Date(date).toISOString() : new Date().toISOString(),
+        status: 'CONFIRMED',
+        paymentStatus: 'PAID',
+        amount: 1500,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
 
-      if (slotId) {
-        let slotQuery: any = { id: slotId };
-        if (ObjectId.isValid(slotId)) {
-          slotQuery = { $or: [{ id: slotId }, { _id: new ObjectId(slotId) }] };
-        }
-        await db.collection('Availability').updateOne(
-          slotQuery,
-          { $set: { status: 'Booked', clientName, clientEmail, bookingId: booking?.id, updatedAt: new Date() } }
-        ).catch(() => {});
+      let slotQuery: any = { id: slotId };
+      if (slotId && ObjectId.isValid(slotId)) {
+        slotQuery = { $or: [{ id: slotId }, { _id: new ObjectId(slotId) }] };
       }
+
+      await Promise.all([
+        db.collection('Booking').insertOne(bookingRecord),
+        db.collection('Availability').updateOne(
+          slotQuery,
+          { $set: { status: 'Booked', clientName, clientEmail, updatedAt: new Date() } }
+        ).catch(() => {})
+      ]);
 
       res.json({
         success: true,
-        booking,
-        duplicate,
+        booking: bookingRecord,
         message: 'Client assigned successfully to slot in MongoDB'
       });
     } catch (error: any) {
-      if (error instanceof BookingInputError) {
-        res.status(error.status).json({ success: false, error: error.message });
-        return;
-      }
       res.status(500).json({ success: false, error: error?.message || 'Failed to assign client' });
-    }
-  }
-
-  /**
-   * GET /api/availability/slots?consultantId=&date=YYYY-MM-DD (or consultantEmail=)
-   * The consultant's one-hour slots that day in India time: weekly availability minus blocked times
-   * (Availability collection) minus the consultant's active bookings. Past slots are unavailable.
-   */
-  static async getSlots(req: Request, res: Response): Promise<void> {
-    try {
-      const date = String(req.query.date || '').trim();
-      if (!isDateLabel(date)) {
-        res.status(400).json({ success: false, error: 'date must be YYYY-MM-DD' });
-        return;
-      }
-      const consultant = await resolveConsultant({
-        id: req.query.consultantId || req.query.therapistId,
-        email: req.query.consultantEmail
-      });
-      if (!consultant) {
-        res.status(404).json({ success: false, error: 'Consultant not found' });
-        return;
-      }
-      const { slots, defaultSchedule } = await getDaySlots(consultant, date);
-      res.json({ success: true, consultantId: String(consultant._id), date, defaultSchedule, slots });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch slots' });
     }
   }
 
@@ -290,14 +259,7 @@ export class AvailabilityController {
   static async toggleBlock(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const { isBlocked, therapistName, date, time } = req.body || {};
-      const therapistId = req.body?.therapistId || req.body?.consultantId;
-      // Blocks are keyed per consultant, day and time so a later unblock finds the same record
-      const slotId = req.body?.slotId || (therapistId && date ? `BLOCK-${therapistId}-${date}-${String(time || 'all-day').replace(/\s+/g, '')}` : '');
-      if (!slotId) {
-        res.status(400).json({ success: false, error: 'slotId, or therapistId and date, are required' });
-        return;
-      }
+      const { slotId, isBlocked, therapistId, therapistName, date, time } = req.body || {};
 
       const newStatus = isBlocked ? 'Blocked' : 'Available';
       const clientName = isBlocked ? 'Blocked Time Slot' : 'Open Consultation Slot';
@@ -314,20 +276,17 @@ export class AvailabilityController {
             status: newStatus,
             clientName,
             therapistId,
-            consultantId: therapistId,
             therapistName,
             date,
             time,
             updatedAt: new Date()
-          },
-          $setOnInsert: { id: slotId, createdAt: new Date() }
+          }
         },
         { upsert: true }
       );
 
       res.json({
         success: true,
-        slotId,
         status: newStatus,
         message: `Slot ${isBlocked ? 'blocked' : 'unblocked'} successfully`
       });

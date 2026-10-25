@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
-import { idQuery } from '../services/live-content';
 
 export const DEFAULT_RESOURCES = [
   {
@@ -126,29 +125,6 @@ Write down the triggering situation, your automatic thought, the cognitive disto
   }
 ];
 
-/** sharedWith: [{ clientId, clientEmail }] — the clients a therapist shared a resource with */
-function normalizeSharedWith(value: unknown): { clientId: string; clientEmail: string }[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const seen = new Set<string>();
-  const out: { clientId: string; clientEmail: string }[] = [];
-  for (const v of value) {
-    const clientId = String((v as any)?.clientId || (v as any)?.id || '').trim();
-    const clientEmail = String((v as any)?.clientEmail || (v as any)?.email || '').toLowerCase().trim();
-    const key = clientEmail || clientId;
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push({ clientId, clientEmail });
-  }
-  return out;
-}
-
-/** A resource is visible to a client when it is public (no sharedWith) or shared with them */
-function isVisibleTo(r: any, email: string, ids: string[]): boolean {
-  if (!Array.isArray(r.sharedWith) || r.sharedWith.length === 0) return true;
-  return r.sharedWith.some((s: any) =>
-    (email && String(s?.clientEmail || '').toLowerCase() === email) || (s?.clientId && ids.includes(String(s.clientId))));
-}
-
 export class ResourcesController {
   /**
    * GET /api/resources and GET /api/admin/resources
@@ -185,20 +161,6 @@ export class ResourcesController {
           }))
         };
       });
-
-      // Per-viewer view: ?clientEmail=/clientId= limits to public + shared-with-me; ?email= sets isSaved from savedBy
-      const viewerEmail = String(req.query.email || req.query.clientEmail || '').toLowerCase().trim();
-      const clientEmail = String(req.query.clientEmail || '').toLowerCase().trim();
-      const clientId = String(req.query.clientId || '').trim();
-      if (viewerEmail || clientEmail || clientId) {
-        const list = (responseData.resources as any[])
-          .filter((r) => (!clientEmail && !clientId) || isVisibleTo(r, clientEmail, clientId ? [clientId] : []))
-          .map((r) => (viewerEmail
-            ? { ...r, isSaved: Array.isArray(r.savedBy) && r.savedBy.map((e: any) => String(e).toLowerCase()).includes(viewerEmail) }
-            : r));
-        res.json({ ...responseData, count: list.length, resources: list });
-        return;
-      }
 
       res.json(responseData);
     } catch (error: any) {
@@ -256,12 +218,8 @@ export class ResourcesController {
       const db = getDatabase();
       const body = req.body || {};
 
-      const sharedWith = normalizeSharedWith(body.sharedWith);
       const newResource = {
         ...body,
-        ...(sharedWith ? { sharedWith, isSharedByTherapist: sharedWith.length > 0 || Boolean(body.isSharedByTherapist) } : {}),
-        savedBy: [],
-        isSaved: false,
         id: body.id || `RES-${Date.now()}`,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -291,8 +249,6 @@ export class ResourcesController {
       const updates = { ...req.body, updatedAt: new Date() };
       delete updates.id;
       delete updates._id;
-      delete updates.savedBy; // per-user saves go through PUT /api/resources/:id/save
-      if ('sharedWith' in updates) updates.sharedWith = normalizeSharedWith(updates.sharedWith) || [];
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Resource ID is required' });
@@ -305,16 +261,10 @@ export class ResourcesController {
         query = { $or: [{ _id: new ObjectId(id) }, { id }] };
       }
 
-      // Never upsert: a deleted resource must not come back as a stub
-      const result = await db.collection('Resource').updateOne(query, { $set: updates });
-      await db.collection('resources').updateOne(query, { $set: updates }).catch(() => {});
+      await db.collection('Resource').updateOne(query, { $set: updates }, { upsert: true });
+      await db.collection('resources').updateOne(query, { $set: updates }, { upsert: true }).catch(() => {});
 
       cacheService.invalidateTags(['resources']);
-
-      if (!result.matchedCount) {
-        res.status(404).json({ success: false, error: 'Resource not found' });
-        return;
-      }
 
       res.json({
         success: true,
@@ -322,38 +272,6 @@ export class ResourcesController {
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to update resource' });
-    }
-  }
-
-  /**
-   * PUT /api/resources/:id/save { email, saved } — saves/unsaves the resource for one user
-   */
-  static async setSaved(req: Request, res: Response): Promise<void> {
-    try {
-      const id = String(req.params.id || '');
-      const email = String(req.body?.email || req.body?.clientEmail || '').toLowerCase().trim();
-      const saved = req.body?.saved !== false;
-      if (!id || !email) {
-        res.status(400).json({ success: false, error: 'Resource ID and email are required' });
-        return;
-      }
-
-      const db = getDatabase();
-      const query = idQuery(id);
-      const change: any = saved
-        ? { $addToSet: { savedBy: email }, $set: { updatedAt: new Date() } }
-        : { $pull: { savedBy: email }, $set: { updatedAt: new Date() } };
-      const result = await db.collection('Resource').updateOne(query, change);
-      await db.collection('resources').updateOne(query, change).catch(() => {});
-      cacheService.invalidateTags(['resources']);
-
-      if (!result.matchedCount) {
-        res.status(404).json({ success: false, error: 'Resource not found' });
-        return;
-      }
-      res.json({ success: true, id, saved });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to save resource' });
     }
   }
 
@@ -370,7 +288,10 @@ export class ResourcesController {
       }
 
       const db = getDatabase();
-      const query = idQuery(id);
+      let query: any = { id };
+      if (ObjectId.isValid(id)) {
+        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      }
 
       await db.collection('Resource').deleteMany(query);
       await db.collection('resources').deleteMany(query);

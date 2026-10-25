@@ -2,9 +2,6 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
-import { idQuery } from '../services/live-content';
-
-const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 interface SSEClient {
   id: string;
@@ -31,9 +28,8 @@ export class MessagesController {
   }
 
   /**
-   * The client's assigned therapist: User.assignedTherapistId (or assignedTherapistEmail) matched
-   * against Consultant by id OR _id, else the therapist of their latest booking. Read-only: never
-   * writes an assignment and never picks an arbitrary consultant. Returns null when there is none.
+   * Helper to retrieve a client's exclusively assigned consultant.
+   * Checks User assignment -> Booking history -> Default primary consultant.
    */
   static async getClientAssignedConsultant(clientEmail?: string, clientId?: string): Promise<{
     id: string;
@@ -43,43 +39,101 @@ export class MessagesController {
     avatarUrl: string;
     clientId: string;
     clientEmail: string;
-  } | null> {
+  }> {
     const db = getDatabase();
     const cleanEmail = String(clientEmail || '').toLowerCase().trim();
     const cleanId = String(clientId || '').trim();
-    if (!cleanEmail && !cleanId) return null;
 
-    const userOr: any[] = [
-      ...(cleanEmail ? [{ email: cleanEmail }] : []),
-      ...(cleanId ? idQuery(cleanId).$or : [])
-    ];
-    const user = await db.collection<any>('User').findOne({ $or: userOr }) ||
-                 await db.collection<any>('users').findOne({ $or: userOr });
+    let targetTherapistId = '';
+    let targetTherapistName = '';
+    let targetTherapistEmail = '';
+    let resolvedClientId = cleanId;
+    let resolvedClientEmail = cleanEmail;
 
-    const resolvedClientId = user ? String(user.id || user._id) : cleanId;
-    const resolvedClientEmail = String(user?.email || cleanEmail).toLowerCase();
+    // 1. Check User table for assigned therapist
+    if (cleanEmail || cleanId) {
+      const user = await db.collection<any>('User').findOne({
+        $or: [
+          ...(cleanEmail ? [{ email: cleanEmail }] : []),
+          ...(cleanId ? [{ id: cleanId }, { _id: cleanId }] : [])
+        ]
+      }) || await db.collection<any>('users').findOne({
+        $or: [
+          ...(cleanEmail ? [{ email: cleanEmail }] : []),
+          ...(cleanId ? [{ id: cleanId }, { _id: cleanId }] : [])
+        ]
+      });
 
-    const findConsultant = async (query: any) =>
-      await db.collection<any>('Consultant').findOne(query) || await db.collection<any>('consultants').findOne(query);
-
-    let consultant: any = null;
-    if (user?.assignedTherapistId) consultant = await findConsultant(idQuery(String(user.assignedTherapistId)));
-    if (!consultant && user?.assignedTherapistEmail) consultant = await findConsultant({ email: String(user.assignedTherapistEmail).toLowerCase() });
-
-    // No direct assignment: the therapist of the client's most recent booking
-    if (!consultant && !user?.assignedTherapistId) {
-      const bookingOr: any[] = [
-        ...(resolvedClientEmail ? [{ clientEmail: resolvedClientEmail }] : []),
-        ...[...new Set([resolvedClientId, cleanId].filter(Boolean))].flatMap((id) => [{ clientId: id }, { userId: id }])
-      ];
-      const booking = await db.collection<any>('Booking').findOne({ $or: bookingOr }, { sort: { scheduledAt: -1, createdAt: -1 } }) ||
-                      await db.collection<any>('bookings').findOne({ $or: bookingOr }, { sort: { scheduledAt: -1, createdAt: -1 } });
-      const bookedId = String(booking?.consultantId || booking?.therapistId || '');
-      if (bookedId) consultant = await findConsultant(idQuery(bookedId));
+      if (user) {
+        resolvedClientId = user.id || String(user._id || cleanId);
+        resolvedClientEmail = (user.email || cleanEmail).toLowerCase();
+        targetTherapistId = user.assignedTherapistId || '';
+        targetTherapistName = user.assignedTherapistName || user.therapist || '';
+        targetTherapistEmail = user.assignedTherapistEmail || '';
+      }
     }
 
-    if (!consultant) return null;
+    // 2. If no direct assignment in User, check most recent booking
+    if (!targetTherapistId && !targetTherapistName && (resolvedClientEmail || resolvedClientId)) {
+      const booking = await db.collection<any>('Booking').findOne(
+        {
+          $or: [
+            ...(resolvedClientEmail ? [{ clientEmail: resolvedClientEmail }] : []),
+            ...(resolvedClientId ? [{ clientId: resolvedClientId }, { userId: resolvedClientId }] : [])
+          ]
+        },
+        { sort: { scheduledAt: -1, createdAt: -1 } }
+      ) || await db.collection<any>('bookings').findOne(
+        {
+          $or: [
+            ...(resolvedClientEmail ? [{ clientEmail: resolvedClientEmail }] : []),
+            ...(resolvedClientId ? [{ clientId: resolvedClientId }, { userId: resolvedClientId }] : [])
+          ]
+        },
+        { sort: { scheduledAt: -1, createdAt: -1 } }
+      );
 
+      if (booking) {
+        targetTherapistId = booking.consultantId || booking.therapistId || '';
+        targetTherapistName = booking.consultantName || booking.therapistName || '';
+        targetTherapistEmail = booking.consultantEmail || '';
+      }
+    }
+
+    // 3. Lookup consultant in Consultant / consultants collection
+    let consultant: any = null;
+    const conds: any[] = [];
+    if (targetTherapistId) {
+      conds.push({ id: targetTherapistId });
+      conds.push({ _id: targetTherapistId });
+      if (ObjectId.isValid(targetTherapistId)) {
+        conds.push({ _id: new ObjectId(targetTherapistId) });
+      }
+    }
+    if (targetTherapistEmail) {
+      conds.push({ email: targetTherapistEmail.toLowerCase() });
+    }
+    if (targetTherapistName) {
+      const cleanName = targetTherapistName.replace(/^dr\.?\s*/i, '').trim();
+      conds.push({ name: { $regex: cleanName || targetTherapistName, $options: 'i' } });
+    }
+
+    if (conds.length > 0) {
+      consultant = await db.collection<any>('Consultant').findOne({ $or: conds }) ||
+                   await db.collection<any>('consultants').findOne({ $or: conds });
+    }
+
+    // 4. Fallback to primary consultant if none matched yet
+    if (!consultant) {
+      consultant = await db.collection<any>('Consultant').findOne({}) ||
+                   await db.collection<any>('consultants').findOne({});
+    }
+
+    const id = consultant?.id || String(consultant?._id || 'doc-1');
+    const name = consultant?.name || 'Dr. Evelyn Reed';
+    const email = consultant?.email || 'dr.evelyn@hexpertify.com';
+    const title = consultant?.title || consultant?.profession || 'Licensed Clinical Psychologist';
+    
     // Normalize Google search URLs and check all photo properties
     const normalizeImg = (u?: string) => {
       if (!u || typeof u !== 'string') return '';
@@ -93,14 +147,31 @@ export class MessagesController {
       return t;
     };
 
-    const rawPhoto = consultant.photo || consultant.photoUrl || consultant.avatarUrl || consultant.image;
+    const rawPhoto = consultant?.photo || consultant?.photoUrl || consultant?.avatarUrl || consultant?.image;
+    const avatarUrl = normalizeImg(rawPhoto) || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80';
 
-    return {
-      id: String(consultant.id || consultant._id),
-      name: consultant.name || '',
-      email: String(consultant.email || '').toLowerCase(),
-      title: consultant.title || consultant.profession || '',
-      avatarUrl: normalizeImg(rawPhoto),
+    // 5. Persist to User table if not already present, ensuring permanent lock for any new client
+    if (resolvedClientEmail || resolvedClientId) {
+      try {
+        await Promise.all([
+          db.collection<any>('User').updateOne(
+            { $or: [...(resolvedClientEmail ? [{ email: resolvedClientEmail }] : []), ...(resolvedClientId ? [{ id: resolvedClientId }, { _id: resolvedClientId }] : [])] },
+            { $set: { assignedTherapistId: id, assignedTherapistName: name, assignedTherapistEmail: email, assignedTherapistPhoto: avatarUrl, updatedAt: new Date() } }
+          ),
+          db.collection<any>('users').updateOne(
+            { $or: [...(resolvedClientEmail ? [{ email: resolvedClientEmail }] : []), ...(resolvedClientId ? [{ id: resolvedClientId }, { _id: resolvedClientId }] : [])] },
+            { $set: { assignedTherapistId: id, assignedTherapistName: name, assignedTherapistEmail: email, assignedTherapistPhoto: avatarUrl, updatedAt: new Date() } }
+          )
+        ]);
+      } catch {}
+    }
+
+    return { 
+      id, 
+      name, 
+      email, 
+      title, 
+      avatarUrl,
       clientId: resolvedClientId,
       clientEmail: resolvedClientEmail
     };
@@ -108,7 +179,7 @@ export class MessagesController {
 
   /**
    * GET /api/messages/consultant
-   * Returns the client's exclusively assigned consultant info & presence (consultant: null when none)
+   * Returns the client's exclusively assigned consultant info & presence
    */
   static async getAssignedConsultant(req: Request, res: Response): Promise<void> {
     try {
@@ -116,12 +187,8 @@ export class MessagesController {
       const clientId = String(req.query.clientId || req.query.id || '').trim();
 
       const consultant = await MessagesController.getClientAssignedConsultant(clientEmail, clientId);
-      if (!consultant) {
-        res.json({ success: true, consultant: null, message: 'No therapist assigned yet' });
-        return;
-      }
       const onlineEmails = MessagesController.getOnlineEmails();
-      const isOnline = Boolean(consultant.email) && onlineEmails.includes(consultant.email);
+      const isOnline = onlineEmails.includes(consultant.email.toLowerCase());
 
       res.json({
         success: true,
@@ -259,7 +326,7 @@ export class MessagesController {
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const { clientEmail, clientId, consultantId, consultantName, consultantEmail, role } = req.query;
+      const { clientEmail, clientId, consultantId, consultantName, role } = req.query;
 
       const cEmail = clientEmail ? String(clientEmail).toLowerCase().trim() : '';
       const cId = clientId ? String(clientId).trim() : '';
@@ -267,10 +334,6 @@ export class MessagesController {
       // If this request is from or for a client, enforce that they ONLY see messages with their assigned consultant!
       if (cEmail || cId || role === 'client') {
         const assigned = await MessagesController.getClientAssignedConsultant(cEmail, cId);
-        if (!assigned) {
-          res.json({ success: true, count: 0, messages: [], consultant: null });
-          return;
-        }
         const cleanConsultantName = assigned.name.replace(/^dr\.?\s*/i, '').trim();
         const userClientEmail = assigned.clientEmail || cEmail;
         const userClientId = assigned.clientId || cId;
@@ -288,12 +351,12 @@ export class MessagesController {
           { recipientId: assigned.id },
           { receiverId: assigned.id },
           { senderId: assigned.id },
-          ...(assigned.email ? [{ consultantEmail: assigned.email }, { recipientEmail: assigned.email }, { senderEmail: assigned.email }] : []),
-          ...(cleanConsultantName ? [
-            { consultantName: { $regex: new RegExp(escapeRx(cleanConsultantName), 'i') } },
-            { receiverName: { $regex: new RegExp(escapeRx(cleanConsultantName), 'i') } },
-            { senderName: { $regex: new RegExp(escapeRx(cleanConsultantName), 'i') } }
-          ] : [])
+          { consultantEmail: assigned.email.toLowerCase() },
+          { recipientEmail: assigned.email.toLowerCase() },
+          { senderEmail: assigned.email.toLowerCase() },
+          { consultantName: { $regex: new RegExp(cleanConsultantName, 'i') } },
+          { receiverName: { $regex: new RegExp(cleanConsultantName, 'i') } },
+          { senderName: { $regex: new RegExp(cleanConsultantName, 'i') } }
         ];
 
         const query: any = {
@@ -323,40 +386,23 @@ export class MessagesController {
         return;
       }
 
-      // A therapist's messages with their clients, by consultant id (custom id or _id), email or name
+      // If consultant is querying for their messages with their clients
       const query: any = {};
-      const thId = String(consultantId || '').trim();
-      const thEmail = String(consultantEmail || '').toLowerCase().trim();
-      if (thId || thEmail || consultantName) {
-        const consultantOr: any[] = [...(thId ? idQuery(thId).$or : []), ...(thEmail ? [{ email: thEmail }] : [])];
-        const consultant: any = consultantOr.length
-          ? await db.collection<any>('Consultant').findOne({ $or: consultantOr }).catch(() => null)
-          : null;
-        const ids = [...new Set([thId, consultant?.id, consultant?._id].filter(Boolean).map(String))];
-        const emails = [...new Set([thEmail, consultant?.email].filter(Boolean).map((e) => String(e).toLowerCase()))];
-
+      if (consultantId || consultantName) {
         const cConditions: any[] = [];
-        if (ids.length) {
-          cConditions.push({ consultantId: { $in: ids } }, { recipientId: { $in: ids } }, { receiverId: { $in: ids } }, { senderId: { $in: ids } });
+        if (consultantId) {
+          cConditions.push({ consultantId: String(consultantId) });
+          cConditions.push({ recipientId: String(consultantId) });
+          cConditions.push({ receiverId: String(consultantId) });
+          cConditions.push({ senderId: String(consultantId) });
         }
-        if (emails.length) {
-          cConditions.push({ consultantEmail: { $in: emails } }, { recipientEmail: { $in: emails } }, { senderEmail: { $in: emails } });
-        }
-        const cleanName = String(consultantName || '').replace(/^dr\.?\s*/i, '').trim();
-        if (cleanName && !ids.length && !emails.length) {
-          cConditions.push({ consultantName: { $regex: new RegExp(escapeRx(cleanName), 'i') } });
-          cConditions.push({ receiverName: { $regex: new RegExp(escapeRx(cleanName), 'i') } });
-          cConditions.push({ senderName: { $regex: new RegExp(escapeRx(cleanName), 'i') } });
-        }
-        if (!cConditions.length) {
-          res.json({ success: true, count: 0, messages: [] });
-          return;
+        if (consultantName) {
+          const cleanName = String(consultantName).replace(/^dr\.?\s*/i, '').trim();
+          cConditions.push({ consultantName: { $regex: new RegExp(cleanName, 'i') } });
+          cConditions.push({ receiverName: { $regex: new RegExp(cleanName, 'i') } });
+          cConditions.push({ senderName: { $regex: new RegExp(cleanName, 'i') } });
         }
         query.$or = cConditions;
-      } else if (['consultant', 'therapist'].includes(String(role || '').toLowerCase())) {
-        // A therapist who did not identify themselves sees nothing rather than everyone's messages
-        res.json({ success: true, count: 0, messages: [] });
-        return;
       }
 
       const messages = await db.collection<any>('Message')
@@ -401,10 +447,6 @@ export class MessagesController {
       // 🔒 ENFORCEMENT: If the sender is a client, override & lock recipient strictly to their assigned consultant!
       if (senderRole === 'client') {
         const assigned = await MessagesController.getClientAssignedConsultant(clientEmail, clientId);
-        if (!assigned) {
-          res.status(409).json({ success: false, code: 'NO_THERAPIST', error: 'You do not have an assigned therapist yet.' });
-          return;
-        }
         consultantId = assigned.id;
         consultantName = assigned.name;
         consultantEmail = assigned.email.toLowerCase();

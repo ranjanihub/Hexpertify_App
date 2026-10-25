@@ -63,12 +63,12 @@ export default function ConsultantsContainer({
   const handleDelete = async (id: string) => {
     try {
       const result = await deleteConsultant(id);
-      if (!result.success) throw new Error((result as { error?: string }).error || "Failed to delete consultant");
+      if (!result.success) throw new Error("Failed to delete consultant");
       toast.success("Consultant deleted successfully");
       // Refresh the page to show updated data
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete consultant");
+      toast.error("Failed to delete consultant");
     }
   };
 

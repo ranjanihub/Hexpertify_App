@@ -1,29 +1,6 @@
 import { Request, Response } from 'express';
+import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
-import { idQuery, newId } from '../services/live-content';
-
-/** Live_Panel/prisma/schema.prisma enum AssetCategory */
-const ASSET_CATEGORIES = ['PROFESSIONAL', 'BLOG', 'CONSULTANT', 'BANNER', 'CERTIFICATE', 'ICON', 'OTHER'] as const;
-type AssetCategory = typeof ASSET_CATEGORIES[number];
-
-/** Maps the admin panel's labels (Banner, Client, PDF File, Video...) onto the website's enum */
-function toAssetCategory(value: unknown): AssetCategory {
-  const v = String(value || '').trim().toUpperCase();
-  if ((ASSET_CATEGORIES as readonly string[]).includes(v)) return v as AssetCategory;
-  if (v === 'CLIENT' || v === 'PROFILE') return 'PROFESSIONAL';
-  if (v === 'THERAPIST') return 'CONSULTANT';
-  if (v === 'ARTICLE') return 'BLOG';
-  return 'OTHER';
-}
-
-/** Cloudinary public id from a delivery URL (…/upload/[transformations/]v123/folder/name.ext → folder/name) */
-function cloudinaryPublicId(url: string): string {
-  const m = url.match(/res\.cloudinary\.com\/[^/]+\/[^/]+\/upload\/(?:[^/]+\/)*?v\d+\/(.+?)(?:\.[a-z0-9]+)?$/i);
-  return m ? decodeURIComponent(m[1]) : '';
-}
-
-/** By _id (string or ObjectId), id, or the id the admin panel generated before saving */
-const assetQuery = (id: string) => ({ $or: [...idQuery(id).$or, { clientRef: id }] });
 
 export class AssetsController {
   /**
@@ -55,7 +32,12 @@ export class AssetsController {
       const id = String(req.params.id || req.query.id || '');
       const db = getDatabase();
 
-      const asset = await db.collection('Asset').findOne(assetQuery(id));
+      let query: any = { id };
+      if (ObjectId.isValid(id)) {
+        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      }
+
+      const asset = await db.collection('Asset').findOne(query);
       if (!asset) {
         res.status(404).json({ success: false, error: 'Asset not found' });
         return;
@@ -78,36 +60,18 @@ export class AssetsController {
       const db = getDatabase();
       const body = req.body || {};
 
-      const url = String(body.url || '').trim();
-      if (!url) {
-        res.status(400).json({ success: false, error: 'Asset url is required' });
-        return;
-      }
-
-      // The website reads Asset through Prisma: string _id, enum category, required url and publicId
-      const id = newId();
-      const label = String(body.category || body.type || '').trim();
       const newAsset = {
-        _id: id,
-        id,
-        name: String(body.name || '').trim() || 'Untitled',
-        category: toAssetCategory(label),
-        url,
-        publicId: String(body.publicId || '').trim() || cloudinaryPublicId(url),
-        // Admin panel display fields (ignored by the website)
-        type: label || 'Other',
-        ...(body.size ? { size: String(body.size) } : {}),
-        ...(body.uploadedDate ? { uploadedDate: String(body.uploadedDate) } : {}),
-        ...(body.id ? { clientRef: String(body.id) } : {}),
+        ...body,
+        id: body.id || `AST-${Date.now()}`,
         createdAt: new Date(),
         updatedAt: new Date()
       };
 
-      await db.collection('Asset').insertOne(newAsset as any);
+      const result = await db.collection('Asset').insertOne(newAsset);
 
       res.status(201).json({
         success: true,
-        asset: newAsset,
+        asset: { ...newAsset, _id: result.insertedId },
         message: 'Asset created successfully in MongoDB'
       });
     } catch (error: any) {
@@ -121,20 +85,9 @@ export class AssetsController {
   static async update(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || req.body?.id || req.body?._id || '');
-      const body = req.body || {};
-      const updates: any = { updatedAt: new Date() };
-      if (body.name !== undefined) updates.name = String(body.name).trim() || 'Untitled';
-      if (body.category !== undefined || body.type !== undefined) {
-        const label = String(body.category ?? body.type ?? '').trim();
-        updates.category = toAssetCategory(label);
-        updates.type = label || 'Other';
-      }
-      if (body.url) {
-        updates.url = String(body.url).trim();
-        updates.publicId = String(body.publicId || '').trim() || cloudinaryPublicId(updates.url);
-      } else if (body.publicId !== undefined) {
-        updates.publicId = String(body.publicId || '').trim();
-      }
+      const updates = { ...req.body, updatedAt: new Date() };
+      delete updates.id;
+      delete updates._id;
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Asset ID is required' });
@@ -142,11 +95,12 @@ export class AssetsController {
       }
 
       const db = getDatabase();
-      const result = await db.collection('Asset').updateOne(assetQuery(id), { $set: updates });
-      if (!result.matchedCount) {
-        res.status(404).json({ success: false, error: 'Asset not found' });
-        return;
+      let query: any = { id };
+      if (ObjectId.isValid(id)) {
+        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
       }
+
+      await db.collection('Asset').updateOne(query, { $set: updates }, { upsert: true });
 
       res.json({
         success: true,
@@ -170,7 +124,12 @@ export class AssetsController {
       }
 
       const db = getDatabase();
-      await db.collection('Asset').deleteOne(assetQuery(id));
+      let query: any = { id };
+      if (ObjectId.isValid(id)) {
+        query = { $or: [{ _id: new ObjectId(id) }, { id }] };
+      }
+
+      await db.collection('Asset').deleteOne(query);
 
       res.json({
         success: true,

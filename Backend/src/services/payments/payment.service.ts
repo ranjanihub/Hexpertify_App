@@ -3,12 +3,6 @@ import { getDatabase } from '../../db/mongodb';
 import { config } from '../../config';
 import { cacheService } from '../cache.service';
 import { dispatchBookingConfirmed } from '../booking-confirmation.service';
-import { BookingInputError, buildBookingDoc, insertBooking } from '../booking-create';
-import { resolveConsultant } from '../booking-refs';
-import { consultantBookingBlockReason } from '../live-content';
-import { slotUnavailableReason } from '../booking-slots';
-import { bookingStatusOf, normalizePaymentStatus } from '../booking-status';
-import { bookingInstant } from '../booking-time';
 import { MailService } from '../mail.service';
 import { portalUrl, WEBSITE_URL } from '../email-layout';
 import { getActivePaymentProvider, getPaymentProvider } from './index';
@@ -31,15 +25,6 @@ export const toRupees = (paise: number) => Math.round(Number(paise || 0)) / 100;
 
 function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-}
-
-/** The chosen time slot is taken, blocked or not offered (HTTP 409) */
-export class SlotUnavailableError extends PaymentGatewayError {
-  status = 409;
-  constructor(message: string) {
-    super(message);
-    this.name = 'SlotUnavailableError';
-  }
 }
 
 function idQuery(id: string): any {
@@ -119,34 +104,45 @@ export interface BackendOrderInput {
  */
 export async function createOrderForNewBooking(input: BackendOrderInput) {
   const provider = getActivePaymentProvider();
+  const db = getDatabase();
   await expireStalePayments();
 
-  // Same canonical booking as POST /api/bookings: real consultant/client/service ids, India-time scheduledAt,
-  // server price (client-supplied amounts are never used)
-  let booking: Record<string, any>;
-  try {
-    booking = await buildBookingDoc(
-      { ...input, clientEmail: (input.clientEmail || '').toLowerCase() },
-      { canSetPayment: false, requireBookable: true, overrides: { status: 'PENDING_PAYMENT', paymentStatus: 'PENDING' } }
-    );
-  } catch (err) {
-    if (err instanceof BookingInputError) throw new PaymentGatewayError(err.message);
-    throw err;
-  }
-  if (!booking.scheduledAt) throw new PaymentGatewayError('Please pick a date and time slot for the session.');
+  const price = await resolveSessionPrice(input.serviceId, input.consultantId);
+  const bookingId = newId('BK');
+  const now = new Date();
 
-  // The slot must be offered by the consultant and not blocked or booked by someone else
-  const consultant = await resolveConsultant({ id: booking.consultantId });
-  const reason = await slotUnavailableReason(consultant, booking.scheduledAt, booking.durationMinutes);
-  if (reason) throw new SlotUnavailableError(reason);
+  const booking = {
+    id: bookingId,
+    clientId: input.clientId,
+    clientName: input.clientName || 'Client',
+    clientEmail: (input.clientEmail || '').toLowerCase(),
+    clientPhone: input.clientPhone || '',
+    consultantId: input.consultantId,
+    consultantName: input.consultantName,
+    consultantAvatar: input.consultantAvatar,
+    serviceId: input.serviceId,
+    serviceTitle: input.serviceTitle || price.serviceTitle || 'Individual Clinical Consultation',
+    date: input.date,
+    time: input.time,
+    scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : now,
+    durationMinutes: input.durationMinutes || price.durationMinutes || 50,
+    amount: price.amount,
+    paymentStatus: 'PENDING',
+    status: 'PENDING_PAYMENT',
+    meetingLink: 'https://meet.google.com/hex-pert-ify',
+    channel: 'Video Call (Google Meet)',
+    notes: input.notes || '',
+    createdAt: now,
+    updatedAt: now
+  };
 
-  await insertBooking(booking);
-  const bookingId = booking.id;
+  await db.collection('Booking').insertOne({ ...booking });
+  await db.collection('bookings').insertOne({ ...booking }).catch(() => {});
 
   return createPaymentForBooking(provider, {
     bookingId,
     bookingSource: 'backend',
-    amount: booking.amount,
+    amount: price.amount,
     clientId: booking.clientId || booking.clientEmail || bookingId,
     clientName: booking.clientName,
     clientEmail: booking.clientEmail,
@@ -178,8 +174,6 @@ export async function createOrderForLiveBooking(liveBookingId: string) {
     db.collection('Service').findOne({ _id: booking.serviceId })
   ]);
   if (!service || !(Number(service.price) > 0)) throw new PaymentGatewayError('This service has no valid price');
-  const blockReason = consultantBookingBlockReason(consultant);
-  if (blockReason) throw new PaymentGatewayError(blockReason);
 
   await db.collection('Booking').updateOne(
     { _id: liveBookingId as any },
@@ -197,8 +191,7 @@ export async function createOrderForLiveBooking(liveBookingId: string) {
     consultantId: String(booking.consultantId),
     consultantName: consultant?.name,
     serviceTitle: service.name,
-    // Website bookings are paid first and scheduled later: no session time yet
-    scheduledAt: booking.scheduledAt || undefined
+    scheduledAt: booking.createdAt
   });
 }
 
@@ -476,83 +469,7 @@ export async function applyWebhookEvent(providerName: string, event: WebhookEven
   await syncRefundState(payment.id);
 }
 
-const escapeRx = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/**
- * Bookings an administrator marked paid without a gateway payment, listed as MANUAL transactions
- * (provider 'manual', method 'MANUAL') so the admin transactions view matches revenue.
- */
-async function listManualPayments(filters: { status?: string; provider?: string; from?: string; to?: string; q?: string }) {
-  if (filters.provider && String(filters.provider).toLowerCase() !== 'manual') return [];
-  const db = getDatabase();
-  const bookings: any[] = await db.collection('Booking').find({
-    paymentStatus: { $regex: '^(paid|partially[ _]refunded|refund[ _]pending|refunded)$', $options: 'i' },
-    $or: [{ paymentId: { $exists: false } }, { paymentId: null }, { paymentId: '' }]
-  }).toArray().catch(() => []);
-
-  // Website bookings store only ids
-  const idsOf = (field: string, missing: string) => bookings.filter((b) => !b[missing] && b[field]).map((b) => b[field]);
-  const [users, consultants, services]: any[][] = await Promise.all([
-    db.collection('User').find({ _id: { $in: idsOf('userId', 'clientEmail') } }).toArray().catch(() => []),
-    db.collection('Consultant').find({ _id: { $in: idsOf('consultantId', 'consultantName') } }).toArray().catch(() => []),
-    db.collection('Service').find({ _id: { $in: idsOf('serviceId', 'serviceTitle') } }).toArray().catch(() => [])
-  ]);
-  const byId = (docs: any[]) => new Map(docs.map((d) => [String(d._id), d]));
-  const userMap = byId(users);
-  const consultantMap = byId(consultants);
-  const serviceMap = byId(services);
-
-  const status = filters.status ? String(filters.status).toUpperCase() : '';
-  const from = filters.from ? new Date(filters.from).getTime() : NaN;
-  const to = filters.to ? new Date(`${filters.to}T23:59:59.999Z`).getTime() : NaN;
-  const q = filters.q ? new RegExp(escapeRx(String(filters.q)), 'i') : null;
-
-  return bookings
-    .filter((b) => !['PENDING_PAYMENT', 'EXPIRED'].includes(bookingStatusOf(b)))
-    .map((b) => {
-      const user = userMap.get(String(b.userId));
-      const consultant = consultantMap.get(String(b.consultantId));
-      const service = serviceMap.get(String(b.serviceId));
-      const bookingId = String(b.id || b._id);
-      const amount = Number(b.amount);
-      const refunded = Number(b.refundedAmount);
-      return {
-        id: `MANUAL-${bookingId}`,
-        bookingId,
-        bookingSource: b.id ? 'backend' : 'live',
-        provider: 'manual',
-        method: 'MANUAL',
-        manual: true,
-        amount: Number.isFinite(amount) ? amount : 0,
-        currency: config.payment.currency,
-        status: normalizePaymentStatus(b.paymentStatus) || 'PAID',
-        refundedAmount: Number.isFinite(refunded) ? refunded : 0,
-        refunds: [],
-        clientId: String(b.clientId || b.userId || ''),
-        clientName: b.clientName || user?.name || 'Client',
-        clientEmail: String(b.clientEmail || user?.email || '').toLowerCase(),
-        consultantId: String(b.consultantId || b.therapistId || ''),
-        consultantName: b.consultantName || b.therapistName || consultant?.name || '',
-        serviceTitle: b.serviceTitle || service?.name || service?.title || '',
-        scheduledAt: bookingInstant(b),
-        date: b.date,
-        time: b.time,
-        paidAt: b.updatedAt || b.createdAt,
-        createdAt: b.createdAt,
-        updatedAt: b.updatedAt
-      };
-    })
-    .filter((p) => {
-      if (status && p.status !== status) return false;
-      const created = new Date(p.createdAt || 0).getTime();
-      if (!isNaN(from) && created < from) return false;
-      if (!isNaN(to) && created > to) return false;
-      if (q && ![p.id, p.bookingId, p.clientName, p.clientEmail, p.consultantName].some((v) => q.test(String(v || '')))) return false;
-      return true;
-    });
-}
-
-/** Admin listing with booking-facing fields in rupees: gateway payments plus manually recorded paid bookings */
+/** Admin listing with booking-facing fields in rupees */
 export async function listPayments(filters: { status?: string; provider?: string; from?: string; to?: string; q?: string }) {
   const db = getDatabase();
   await expireStalePayments();
@@ -570,13 +487,8 @@ export async function listPayments(filters: { status?: string; provider?: string
     query.$or = [{ id: rx }, { bookingId: rx }, { clientName: rx }, { clientEmail: rx }, { consultantName: rx }, { providerOrderId: rx }, { providerPaymentId: rx }];
   }
 
-  const [payments, manual] = await Promise.all([
-    db.collection(PAYMENTS).find(query).sort({ createdAt: -1 }).limit(500).toArray(),
-    listManualPayments(filters)
-  ]);
-  return [...payments.map(serializePayment), ...manual]
-    .sort((x: any, y: any) => new Date(y.createdAt || 0).getTime() - new Date(x.createdAt || 0).getTime())
-    .slice(0, 500);
+  const payments = await db.collection(PAYMENTS).find(query).sort({ createdAt: -1 }).limit(500).toArray();
+  return payments.map(serializePayment);
 }
 
 export function serializePayment(p: any) {

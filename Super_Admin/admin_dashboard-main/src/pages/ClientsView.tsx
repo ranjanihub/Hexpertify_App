@@ -194,16 +194,16 @@ export const ClientsView: React.FC = () => {
                         </div>
                         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
                           <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{c.phone || '—'}</span>
+                          <span>{c.phone || '+1 555-019-2834'}</span>
                         </div>
                       </td>
                       <td className="py-4 px-6 font-bold text-slate-800 whitespace-nowrap text-center">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 font-bold text-slate-800 text-xs">
                           <UserCheck className="w-3.5 h-3.5 text-[#5e2be2] shrink-0" />
-                          <span>{c.assignedTherapistName || 'Not assigned'}</span>
+                          <span>{c.assignedTherapistName || 'Dr. Evelyn Reed'}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 font-medium text-slate-600 whitespace-nowrap text-center">{c.service || '—'}</td>
+                      <td className="py-4 px-6 font-medium text-slate-600 whitespace-nowrap text-center">{c.service || 'Individual Therapy Consultation'}</td>
                       <td className="py-4 px-6 whitespace-nowrap text-center">
                         <span
                           className={`text-[11px] px-3 py-1 font-bold rounded-full inline-block ${
@@ -371,11 +371,11 @@ export const ClientsView: React.FC = () => {
                   </span>
                   <span className="flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>{selectedClient.phone || '—'}</span>
+                    <span>{selectedClient.phone}</span>
                   </span>
                   <span className="flex items-center gap-1">
                     <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>Therapist: <strong className="text-slate-800">{selectedClient.assignedTherapistName || 'Not assigned'}</strong></span>
+                    <span>Therapist: <strong className="text-slate-800">{selectedClient.assignedTherapistName || 'Dr. Evelyn Reed'}</strong></span>
                     <button
                       onClick={() => {
                         setAssigningClient(selectedClient);

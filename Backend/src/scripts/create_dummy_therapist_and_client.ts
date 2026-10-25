@@ -82,9 +82,8 @@ async function run() {
         email: clientEmail,
         password: hashedPassword,
         role: 'CLIENT',
-        phone: '+91 98765 43210',
         phoneNumber: '+91 98765 43210',
-        emailVerified: new Date(), // Prisma expects DateTime | null
+        emailVerified: true,
         assignedTherapistId: dummyTherapistId,
         assignedTherapistName: dummyTherapistName,
         assignedTherapistEmail: dummyTherapistEmail,
@@ -92,7 +91,6 @@ async function run() {
         updatedAt: new Date()
       },
       $setOnInsert: {
-        _id: clientId as any, // string _id, as Prisma expects
         createdAt: new Date()
       }
     },

@@ -28,7 +28,7 @@ export const authConfig: AuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
+          where: { email: credentials.email },
         });
 
         if (!user) throw new Error("Email not found");
@@ -71,53 +71,33 @@ export const authConfig: AuthOptions = {
           }
 
           // Lookup or create the user
-          const email = payload.email.toLowerCase().trim();
           let user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: payload.email },
           });
 
           if (!user) {
             user = await prisma.user.create({
               data: {
-                email,
+                email: payload.email,
                 name: payload.name || null,
                 image: payload.picture || null,
                 emailVerified: payload.email_verified ? new Date() : null,
               },
             });
-            // The panels read `avatarUrl` (not in the Prisma model): keep it in sync with `image`
-            if (payload.picture) {
-              await prisma
-                .$runCommandRaw({ update: "User", updates: [{ q: { _id: user.id }, u: { $set: { avatarUrl: payload.picture } } }] })
-                .catch(() => {});
-            }
           } else {
-            // Only fill what is missing: a name or photo the user set themselves is never overwritten
-            const data: { name?: string; image?: string; emailVerified?: Date } = {};
-            if (!user.name && payload.name) data.name = payload.name;
-            if (!user.image) {
-              // A photo uploaded in the client panel lives in `avatarUrl` (not in the Prisma model)
-              const raw = ((await prisma.user
-                .findRaw({ filter: { _id: user.id }, options: { limit: 1, projection: { avatarUrl: 1 } } })
-                .catch(() => [])) as unknown as any[])[0];
-              const photo = (typeof raw?.avatarUrl === "string" && raw.avatarUrl) || payload.picture;
-              if (photo) data.image = photo;
-            }
-            if (!user.emailVerified && payload.email_verified) data.emailVerified = new Date();
-            if (Object.keys(data).length) {
-              user = await prisma.user.update({ where: { id: user.id }, data });
-            }
-            if (data.image) {
-              await prisma
-                .$runCommandRaw({ update: "User", updates: [{ q: { _id: user.id, avatarUrl: { $in: [null, ""] } }, u: { $set: { avatarUrl: data.image } } }] })
-                .catch(() => {});
-            }
+            user = await prisma.user.update({
+              where: { email: payload.email },
+              data: {
+                name: payload.name,
+                image: payload.picture,
+                emailVerified: payload.email_verified ? new Date() : null,
+              },
+            });
           }
 
           // ---------------------------------------------------------
           // FIX: LINK GOOGLE ONE TAP AS AN ACCOUNT ENTRY
           // PREVENTS OAuthAccountNotLinked ERROR
-          // (lookup and create use the same provider, or the second sign-in hits the unique constraint)
           // ---------------------------------------------------------
           await prisma.account.upsert({
             where: {
@@ -126,17 +106,16 @@ export const authConfig: AuthOptions = {
                 providerAccountId: payload.sub, // Google unique ID
               },
             },
-            // Shared with the Google OAuth provider: keep its access token, only refresh the ID token
             update: {
-              id_token: credentials.credential,
+              access_token: credentials.credential,
+              token_type: "id_token",
             },
             create: {
               userId: user.id,
-              provider: "google",
+              provider: "google-one-tap",
               providerAccountId: payload.sub,
               type: "oauth",
               access_token: credentials.credential,
-              id_token: credentials.credential,
               token_type: "id_token",
             },
           });

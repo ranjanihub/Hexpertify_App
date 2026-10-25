@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { forwardAuthToBackend } from "../forward";
 
 const SSO_SECRET = process.env.SSO_SECRET || "hexpertify_enterprise_sso_secret_key_2026_secure";
 
@@ -31,11 +30,6 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    // Backend-issued tickets are redeemed by the Backend (it also returns the API token)
-    const forwarded = await forwardAuthToBackend(req, "/api/auth/sso-verify", body);
-    if (forwarded) return forwarded;
-
     const { ticket } = body || {};
 
     if (!ticket || typeof ticket !== "string") {

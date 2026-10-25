@@ -19,36 +19,22 @@ import {
 import { Copy, Check, ChevronDown } from "lucide-react";
 import { PaginationWithLinks } from "@/components/ui/pagination-with-links";
 
-type BookingStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "RESCHEDULED"
-  | "COMPLETED"
-  | "CANCELLED"
-  | "NO_SHOW_CLIENT"
-  | "NO_SHOW_CONSULTANT"
-  | "PENDING_PAYMENT"
-  | "EXPIRED";
-
-// Statuses an admin can set (payment states are managed by the gateway)
-type SettableStatus = Exclude<BookingStatus, "PENDING_PAYMENT" | "EXPIRED">;
+type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
 
 interface Booking {
   id: string;
   status: BookingStatus;
   meetingUrl?: string;
-  user?: { name: string; email: string; phoneNumber?: string | null } | null;
-  consultant?: { name: string } | null;
-  service?: { name: string; platform: string; price: number; duration: number } | null;
-  date?: string | null;
-  time?: string | null;
-  scheduledAt?: string | Date | null;
+  user: { name: string; email: string; phoneNumber?: string | null };
+  consultant: { name: string };
+  service: { name: string; platform: string; price: number; duration: number };
+
   createdAt: string;
 }
 
 interface BookingTableProps {
   bookings: Booking[];
-  onStatusUpdate: (bookingId: string, newStatus: SettableStatus) => void;
+  onStatusUpdate: (bookingId: string, newStatus: BookingStatus) => void;
   currentPage?: number;
   pageSize?: number;
   totalCount?: number;
@@ -61,38 +47,14 @@ const statusColors: Record<BookingStatus, string> = {
   COMPLETED:
     "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  RESCHEDULED:
-    "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  NO_SHOW_CLIENT:
-    "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  NO_SHOW_CONSULTANT:
-    "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  PENDING_PAYMENT:
-    "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  EXPIRED: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
 };
 
-const statusOptions: SettableStatus[] = [
+const statusOptions: BookingStatus[] = [
   "PENDING",
   "CONFIRMED",
-  "RESCHEDULED",
   "COMPLETED",
   "CANCELLED",
-  "NO_SHOW_CLIENT",
-  "NO_SHOW_CONSULTANT",
 ];
-
-/** The session's India-time date and time, or "To be scheduled" (website bookings are paid first) */
-function sessionLabel(booking: Booking): string {
-  if (booking.date) return `${booking.date}${booking.time ? ` ${booking.time}` : ""}`;
-  const when = booking.scheduledAt ? new Date(booking.scheduledAt) : null;
-  if (!when || isNaN(when.getTime())) return "To be scheduled";
-  return when.toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 export function BookingTable({
   bookings,
@@ -126,7 +88,6 @@ export function BookingTable({
             <TableHead>Client</TableHead>
             <TableHead>Consultant</TableHead>
             <TableHead>Service</TableHead>
-            <TableHead>Session</TableHead>
             <TableHead>Platform</TableHead>
             <TableHead className="text-center">Duration</TableHead>
             <TableHead className="text-right">Price</TableHead>
@@ -139,38 +100,31 @@ export function BookingTable({
             <TableRow key={booking.id}>
               <TableCell>
                 <div>
-                  <div className="font-medium">{booking.user?.name ?? "—"}</div>
+                  <div className="font-medium">{booking.user.name}</div>
                   <div className="text-sm text-muted-foreground">
-                    {booking.user?.email ?? ""}
+                    {booking.user.email}
                   </div>
-                  {booking.user?.phoneNumber && (
+                  {booking.user.phoneNumber && (
                     <div className="text-sm text-muted-foreground">
                       {booking.user.phoneNumber}
                     </div>
                   )}
                 </div>
               </TableCell>
-              <TableCell>{booking.consultant?.name ?? "—"}</TableCell>
-              <TableCell>{booking.service?.name ?? "—"}</TableCell>
+              <TableCell>{booking.consultant.name}</TableCell>
+              <TableCell>{booking.service.name}</TableCell>
               <TableCell className="whitespace-nowrap">
-                {sessionLabel(booking)}
-              </TableCell>
-              <TableCell className="whitespace-nowrap">
-                {booking.service?.platform ?? "—"}
+                {booking.service.platform}
               </TableCell>
               <TableCell className="text-center">
-                {booking.service?.duration != null
-                  ? `${booking.service.duration}m`
-                  : "—"}
+                {booking.service.duration}m
               </TableCell>
               <TableCell className="text-right font-medium">
-                {booking.service?.price != null
-                  ? `$${booking.service.price}`
-                  : "—"}
+                ${booking.service.price}
               </TableCell>
               <TableCell className="text-center">
                 <span
-                  className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusColors[booking.status] ?? ""}`}
+                  className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusColors[booking.status]}`}
                 >
                   {booking.status}
                 </span>

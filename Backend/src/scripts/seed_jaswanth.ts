@@ -48,7 +48,7 @@ async function seedJaswanth() {
     therapistPhoto: jayaConsPhoto,
     service: 'Individual Therapy Session',
     firstConsultationCompleted: true,
-    emailVerified: new Date(), // Prisma expects DateTime | null
+    emailVerified: true,
     primaryGoal: client.primaryGoal,
     primaryConcern: client.primaryGoal,
     therapyGoals: [
@@ -186,7 +186,7 @@ async function seedJaswanth() {
       { email: client.email.toLowerCase().trim() },
       {
         $set: clientDoc,
-        $setOnInsert: { _id: client.id, createdAt: new Date() } // string _id, as Prisma expects
+        $setOnInsert: { createdAt: new Date() }
       },
       { upsert: true }
     ),
@@ -194,7 +194,7 @@ async function seedJaswanth() {
       { email: client.email.toLowerCase().trim() },
       {
         $set: clientDoc,
-        $setOnInsert: { _id: client.id, createdAt: new Date() } // string _id, as Prisma expects
+        $setOnInsert: { createdAt: new Date() }
       },
       { upsert: true }
     )
@@ -236,7 +236,7 @@ async function seedJaswanth() {
       { id: client.bookingId },
       {
         $set: bookingDoc,
-        $setOnInsert: { _id: client.bookingId, createdAt: new Date() } // string _id, as Prisma expects
+        $setOnInsert: { createdAt: new Date() }
       },
       { upsert: true }
     ),
@@ -244,7 +244,7 @@ async function seedJaswanth() {
       { id: client.bookingId },
       {
         $set: bookingDoc,
-        $setOnInsert: { _id: client.bookingId, createdAt: new Date() } // string _id, as Prisma expects
+        $setOnInsert: { createdAt: new Date() }
       },
       { upsert: true }
     )
