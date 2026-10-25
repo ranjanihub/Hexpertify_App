@@ -144,7 +144,6 @@ export const App: React.FC = () => {
   const getCurrentPageId = (): PageId => {
     const path = location.pathname;
     if (path === '/' || path === '/dashboard') return 'dashboard';
-    if (path.startsWith('/review/')) return 'review';
     const match = Object.entries(pageToPathMap).find(([_, p]) => p === path);
     return match ? (match[0] as PageId) : 'dashboard';
   };
@@ -219,8 +218,6 @@ export const App: React.FC = () => {
                 <Route path="/zombie-pages" element={<ZombiView />} />
                 <Route path="/zombi" element={<Navigate to="/zombie-pages" replace />} />
                 <Route path="/review" element={<ReviewView />} />
-                <Route path="/review/outline/:outlineId" element={<ReviewView />} />
-                <Route path="/review/:postId" element={<ReviewView />} />
                 <Route path="/reviews" element={<ReviewView />} />
                 <Route path="/blog-reviews" element={<ReviewView />} />
                 <Route path="/settings" element={<SettingsView />} />
