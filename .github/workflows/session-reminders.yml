@@ -5,7 +5,8 @@ name: Session reminders
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    # Off the :00/:30 marks, where GitHub delays or drops scheduled runs the most
+    - cron: '7,37 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -18,5 +19,9 @@ jobs:
           BACKEND_URL: ${{ vars.BACKEND_URL || 'https://hexpertify-backend.vercel.app' }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
         run: |
-          if [ -z "$INTERNAL_API_KEY" ]; then echo "INTERNAL_API_KEY secret is not set"; exit 1; fi
+          # Not configured yet: skip with a visible warning instead of failing (and emailing) every run
+          if [ -z "$INTERNAL_API_KEY" ]; then
+            echo "::warning title=Session reminders are off::Add the INTERNAL_API_KEY repository secret (same value as the Backend's Vercel INTERNAL_API_KEY) to send reminder emails."
+            exit 0
+          fi
           curl -fsS -X POST "$BACKEND_URL/api/emails/session-reminders" -H "X-Internal-Key: $INTERNAL_API_KEY"
