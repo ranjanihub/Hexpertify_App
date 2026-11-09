@@ -191,6 +191,15 @@ export const AssessmentsView: React.FC = () => {
   // Select Option in Runner Simulator
   const handleRunnerSelectAnswer = (qId: string, val: number) => {
     setRunnerAnswers((prev) => ({ ...prev, [qId]: val }));
+
+    // Auto-advance to the next question. The last question waits for "Finish & Score".
+    const totalQuestions = activeRunnerModal?.questions?.length ?? 0;
+    const answeredStep = runnerCurrentStep;
+    if (answeredStep < totalQuestions - 1) {
+      setTimeout(() => {
+        setRunnerCurrentStep((currentStep) => (currentStep === answeredStep ? currentStep + 1 : currentStep));
+      }, 250);
+    }
   };
 
   // Calculate Runner Results Helper
@@ -939,7 +948,6 @@ export const AssessmentsView: React.FC = () => {
                 </span>
                 <div>
                   <h3 className="font-extrabold text-lg leading-tight">{activeRunnerModal.title}</h3>
-                  <p className="text-xs text-purple-200 mt-0.5">Interactive Test Simulator & Real-time Scoring</p>
                 </div>
               </div>
               <button
