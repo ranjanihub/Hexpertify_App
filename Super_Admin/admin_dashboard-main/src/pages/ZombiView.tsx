@@ -26,11 +26,33 @@ import {
 } from 'lucide-react';
 import type { ZombiPage } from '../types';
 
+// The public website that serves zombie pages (set VITE_LIVE_SITE_URL to change it, e.g. once
+// hexpertify.com points at this site). The editor also previews drafts inside its header and footer.
+const LIVE_SITE_URL = String(
+  import.meta.env.VITE_LIVE_SITE_URL ||
+    (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://hexpertify-app.vercel.app')
+).replace(/\/$/, '');
+
+const normalizePath = (path: string) => '/' + String(path || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+
+/** A page's public URL is always the live website plus its slug */
+const liveUrlFor = (slug: string) => `${LIVE_SITE_URL}${slug.startsWith('/') ? slug : '/' + (slug || '')}`;
+
+/** True for an empty canonical, or one that points at the page's own slug on any host */
+const isSelfUrl = (url: string | undefined, slug: string) => {
+  if (!url) return true;
+  try {
+    return normalizePath(new URL(url).pathname) === normalizePath(slug);
+  } catch {
+    return false;
+  }
+};
+
 const normalizeZombiePage = (p: any, index: number = 0): ZombiPage => {
   const id = String(p?.id || p?._id || `ZMB-${101 + index}`);
   const pageTitle = String(p?.pageTitle || p?.notificationTitle || p?.title || 'Untitled Zombie Page');
   const slug = String(p?.slug || (p?.identifier ? `/${p.identifier}` : `/${id.toLowerCase()}`));
-  const targetUrl = String(p?.targetUrl || `https://hexpertify.com${slug.startsWith('/') ? slug : '/' + slug}`);
+  const targetUrl = liveUrlFor(slug);
   const htmlChunk = typeof p?.htmlChunk === 'string' ? p.htmlChunk : '';
   const status: 'Active' | 'Draft' | 'Archived' =
     p?.status === 'Draft' || p?.status === 'Archived' ? p.status : 'Active';
@@ -43,7 +65,7 @@ const normalizeZombiePage = (p: any, index: number = 0): ZombiPage => {
     metaTitle: String(rawSeo.metaTitle || `${pageTitle} | Hexpertify`),
     metaDescription: String(rawSeo.metaDescription || `Book sessions for ${pageTitle} on Hexpertify. Certified clinical psychologists & counselors.`),
     keywords: String(rawSeo.keywords || 'mental health, therapy, psychologist, counseling'),
-    canonicalUrl: String(rawSeo.canonicalUrl || targetUrl),
+    canonicalUrl: isSelfUrl(rawSeo.canonicalUrl, slug) ? targetUrl : String(rawSeo.canonicalUrl),
     ogTitle: String(rawSeo.ogTitle || rawSeo.metaTitle || pageTitle),
     ogDescription: String(rawSeo.ogDescription || rawSeo.metaDescription || ''),
     ogImageUrl: String(rawSeo.ogImageUrl || ''),
@@ -69,12 +91,6 @@ const slugify = (title: string) => '/' + title.toLowerCase().replace(/[^a-z0-9]+
 const autoMetaTitle = (title: string) => (title ? `${title} | Hexpertify Online Therapy` : '');
 const autoMetaDescription = (title: string) =>
   title ? `Book confidential video sessions for ${title} on Hexpertify. Verified clinical psychologists & counselors.` : '';
-
-// The public website renders zombie pages; the editor previews drafts inside its header and footer
-const LIVE_SITE_URL = String(
-  import.meta.env.VITE_LIVE_SITE_URL ||
-    (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://hexpertify-app.vercel.app')
-).replace(/\/$/, '');
 
 /** Next free ZMB-<n> id (ids must stay unique: saving an existing id overwrites that page) */
 const nextZombieId = (pages: ZombiPage[]) => {
@@ -319,10 +335,9 @@ export const ZombiView: React.FC = () => {
         // anything the admin typed by hand is kept
         const prevTitle = prev?.pageTitle || '';
         const prevAutoSlug = slugify(prevTitle);
-        const prevAutoTarget = `https://hexpertify.com${prevAutoSlug}`;
         const follows = (current: string | undefined, generated: string) => !current || current === generated || current === '/';
         const newSlug = follows(prev?.slug, prevAutoSlug) ? slugify(val) : prev.slug;
-        const target = follows(prev?.targetUrl, prevAutoTarget) ? `https://hexpertify.com${newSlug}` : prev.targetUrl;
+        const target = liveUrlFor(newSlug);
         return {
           ...prev,
           pageTitle: val,
@@ -334,25 +349,22 @@ export const ZombiView: React.FC = () => {
             metaDescription: follows(prev.seo?.metaDescription, autoMetaDescription(prevTitle))
               ? autoMetaDescription(val)
               : prev.seo.metaDescription,
-            canonicalUrl: follows(prev.seo?.canonicalUrl, prevAutoTarget) ? target : prev.seo.canonicalUrl
+            canonicalUrl: isSelfUrl(prev.seo?.canonicalUrl, prev?.slug || '') ? target : prev.seo.canonicalUrl
           }
         };
       });
     } else {
       const cleanSlug = val.startsWith('/') ? val : '/' + val;
-      const target = `https://hexpertify.com${cleanSlug}`;
-      setFormData((prev: any) => {
-        const prevTarget = `https://hexpertify.com${prev?.slug || ''}`;
-        return {
-          ...prev,
-          slug: cleanSlug,
-          targetUrl: !prev?.targetUrl || prev.targetUrl === prevTarget ? target : prev.targetUrl,
-          seo: {
-            ...prev.seo!,
-            canonicalUrl: !prev.seo?.canonicalUrl || prev.seo.canonicalUrl === prevTarget ? target : prev.seo.canonicalUrl
-          }
-        };
-      });
+      const target = liveUrlFor(cleanSlug);
+      setFormData((prev: any) => ({
+        ...prev,
+        slug: cleanSlug,
+        targetUrl: target,
+        seo: {
+          ...prev.seo!,
+          canonicalUrl: isSelfUrl(prev.seo?.canonicalUrl, prev?.slug || '') ? target : prev.seo.canonicalUrl
+        }
+      }));
     }
   };
 
@@ -373,7 +385,7 @@ export const ZombiView: React.FC = () => {
       return;
     }
 
-    const finalTargetUrl = formData.targetUrl || `https://hexpertify.com${cleanSlug}`;
+    const finalTargetUrl = liveUrlFor(cleanSlug);
     const today = new Date().toISOString().split('T')[0];
     const finalStatus = overrideStatus || formData.status || 'Draft';
 
@@ -391,7 +403,7 @@ export const ZombiView: React.FC = () => {
         metaTitle: formData.seo?.metaTitle || `${formData.pageTitle} | Hexpertify`,
         metaDescription: formData.seo?.metaDescription || '',
         keywords: formData.seo?.keywords || '',
-        canonicalUrl: formData.seo?.canonicalUrl || finalTargetUrl,
+        canonicalUrl: isSelfUrl(formData.seo?.canonicalUrl, cleanSlug) ? finalTargetUrl : formData.seo!.canonicalUrl!,
         ogTitle: formData.seo?.ogTitle || formData.seo?.metaTitle,
         ogDescription: formData.seo?.ogDescription || formData.seo?.metaDescription,
         ogImageUrl: formData.seo?.ogImageUrl || '',
@@ -770,9 +782,16 @@ export const ZombiView: React.FC = () => {
                                   )}
                                 </button>
                               </div>
-                              <p className="text-[10px] text-slate-400 truncate font-mono" title={p.targetUrl}>
+                              <a
+                                href={p.targetUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="block text-[10px] text-slate-400 hover:text-[#5e2be2] hover:underline truncate font-mono"
+                                title={p.status === 'Active' ? `Open ${p.targetUrl}` : `${p.targetUrl} (not live until Active)`}
+                              >
                                 {p.targetUrl}
-                              </p>
+                              </a>
                             </div>
                           </td>
 
@@ -1071,13 +1090,12 @@ export const ZombiView: React.FC = () => {
                       </div>
                       <input
                         type="text"
-                        required
-                        value={formData.targetUrl || ''}
-                        onChange={(e) => setFormData({ ...formData, targetUrl: e.target.value })}
-                        className="w-full p-3 bg-white border border-purple-200 rounded-xl outline-none font-mono text-xs text-purple-900 font-bold focus:border-[#5e2be2]"
+                        readOnly
+                        value={liveUrlFor(formData.slug || '/')}
+                        className="w-full p-3 bg-white border border-purple-200 rounded-xl outline-none font-mono text-xs text-purple-900 font-bold"
                       />
                       <p className="text-[11px] text-purple-700 font-medium">
-                        This target URL is linked directly to your custom HTML chunk and SEO metadata.
+                        Built from the slug and the live website ({LIVE_SITE_URL}). Change the slug to change it.
                       </p>
                     </div>
                   </div>
@@ -1258,7 +1276,7 @@ export const ZombiView: React.FC = () => {
                         <label className="font-extrabold text-slate-700">Canonical URL</label>
                         <input
                           type="text"
-                          placeholder="https://hexpertify.com/cbt-therapists-delhi-ncr"
+                          placeholder={liveUrlFor(formData.slug || '/cbt-therapists-delhi-ncr')}
                           value={formData.seo?.canonicalUrl || ''}
                           onChange={(e) => setFormData({
                             ...formData,
@@ -1298,7 +1316,7 @@ export const ZombiView: React.FC = () => {
                 </div>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1.5">
                   <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1 truncate">
-                    <span className="text-emerald-700 font-semibold">{formData.targetUrl || 'https://hexpertify.com/zombie-pages'}</span>
+                    <span className="text-emerald-700 font-semibold">{liveUrlFor(formData.slug || '/')}</span>
                     <span className="text-slate-300">›</span>
                   </div>
                   <h4 className="text-base font-bold text-blue-700 hover:underline cursor-pointer leading-tight truncate">
