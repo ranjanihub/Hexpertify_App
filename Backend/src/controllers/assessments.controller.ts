@@ -258,21 +258,26 @@ export class AssessmentsController {
       const consultantId = consultant ? String(consultant.id || consultant._id) : '';
       const consultantName = consultant?.name || '';
 
-      let severityLabel = body.severityLabel || body.severity || 'Mild';
-      let severityColor = body.severityColor || 'bg-emerald-500 text-white';
-      let flaggedRisk = Boolean(body.flaggedRisk || (totalScore >= 15));
+      // The client app scores each scale with its own ranges (WHO-5: higher is better, PCL-5 is out of 80, ...),
+      // so its severity is kept. The generic thresholds below only fill in when none was sent.
+      let severityLabel = String(body.severityLabel || body.severity || '').trim();
+      let severityColor = String(body.severityColor || '').trim();
+      let flaggedRisk = Boolean(body.flaggedRisk);
 
-      if (totalScore >= 15) {
-        severityLabel = 'Severe Elevation';
-        severityColor = 'bg-rose-600 text-white';
-        flaggedRisk = true;
-      } else if (totalScore >= 10) {
-        severityLabel = 'Moderate';
-        severityColor = 'bg-amber-500 text-white';
-      } else {
-        severityLabel = 'Mild / Minimal';
-        severityColor = 'bg-emerald-500 text-white';
+      if (!severityLabel) {
+        if (totalScore >= 15) {
+          severityLabel = 'Severe Elevation';
+          severityColor = 'bg-rose-600 text-white';
+          flaggedRisk = true;
+        } else if (totalScore >= 10) {
+          severityLabel = 'Moderate';
+          severityColor = 'bg-amber-500 text-white';
+        } else {
+          severityLabel = 'Mild / Minimal';
+          severityColor = 'bg-emerald-500 text-white';
+        }
       }
+      if (!severityColor) severityColor = flaggedRisk ? 'bg-rose-600 text-white' : 'bg-emerald-500 text-white';
 
       const newScoreDoc = {
         id: body.id || `ASC-${Date.now().toString().slice(-6)}`,
