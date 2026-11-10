@@ -566,7 +566,7 @@ export const ReviewView: React.FC = () => {
             </h1>
             <p className="text-sm text-purple-100/90 max-w-2xl leading-relaxed">
               Review psychoeducational articles and outline proposals submitted by licensed therapists.
-              Verify and approve submissions for consultant clinical records.
+              Verify and approve submissions for consultant records.
             </p>
           </div>
 
@@ -1552,7 +1552,7 @@ export const ReviewView: React.FC = () => {
               <textarea
                 value={rejectionNotes}
                 onChange={(e) => setRejectionNotes(e.target.value)}
-                placeholder="E.g., Please add clinical citations for CBT techniques and soften language in section 2..."
+                placeholder="E.g., Please add citations for CBT techniques and soften language in section 2..."
                 rows={4}
                 className="w-full p-3 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
               />

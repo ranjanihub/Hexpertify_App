@@ -789,7 +789,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                 onClick={() => onSelectPage('assessments')}
                 className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between transition-colors"
               >
-                <span>Manage Clinical Assessments</span>
+                <span>Manage Assessments</span>
                 <ChevronRight className="w-4 h-4 text-slate-300" />
               </button>
             </div>

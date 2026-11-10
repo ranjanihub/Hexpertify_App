@@ -58,7 +58,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Deep belly breathing technique to reduce stress and anxiety naturally.\n\nClinical Benefits:\n• Reduces Stress\n• Improves Focus\n• Enhances Relaxation",
+    "instructions": "Deep belly breathing technique to reduce stress and anxiety naturally.\n\nBenefits:\n• Reduces Stress\n• Improves Focus\n• Enhances Relaxation",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -98,7 +98,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Navy SEAL breathing technique for staying calm under pressure with 4-4-4-4 pattern.\n\nClinical Benefits:\n• Calms Mind\n• Reduces Anxiety\n• Improves Concentration",
+    "instructions": "Navy SEAL breathing technique for staying calm under pressure with 4-4-4-4 pattern.\n\nBenefits:\n• Calms Mind\n• Reduces Anxiety\n• Improves Concentration",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -138,7 +138,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "The famous 4-7-8 breathing technique popularized by Dr. Andrew Weil is a simple yet powerful method for anxiety relief and better sleep. By following the pattern of inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds, you activate your parasympathetic nervous system and experience deep relaxation.\n\nClinical Benefits:\n• Promotes Better Sleep\n• Reduces Anxiety\n• Calms the Nervous System",
+    "instructions": "The famous 4-7-8 breathing technique popularized by Dr. Andrew Weil is a simple yet powerful method for anxiety relief and better sleep. By following the pattern of inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds, you activate your parasympathetic nervous system and experience deep relaxation.\n\nBenefits:\n• Promotes Better Sleep\n• Reduces Anxiety\n• Calms the Nervous System",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -178,7 +178,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "This ancient yogic breathing technique alternates airflow between nostrils to balance the left and right brain hemispheres. By harmonizing your nervous system, it reduces stress, improves focus, and creates a profound sense of calm and mental clarity.\n\nClinical Benefits:\n• Balances Brain Hemispheres\n• Promotes Deep Relaxation\n• Enhances Mental Clarity",
+    "instructions": "This ancient yogic breathing technique alternates airflow between nostrils to balance the left and right brain hemispheres. By harmonizing your nervous system, it reduces stress, improves focus, and creates a profound sense of calm and mental clarity.\n\nBenefits:\n• Balances Brain Hemispheres\n• Promotes Deep Relaxation\n• Enhances Mental Clarity",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -218,7 +218,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Use mindfulness to anchor yourself in the present moment by describing your surroundings in detail. This grounding technique helps redirect anxious thoughts and brings you into the here-and-now through sensory awareness.\n\nClinical Benefits:\n• Improves Presence\n• Grounds in Reality\n• Enhances Sensory Awareness",
+    "instructions": "Use mindfulness to anchor yourself in the present moment by describing your surroundings in detail. This grounding technique helps redirect anxious thoughts and brings you into the here-and-now through sensory awareness.\n\nBenefits:\n• Improves Presence\n• Grounds in Reality\n• Enhances Sensory Awareness",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -258,7 +258,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "This guided self-reassurance exercise helps you acknowledge difficult emotions with kindness and compassion. By speaking affirmations and reassurances to yourself, you rewire your nervous system to respond to stress with self-support instead of self-criticism, building lasting emotional resilience.\n\nClinical Benefits:\n• Builds Self-Compassion\n• Reduces Emotional Overwhelm\n• Strengthens Inner Resilience",
+    "instructions": "This guided self-reassurance exercise helps you acknowledge difficult emotions with kindness and compassion. By speaking affirmations and reassurances to yourself, you rewire your nervous system to respond to stress with self-support instead of self-criticism, building lasting emotional resilience.\n\nBenefits:\n• Builds Self-Compassion\n• Reduces Emotional Overwhelm\n• Strengthens Inner Resilience",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -298,7 +298,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Engage your five senses through tactile and physical experiences to bring you fully into the present moment. This somatic grounding technique interrupts the stress response cycle by signaling to your nervous system that you are safe, helping you move out of fight-or-flight mode into calm awareness.\n\nClinical Benefits:\n• Anchors You in Your Body\n• Releases Trauma Responses\n• Activates Safety Signals",
+    "instructions": "Engage your five senses through tactile and physical experiences to bring you fully into the present moment. This somatic grounding technique interrupts the stress response cycle by signaling to your nervous system that you are safe, helping you move out of fight-or-flight mode into calm awareness.\n\nBenefits:\n• Anchors You in Your Body\n• Releases Trauma Responses\n• Activates Safety Signals",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -338,7 +338,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Your body and mind are deeply connected. By intentionally adjusting your posture and releasing tension through gentle movements, you signal to your nervous system that you are safe and grounded. This practice helps you reclaim your physical presence and mental clarity.\n\nClinical Benefits:\n• Releases Physical Tension\n• Improves Body Awareness\n• Restores Natural Alignment",
+    "instructions": "Your body and mind are deeply connected. By intentionally adjusting your posture and releasing tension through gentle movements, you signal to your nervous system that you are safe and grounded. This practice helps you reclaim your physical presence and mental clarity.\n\nBenefits:\n• Releases Physical Tension\n• Improves Body Awareness\n• Restores Natural Alignment",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -378,7 +378,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Drawing from Dialectical Behavior Therapy (DBT), this technique teaches you to soothe yourself through multisensory engagement. By intentionally activating your senses—touch, smell, taste, sight, sound—you create a safe container for emotional pain and build your capacity to tolerate distressing moments.\n\nClinical Benefits:\n• Soothes Emotional Pain\n• Provides Immediate Relief\n• Builds Distress Tolerance",
+    "instructions": "Drawing from Dialectical Behavior Therapy (DBT), this technique teaches you to soothe yourself through multisensory engagement. By intentionally activating your senses—touch, smell, taste, sight, sound—you create a safe container for emotional pain and build your capacity to tolerate distressing moments.\n\nBenefits:\n• Soothes Emotional Pain\n• Provides Immediate Relief\n• Builds Distress Tolerance",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -418,7 +418,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Using Cognitive Behavioral Therapy techniques, challenge automatic negative thoughts by examining the evidence for and against them. Develop balanced, realistic perspectives that reduce anxiety, low mood, and self-criticism through cognitive restructuring.\n\nClinical Benefits:\n• Challenges Negative Thinking\n• Reduces Anxiety\n• Builds Emotional Resilience",
+    "instructions": "Using Cognitive Behavioral Therapy techniques, challenge automatic negative thoughts by examining the evidence for and against them. Develop balanced, realistic perspectives that reduce anxiety, low mood, and self-criticism through cognitive restructuring.\n\nBenefits:\n• Challenges Negative Thinking\n• Reduces Anxiety\n• Builds Emotional Resilience",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -458,7 +458,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Transform negative self-talk into powerful, personalized affirmations that rewire your brain toward self-compassion. By mirroring empowering statements back to yourself, you create new neural pathways that support lasting confidence, resilience, and emotional wellbeing.\n\nClinical Benefits:\n• Boosts Self-Esteem\n• Builds Self-Compassion\n• Reduces Negative Self-Talk",
+    "instructions": "Transform negative self-talk into powerful, personalized affirmations that rewire your brain toward self-compassion. By mirroring empowering statements back to yourself, you create new neural pathways that support lasting confidence, resilience, and emotional wellbeing.\n\nBenefits:\n• Boosts Self-Esteem\n• Builds Self-Compassion\n• Reduces Negative Self-Talk",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -498,7 +498,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Externalize your worries by placing them somewhere safe—outside your mind. This CBT-based technique helps your brain interpret the worry as \"stored and contained,\" reducing its emotional intensity. When worries feel infinite in your head, simply writing them down and placing them away creates essential psychological distance.\n\nClinical Benefits:\n• Reduces Mental Clutter\n• Prevents Rumination\n• Increases Emotional Control",
+    "instructions": "Externalize your worries by placing them somewhere safe—outside your mind. This CBT-based technique helps your brain interpret the worry as \"stored and contained,\" reducing its emotional intensity. When worries feel infinite in your head, simply writing them down and placing them away creates essential psychological distance.\n\nBenefits:\n• Reduces Mental Clutter\n• Prevents Rumination\n• Increases Emotional Control",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   },
@@ -538,7 +538,7 @@ const DEFAULT_SEED_ACTIVITIES = [
       }
     ],
     "isVisible": true,
-    "instructions": "Engage your mind with focused mental exercises like counting, naming, and sensory grounding to shift attention away from worry and anchor you in the present.\n\nClinical Benefits:\n• Interrupts Anxiety\n• Sharpens Focus\n• Grounds in Present",
+    "instructions": "Engage your mind with focused mental exercises like counting, naming, and sensory grounding to shift attention away from worry and anchor you in the present.\n\nBenefits:\n• Interrupts Anxiety\n• Sharpens Focus\n• Grounds in Present",
     "createdAt": "2026-10-02T06:00:13.370Z",
     "updatedAt": "2026-10-02T06:00:13.370Z"
   }

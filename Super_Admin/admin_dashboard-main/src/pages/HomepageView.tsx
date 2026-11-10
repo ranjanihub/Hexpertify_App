@@ -465,7 +465,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
               <label className="font-extrabold text-slate-700 block">Meta Description *</label>
               <textarea
                 rows={3}
-                placeholder="e.g. Book confidential video consultation sessions with top licensed clinical psychologists..."
+                placeholder="e.g. Book confidential video consultation sessions with top licensed psychologists..."
                 value={cms.seo?.metaDescription || ''}
                 onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, metaDescription: e.target.value } })}
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2] leading-relaxed resize-none"
@@ -520,7 +520,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
               <label className="font-extrabold text-slate-700 block">OG Description *</label>
               <textarea
                 rows={3}
-                placeholder="e.g. Connect with expert clinical psychologists, relationship counselors..."
+                placeholder="e.g. Connect with expert psychologists, relationship counselors..."
                 value={cms.seo?.openGraphDescription || ''}
                 onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, openGraphDescription: e.target.value } })}
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2] resize-none"

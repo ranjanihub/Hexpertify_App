@@ -167,7 +167,7 @@ export async function POST(req: Request) {
         id: consultant.id,
         name: consultant.name,
         email: consultant.email,
-        title: consultant.profession?.name || "Licensed Clinical Psychologist & Consultant",
+        title: consultant.profession?.name || "Licensed Psychologist & Consultant",
         role: "therapist",
         avatarInitials: consultant.name
           .split(" ")

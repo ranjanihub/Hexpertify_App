@@ -101,7 +101,7 @@ export async function buildBookingDoc(body: any, opts: BuildOptions = {}): Promi
     consultantEmail: String(consultant.email || '').toLowerCase() || undefined,
     consultantAvatar: consultant.photoUrl || consultant.image || body.consultantAvatar || body.therapistAvatar || undefined,
     serviceId: service ? String(service._id) : undefined,
-    serviceTitle: body.serviceTitle || body.service || service?.name || service?.title || 'Individual Clinical Consultation',
+    serviceTitle: body.serviceTitle || body.service || service?.name || service?.title || 'Individual Therapy Consultation',
     date: body.date || labels?.date,
     time: body.time || labels?.time,
     scheduledAt,

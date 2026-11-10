@@ -151,8 +151,8 @@ export class AuthController {
           id: String(consultant._id || consultant.id),
           name: consultant.name || 'Practitioner',
           email: consultant.email || cleanEmail,
-          title: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
-          profession: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
+          title: consultant.profession || consultant.title || 'Licensed Psychologist',
+          profession: consultant.profession || consultant.title || 'Licensed Psychologist',
           role: 'therapist' as const,
           avatarInitials: (consultant.name || 'Practitioner')
             .split(' ')
@@ -414,7 +414,7 @@ export class AuthController {
           name: payload.name,
           email: payload.email,
           role: payload.role,
-          title: payload.title || 'Licensed Clinical Practitioner',
+          title: payload.title || 'Licensed Practitioner',
           photoUrl: payload.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80',
           avatarUrl: payload.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80'
         },
@@ -550,8 +550,8 @@ export class AuthController {
         id: String(consultant._id || consultant.id),
         name: consultant.name || profile.name || 'Practitioner',
         email: consultant.email,
-        title: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
-        profession: consultant.profession || consultant.title || 'Licensed Clinical Psychologist',
+        title: consultant.profession || consultant.title || 'Licensed Psychologist',
+        profession: consultant.profession || consultant.title || 'Licensed Psychologist',
         role: 'therapist' as const,
         avatarInitials: (consultant.name || profile.name || 'TH')
           .split(' ')

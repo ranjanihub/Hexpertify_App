@@ -809,7 +809,7 @@ export const ProfessionsView: React.FC = () => {
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded-md">ID</span>
                         </div>
-                        <p className="text-[9px] text-slate-400 font-medium">Lowercase system slug used in URLs and clinical bookings.</p>
+                        <p className="text-[9px] text-slate-400 font-medium">Lowercase system slug used in URLs and bookings.</p>
                       </div>
                     </div>
                   </div>

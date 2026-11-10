@@ -717,10 +717,10 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#5e2be2]" />
-              <span>Clinical Benefits</span>
+              <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
-              Clinically verified neurobiological and emotional benefits of regular mirror exposure rituals:
+              Verified neurobiological and emotional benefits of regular mirror exposure rituals:
             </p>
           </div>
 

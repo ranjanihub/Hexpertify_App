@@ -606,7 +606,7 @@ export const BookingsView: React.FC = () => {
           </div>
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Bookings Dashboard</h1>
           <p className="text-purple-100 text-xs sm:text-sm max-w-xl leading-relaxed">
-            Inspect, filter, reschedule, and manage clinical consultation sessions across Hexpertify.
+            Inspect, filter, reschedule, and manage consultation sessions across Hexpertify.
           </p>
         </div>
 

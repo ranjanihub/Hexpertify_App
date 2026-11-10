@@ -340,7 +340,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
               {role === 'admin'
                 ? 'Enter master credentials to unlock administrative controls'
                 : role === 'therapist'
-                ? 'Enter your clinical credentials to enter the Consultant Workspace'
+                ? 'Enter your credentials to enter the Consultant Workspace'
                 : 'Enter your client credentials to enter the Client Portal'}
             </p>
           </div>

@@ -86,7 +86,7 @@ export const PaymentsView: React.FC = () => {
           id: `t-${b.id.slice(0, 6)}`,
           name: therapistName,
           email: `${therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@hexpertify.com`,
-          profession: 'Clinical Specialist',
+          profession: 'Specialist',
           photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100',
           platformFeePerSession: 150
         };
@@ -125,7 +125,7 @@ export const PaymentsView: React.FC = () => {
         therapistId: therapist.id,
         therapistName: therapist.name,
         therapistAvatar: therapist.photo || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100',
-        profession: therapist.profession || 'Clinical Specialist',
+        profession: therapist.profession || 'Specialist',
         pendingReportsCount: Math.max(0, sessions.length - 1),
         sessionsCount: sessions.length,
         lastSessionDate: sessions[0]?.sessionDate || '2026-08-20',
@@ -163,7 +163,7 @@ export const PaymentsView: React.FC = () => {
                 therapistId: p.therapistId || p.id,
                 therapistName: p.therapistName || 'Therapist Specialist',
                 therapistAvatar: p.therapistAvatar || p.photo || p.image || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100',
-                profession: p.profession || 'Clinical Specialist',
+                profession: p.profession || 'Specialist',
                 pendingAmount: Number(p.pendingAmount || 0),
                 totalEarned: Number(p.totalEarned || p.pendingAmount || 0),
                 pendingReportsCount: Number(p.pendingReportsCount || (p.unpaidSessions?.length || 0)),
@@ -606,7 +606,7 @@ export const PaymentsView: React.FC = () => {
         <div className="relative z-10 space-y-1">
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Therapist Payout & Commission Portal</h1>
           <p className="text-purple-100 text-xs sm:text-sm max-w-xl leading-relaxed">
-            Review completed clinical sessions, audit platform revenue commissions, execute automated bank payouts, and issue verified billing statements.
+            Review completed sessions, audit platform revenue commissions, execute automated bank payouts, and issue verified billing statements.
           </p>
         </div>
 
@@ -907,7 +907,7 @@ export const PaymentsView: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">Selected Sessions:</span>
-                  <span className="font-extrabold text-slate-900">{selectedSessionIds.length} Clinical Sessions</span>
+                  <span className="font-extrabold text-slate-900">{selectedSessionIds.length} Sessions</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">Gross Session Fees:</span>

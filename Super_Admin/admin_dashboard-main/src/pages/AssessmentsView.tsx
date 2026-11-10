@@ -139,7 +139,7 @@ export const AssessmentsView: React.FC = () => {
     severityRanges: [
       { minScore: 0, maxScore: 2, label: 'Minimal Risk', color: 'bg-emerald-500', clinicalAction: 'No immediate action required.' },
       { minScore: 3, maxScore: 4, label: 'Moderate Risk', color: 'bg-amber-500', clinicalAction: 'Recommend wellness modules and stress reduction techniques.' },
-      { minScore: 5, maxScore: 6, label: 'High Risk', color: 'bg-red-500', clinicalAction: 'Schedule clinical review session with assigned therapist.' }
+      { minScore: 5, maxScore: 6, label: 'High Risk', color: 'bg-red-500', clinicalAction: 'Schedule review session with assigned therapist.' }
     ]
   });
 
@@ -170,7 +170,7 @@ export const AssessmentsView: React.FC = () => {
     if (!questionsToUse || questionsToUse.length === 0) {
       questionsToUse = Array.from({ length: assessment.questionCount || 5 }).map((_, idx) => ({
         id: `gen_${idx + 1}`,
-        text: `Diagnostic Item #${idx + 1}: Rate symptom severity for ${assessment.targetCondition}`,
+        text: `Item #${idx + 1}: Rate symptom severity for ${assessment.targetCondition}`,
         subtext: 'Over the last 2 weeks, how frequently have you been affected?',
         options: [
           { label: 'Not at all (0)', value: 0 },
@@ -238,8 +238,8 @@ export const AssessmentsView: React.FC = () => {
       const ratio = score / (maxScore || 1);
       if (ratio < 0.25) matchedSeverity = { minScore: 0, maxScore: 5, label: 'Minimal / Low Risk', color: 'bg-emerald-500', clinicalAction: 'No immediate action required.' };
       else if (ratio < 0.5) matchedSeverity = { minScore: 6, maxScore: 10, label: 'Mild Symptom Elevation', color: 'bg-amber-500', clinicalAction: 'Monitor and review at next follow-up.' };
-      else if (ratio < 0.75) matchedSeverity = { minScore: 11, maxScore: 15, label: 'Moderate Symptoms', color: 'bg-orange-500', clinicalAction: 'Consider targeted CBT or clinical intervention.' };
-      else matchedSeverity = { minScore: 16, maxScore: 30, label: 'Severe Clinical Elevation', color: 'bg-red-500', clinicalAction: 'Immediate priority clinical assessment indicated.' };
+      else if (ratio < 0.75) matchedSeverity = { minScore: 11, maxScore: 15, label: 'Moderate Symptoms', color: 'bg-orange-500', clinicalAction: 'Consider targeted CBT or intervention.' };
+      else matchedSeverity = { minScore: 16, maxScore: 30, label: 'Severe Elevation', color: 'bg-red-500', clinicalAction: 'Immediate priority assessment indicated.' };
     }
 
     setRunnerCompletedReport({
@@ -314,7 +314,7 @@ export const AssessmentsView: React.FC = () => {
       category: builderData.category || 'Custom',
       timesCompleted: 0,
       type: 'Custom',
-      description: builderData.description || 'Custom clinical questionnaire designed by platform administrator.',
+      description: builderData.description || 'Custom questionnaire designed by platform administrator.',
       estimatedMinutes: builderData.estimatedMinutes || 5,
       validityScore: 'Custom Questionnaire',
       targetPopulation: builderData.targetPopulation || 'All Clients',
@@ -362,9 +362,9 @@ export const AssessmentsView: React.FC = () => {
       <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 space-y-1 sm:space-y-1.5">
-          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Clinical Assessment Inventory</h1>
+          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Assessment Inventory</h1>
           <p className="text-purple-100 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            Manage standardized diagnostic screeners (PSS-10, WHO-5, WSAS, PHQ-9, GAD-7, PCL-5, OCI-R, ASRS v1.1), build custom psychometric scales, monitor patient risk response alerts, and run interactive clinical test simulators.
+            Manage standardized screeners (PSS-10, WHO-5, WSAS, PHQ-9, GAD-7, PCL-5, OCI-R, ASRS v1.1), build custom psychometric scales, monitor patient risk response alerts, and run interactive test simulators.
           </p>
         </div>
 
@@ -704,7 +704,7 @@ export const AssessmentsView: React.FC = () => {
                     rows={2}
                     value={builderData.description}
                     onChange={(e) => setBuilderData({ ...builderData, description: e.target.value })}
-                    placeholder="Provide detailed instructions and clinical scope of this screener..."
+                    placeholder="Provide detailed instructions and scope of this screener..."
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
                   />
                 </div>
@@ -1036,7 +1036,7 @@ export const AssessmentsView: React.FC = () => {
                 <div className="space-y-6 animate-fade-in">
                   <div className="bg-slate-900 text-white rounded-3xl p-6 space-y-4 text-center">
                     <span className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-purple-300">
-                      Calculated Diagnostic Outcome
+                      Calculated Outcome
                     </span>
                     <div className="space-y-1">
                       <div className="text-4xl font-extrabold">
@@ -1063,11 +1063,11 @@ export const AssessmentsView: React.FC = () => {
                   {/* Clinical Recommendation */}
                   <div className="bg-purple-50 p-5 rounded-2xl border border-purple-100 space-y-2">
                     <h5 className="font-extrabold text-[#5e2be2] text-xs uppercase tracking-wider">
-                      Recommended Clinical Protocol:
+                      Recommended Protocol:
                     </h5>
                     <p className="text-xs text-slate-700 leading-relaxed font-medium">
                       {runnerCompletedReport.severity?.clinicalAction ||
-                        'Conduct thorough clinical evaluation and review symptom progression at next consultation.'}
+                        'Conduct thorough evaluation and review symptom progression at next consultation.'}
                     </p>
                   </div>
                 </div>
@@ -1145,7 +1145,7 @@ export const AssessmentsView: React.FC = () => {
                 </span>
                 <div>
                   <h3 className="font-extrabold text-lg">{activeProtocolModal.title}</h3>
-                  <p className="text-xs text-slate-400">Clinical Protocol & Scoring Rules</p>
+                  <p className="text-xs text-slate-400">Protocol & Scoring Rules</p>
                 </div>
               </div>
               <button
@@ -1165,13 +1165,13 @@ export const AssessmentsView: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-slate-400 block font-semibold">Source / Author</span>
-                  <span className="font-bold text-slate-800">{activeProtocolModal.authorOrSource || "Clinical Literature"}</span>
+                  <span className="font-bold text-slate-800">{activeProtocolModal.authorOrSource || "Published Literature"}</span>
                 </div>
               </div>
 
               {/* Description */}
               <div>
-                <h4 className="font-extrabold text-sm text-slate-900 mb-1">Clinical Scope & Guidelines</h4>
+                <h4 className="font-extrabold text-sm text-slate-900 mb-1">Scope & Guidelines</h4>
                 <p className="text-slate-600 leading-relaxed">{activeProtocolModal.description}</p>
               </div>
 
@@ -1224,17 +1224,17 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'PCL-5' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ DSM-5 PTSD Diagnostic Endorsement Rule:</p>
+                    <p className="font-bold text-[#5e2be2]">★ DSM-5 PTSD Endorsement Rule:</p>
                     <p>20 items rated 0–4. Requires endorsement (rated ≥ 2 'Moderately'): 1 Criterion B (Q1-5), 1 Criterion C (Q6-7), 2 Criterion D (Q8-14), 2 Criterion E (Q15-20).</p>
-                    <p className="font-medium text-slate-600">Total Score Range: 0 to 80. Recommended cut-point score of 33 for provisional PTSD diagnosis.</p>
+                    <p className="font-medium text-slate-600">Total Score Range: 0 to 80. Recommended cut-point score of 33 for probable PTSD.</p>
                   </div>
                 )}
 
                 {activeProtocolModal.acronym === 'OCI-R' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ 6 Clinical OCD Subscales:</p>
+                    <p className="font-bold text-[#5e2be2]">★ 6 OCD Subscales:</p>
                     <p>18 items rated 0–4 (Washing, Obsessing, Hoarding, Ordering, Checking, Neutralizing subscales with 3 items each).</p>
-                    <p className="font-medium text-slate-600">Total Score Range: 0 to 72. Recommended clinical cutoff score is 21 (scores ≥ 21 indicate likely OCD).</p>
+                    <p className="font-medium text-slate-600">Total Score Range: 0 to 72. Recommended cutoff score is 21 (scores ≥ 21 indicate likely OCD).</p>
                   </div>
                 )}
 
@@ -1250,14 +1250,14 @@ export const AssessmentsView: React.FC = () => {
               {/* Severity Cutoff Table */}
               {activeProtocolModal.severityRanges && activeProtocolModal.severityRanges.length > 0 && (
                 <div>
-                  <h4 className="font-extrabold text-sm text-slate-900 mb-2">Diagnostic Score Thresholds & Cutoffs</h4>
+                  <h4 className="font-extrabold text-sm text-slate-900 mb-2">Score Thresholds & Cutoffs</h4>
                   <div className="border border-slate-200 rounded-2xl overflow-hidden">
                     <table className="w-full text-left">
                       <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
                         <tr>
                           <th className="p-3">Score Range</th>
                           <th className="p-3">Severity Level</th>
-                          <th className="p-3">Clinical Action Plan</th>
+                          <th className="p-3">Action Plan</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1439,7 +1439,7 @@ export const AssessmentsView: React.FC = () => {
 
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
               <button
-                onClick={() => showToast('Exported clinical PDF report to Downloads!')}
+                onClick={() => showToast('Exported PDF report to Downloads!')}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5"
               >
                 <Download className="w-4 h-4" /> Export PDF

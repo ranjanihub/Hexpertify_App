@@ -22,7 +22,7 @@ import { api } from '../lib/apiClient';
 export interface AdminUser {
   id: string;
   name: string;
-  role: 'Super Admin' | 'Finance Admin' | 'Operations Admin' | 'Clinical Admin' | 'Support Admin';
+  role: 'Super Admin' | 'Finance Admin' | 'Operations Admin' | 'Care Admin' | 'Support Admin';
   email: string;
   status: 'Active' | 'Inactive' | 'Pending';
   createdAt: string;
@@ -98,7 +98,7 @@ export const SettingsView: React.FC = () => {
   }>({
     name: '',
     email: '',
-    profession: 'Licensed Clinical Psychologist',
+    profession: 'Licensed Psychologist',
     status: 'Active'
   });
 
@@ -120,7 +120,7 @@ export const SettingsView: React.FC = () => {
           const liveCons: ConsultantUser[] = dataCons.consultants.map((c: any) => ({
             id: c.id || `CON-${String(c._id || '').slice(-4)}`,
             name: c.name,
-            profession: c.profession || c.title || 'Clinical Consultant',
+            profession: c.profession || c.title || 'Consultant',
             email: c.email || `${c.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@hexpertify.com`,
             status: (c.accountStatus || 'Active') as any,
             createdAt: c.createdAt ? new Date(c.createdAt).toISOString().split('T')[0] : '2025-01-10'
@@ -323,7 +323,7 @@ export const SettingsView: React.FC = () => {
     setConsultantFormData({
       name: '',
       email: '',
-      profession: 'Licensed Clinical Psychologist',
+      profession: 'Licensed Psychologist',
       status: 'Active'
     });
     setErrors({});
@@ -831,7 +831,7 @@ export const SettingsView: React.FC = () => {
                     <option value="Super Admin">Super Admin</option>
                     <option value="Finance Admin">Finance Admin</option>
                     <option value="Operations Admin">Operations Admin</option>
-                    <option value="Clinical Admin">Clinical Admin</option>
+                    <option value="Care Admin">Care Admin</option>
                     <option value="Support Admin">Support Admin</option>
                   </select>
                 </div>
@@ -887,7 +887,7 @@ export const SettingsView: React.FC = () => {
                   <h3 className="font-extrabold text-slate-900 text-base">
                     {editingConsultant ? 'Edit Consultant User' : 'Add New Consultant User'}
                   </h3>
-                  <p className="text-xs text-slate-500">Configure clinical credentials & live MongoDB Atlas persistence</p>
+                  <p className="text-xs text-slate-500">Configure credentials & live MongoDB Atlas persistence</p>
                 </div>
               </div>
               <button
@@ -967,7 +967,7 @@ export const SettingsView: React.FC = () => {
                     <input
                       type="text"
                       list="profession-options"
-                      placeholder="e.g. Licensed Clinical Psychologist"
+                      placeholder="e.g. Licensed Psychologist"
                       value={consultantFormData.profession}
                       onChange={(e) => {
                         setConsultantFormData((prev) => ({ ...prev, profession: e.target.value }));
@@ -976,7 +976,7 @@ export const SettingsView: React.FC = () => {
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
                     />
                     <datalist id="profession-options">
-                      <option value="Licensed Clinical Psychologist" />
+                      <option value="Licensed Psychologist" />
                       <option value="Marriage & Family Therapist" />
                       <option value="Adolescent & Teen Counselor" />
                       <option value="Psychiatrist" />

@@ -994,7 +994,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. EDUCATIONAL & CLINICAL DEEP-DIVE SECTION (Below Activity)
+          2. EDUCATIONAL & DEEP-DIVE SECTION (Below Activity)
          ───────────────────────────────────────────────────────────── */}
       <div className="w-full rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-lg shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-6">
         {/* Section 1: Clinical Overview */}
@@ -1293,10 +1293,10 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#5e2be2]" />
-              <span>Clinical Benefits</span>
+              <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
-              Clinically verified outcomes of worry containment and stimulus control:
+              Verified outcomes of worry containment and stimulus control:
             </p>
           </div>
 

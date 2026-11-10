@@ -152,7 +152,7 @@ export const mockTherapistPayouts: TherapistPayout[] = [
     therapistId: 'TH-01',
     therapistName: 'Dr. Alex Harrison',
     therapistAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    profession: 'Clinical Psychologist',
+    profession: 'Psychologist',
     pendingReportsCount: 4,
     sessionsCount: 12,
     lastSessionDate: '2026-07-31',
@@ -208,24 +208,24 @@ export const mockTherapists: Therapist[] = [
     email: 'dr.evelyn@hexpertify.com',
     identifier: 'evelyn-reed',
     sequence: 1,
-    notificationTitle: 'Dr. Evelyn Reed, PhD - Clinical Psychologist',
+    notificationTitle: 'Dr. Evelyn Reed, PhD - Psychologist',
     photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80',
     photoAltText: 'Dr. Evelyn Reed profile photo',
-    profession: 'Licensed Clinical Psychologist',
+    profession: 'Licensed Psychologist',
     rating: 4.9,
     reviewCount: 28,
     activeClientsCount: 24,
     verificationStatus: 'Verified',
     accountStatus: 'Active',
-    qualifications: ['Ph.D. in Clinical Psychology (Columbia University)', 'Licensed Clinical Psychologist #PSY-7729', 'Certified CBT Specialist'],
-    certificates: ['Board Certified in Clinical Psychology (ABPP)', 'Advanced Trauma-Informed CBT'],
+    qualifications: ['Ph.D. in Psychology (Columbia University)', 'Licensed Psychologist #PSY-7729', 'Certified CBT Specialist'],
+    certificates: ['Board Certified in Psychology (ABPP)', 'Advanced Trauma-Informed CBT'],
     experienceYears: 11,
     clientsServed: 410,
     isCertified: true,
     youtubeUrl: 'https://youtube.com/watch?v=demo-evelyn',
     languages: ['English'],
     bio: 'Specializes in Cognitive Behavioral Therapy, mood regulation, trauma recovery, and mindfulness-based stress reduction.',
-    about: 'Dr. Evelyn Reed is a licensed clinical psychologist with extensive expertise in mood disorders, anxiety spectrum, and evidence-based psychotherapy.',
+    about: 'Dr. Evelyn Reed is a licensed psychologist with extensive expertise in mood disorders, anxiety spectrum, and evidence-based psychotherapy.',
     specializations: ['Cognitive Behavioral Therapy (CBT)', 'Anxiety & Panic', 'Depression Care', 'Mindfulness & Stress'],
     licenseNumber: 'PSY-NY-77291',
     platformFeePerSession: 500,
@@ -234,8 +234,8 @@ export const mockTherapists: Therapist[] = [
     therapyHours: 920,
     totalSessions: 960,
     services: [
-      { id: 'srv-evelyn-1', serviceName: 'Standard Clinical Psychotherapy', durationMinutes: 60, sessionFee: 3000, platformFee: 500, description: 'Individual evidence-based CBT session' },
-      { id: 'srv-evelyn-2', serviceName: 'Intake & Clinical Evaluation', durationMinutes: 90, sessionFee: 4200, platformFee: 650, description: 'Comprehensive diagnostic evaluation and goal mapping' }
+      { id: 'srv-evelyn-1', serviceName: 'Standard Psychotherapy', durationMinutes: 60, sessionFee: 3000, platformFee: 500, description: 'Individual evidence-based CBT session' },
+      { id: 'srv-evelyn-2', serviceName: 'Intake & Evaluation', durationMinutes: 90, sessionFee: 4200, platformFee: 650, description: 'Comprehensive evaluation and goal mapping' }
     ],
     reviews: [
       { id: 'rev-evelyn-1', clientName: 'Sarah Jenkins', rating: 5, comment: 'Dr. Evelyn has been wonderful, empathetic, and truly effective throughout my therapy journey.', date: '2026-08-10' }
@@ -244,7 +244,7 @@ export const mockTherapists: Therapist[] = [
       { id: 'faq-evelyn-1', question: 'What can I expect in the first session?', answer: 'We will review your background, assess your goals, and formulate a customized therapy plan.' }
     ],
     seo: {
-      metaTitle: 'Dr. Evelyn Reed, PhD | Licensed Clinical Psychologist',
+      metaTitle: 'Dr. Evelyn Reed, PhD | Licensed Psychologist',
       metaDescription: 'Book individual therapy with Dr. Evelyn Reed specializing in CBT and anxiety treatment.',
       keywords: 'psychologist, CBT, therapy, anxiety, depression',
       canonicalUrl: 'https://hexpertify.com/consultants/evelyn-reed'
@@ -263,16 +263,16 @@ export const mockTherapists: Therapist[] = [
     email: 'alex.harrison@hexpertify.com',
     identifier: 'alex-harrison',
     sequence: 2,
-    notificationTitle: 'Dr. Alex Harrison - Clinical Psychologist',
+    notificationTitle: 'Dr. Alex Harrison - Psychologist',
     photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
     photoAltText: 'Dr. Alex Harrison profile photo',
-    profession: 'Licensed Clinical Psychologist',
+    profession: 'Licensed Psychologist',
     rating: 4.9,
     reviewCount: 128,
     activeClientsCount: 18,
     verificationStatus: 'Verified',
     accountStatus: 'Active',
-    qualifications: ['Ph.D. in Clinical Psychology (Stanford)', 'Licensed PsyD #48920', 'Certified CBT Specialist'],
+    qualifications: ['Ph.D. in Psychology (Stanford)', 'Licensed PsyD #48920', 'Certified CBT Specialist'],
     certificates: ['American Psychological Association Board Certified', 'Advanced Trauma-Informed CBT'],
     experienceYears: 12,
     clientsServed: 450,
@@ -280,7 +280,7 @@ export const mockTherapists: Therapist[] = [
     youtubeUrl: 'https://youtube.com/watch?v=demo-alex',
     languages: ['English', 'Spanish'],
     bio: 'Specializes in Cognitive Behavioral Therapy for mood disorders, severe anxiety, and trauma recovery.',
-    about: 'Dr. Alex Harrison is a licensed clinical psychologist with over 12 years of clinical practice focusing on mood disorders and CBT.',
+    about: 'Dr. Alex Harrison is a licensed psychologist with over 12 years of practice focusing on mood disorders and CBT.',
     specializations: ['Cognitive Behavioral Therapy (CBT)', 'Trauma Recovery', 'Panic & Anxiety', 'Depression'],
     licenseNumber: 'PSY-CA-99412',
     platformFeePerSession: 500,
@@ -290,7 +290,7 @@ export const mockTherapists: Therapist[] = [
     totalSessions: 890,
     services: [
       { id: 'srv-1', serviceName: 'Individual Therapy Session', durationMinutes: 60, sessionFee: 2500, platformFee: 500, description: '1-on-1 evidence-based cognitive session' },
-      { id: 'srv-2', serviceName: 'Trauma & PTSD Intake Assessment', durationMinutes: 90, sessionFee: 3800, platformFee: 600, description: 'Comprehensive diagnostic evaluation' }
+      { id: 'srv-2', serviceName: 'Trauma & PTSD Intake Assessment', durationMinutes: 90, sessionFee: 3800, platformFee: 600, description: 'Comprehensive evaluation' }
     ],
     reviews: [
       { id: 'rev-1', clientName: 'Sarah Jenkins', rating: 5, comment: 'Dr. Alex helped me manage panic attacks effectively. High recommend!', date: '2026-07-20' }
@@ -299,7 +299,7 @@ export const mockTherapists: Therapist[] = [
       { id: 'faq-1', question: 'How long is a standard session?', answer: 'Standard individual therapy sessions are 60 minutes long.' }
     ],
     seo: {
-      metaTitle: 'Dr. Alex Harrison | Clinical Psychologist',
+      metaTitle: 'Dr. Alex Harrison | Psychologist',
       metaDescription: 'Book therapy session with Dr. Alex Harrison for CBT and anxiety treatment.',
       keywords: 'psychologist, CBT, anxiety, trauma',
       canonicalUrl: 'https://hexpertify.com/consultants/alex-harrison'
@@ -493,7 +493,7 @@ export const mockTherapists: Therapist[] = [
     youtubeUrl: 'https://youtube.com/watch?v=demo-sophia',
     languages: ['English', 'Hindi', 'Sanskrit'],
     bio: 'Integrative holistic wellness consultant focusing on nervous system regulation, chakra alignment, and somatic grounding.',
-    about: 'Sophia Chakra has 12 years of clinical holistic practice guiding clients toward emotional equilibrium.',
+    about: 'Sophia Chakra has 12 years of holistic practice guiding clients toward emotional equilibrium.',
     specializations: ['Mindfulness & MBSR', 'Somatic Grounding', 'Nervous System Reset', 'Holistic Breathwork'],
     licenseNumber: 'HW-NY-55209',
     platformFeePerSession: 500,
@@ -533,13 +533,13 @@ export const mockTherapists: Therapist[] = [
     notificationTitle: 'Dr. Priya Sharma - Neuropsychologist',
     photo: 'https://images.unsplash.com/photo-1594824813591-4e94b29dbb71?w=300',
     photoAltText: 'Dr. Priya Sharma photo',
-    profession: 'Clinical Neuropsychologist',
+    profession: 'Neuropsychologist',
     rating: 4.9,
     reviewCount: 78,
     activeClientsCount: 20,
     verificationStatus: 'Verified',
     accountStatus: 'Active',
-    qualifications: ['Psy.D. in Clinical Neuropsychology (Harvard)', 'Board Certified in Clinical Neuropsychology (ABCN)'],
+    qualifications: ['Psy.D. in Neuropsychology (Harvard)', 'Board Certified in Neuropsychology (ABCN)'],
     certificates: ['ADHD & Neurodivergence Assessment Specialist'],
     experienceYears: 10,
     clientsServed: 360,
@@ -561,7 +561,7 @@ export const mockTherapists: Therapist[] = [
     reviews: [],
     faqs: [],
     seo: {
-      metaTitle: 'Dr. Priya Sharma | Clinical Neuropsychologist',
+      metaTitle: 'Dr. Priya Sharma | Neuropsychologist',
       metaDescription: 'ADHD evaluations and cognitive coaching with Dr. Priya Sharma.',
       keywords: 'neuropsychologist, ADHD, executive function, cognitive therapy',
       canonicalUrl: 'https://hexpertify.com/consultants/priya-sharma'
@@ -606,7 +606,7 @@ export const mockTherapists: Therapist[] = [
     therapyHours: 940,
     totalSessions: 980,
     services: [
-      { id: 'srv-8', serviceName: 'Comprehensive Psychiatric Evaluation', durationMinutes: 60, sessionFee: 4500, platformFee: 700, description: 'Diagnostic evaluation and personalized treatment plan' }
+      { id: 'srv-8', serviceName: 'Comprehensive Psychiatric Evaluation', durationMinutes: 60, sessionFee: 4500, platformFee: 700, description: 'Evaluation and personalized treatment plan' }
     ],
     reviews: [],
     faqs: [],
@@ -888,7 +888,7 @@ export const mockAssessments: ClinicalAssessment[] = [
     severityRanges: [
       { minScore: 0, maxScore: 13, label: 'Low Perceived Stress', color: 'bg-emerald-500', clinicalAction: 'Normal stress coping capacity. Continue routine wellness activities.' },
       { minScore: 14, maxScore: 26, label: 'Moderate Stress', color: 'bg-amber-500', clinicalAction: 'Stress management education and mindfulness practice recommended.' },
-      { minScore: 27, maxScore: 40, label: 'High Perceived Stress', color: 'bg-rose-600', clinicalAction: 'Targeted CBT stress reduction protocol and clinical coping review indicated.' }
+      { minScore: 27, maxScore: 40, label: 'High Perceived Stress', color: 'bg-rose-600', clinicalAction: 'Targeted CBT stress reduction protocol and coping review indicated.' }
     ],
     questions: [
       {
@@ -1027,7 +1027,7 @@ export const mockAssessments: ClinicalAssessment[] = [
     severityRanges: [
       { minScore: 13, maxScore: 25, label: 'Good Well-Being (50-100%)', color: 'bg-emerald-500', clinicalAction: 'Positive mental well-being. Maintain routine support.' },
       { minScore: 7, maxScore: 12, label: 'Reduced Well-Being (28-48%)', color: 'bg-amber-500', clinicalAction: 'Monitoring indicated. Explore lifestyle and coping strategies.' },
-      { minScore: 0, maxScore: 6, label: 'Poor Well-Being (<25%)', color: 'bg-rose-600', clinicalAction: 'Screening for depression and formal clinical assessment strongly indicated.' }
+      { minScore: 0, maxScore: 6, label: 'Poor Well-Being (<25%)', color: 'bg-rose-600', clinicalAction: 'Screening for depression and formal assessment strongly indicated.' }
     ],
     questions: [
       {
@@ -1110,8 +1110,8 @@ export const mockAssessments: ClinicalAssessment[] = [
     assignedClientCount: 310,
     createdAt: '2025-01-12',
     severityRanges: [
-      { minScore: 0, maxScore: 9, label: 'Subclinical Population', color: 'bg-emerald-500', clinicalAction: 'Minimal functional impairment.' },
-      { minScore: 10, maxScore: 20, label: 'Significant Impairment', color: 'bg-amber-500', clinicalAction: 'Significant functional impairment with mild to moderate clinical symptomatology.' },
+      { minScore: 0, maxScore: 9, label: 'Subthreshold Population', color: 'bg-emerald-500', clinicalAction: 'Minimal functional impairment.' },
+      { minScore: 10, maxScore: 20, label: 'Significant Impairment', color: 'bg-amber-500', clinicalAction: 'Significant functional impairment with mild to moderate symptomatology.' },
       { minScore: 21, maxScore: 40, label: 'Severe Impairment', color: 'bg-rose-600', clinicalAction: 'Moderately severe or worse psychopathology indicating urgent functional rehabilitation.' }
     ],
     questions: [
@@ -1182,7 +1182,7 @@ export const mockAssessments: ClinicalAssessment[] = [
     category: 'Depression',
     timesCompleted: 2120,
     type: 'Standard',
-    description: 'Standardized 9-question instrument for screening, diagnosing, and tracking depression severity over time.',
+    description: 'Standardized 9-question instrument for screening and tracking depression severity over time.',
     estimatedMinutes: 4,
     validityScore: "Cronbach's α = 0.89",
     targetPopulation: 'Adults (18+)',
@@ -1195,7 +1195,7 @@ export const mockAssessments: ClinicalAssessment[] = [
       { minScore: 5, maxScore: 9, label: 'Mild Depression', color: 'bg-amber-500', clinicalAction: 'Watchful waiting; repeat PHQ-9 at follow-up. Psychoeducation recommended.' },
       { minScore: 10, maxScore: 14, label: 'Moderate Depression', color: 'bg-orange-500', clinicalAction: 'Consider counseling, psychotherapy, or pharmacotherapy consult.' },
       { minScore: 15, maxScore: 19, label: 'Moderately Severe', color: 'bg-rose-600', clinicalAction: 'Active psychotherapy and/or pharmacotherapy strongly indicated.' },
-      { minScore: 20, maxScore: 27, label: 'Severe Depression', color: 'bg-purple-600', clinicalAction: 'Immediate clinical evaluation and referral to specialty psychiatric care.' }
+      { minScore: 20, maxScore: 27, label: 'Severe Depression', color: 'bg-purple-600', clinicalAction: 'Immediate evaluation and referral to specialty psychiatric care.' }
     ],
     questions: [
       {
@@ -1313,7 +1313,7 @@ export const mockAssessments: ClinicalAssessment[] = [
       { minScore: 0, maxScore: 4, label: 'Minimal Anxiety', color: 'bg-emerald-500', clinicalAction: 'No treatment indicated.' },
       { minScore: 5, maxScore: 9, label: 'Mild Anxiety', color: 'bg-amber-500', clinicalAction: 'Monitor symptoms; introduce breathing & relaxation techniques.' },
       { minScore: 10, maxScore: 14, label: 'Moderate Anxiety', color: 'bg-orange-500', clinicalAction: 'CBT protocol recommended; assess impact on daily functioning.' },
-      { minScore: 15, maxScore: 21, label: 'Severe Anxiety', color: 'bg-rose-600', clinicalAction: 'Active clinical intervention and medical/psychiatric evaluation.' }
+      { minScore: 15, maxScore: 21, label: 'Severe Anxiety', color: 'bg-rose-600', clinicalAction: 'Active intervention and medical/psychiatric evaluation.' }
     ],
     questions: [
       {
@@ -1397,7 +1397,7 @@ export const mockAssessments: ClinicalAssessment[] = [
     category: 'PTSD & Trauma',
     timesCompleted: 780,
     type: 'Standard',
-    description: '20-item self-report measure assessing the 20 DSM-5 symptoms of PTSD. Cutoff score of 33 for provisional diagnosis.',
+    description: '20-item self-report measure assessing the 20 DSM-5 symptoms of PTSD. Cutoff score of 33 indicates probable PTSD.',
     estimatedMinutes: 8,
     validityScore: "Cronbach's α = 0.94",
     targetPopulation: 'Trauma Survivors & Adults',
@@ -1406,8 +1406,8 @@ export const mockAssessments: ClinicalAssessment[] = [
     assignedClientCount: 240,
     createdAt: '2025-01-20',
     severityRanges: [
-      { minScore: 0, maxScore: 32, label: 'Subclinical Symptoms', color: 'bg-emerald-500', clinicalAction: 'Does not meet provisional cut-point threshold.' },
-      { minScore: 33, maxScore: 45, label: 'Moderate PTSD (Provisional Diagnosis)', color: 'bg-amber-500', clinicalAction: 'Meets provisional diagnosis cutoff. Structured CAPS-5 clinical evaluation indicated.' },
+      { minScore: 0, maxScore: 32, label: 'Subthreshold Symptoms', color: 'bg-emerald-500', clinicalAction: 'Does not meet provisional cut-point threshold.' },
+      { minScore: 33, maxScore: 45, label: 'Moderate PTSD (Probable)', color: 'bg-amber-500', clinicalAction: 'Meets the probable PTSD cutoff. Structured CAPS-5 evaluation indicated.' },
       { minScore: 46, maxScore: 80, label: 'Severe PTSD Symptoms', color: 'bg-rose-600', clinicalAction: 'High symptom burden. Trauma-focused psychotherapy (EMDR / CPT) indicated.' }
     ],
     questions: [
@@ -1451,8 +1451,8 @@ export const mockAssessments: ClinicalAssessment[] = [
     assignedClientCount: 195,
     createdAt: '2025-01-25',
     severityRanges: [
-      { minScore: 0, maxScore: 20, label: 'Subclinical OCD Symptoms', color: 'bg-emerald-500', clinicalAction: 'Does not exceed recommended cutoff threshold.' },
-      { minScore: 21, maxScore: 40, label: 'Clinical OCD Elevation', color: 'bg-amber-500', clinicalAction: 'Exceeds recommended cutoff (≥21). Clinical interview for OCD indicated.' },
+      { minScore: 0, maxScore: 20, label: 'Subthreshold OCD Symptoms', color: 'bg-emerald-500', clinicalAction: 'Does not exceed recommended cutoff threshold.' },
+      { minScore: 21, maxScore: 40, label: 'OCD Elevation', color: 'bg-amber-500', clinicalAction: 'Exceeds recommended cutoff (≥21). Interview for OCD indicated.' },
       { minScore: 41, maxScore: 72, label: 'Severe OCD Impairment', color: 'bg-rose-600', clinicalAction: 'High symptom severity. Exposure and Response Prevention (ERP) protocol recommended.' }
     ],
     questions: [
@@ -1495,7 +1495,7 @@ export const mockAssessments: ClinicalAssessment[] = [
     createdAt: '2025-01-30',
     severityRanges: [
       { minScore: 0, maxScore: 3, label: 'Unlikely ADHD', color: 'bg-emerald-500', clinicalAction: 'Symptoms not consistent with Adult ADHD threshold.' },
-      { minScore: 4, maxScore: 6, label: 'Likely Adult ADHD (Part A Criterion Met)', color: 'bg-rose-600', clinicalAction: 'Part A screening criterion met (≥4 shaded items). Comprehensive ADHD clinical evaluation recommended.' }
+      { minScore: 4, maxScore: 6, label: 'Likely Adult ADHD (Part A Criterion Met)', color: 'bg-rose-600', clinicalAction: 'Part A screening criterion met (≥4 shaded items). Comprehensive ADHD evaluation recommended.' }
     ],
     questions: [
       { id: 'a1', text: 'Part A - How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (1)', value: 1 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] },
@@ -1591,7 +1591,7 @@ export const mockAssessmentSubmissions: AssessmentSubmission[] = [
     completedAt: '2026-07-28 18:05',
     totalScore: 19,
     maxScore: 28,
-    severityLabel: 'Clinical Insomnia (Moderate)',
+    severityLabel: 'Insomnia (Moderate)',
     severityColor: 'bg-orange-500 text-white',
     flaggedRisk: false,
     answers: []
@@ -1650,14 +1650,14 @@ export const mockProfessions: ProfessionService[] = [
     heroBannerTitle: 'Transform Your Mental Well-being With Individual Therapy',
     faqs: [
       { question: 'How long is each session?', answer: 'Standard sessions are 50-60 minutes in length.' },
-      { question: 'Are sessions confidential?', answer: 'Yes, all interactions strictly adhere to HIPAA and clinical privacy protocols.' }
+      { question: 'Are sessions confidential?', answer: 'Yes, all interactions strictly adhere to HIPAA and privacy protocols.' }
     ],
     consultationFee: 2500,
     sessionDurationMinutes: 60,
     visibility: 'Public',
     seo: {
       metaTitle: 'Online Individual Therapy & Counseling | Hexpertify',
-      metaDescription: 'Connect with licensed clinical psychologists for confidential online individual therapy.',
+      metaDescription: 'Connect with licensed psychologists for confidential online individual therapy.',
       keywords: 'individual therapy, online therapist, CBT counseling, mental health',
       canonicalUrl: 'https://hexpertify.com/services/individual-therapy',
       openGraphTitle: 'Individual Psychotherapy on Hexpertify',
@@ -1698,15 +1698,15 @@ export const mockProfessions: ProfessionService[] = [
   },
   {
     id: 'PROF-3',
-    serviceName: 'Licensed Clinical Psychologist',
+    serviceName: 'Licensed Psychologist',
     identifier: 'clinical-psychologist',
     slug: 'clinical-psychologist',
     status: 'Active',
     description: 'Evidence-based cognitive behavioral therapy, mood disorder treatment, and psychological assessments.',
     imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-    imageAltText: 'Licensed clinical psychologist conducting a session',
+    imageAltText: 'Licensed psychologist conducting a session',
     heroBannerUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800',
-    heroBannerTitle: 'Expert Care With Licensed Clinical Psychologists',
+    heroBannerTitle: 'Expert Care With Licensed Psychologists',
     faqs: [],
     consultationFee: 2800,
     sessionDurationMinutes: 60,
@@ -1783,10 +1783,10 @@ export const mockHomepageCMS: HomepageCMS = {
   ],
   seo: {
     metaTitle: 'Hexpertify - Premier Online Therapy & Mental Health Platform',
-    metaDescription: 'Book confidential video consultation sessions with top licensed clinical psychologists and specialized counselors on Hexpertify.',
+    metaDescription: 'Book confidential video consultation sessions with top licensed psychologists and specialized counselors on Hexpertify.',
     keywords: 'online therapy, mental health platform, licensed psychologists, couple therapy, CBT counseling',
     openGraphTitle: 'Hexpertify — Online Therapy & Counseling Services',
-    openGraphDescription: 'Connect with expert clinical psychologists, relationship counselors, and mental health professionals anywhere.',
+    openGraphDescription: 'Connect with expert psychologists, relationship counselors, and mental health professionals anywhere.',
     openGraphImageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1200',
     openGraphImageAltText: 'Hexpertify mental health platform hero banner preview'
   },
@@ -1834,7 +1834,7 @@ export const mockTherapistSlots: TherapistSlot[] = [
   { id: 'SLOT-101', therapistId: 'TH-01', therapistName: 'Dr. Alex Harrison', dayOfWeek: 'Monday', startTime: '09:00 AM', endTime: '10:00 AM', durationMinutes: 60, sessionType: 'Google Meet', status: 'Booked', isRecurring: true, bookedByClientName: 'Sarah Jenkins', meetUrl: 'https://meet.google.com/hex-alex-01', notes: 'Weekly CBT Session via Google Meet' },
   { id: 'SLOT-102', therapistId: 'TH-01', therapistName: 'Dr. Alex Harrison', dayOfWeek: 'Monday', startTime: '10:30 AM', endTime: '11:30 AM', durationMinutes: 60, sessionType: 'Google Meet', status: 'Available', isRecurring: true, meetUrl: 'https://meet.google.com/hex-alex-02' },
   { id: 'SLOT-103', therapistId: 'TH-01', therapistName: 'Dr. Alex Harrison', dayOfWeek: 'Monday', startTime: '02:00 PM', endTime: '03:00 PM', durationMinutes: 60, sessionType: 'Google Meet', status: 'Available', isRecurring: true, meetUrl: 'https://meet.google.com/hex-alex-03' },
-  { id: 'SLOT-104', therapistId: 'TH-01', therapistName: 'Dr. Alex Harrison', dayOfWeek: 'Monday', startTime: '03:30 PM', endTime: '04:30 PM', durationMinutes: 60, sessionType: 'Google Meet', status: 'Blocked', isRecurring: false, meetUrl: 'https://meet.google.com/hex-alex-04', notes: 'Clinical Case Review Break' },
+  { id: 'SLOT-104', therapistId: 'TH-01', therapistName: 'Dr. Alex Harrison', dayOfWeek: 'Monday', startTime: '03:30 PM', endTime: '04:30 PM', durationMinutes: 60, sessionType: 'Google Meet', status: 'Blocked', isRecurring: false, meetUrl: 'https://meet.google.com/hex-alex-04', notes: 'Case Review Break' },
 
   { id: 'SLOT-105', therapistId: 'TH-01', therapistName: 'Dr. Alex Harrison', dayOfWeek: 'Tuesday', startTime: '09:00 AM', endTime: '10:00 AM', durationMinutes: 60, sessionType: 'Google Meet', status: 'Available', isRecurring: true, meetUrl: 'https://meet.google.com/hex-alex-05' },
   { id: 'SLOT-106', therapistId: 'TH-01', therapistName: 'Dr. Alex Harrison', dayOfWeek: 'Tuesday', startTime: '11:00 AM', endTime: '12:00 PM', durationMinutes: 60, sessionType: 'Google Meet', status: 'Booked', isRecurring: true, bookedByClientName: 'David Miller', meetUrl: 'https://meet.google.com/hex-alex-06' },

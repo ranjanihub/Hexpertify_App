@@ -630,7 +630,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#5e2be2]" />
-              <span>Clinical Benefits</span>
+              <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
               Regular environmental scanning builds automatic grounding reflexes when feeling overwhelmed:
@@ -694,7 +694,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
-            <strong>Clinical Rule of Thumb:</strong> When anxiety, depersonalization, or racing thoughts start to detach you from your body, stop analyzing your thoughts. Instead, orient your vision outward onto 3 concrete physical objects. Anchoring to objective reality stabilizes your physiology faster than mental reasoning.
+            <strong>Rule of Thumb:</strong> When anxiety, depersonalization, or racing thoughts start to detach you from your body, stop analyzing your thoughts. Instead, orient your vision outward onto 3 concrete physical objects. Anchoring to objective reality stabilizes your physiology faster than mental reasoning.
           </p>
         </div>
       </div>
@@ -1281,7 +1281,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
-                Acknowledge the somatic intensity and receive gentle clinical validation. All feelings are natural human experiences.
+                Acknowledge the somatic intensity and receive gentle validation. All feelings are natural human experiences.
               </p>
             </div>
           </div>
@@ -1812,7 +1812,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
-              Clinically verified psychological and somatic benefits of physical grounding:
+              Verified psychological and somatic benefits of physical grounding:
             </p>
           </div>
 
@@ -2638,7 +2638,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#5e2be2]" />
-              <span>Clinical Benefits</span>
+              <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
               Evidence-based neurological outcomes of competitive prefrontal activation:

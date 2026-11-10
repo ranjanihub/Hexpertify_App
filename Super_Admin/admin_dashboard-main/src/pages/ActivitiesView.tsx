@@ -458,7 +458,7 @@ export const ActivitiesView: React.FC = () => {
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Activities</h1>
               <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1">
-                Prescribe and manage clinical exercises with frequency schedules for your clients.
+                Prescribe and manage exercises with frequency schedules for your clients.
               </p>
             </div>
 
@@ -803,7 +803,7 @@ export const ActivitiesView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-slate-900">Create & Assign Activity</h3>
-                  <p className="text-xs text-slate-400">Prescribe a clinical exercise with custom details & frequency</p>
+                  <p className="text-xs text-slate-400">Prescribe an exercise with custom details & frequency</p>
                 </div>
               </div>
               <button

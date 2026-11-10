@@ -181,7 +181,7 @@ export class AssessmentsController {
                   id: `SUB-USR-${u.id || u._id}-${idx}`,
                   assessmentId: `ASS-${acronym}`,
                   assessmentAcronym: acronym,
-                  assessmentTitle: as.title || `${acronym} Clinical Assessment`,
+                  assessmentTitle: as.title || `${acronym} Assessment`,
                   clientId: String(u.id || u._id || ''),
                   clientName: u.name || 'Client User',
                   clientEmail: userEmail,
@@ -196,7 +196,7 @@ export class AssessmentsController {
                   severityColor: totalScore >= 15 ? 'bg-rose-600 text-white' : totalScore >= 10 ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white',
                   flaggedRisk: totalScore >= 15,
                   answers: Array.isArray(as.answers) ? as.answers : [],
-                  notes: `Clinical assessment submitted by ${u.name || 'Client'}.`,
+                  notes: `Assessment submitted by ${u.name || 'Client'}.`,
                   completedAt: as.date || new Date().toISOString().split('T')[0]
                 };
                 submissions.push(subObj);
@@ -234,7 +234,7 @@ export class AssessmentsController {
       const totalScore = Number(body.totalScore ?? body.score ?? 0);
       const maxScore = Number(body.maxScore ?? (body.type === 'PHQ-9' ? 27 : body.type === 'GAD-7' ? 21 : 25));
       const type = body.assessmentAcronym || body.type || 'GAD-7';
-      const title = body.assessmentTitle || body.title || 'Clinical Assessment';
+      const title = body.assessmentTitle || body.title || 'Assessment';
       const clientName = body.clientName || 'Client';
       const clientEmail = (body.clientEmail || '').toLowerCase().trim();
       const bodyClientId = String(body.clientId || body.userId || '').trim();
@@ -387,7 +387,7 @@ export class AssessmentsController {
         id: `ASN-${Date.now().toString().slice(-6)}`,
         assessmentId: body.assessmentId || 'ASS-01',
         assessmentAcronym: body.assessmentAcronym || 'GAD-7',
-        assessmentTitle: body.assessmentTitle || 'Clinical Screener',
+        assessmentTitle: body.assessmentTitle || 'Screener',
         clientId: client ? String(client.id || client._id) : rawClientId,
         clientName: client?.name || body.clientName || 'Client',
         clientEmail: String(client?.email || rawClientEmail).toLowerCase(),
@@ -414,7 +414,7 @@ export class AssessmentsController {
           recipientRole: 'CLIENT',
           type: 'ASSESSMENT_ASSIGNED',
           title: `New Assessment Assigned: ${newAssignment.assessmentAcronym || newAssignment.assessmentTitle} 📋`,
-          message: `Your consultant ${newAssignment.consultantName} assigned you "${newAssignment.assessmentTitle}". Tap to begin your clinical check-in.`,
+          message: `Your consultant ${newAssignment.consultantName} assigned you "${newAssignment.assessmentTitle}". Tap to begin your check-in.`,
           link: '/assessments',
           assessmentId: newAssignment.assessmentId,
           assessmentTitle: newAssignment.assessmentTitle,

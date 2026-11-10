@@ -115,7 +115,7 @@ export async function POST(req: Request) {
           name: payload.name,
           email: payload.email,
           role: payload.role,
-          title: payload.title || "Licensed Clinical Practitioner",
+          title: payload.title || "Licensed Practitioner",
           photoUrl: payload.avatarUrl || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
           avatarUrl: payload.avatarUrl || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80"
         },

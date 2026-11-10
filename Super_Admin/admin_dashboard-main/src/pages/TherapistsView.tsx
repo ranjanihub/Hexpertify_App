@@ -1178,9 +1178,9 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
           <span className="px-3.5 py-1.5 bg-white/15 backdrop-blur-md rounded-full text-xs font-bold tracking-wide uppercase text-purple-200 border border-white/20">
             Therapist Directory
           </span>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-3">Clinical Practitioner Management</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight mt-3">Practitioner Management</h1>
           <p className="text-purple-100 text-sm mt-1 max-w-xl">
-            Configure therapist profiles, platform session fees individually per consultant, manage credentials, and inspect clinical outcome workspace.
+            Configure therapist profiles, platform session fees individually per consultant, manage credentials, and inspect outcome workspace.
           </p>
         </div>
 
@@ -1586,7 +1586,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
             {/* Clinical Outcomes Metrics */}
             <div>
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Clinical Outcome Scores</h4>
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Outcome Scores</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-purple-50/60 p-3 rounded-2xl text-center border border-purple-100">
                   <span className="text-[11px] text-slate-500 font-medium block">Improvement Score</span>
@@ -1609,13 +1609,13 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
             {/* Bio & Qualifications */}
             <div className="space-y-3 text-xs">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Biography & Clinical Qualifications</h4>
-              <p className="text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl">{selectedTherapist.about || selectedTherapist.bio || 'Clinical specialist providing evidence-based healthcare and counseling.'}</p>
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Biography & Qualifications</h4>
+              <p className="text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl">{selectedTherapist.about || selectedTherapist.bio || 'Specialist providing evidence-based healthcare and counseling.'}</p>
               
               <div className="space-y-1">
                 <span className="font-bold text-slate-500 block">Qualifications:</span>
                 <div className="flex flex-wrap gap-2">
-                  {(selectedTherapist.qualifications || ["Bachelor's in Psychology", "Licensed Clinical Specialist"]).map((q, idx) => (
+                  {(selectedTherapist.qualifications || ["Bachelor's in Psychology", "Licensed Specialist"]).map((q, idx) => (
                     <span key={idx} className="px-3 py-1 bg-purple-50 text-purple-800 rounded-lg font-semibold border border-purple-100">
                       {q}
                     </span>
@@ -1669,7 +1669,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               </div>
 
               <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
-                <span className="font-extrabold text-slate-700 block uppercase text-[10px]">Clinical Specialties</span>
+                <span className="font-extrabold text-slate-700 block uppercase text-[10px]">Specialties</span>
                 <div className="flex flex-wrap gap-1.5">
                   {(selectedTherapist.specializations || ['Mental Health', 'Anxiety', 'CBT']).map((s, idx) => (
                     <span key={idx} className="px-2.5 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-800">
@@ -2938,7 +2938,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                           <label className="text-xs font-extrabold text-slate-700">Meta Title</label>
                           <input
                             type="text"
-                            placeholder="e.g. Dr. John Doe | Clinical Psychologist in New York"
+                            placeholder="e.g. Dr. John Doe | Psychologist in New York"
                             value={formData.seo.metaTitle}
                             onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, metaTitle: e.target.value } })}
                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all font-medium text-slate-800"
@@ -3110,10 +3110,10 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                           </div>
                           <div className="space-y-1">
                             <h5 className="text-[15px] font-semibold text-[#1a0dab] hover:underline cursor-pointer leading-tight truncate">
-                              {formData.seo.metaTitle || (formData.name ? `${formData.name.trim().startsWith('Dr.') ? formData.name.trim() : 'Dr. ' + formData.name.trim()} | ${formData.profession || 'Therapist'}` : 'Dr. John Doe | Clinical Practitioner')}
+                              {formData.seo.metaTitle || (formData.name ? `${formData.name.trim().startsWith('Dr.') ? formData.name.trim() : 'Dr. ' + formData.name.trim()} | ${formData.profession || 'Therapist'}` : 'Dr. John Doe | Practitioner')}
                             </h5>
                             <p className="text-xs text-slate-655 leading-relaxed line-clamp-2">
-                              {formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : 'Book clinical consultation sessions with our licensed therapist on Hexpertify platform. Dedicated mental health care and recovery.')}
+                              {formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : 'Book consultation sessions with our licensed therapist on Hexpertify platform. Dedicated mental health care and recovery.')}
                             </p>
                           </div>
                         </div>
@@ -3152,10 +3152,10 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               hexpertify.com
                             </span>
                             <h5 className="font-extrabold text-slate-800 text-sm leading-snug line-clamp-1">
-                              {formData.seo.ogTitle || formData.seo.metaTitle || (formData.name ? `${formData.name.trim().startsWith('Dr.') ? formData.name.trim() : 'Dr. ' + formData.name.trim()} | ${formData.profession || 'Therapist'}` : 'Dr. John Doe | Clinical Practitioner')}
+                              {formData.seo.ogTitle || formData.seo.metaTitle || (formData.name ? `${formData.name.trim().startsWith('Dr.') ? formData.name.trim() : 'Dr. ' + formData.name.trim()} | ${formData.profession || 'Therapist'}` : 'Dr. John Doe | Practitioner')}
                             </h5>
                             <p className="text-xs text-slate-500 font-medium leading-normal line-clamp-2 font-medium">
-                              {formData.seo.ogDescription || formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : 'Book clinical consultation sessions with our licensed therapist on Hexpertify platform. Dedicated mental health care and recovery.')}
+                              {formData.seo.ogDescription || formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : 'Book consultation sessions with our licensed therapist on Hexpertify platform. Dedicated mental health care and recovery.')}
                             </p>
                           </div>
                         </div>

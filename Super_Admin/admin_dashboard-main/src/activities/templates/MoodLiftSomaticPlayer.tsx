@@ -706,7 +706,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
-              Clinically verified somatic and neuromuscular benefits of regular posture resetting:
+              Verified somatic and neuromuscular benefits of regular posture resetting:
             </p>
           </div>
 
@@ -1178,7 +1178,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#5e2be2]" />
-              <span>Clinical Benefits</span>
+              <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
               Evidence-based therapeutic outcomes of structured multisensory engagement:
@@ -1242,7 +1242,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
-            <strong>Clinical Rule of Thumb:</strong> When distress rises above a 6/10, your prefrontal cortex loses control to the limbic system. Trying to talk yourself out of panic rarely works. Instead, recruit your 5 senses to send somatic safety signals directly into the nervous system. Calming the body is the fastest way to quiet the mind.
+            <strong>Rule of Thumb:</strong> When distress rises above a 6/10, your prefrontal cortex loses control to the limbic system. Trying to talk yourself out of panic rarely works. Instead, recruit your 5 senses to send somatic safety signals directly into the nervous system. Calming the body is the fastest way to quiet the mind.
           </p>
         </div>
       </div>

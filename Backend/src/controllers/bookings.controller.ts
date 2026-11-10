@@ -130,7 +130,7 @@ export class BookingsController {
             clientPhone: isConsultantQuery ? undefined : rawClientPhone,
             consultantName,
             consultantAvatar: b.consultantAvatar || c?.photoUrl || c?.photo || '',
-            serviceTitle: inferredService || 'Individual Clinical Psychology',
+            serviceTitle: inferredService || 'Individual Therapy',
             duration: b.durationMinutes || s?.duration || 50,
             date: dateStr,
             time: timeStr,

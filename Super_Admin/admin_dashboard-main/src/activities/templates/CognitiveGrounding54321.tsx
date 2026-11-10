@@ -391,7 +391,7 @@ ${responses[2].map((s, i) => `  ${i + 1}. ${s || '(Smelled)'}`).join('\n')}
 ✨ 1 Thing I Tasted / Affirmed:
   1. ${responses[1][0] || '(Affirmed)'}
 
-Completed via Hexpertify Clinical Grounding`;
+Completed via Hexpertify Grounding`;
 
     navigator.clipboard?.writeText(summary);
     setCopied(true);
@@ -956,7 +956,7 @@ Completed via Hexpertify Clinical Grounding`;
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#5e2be2]" />
-              <span>Clinical Benefits</span>
+              <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
               Evidence-based neurological outcomes of 5-4-3-2-1 sensory grounding:
@@ -1020,7 +1020,7 @@ Completed via Hexpertify Clinical Grounding`;
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
-            <strong>Clinical Rule of Thumb:</strong> When in severe emotional overwhelm or panic, do not attempt to reason with catastrophic thoughts. Anchor your five physical senses with 5-4-3-2-1 first. Once physiology settles, cognitive clarity follows naturally.
+            <strong>Rule of Thumb:</strong> When in severe emotional overwhelm or panic, do not attempt to reason with catastrophic thoughts. Anchor your five physical senses with 5-4-3-2-1 first. Once physiology settles, cognitive clarity follows naturally.
           </p>
         </div>
       </div>

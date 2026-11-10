@@ -63,7 +63,7 @@ const normalizeZombiePage = (p: any, index: number = 0): ZombiPage => {
   const rawSeo = p?.seo || {};
   const seo = {
     metaTitle: String(rawSeo.metaTitle || `${pageTitle} | Hexpertify`),
-    metaDescription: String(rawSeo.metaDescription || `Book sessions for ${pageTitle} on Hexpertify. Certified clinical psychologists & counselors.`),
+    metaDescription: String(rawSeo.metaDescription || `Book sessions for ${pageTitle} on Hexpertify. Certified psychologists & counselors.`),
     keywords: String(rawSeo.keywords || 'mental health, therapy, psychologist, counseling'),
     canonicalUrl: isSelfUrl(rawSeo.canonicalUrl, slug) ? targetUrl : String(rawSeo.canonicalUrl),
     ogTitle: String(rawSeo.ogTitle || rawSeo.metaTitle || pageTitle),
@@ -90,7 +90,7 @@ const normalizeZombiePage = (p: any, index: number = 0): ZombiPage => {
 const slugify = (title: string) => '/' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 const autoMetaTitle = (title: string) => (title ? `${title} | Hexpertify Online Therapy` : '');
 const autoMetaDescription = (title: string) =>
-  title ? `Book confidential video sessions for ${title} on Hexpertify. Verified clinical psychologists & counselors.` : '';
+  title ? `Book confidential video sessions for ${title} on Hexpertify. Verified psychologists & counselors.` : '';
 
 /** Next free ZMB-<n> id (ids must stay unique: saving an existing id overwrites that page) */
 const nextZombieId = (pages: ZombiPage[]) => {
@@ -456,7 +456,7 @@ export const ZombiView: React.FC = () => {
   <div class="max-w-2xl">
     <span class="bg-white/20 text-purple-100 text-[11px] px-3 py-1 rounded-full font-bold uppercase tracking-wider border border-white/20">Programmatic SEO Landing</span>
     <h1 class="text-3xl font-extrabold mt-3 tracking-tight">Top Certified Therapy & Counseling Services</h1>
-    <p class="text-purple-100 text-xs mt-2 leading-relaxed">Book confidential video consultation sessions with top licensed clinical psychologists on Hexpertify.</p>
+    <p class="text-purple-100 text-xs mt-2 leading-relaxed">Book confidential video consultation sessions with top licensed psychologists on Hexpertify.</p>
     <div class="mt-6 flex flex-wrap gap-3">
       <a href="/bookings" class="px-5 py-3 bg-white text-[#4f28d9] rounded-xl font-extrabold text-xs shadow-md hover:bg-purple-50 transition-all">Book Instant Session</a>
     </div>
@@ -486,7 +486,7 @@ export const ZombiView: React.FC = () => {
       chunk = `<div class="bg-white border border-purple-100 p-6 rounded-2xl shadow-xs my-4 flex flex-col sm:flex-row items-center gap-5">
   <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400" alt="Specialist Doctor" class="w-20 h-20 rounded-2xl object-cover border-2 border-purple-200" />
   <div class="space-y-1 text-center sm:text-left">
-    <span class="text-[10px] font-bold text-purple-600 uppercase tracking-wider bg-purple-50 px-2 py-0.5 rounded-md">Lead Clinical Psychologist</span>
+    <span class="text-[10px] font-bold text-purple-600 uppercase tracking-wider bg-purple-50 px-2 py-0.5 rounded-md">Lead Psychologist</span>
     <h4 class="text-base font-bold text-slate-900">Dr. Evelyn Reed, PhD</h4>
     <p class="text-xs text-slate-500">12+ years experience in Anxiety, CBT & Trauma Recovery. Over 1,400+ sessions completed.</p>
   </div>

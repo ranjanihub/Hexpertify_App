@@ -256,7 +256,7 @@ ${responses.smell.map((s, i) => `  ${i + 1}. ${s || '(Not specified)'}`).join('\
 ☕ 1 Thing I Tasted:
   1. ${responses.taste[0] || '(Not specified)'}
 
-Curated by Hexpertify Clinical Wellness`;
+Curated by Hexpertify Wellness`;
 
     navigator.clipboard.writeText(summaryText);
     setCopied(true);
@@ -274,7 +274,7 @@ Curated by Hexpertify Clinical Wellness`;
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 bg-purple-50 text-[#5e2be2] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
-                Clinical Mindfulness · ACT-01
+                Mindfulness · ACT-01
               </span>
               <span className="text-slate-400 text-xs font-semibold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />

@@ -100,7 +100,7 @@ export class AvailabilityController {
           status: isBlocked ? 'Blocked' : isAvailable ? 'Available' : 'Booked',
           clientName: isBlocked ? 'Blocked Time Slot' : isAvailable ? 'Open Consultation Slot' : (b.clientName || 'Patient Consultation'),
           clientEmail: b.clientEmail || '',
-          serviceType: b.serviceTitle || 'Individual Clinical Psychology',
+          serviceType: b.serviceTitle || 'Individual Therapy',
           sessionType: 'Google Meet',
           meetingUrl: b.meetingLink || b.meetingUrl || 'https://meet.google.com/hex-pert-ify',
           price: b.amount || 1500,

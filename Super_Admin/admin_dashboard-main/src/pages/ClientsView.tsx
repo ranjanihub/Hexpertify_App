@@ -109,11 +109,11 @@ export const ClientsView: React.FC = () => {
         <div className="relative z-10 space-y-1 sm:space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] sm:text-xs font-bold tracking-wide uppercase text-purple-200">
             <ClipboardList className="w-3.5 h-3.5" />
-            <span>Client Records & Clinical Directory</span>
+            <span>Client Records & Directory</span>
           </div>
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Client Medical Records & Intake Hub</h1>
           <p className="text-purple-100 text-xs sm:text-sm max-w-xl leading-relaxed">
-            Access complete client medical details, AI intake surveys, clinical assessment scores, mood tracking, and session notes.
+            Access complete client medical details, AI intake surveys, assessment scores, mood tracking, and session notes.
           </p>
         </div>
 
@@ -531,7 +531,7 @@ export const ClientsView: React.FC = () => {
                               <span className="text-[10px] px-1.5 py-0.2 bg-slate-200 text-slate-700 font-bold rounded">Current</span>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-500 truncate">{t.profession || 'Clinical Specialist'}</div>
+                          <div className="text-[11px] text-slate-500 truncate">{t.profession || 'Specialist'}</div>
                         </div>
                       </div>
 

@@ -234,14 +234,14 @@ export const ResourcesView: React.FC = () => {
         duration = 'Video Session';
         imageUrl = 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80';
       }
-      description = `Clinical resource file "${selectedFile.name}" (${(selectedFile.size / 1024).toFixed(1)} KB).`;
+      description = `Resource file "${selectedFile.name}" (${(selectedFile.size / 1024).toFixed(1)} KB).`;
     } else {
       if (!linkLabel.trim() || !linkUrl.trim()) {
         showToast('Please enter both label and URL.');
         return;
       }
       title = linkLabel.trim();
-      description = `External clinical link: ${linkUrl.trim()}`;
+      description = `External link: ${linkUrl.trim()}`;
       if (linkUrl.includes('youtube') || linkUrl.includes('vimeo') || linkUrl.includes('.mp4')) {
         type = 'video';
         typeLabel = 'VIDEO';
@@ -273,7 +273,7 @@ export const ResourcesView: React.FC = () => {
       fullContent: resourceTab === 'link' ? `Direct Link: ${linkUrl}\n\nShared Context: ${selectedContexts.join(', ') || 'Global'}` : `Uploaded file: ${selectedFile?.name}\n\nShared Context: ${selectedContexts.join(', ') || 'Global'}`,
       duration,
       imageUrl,
-      tags: selectedContexts.length > 0 ? selectedContexts : ['Clinical', 'Resource'],
+      tags: selectedContexts.length > 0 ? selectedContexts : ['Wellness', 'Resource'],
       isSaved: false,
       createdAt: new Date().toISOString().split('T')[0]
     };
@@ -370,7 +370,7 @@ export const ResourcesView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold text-[#5e2be2] uppercase tracking-wider bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200/60">
-              Clinical Hub
+              Care Hub
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
@@ -639,7 +639,7 @@ export const ResourcesView: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>Clinical Review Verified</span>
+                    <span>Review Verified</span>
                   </div>
                 </div>
 
@@ -665,7 +665,7 @@ export const ResourcesView: React.FC = () => {
               {selectedResource.fullContent && (
                 <div className="space-y-4 text-xs sm:text-sm leading-relaxed text-slate-700 font-normal whitespace-pre-line">
                   <div className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
-                    Clinical Overview & Implementation
+                    Overview & Implementation
                   </div>
                   <div className="prose prose-slate max-w-none text-slate-600">
                     {selectedResource.fullContent}
@@ -830,7 +830,7 @@ export const ResourcesView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">FULL CLINICAL CONTENT / GUIDE</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">FULL CONTENT / GUIDE</label>
                 <textarea
                   rows={4}
                   value={editingResource.fullContent || ''}

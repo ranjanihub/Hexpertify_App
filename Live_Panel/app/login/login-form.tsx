@@ -173,7 +173,7 @@ export function LoginForm({
             {role === "admin"
               ? "Full administrative control over all operations, users, therapists, and CMS."
               : role === "therapist"
-              ? "Manage clinical tasks, assign activities and assessments to your clients."
+              ? "Manage tasks, assign activities and assessments to your clients."
               : "Access your consultation sessions, personalized activities, and assessments."}
           </CardDescription>
         </CardHeader>

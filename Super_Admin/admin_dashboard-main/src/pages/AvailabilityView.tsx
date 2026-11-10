@@ -109,7 +109,7 @@ export const AvailabilityView: React.FC = () => {
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('10:00 AM');
   const [eventDuration, setEventDuration] = useState('50 min');
-  const [eventType, setEventType] = useState('Individual Clinical Psychology');
+  const [eventType, setEventType] = useState('Individual Therapy');
 
   // Assign Target State
   const [assignTarget, setAssignTarget] = useState<{ key: string; index: number; slot: SessionSlot } | null>(null);
@@ -257,7 +257,7 @@ export const AvailabilityView: React.FC = () => {
               client: isBlocked ? 'Blocked Time Slot' : isAvailable ? 'Open Consultation Slot' : (matchedBooking.clientName || 'Patient Consultation'),
               initials: (matchedBooking.clientName || 'PT').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
               time: timeStr,
-              type: matchedBooking.serviceTitle || 'Individual Clinical Psychology',
+              type: matchedBooking.serviceTitle || 'Individual Therapy',
               duration: matchedBooking.duration || `${matchedBooking.durationMinutes || 50} min`,
               status: isBlocked ? 'blocked' : isAvailable ? 'available' : 'booked',
               bookingId: matchedBooking.id || String(matchedBooking._id),
@@ -272,7 +272,7 @@ export const AvailabilityView: React.FC = () => {
               client: isBlocked ? 'Blocked Time Slot' : isBooked ? (matchedCustomSlot.clientName || 'Booked Client') : 'Open Consultation Slot',
               initials: (matchedCustomSlot.clientName || 'OP').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
               time: timeStr,
-              type: matchedCustomSlot.serviceType || 'Individual Clinical Psychology',
+              type: matchedCustomSlot.serviceType || 'Individual Therapy',
               duration: `${matchedCustomSlot.durationMinutes || 50} min`,
               status: isBlocked ? 'blocked' : isBooked ? 'booked' : 'available',
               slotId: matchedCustomSlot.id || String(matchedCustomSlot._id),
@@ -285,7 +285,7 @@ export const AvailabilityView: React.FC = () => {
               client: 'Open Consultation Slot',
               initials: 'OP',
               time: timeStr,
-              type: activeConsultant.title || 'Individual Clinical Psychology',
+              type: activeConsultant.title || 'Individual Therapy',
               duration: '50 min',
               status: 'available',
               slotId: `AVAIL-${key}-${timeStr.replace(/[^a-zA-Z0-9]/g, '')}`,
@@ -308,7 +308,7 @@ export const AvailabilityView: React.FC = () => {
             client: isBlocked ? 'Blocked Time Slot' : isAvailable ? 'Open Consultation Slot' : (b.clientName || 'Patient Consultation'),
             initials: (b.clientName || 'PT').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
             time: bTime,
-            type: b.serviceTitle || 'Individual Clinical Psychology',
+            type: b.serviceTitle || 'Individual Therapy',
             duration: b.duration || `${b.durationMinutes || 50} min`,
             status: isBlocked ? 'blocked' : isAvailable ? 'available' : 'booked',
             bookingId: b.id || String(b._id),
@@ -330,7 +330,7 @@ export const AvailabilityView: React.FC = () => {
             client: isBlocked ? 'Blocked Time Slot' : isBooked ? (s.clientName || 'Booked Client') : 'Open Consultation Slot',
             initials: (s.clientName || 'OP').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
             time: sTime,
-            type: s.serviceType || 'Individual Clinical Psychology',
+            type: s.serviceType || 'Individual Therapy',
             duration: `${s.durationMinutes || 50} min`,
             status: isBlocked ? 'blocked' : isBooked ? 'booked' : 'available',
             slotId: s.id || String(s._id),
@@ -452,7 +452,7 @@ export const AvailabilityView: React.FC = () => {
       consultantName: activeConsultant.name,
       therapistId: activeConsultant.id,
       therapistName: activeConsultant.name,
-      serviceTitle: eventType || 'Individual Clinical Psychology',
+      serviceTitle: eventType || 'Individual Therapy',
       scheduledAt: `${targetDate}T10:00:00.000Z`,
       date: targetDate,
       time: eventTime || '10:00 AM',
@@ -504,7 +504,7 @@ export const AvailabilityView: React.FC = () => {
       clientEmail: matchedClient?.email || 'client@example.com',
       therapistId: activeConsultant.id,
       therapistName: activeConsultant.name,
-      serviceTitle: 'Individual Clinical Psychology',
+      serviceTitle: 'Individual Therapy',
       date: dateStr,
       time: slot.time
     };
@@ -1079,7 +1079,7 @@ export const AvailabilityView: React.FC = () => {
                       onChange={(e) => setEventType(e.target.value)}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
                     >
-                      <option value="Individual Clinical Psychology">Individual Therapy</option>
+                      <option value="Individual Therapy">Individual Therapy</option>
                       <option value="Comprehensive CBT Care">Comprehensive CBT</option>
                       <option value="Couples & Relationship Counseling">Couples Counseling</option>
                       <option value="ADHD & Executive Functioning">ADHD Coaching</option>

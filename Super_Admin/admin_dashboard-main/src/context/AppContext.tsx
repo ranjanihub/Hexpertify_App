@@ -260,7 +260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           notificationTitle: c.notificationTitle || undefined,
           photo: c.photoUrl || c.photo || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
           photoAltText: c.photoAltText || `certified therapist ${c.name}`,
-          profession: c.profession || c.title || "Clinical Specialist",
+          profession: c.profession || c.title || "Specialist",
           professionId: c.professionId ? String(c.professionId) : undefined,
           rating: c.rating !== undefined ? Number(c.rating) : 5.0,
           reviewCount: c.reviewCount !== undefined ? Number(c.reviewCount) : 0,
@@ -329,7 +329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             consultantId: b.consultantId || b.therapistId || undefined,
             therapistName: b.therapistName || b.consultantName || "Specialist",
             therapistAvatar: b.therapistAvatar || b.consultantAvatar || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100",
-            therapistProfession: b.therapistProfession || b.profession || b.consultantProfession || "Clinical Specialist",
+            therapistProfession: b.therapistProfession || b.profession || b.consultantProfession || "Specialist",
             service: b.serviceTitle || b.service || "1-on-1 Consultation",
             date: toBeScheduled
               ? "To be scheduled"

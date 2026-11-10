@@ -102,7 +102,7 @@ export async function dispatchBookingConfirmed(newBooking: any, consultantEmailH
       consultantName: consultantName || 'Therapist',
       consultantEmail,
       therapistEmail: consultantEmail,
-      serviceTitle: newBooking.serviceTitle || 'Individual Clinical Consultation',
+      serviceTitle: newBooking.serviceTitle || 'Individual Therapy Consultation',
       scheduledDate: formattedDate,
       scheduledTime: formattedTime,
       durationMinutes: newBooking.durationMinutes || 50,
@@ -154,7 +154,7 @@ export async function bookingContact(b: any) {
     clientEmail,
     clientName: b.clientName || user?.name || 'Client',
     consultantName: b.consultantName || consultant?.name || 'Therapist',
-    serviceTitle: b.serviceTitle || service?.name || service?.title || 'Individual Clinical Consultation',
+    serviceTitle: b.serviceTitle || service?.name || service?.title || 'Individual Therapy Consultation',
     bookingId: String(b.id || b._id),
     durationMinutes: b.durationMinutes || service?.duration || 50,
     // Website bookings are paid before a time is fixed

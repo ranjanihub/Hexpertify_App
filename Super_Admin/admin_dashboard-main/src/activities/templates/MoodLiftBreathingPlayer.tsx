@@ -1310,7 +1310,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
 
 /* ─────────────────────────────────────────────────────────────
    ACT-03: 4-7-8 TRANQUILITY PACER (Triangle Breathwork System)
-   Reference: Clinical Vagus Activation & Triangle Sedative Pacing
+   Reference: Vagus Activation & Triangle Sedative Pacing
    ───────────────────────────────────────────────────────────── */
 function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName?: string; onComplete?: any }) {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
