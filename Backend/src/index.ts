@@ -104,12 +104,13 @@ if (!process.env.VERCEL) {
   });
 
   // 3b. Consultant / Therapist Suite (/consultant, /consultant/*)
+  // The standalone therapist app first, as on Vercel (Backend/vercel.json); the client app's bundled copy is only a fallback
   app.get(['/consultant', '/consultant/*'], (_req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    if (fs.existsSync(unifiedIndexPath)) {
-      res.sendFile(unifiedIndexPath);
-    } else if (fs.existsSync(consultantIndexPath)) {
+    if (fs.existsSync(consultantIndexPath)) {
       res.sendFile(consultantIndexPath);
+    } else if (fs.existsSync(unifiedIndexPath)) {
+      res.sendFile(unifiedIndexPath);
     } else {
       res.status(404).send('<h3>Hexpertify Consultant Suite build not found. Run "npm run build" to generate bundles.</h3>');
     }
