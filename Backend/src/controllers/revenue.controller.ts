@@ -116,6 +116,23 @@ export class RevenueController {
           monthlyDataMap[k] = { revenue: 0, consultations: 0, hours: 0 };
         });
 
+        // Reporting period for the summary cards (calendar month / quarter / year, India time).
+        // Only applied when the caller sends ?period=; without it (the admin panel) the summary stays all-time.
+        const requestedPeriod = typeof req.query.period === 'string' ? req.query.period : '';
+        const periodMonths = requestedPeriod === 'year' ? 12 : requestedPeriod === 'quarter' ? 3 : requestedPeriod === 'month' ? 1 : 0;
+        const nowIndex = thisYear * 12 + (thisMonth - 1);
+        const periodStart = periodMonths === 12 ? thisYear * 12 : periodMonths === 3 ? nowIndex - ((thisMonth - 1) % 3) : nowIndex;
+        /** 0 = current period, -1 = the one before it, null = neither (or no date) */
+        const periodOf = (date: string | null): 0 | -1 | null => {
+          if (!date || !periodMonths) return null;
+          const [y, m] = date.split('-').map(Number);
+          const idx = y * 12 + (m - 1);
+          if (idx >= periodStart && idx < periodStart + periodMonths) return 0;
+          if (idx >= periodStart - periodMonths && idx < periodStart) return -1;
+          return null;
+        };
+        let previousRevenue = 0;
+
         relevantBookings.forEach((b: any, idx: number) => {
           const u = userMap.get(String(b.userId || b.clientId));
           const c = consultantMap.get(String(b.consultantId || b.therapistId));
@@ -136,17 +153,21 @@ export class RevenueController {
           const { date, toBeScheduled } = financialDate(b);
 
           if (isPaid) {
-            const split = splitFee(financial.net);
-            totalRevenue += financial.net;
-            platformCommission += split.platform;
-            therapistEarnings += split.therapist;
-            completedConsultations += 1;
-            therapyHours += hours;
+            const inPeriod = periodMonths ? periodOf(date) === 0 : true;
+            if (periodMonths && periodOf(date) === -1) previousRevenue += financial.net;
+            if (inPeriod) {
+              const split = splitFee(financial.net);
+              totalRevenue += financial.net;
+              platformCommission += split.platform;
+              therapistEarnings += split.therapist;
+              completedConsultations += 1;
+              therapyHours += hours;
 
-            const service = serviceTotals.get(serviceTitle) || { service: serviceTitle, revenue: 0, count: 0 };
-            service.revenue += financial.net;
-            service.count += 1;
-            serviceTotals.set(serviceTitle, service);
+              const service = serviceTotals.get(serviceTitle) || { service: serviceTitle, revenue: 0, count: 0 };
+              service.revenue += financial.net;
+              service.count += 1;
+              serviceTotals.set(serviceTitle, service);
+            }
 
             const month = date ? monthlyDataMap[date.slice(0, 7)] : undefined;
             if (month) {
@@ -229,7 +250,12 @@ export class RevenueController {
             therapyHours: Math.round(therapyHours * 10) / 10,
             platformCommission,
             therapistEarnings,
-            commissionRate: platformCommissionRate()
+            commissionRate: platformCommissionRate(),
+            period: periodMonths ? requestedPeriod : 'all',
+            // % change vs the previous period; null when there is nothing to compare against
+            revenueChange: periodMonths && previousRevenue > 0
+              ? Math.round(((totalRevenue - previousRevenue) / previousRevenue) * 1000) / 10
+              : null
           },
           serviceBreakdown: Array.from(serviceTotals.values()).sort((x, y) => y.revenue - x.revenue),
           monthlyAnalytics,
