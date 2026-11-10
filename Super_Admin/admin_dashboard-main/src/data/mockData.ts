@@ -1121,31 +1121,43 @@ export const mockAssessments: ClinicalAssessment[] = [
         subtext: '\'0\' means \'not at all impaired\' and \'8\' means very severely impaired to the point I can\'t work.',
         options: [
           { label: '0 - Not at all', value: 0 },
+          { label: '1', value: 1 },
           { label: '2 - Slightly', value: 2 },
+          { label: '3', value: 3 },
           { label: '4 - Definitely', value: 4 },
+          { label: '5', value: 5 },
           { label: '6 - Markedly', value: 6 },
+          { label: '7', value: 7 },
           { label: '8 - Very severely', value: 8 }
         ]
       },
       {
         id: 'ws2',
-        text: 'Because of my problem my home management (cleaning, tidying, shopping, cooking, looking after home/children, paying bills) is impaired',
+        text: 'Because of my problem my home management (cleaning, tidying, shopping, cooking, looking after home or children, paying bills) is impaired',
         options: [
           { label: '0 - Not at all', value: 0 },
+          { label: '1', value: 1 },
           { label: '2 - Slightly', value: 2 },
+          { label: '3', value: 3 },
           { label: '4 - Definitely', value: 4 },
+          { label: '5', value: 5 },
           { label: '6 - Markedly', value: 6 },
+          { label: '7', value: 7 },
           { label: '8 - Very severely', value: 8 }
         ]
       },
       {
         id: 'ws3',
-        text: 'Because of my problem my social leisure activities (with other people e.g. parties, bars, clubs, outings, visits, dating) are impaired',
+        text: 'Because of my problem my social leisure activities (with other people e.g. parties, bars, clubs, outings, visits, dating, home entertaining) are impaired',
         options: [
           { label: '0 - Not at all', value: 0 },
+          { label: '1', value: 1 },
           { label: '2 - Slightly', value: 2 },
+          { label: '3', value: 3 },
           { label: '4 - Definitely', value: 4 },
+          { label: '5', value: 5 },
           { label: '6 - Markedly', value: 6 },
+          { label: '7', value: 7 },
           { label: '8 - Very severely', value: 8 }
         ]
       },
@@ -1154,9 +1166,13 @@ export const mockAssessments: ClinicalAssessment[] = [
         text: 'Because of my problem, my private leisure activities (done alone, such as reading, gardening, collecting, sewing, walking alone) are impaired',
         options: [
           { label: '0 - Not at all', value: 0 },
+          { label: '1', value: 1 },
           { label: '2 - Slightly', value: 2 },
+          { label: '3', value: 3 },
           { label: '4 - Definitely', value: 4 },
+          { label: '5', value: 5 },
           { label: '6 - Markedly', value: 6 },
+          { label: '7', value: 7 },
           { label: '8 - Very severely', value: 8 }
         ]
       },
@@ -1165,9 +1181,13 @@ export const mockAssessments: ClinicalAssessment[] = [
         text: 'Because of my problem, my ability to form and maintain close relationships with others, including those I live with, is impaired',
         options: [
           { label: '0 - Not at all', value: 0 },
+          { label: '1', value: 1 },
           { label: '2 - Slightly', value: 2 },
+          { label: '3', value: 3 },
           { label: '4 - Definitely', value: 4 },
+          { label: '5', value: 5 },
           { label: '6 - Markedly', value: 6 },
+          { label: '7', value: 7 },
           { label: '8 - Very severely', value: 8 }
         ]
       }
@@ -1413,18 +1433,18 @@ export const mockAssessments: ClinicalAssessment[] = [
     questions: [
       { id: 'p1', text: 'Repeated, disturbing, and unwanted memories of the stressful experience?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p2', text: 'Repeated, disturbing dreams of the stressful experience?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
-      { id: 'p3', text: 'Suddenly feeling or acting as if the stressful experience were actually happening again?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
+      { id: 'p3', text: 'Suddenly feeling or acting as if the stressful experience were actually happening again (as if you were actually back there reliving it)?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p4', text: 'Feeling very upset when something reminded you of the stressful experience?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
-      { id: 'p5', text: 'Having strong physical reactions when something reminded you of the stressful experience?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
+      { id: 'p5', text: 'Having strong physical reactions when something reminded you of the stressful experience (for example, heart pounding, trouble breathing, sweating)?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p6', text: 'Avoiding memories, thoughts, or feelings related to the stressful experience?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
-      { id: 'p7', text: 'Avoiding external reminders of the stressful experience (people, places, conversations)?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
+      { id: 'p7', text: 'Avoiding external reminders of the stressful experience (for example, people, places, conversations, activities, objects, or situations)?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p8', text: 'Trouble remembering important parts of the stressful experience?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
-      { id: 'p9', text: 'Having strong negative beliefs about yourself, other people, or the world?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
+      { id: 'p9', text: 'Having strong negative beliefs about yourself, other people, or the world (for example, having thoughts such as: I am bad, there is something seriously wrong with me, no one can be trusted, the world is completely dangerous)?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p10', text: 'Blaming yourself or someone else for the stressful experience or what happened after it?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p11', text: 'Having strong negative feelings such as fear, horror, anger, guilt, or shame?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p12', text: 'Loss of interest in activities that you used to enjoy?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p13', text: 'Feeling distant or cut off from other people?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
-      { id: 'p14', text: 'Trouble experiencing positive feelings (unable to feel happiness or loving feelings)?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
+      { id: 'p14', text: 'Trouble experiencing positive feelings (for example, being unable to feel happiness or have loving feelings for people close to you)?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p15', text: 'Irritable behavior, angry outbursts, or acting aggressively?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p16', text: 'Taking too many risks or doing things that could cause you harm?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
       { id: 'p17', text: 'Being \'super alert\' or watchful or on guard?', options: [{ label: 'Not at all (0)', value: 0 }, { label: 'A little bit (1)', value: 1 }, { label: 'Moderately (2)', value: 2 }, { label: 'Quite a bit (3)', value: 3 }, { label: 'Extremely (4)', value: 4 }] },
@@ -1513,7 +1533,7 @@ export const mockAssessments: ClinicalAssessment[] = [
       { id: 'a13', text: 'How often do you feel restless or fidgety?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (0)', value: 0 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] },
       { id: 'a14', text: 'How often do you have difficulty unwinding and relaxing when you have time to yourself?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (0)', value: 0 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] },
       { id: 'a15', text: 'How often do you find yourself talking too much when you are in social situations?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (0)', value: 0 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] },
-      { id: 'a16', text: 'When you\'re in a conversation, how often do you find yourself finishing the sentences of the people you are talking to?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (1)', value: 1 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] },
+      { id: 'a16', text: 'When you\'re in a conversation, how often do you find yourself finishing the sentences of the people you are talking to, before they can finish them themselves?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (1)', value: 1 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] },
       { id: 'a17', text: 'How often do you have difficulty waiting your turn in situations when turn taking is required?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (0)', value: 0 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] },
       { id: 'a18', text: 'How often do you interrupt others when they are busy?', options: [{ label: 'Never (0)', value: 0 }, { label: 'Rarely (0)', value: 0 }, { label: 'Sometimes (1)', value: 1 }, { label: 'Often (1)', value: 1 }, { label: 'Very Often (1)', value: 1 }] }
     ]
