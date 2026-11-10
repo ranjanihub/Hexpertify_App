@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
 import { classifyBooking, platformCommissionRate, splitFee } from '../services/booking-finance';
-import { normalizePaymentStatus } from '../services/booking-status';
+import { bookingStatusOf, normalizePaymentStatus } from '../services/booking-status';
 import { bookingInstant, isDateLabel, istLabels, toValidDate } from '../services/booking-time';
 
 /**
@@ -28,17 +28,20 @@ export class RevenueController {
       const isConsultantView = Boolean(consultantId || consultantName);
       const cacheKey = `revenue:${consultantId || ''}:${consultantName || ''}:${period}`;
 
-      const responseData = await cacheService.wrap(cacheKey, ['revenue', 'bookings'], 15, async () => {
+      const responseData = await cacheService.wrap(cacheKey, ['revenue', 'bookings', 'payouts'], 15, async () => {
         const db = getDatabase();
         const myName = String(consultantName || '').toLowerCase().trim();
         const myId = String(consultantId || '').toLowerCase().trim();
 
         // Fetch all collections needed for relational hydration in parallel
-        const [allBookings, allUsers, allConsultants, allServices] = await Promise.all([
+        const [allBookings, allUsers, allConsultants, allServices, allPayoutInvoices] = await Promise.all([
           db.collection('Booking').find({}).sort({ createdAt: -1, sessionDate: -1 }).toArray(),
           db.collection('User').find({}).toArray(),
           db.collection('Consultant').find({}).toArray(),
-          db.collection('Service').find({}).toArray()
+          db.collection('Service').find({}).toArray(),
+          isConsultantView
+            ? db.collection('PayoutInvoice').find({}).sort({ payoutDate: -1, createdAt: -1 }).toArray().catch(() => [] as any[])
+            : Promise.resolve([] as any[])
         ]);
 
         // Build fast lookup maps
@@ -61,6 +64,8 @@ export class RevenueController {
         });
 
         let relevantBookings = allBookings;
+        let myConsultantIds = new Set<string>();
+        let myEmails = new Set<string>();
 
         if (myId || myName) {
           const matchedConsultants = allConsultants.filter((c: any) => {
@@ -73,6 +78,8 @@ export class RevenueController {
 
           const matchedConsultantIds = new Set<string>(matchedConsultants.map((c: any) => String(c._id || c.id)));
           if (myId) matchedConsultantIds.add(myId);
+          myConsultantIds = matchedConsultantIds;
+          myEmails = new Set(matchedConsultants.map((c: any) => String(c.email || '').toLowerCase().trim()).filter(Boolean));
 
           relevantBookings = allBookings.filter((b: any) => {
             const bCid = String(b.consultantId || b.therapistId || '').trim();
@@ -178,8 +185,43 @@ export class RevenueController {
           hours: Math.round(monthlyDataMap[key].hours * 10) / 10
         }));
 
+        // Therapists are paid in bulk: one payout invoice (released by the admin) covers many sessions
+        const payoutInvoices = (allPayoutInvoices as any[])
+          .filter((inv: any) => myConsultantIds.has(String(inv.therapistId || '')) ||
+            myEmails.has(String(inv.therapistEmail || '').toLowerCase().trim()))
+          .map((inv: any) => ({
+            id: String(inv._id),
+            invoiceNumber: inv.invoiceNumber,
+            payoutDate: inv.payoutDate || null,
+            sessionsCount: Number(inv.sessionsCount) || (Array.isArray(inv.sessionIds) ? inv.sessionIds.length : 0),
+            grossAmount: Number(inv.grossAmount) || 0,
+            platformFee: Number(inv.platformFee) || 0,
+            netPayout: Number(inv.netPayout) || 0,
+            paymentMethod: inv.paymentMethod || '',
+            transactionRef: inv.transactionRef || '',
+            status: 'paid'
+          }));
+
+        // Completed, paid sessions not yet covered by a payout invoice (same rule as the admin payouts list)
+        const settled = new Set<string>();
+        (allPayoutInvoices as any[]).forEach((inv: any) =>
+          (Array.isArray(inv.sessionIds) ? inv.sessionIds : []).forEach((sid: any) => settled.add(String(sid).replace(/^SR-/, ''))));
+        const awaitingPayout = { sessions: 0, amount: 0 };
+        if (isConsultantView) {
+          relevantBookings.forEach((b: any) => {
+            if (bookingStatusOf(b) !== 'COMPLETED') return;
+            const financial = classifyBooking(b);
+            if (financial.kind !== 'paid' || financial.net <= 0) return;
+            if (settled.has(String(b.id || b._id)) || settled.has(String(b._id))) return;
+            awaitingPayout.sessions += 1;
+            awaitingPayout.amount += splitFee(financial.net).therapist;
+          });
+        }
+
         return {
           success: true,
+          payoutInvoices,
+          awaitingPayout,
           summary: {
             totalRevenue,
             pendingPayments,

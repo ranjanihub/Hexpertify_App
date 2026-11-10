@@ -25,7 +25,8 @@ export class PayoutsController {
 
         // Sessions already settled by a released payout invoice
         const settled = new Set<string>();
-        invoices.forEach((inv: any) => (Array.isArray(inv.sessionIds) ? inv.sessionIds : []).forEach((sid: any) => settled.add(String(sid))));
+        // The admin panel sends its row ids ("SR-<bookingId>"); compare by booking id
+        invoices.forEach((inv: any) => (Array.isArray(inv.sessionIds) ? inv.sessionIds : []).forEach((sid: any) => settled.add(String(sid).replace(/^SR-/, ''))));
         const commissionRate = platformCommissionRate();
 
         const payouts = consultants.map((c: any) => {
@@ -160,7 +161,7 @@ export class PayoutsController {
         // Invoices live apart from the per-therapist Payout records the list above is built from
         await db.collection('PayoutInvoice').updateOne(
           { invoiceNumber: invoice.invoiceNumber },
-          { $set: { ...invoice, therapistId: String(body.therapistId || ''), sessionIds: (Array.isArray(body.sessionIds) ? body.sessionIds : []).map(String), releasedBy: req.user?.email || '', updatedAt: now }, $setOnInsert: { createdAt: now } },
+          { $set: { ...invoice, therapistId: String(body.therapistId || ''), sessionIds: (Array.isArray(body.sessionIds) ? body.sessionIds : []).map((sid: any) => String(sid).replace(/^SR-/, '')), releasedBy: req.user?.email || '', updatedAt: now }, $setOnInsert: { createdAt: now } },
           { upsert: true }
         );
         cacheService.invalidateTags(['payouts', 'stats']);
