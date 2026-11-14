@@ -2,6 +2,7 @@ import { getDatabase } from '../db/mongodb';
 import { BookingEmailPayload, MailService } from './mail.service';
 import { sendPushToClient } from './push.service';
 import { createNotifications } from './notification.service';
+import { bookingInstant } from './booking-time';
 
 /** Sessions are booked in India time; servers run in UTC */
 const SESSION_TIME_ZONE = 'Asia/Kolkata';
@@ -112,7 +113,8 @@ export async function dispatchBookingConfirmed(newBooking: any, consultantEmailH
       amountPaid: newBooking.amountPaid,
       consultantPhoto: newBooking.consultantAvatar || consDoc?.photoUrl || consDoc?.avatarUrl,
       consultantProfession: profession?.name || consDoc?.specialization,
-      consultantExperience: Number(consDoc?.experience) || undefined
+      consultantExperience: Number(consDoc?.experience) || undefined,
+      startsAt: bookingInstant(newBooking)
     };
 
     // Emails and the client's push notification are awaited: serverless functions may freeze after responding

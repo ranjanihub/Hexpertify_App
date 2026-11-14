@@ -19,6 +19,8 @@ import {
   WEBSITE_URL
 } from './email-layout';
 
+import { CalendarInvite, InviteAudience, sessionCancellation, sessionInvite } from './calendar-invite';
+
 export { portalUrl } from './email-layout';
 
 export interface BookingEmailPayload {
@@ -46,6 +48,8 @@ export interface BookingEmailPayload {
   consultantExperience?: number;
   /** Who cancelled, for the admin and therapist emails */
   cancelledBy?: 'client' | 'therapist' | 'admin';
+  /** The session instant; when set, client and therapist emails carry a calendar invite */
+  startsAt?: Date | null;
 }
 
 export type MailResult = { success: boolean; error?: string; messageId?: string };
@@ -82,6 +86,33 @@ function sessionRows(p: BookingEmailPayload, extra: Row[] = []): Row[] {
 
 const whenText = (p: BookingEmailPayload) => (p.toBeScheduled ? 'a time our team will confirm with you' : `${p.scheduledDate} at ${p.scheduledTime}`);
 
+/**
+ * The calendar invite (or cancellation) for a booking email, so the session lands in the recipient's calendar.
+ * None for sessions without a time yet, or without a booking id to tie later updates to.
+ */
+function calendarInviteFor(p: BookingEmailPayload, audience: InviteAudience, kind: 'request' | 'cancel', to: string): CalendarInvite | undefined {
+  const start = p.startsAt instanceof Date && !isNaN(p.startsAt.getTime()) ? p.startsAt : null;
+  if (!start || p.toBeScheduled || !p.bookingId || !to) return undefined;
+  const join = meetingLinkOf(p.meetingLink);
+  const forClient = audience === 'client';
+  const input = {
+    bookingId: p.bookingId,
+    audience,
+    start,
+    durationMinutes: Number(p.durationMinutes) || 50,
+    title: forClient ? `Hexpertify session with ${p.consultantName}` : `Hexpertify session: ${p.clientName}`,
+    description: [
+      forClient ? `${p.serviceTitle} with ${p.consultantName}.` : `${p.serviceTitle} with ${p.clientName}.`,
+      join ? `Join: ${join}` : 'The joining link will be shared before the session.',
+      forClient ? `Manage your sessions: ${portalUrl('/client/sessions')}` : `Open your calendar: ${portalUrl('/consultant/calendar')}`,
+      p.bookingId ? `Booking ID: ${p.bookingId}` : ''
+    ].filter(Boolean).join('\n'),
+    location: join || undefined,
+    attendee: { name: forClient ? p.clientName : p.consultantName, email: to }
+  };
+  return kind === 'cancel' ? sessionCancellation(input) : sessionInvite(input);
+}
+
 export class MailService {
   private static transporter: nodemailer.Transporter | null = null;
 
@@ -104,7 +135,7 @@ export class MailService {
   }
 
   /** Sends (when SMTP is configured) and records the email in EmailLog; never throws */
-  private static async deliver(m: { to: string; toName: string; subject: string; html: string; text: string; ref?: string; logSubject?: string }): Promise<MailResult> {
+  private static async deliver(m: { to: string; toName: string; subject: string; html: string; text: string; ref?: string; logSubject?: string; calendar?: CalendarInvite }): Promise<MailResult> {
     try {
       if (!m.to) return { success: false, error: 'No recipient email provided' };
       let messageId = `msg-${Date.now()}`;
@@ -114,7 +145,9 @@ export class MailService {
           to: m.to,
           subject: m.subject,
           html: m.html,
-          text: m.text
+          text: m.text,
+          // Sent as the text/calendar alternative Gmail/Outlook/Apple treat as an invite
+          ...(m.calendar ? { icalEvent: { method: m.calendar.method, filename: 'hexpertify-session.ics', content: m.calendar.content } } : {})
         });
         messageId = info.messageId;
       }
@@ -167,7 +200,8 @@ export class MailService {
       logSubject: `Session Confirmed: ${p.serviceTitle}`,
       html,
       text: `Hi ${p.clientName}, your "${p.serviceTitle}" consultation with ${p.consultantName} is confirmed for ${whenText(p)}.\n\n${textRows(rows)}${join ? `\n\nJoin: ${join}` : ''}`,
-      ref: p.bookingId
+      ref: p.bookingId,
+      calendar: calendarInviteFor(p, 'client', 'request', p.clientEmail)
     });
   }
 
@@ -198,7 +232,8 @@ export class MailService {
       logSubject: `Therapist Alert: New Booking by ${p.clientName}`,
       html,
       text: `Hi ${p.consultantName}, ${p.clientName} booked "${p.serviceTitle}" with you for ${whenText(p)}.\n\n${textRows(rows)}`,
-      ref: p.bookingId
+      ref: p.bookingId,
+      calendar: calendarInviteFor(p, 'therapist', 'request', to)
     });
   }
 
@@ -253,7 +288,8 @@ export class MailService {
       logSubject: `Session Rescheduled: ${p.serviceTitle}`,
       html,
       text: `Hi ${p.clientName}, your session with ${p.consultantName} has been rescheduled to ${p.scheduledDate} at ${p.scheduledTime}.\n\n${textRows(rows)}`,
-      ref: p.bookingId
+      ref: p.bookingId,
+      calendar: calendarInviteFor(p, 'client', 'request', p.clientEmail)
     });
   }
 
@@ -283,7 +319,8 @@ export class MailService {
       subject: `Rescheduled: ${p.clientName} is now on ${p.scheduledDate} at ${p.scheduledTime} 🕒`,
       html,
       text: `Hi ${p.consultantName}, ${p.clientName}'s "${p.serviceTitle}" session is now on ${p.scheduledDate} at ${p.scheduledTime}.`,
-      ref: p.bookingId
+      ref: p.bookingId,
+      calendar: calendarInviteFor(p, 'therapist', 'request', to)
     });
   }
 
@@ -311,7 +348,8 @@ export class MailService {
       logSubject: `Session Cancelled: ${p.serviceTitle}`,
       html,
       text: `Hi ${p.clientName}, your "${p.serviceTitle}" session with ${p.consultantName} on ${whenText(p)} has been cancelled.${p.reason ? ` Reason: ${p.reason}` : ''}`,
-      ref: p.bookingId
+      ref: p.bookingId,
+      calendar: calendarInviteFor(p, 'client', 'cancel', p.clientEmail)
     });
   }
 
@@ -343,7 +381,8 @@ export class MailService {
       logSubject: `Client Cancelled: ${p.serviceTitle}`,
       html,
       text: `Hi ${p.consultantName}, ${p.clientName}'s "${p.serviceTitle}" session on ${whenText(p)} was cancelled by ${by}.`,
-      ref: p.bookingId
+      ref: p.bookingId,
+      calendar: calendarInviteFor(p, 'therapist', 'cancel', to)
     });
   }
 

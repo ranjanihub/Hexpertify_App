@@ -369,7 +369,8 @@ export class BookingsController {
           bookingId,
           toBeScheduled: contact.toBeScheduled,
           amountPaid: contact.amountPaid,
-          cancelledBy: actor
+          cancelledBy: actor,
+          startsAt: bookingInstant(existing)
         };
 
         // 1. Cancellation Email & Notification
@@ -409,7 +410,9 @@ export class BookingsController {
             durationMinutes: updates.durationMinutes || base.durationMinutes,
             toBeScheduled: false,
             oldDate: contact.toBeScheduled ? undefined : formattedDate,
-            oldTime: contact.toBeScheduled ? undefined : formattedTime
+            oldTime: contact.toBeScheduled ? undefined : formattedTime,
+            // The new slot, so the calendar invite moves the existing event
+            startsAt: newInstant || bookingInstant({ date: updates.date || existing.date, time: updates.time || existing.time })
           };
 
           if (contact.toBeScheduled) {
@@ -519,7 +522,8 @@ export class BookingsController {
           bookingId,
           toBeScheduled: contact.toBeScheduled,
           amountPaid: contact.amountPaid,
-          cancelledBy: actor
+          cancelledBy: actor,
+          startsAt: bookingInstant(existing)
         };
 
         const pending: Promise<unknown>[] = [
