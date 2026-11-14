@@ -453,7 +453,16 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
         }
         return { name: c.name || '', url: c.url || '' };
       }),
-      platformFeePerSession: String(t.services?.[0]?.sessionFee || (t.services?.[0] as any)?.price || (t as any).fees || (t as any).minPrice || t.platformFeePerSession || 2000),
+      // The platform fee (not the session price): read it back from the first plan, which stores the computed fee
+      platformFeePerSession: String((() => {
+        const plan = (t.services || []).find((s) => Number(s?.sessionFee) > 0 && Number.isFinite(Number(s?.platformFee)));
+        if (plan) {
+          return t.platformFeeType === 'Percentage'
+            ? Math.round((Number(plan.platformFee) / Number(plan.sessionFee)) * 100)
+            : Number(plan.platformFee);
+        }
+        return t.platformFeePerSession ?? 500;
+      })()),
       platformFeeType: t.platformFeeType || 'Fixed',
       services: t.services || [],
       reviews: t.reviews || [],
@@ -853,12 +862,8 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       languages: formData.languages.filter((l) => l.trim().length > 0),
       about: formData.about.trim(),
       specializations: formData.specialties.filter((s) => s.trim().length > 0),
-      platformFeePerSession: Number(
-        formData.services?.[0]?.sessionFee ||
-        (formData.services?.[0] as any)?.price ||
-        formData.platformFeePerSession ||
-        0
-      ),
+      // The platform fee rule the admin entered (₹ per session or %), not the session price
+      platformFeePerSession: Number(formData.platformFeePerSession) || 0,
       platformFeeType: formData.platformFeeType,
       services: formData.services,
       // Reviews written by signed-in clients stay as they are; only the admin's own reviews are sent
@@ -1556,7 +1561,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               <div>
                 <span className="text-[10px] font-extrabold text-purple-700 uppercase tracking-wider block">Individual Platform Fee Session</span>
                 <p className="text-xl font-extrabold text-purple-900 mt-0.5">
-                  ₹{selectedTherapist.platformFeePerSession || 500} <span className="text-xs font-normal text-purple-600">/ session</span>
+                  {(() => {
+                    // The plans store the platform fee itself; platformFeePerSession may hold an old session price
+                    const plan = (selectedTherapist.services || []).find((s) => Number(s?.sessionFee) > 0 && Number.isFinite(Number(s?.platformFee)));
+                    return `₹${plan ? Number(plan.platformFee) : (selectedTherapist.platformFeePerSession ?? 500)}`;
+                  })()} <span className="text-xs font-normal text-purple-600">/ session</span>
                 </p>
                 <p className="text-[11px] text-slate-500">Configured separately for this consultant profile.</p>
               </div>

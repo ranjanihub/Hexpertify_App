@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
-import { classifyBooking, platformCommissionRate, splitFee } from '../services/booking-finance';
+import { classifyBooking, platformCommissionRate, splitFee, therapistShareOf } from '../services/booking-finance';
 import { bookingStatusOf, normalizePaymentStatus } from '../services/booking-status';
 import { bookingInstant, isDateLabel, istLabels, toValidDate } from '../services/booking-time';
 
@@ -66,6 +66,7 @@ export class RevenueController {
         let relevantBookings = allBookings;
         let myConsultantIds = new Set<string>();
         let myEmails = new Set<string>();
+        let myFeeType: string | undefined;
 
         if (myId || myName) {
           const matchedConsultants = allConsultants.filter((c: any) => {
@@ -80,6 +81,7 @@ export class RevenueController {
           if (myId) matchedConsultantIds.add(myId);
           myConsultantIds = matchedConsultantIds;
           myEmails = new Set(matchedConsultants.map((c: any) => String(c.email || '').toLowerCase().trim()).filter(Boolean));
+          myFeeType = matchedConsultants[0]?.platformFeeType;
 
           relevantBookings = allBookings.filter((b: any) => {
             const bCid = String(b.consultantId || b.therapistId || '').trim();
@@ -132,6 +134,9 @@ export class RevenueController {
           return null;
         };
         let previousRevenue = 0;
+        // Therapist view: sessions actually held in the period, paid or not (work done, not revenue)
+        let heldSessions = 0;
+        let heldHours = 0;
 
         relevantBookings.forEach((b: any, idx: number) => {
           const u = userMap.get(String(b.userId || b.clientId));
@@ -143,14 +148,19 @@ export class RevenueController {
           const therapistName = b.consultantName || b.therapistName || c?.name || 'Specialist Consultant';
           const serviceTitle = b.serviceTitle || s?.name || s?.title || 'Consultation';
 
+          const durationMinutes = Number(b.durationMinutes);
+          const hours = Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes / 60 : 1;
+          const { date, toBeScheduled } = financialDate(b);
+          if (bookingStatusOf(b) === 'COMPLETED' && (periodMonths ? periodOf(date) === 0 : true)) {
+            heldSessions += 1;
+            heldHours += hours;
+          }
+
           const financial = classifyBooking(b, s?.price);
           if (financial.kind === 'ignore') return;
           const rawFee = financial.fee;
           const isPaid = financial.kind === 'paid';
           const isPending = financial.kind === 'pending';
-          const durationMinutes = Number(b.durationMinutes);
-          const hours = Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes / 60 : 1;
-          const { date, toBeScheduled } = financialDate(b);
 
           if (isPaid) {
             const inPeriod = periodMonths ? periodOf(date) === 0 : true;
@@ -229,13 +239,15 @@ export class RevenueController {
           (Array.isArray(inv.sessionIds) ? inv.sessionIds : []).forEach((sid: any) => settled.add(String(sid).replace(/^SR-/, ''))));
         const awaitingPayout = { sessions: 0, amount: 0 };
         if (isConsultantView) {
+          // The same per-plan platform fee the admin payout uses, so both panels show the same amount
+          const myPlans = allServices.filter((sv: any) => myConsultantIds.has(String(sv.consultantId || '')));
           relevantBookings.forEach((b: any) => {
             if (bookingStatusOf(b) !== 'COMPLETED') return;
             const financial = classifyBooking(b);
             if (financial.kind !== 'paid' || financial.net <= 0) return;
             if (settled.has(String(b.id || b._id)) || settled.has(String(b._id))) return;
             awaitingPayout.sessions += 1;
-            awaitingPayout.amount += splitFee(financial.net).therapist;
+            awaitingPayout.amount += therapistShareOf(financial.net, myPlans, myFeeType);
           });
         }
 
@@ -246,8 +258,9 @@ export class RevenueController {
           summary: {
             totalRevenue,
             pendingPayments,
-            completedConsultations,
-            therapyHours: Math.round(therapyHours * 10) / 10,
+            // Admin view keeps paid consultations; the therapist sees the sessions they actually held
+            completedConsultations: isConsultantView ? heldSessions : completedConsultations,
+            therapyHours: Math.round((isConsultantView ? heldHours : therapyHours) * 10) / 10,
             platformCommission,
             therapistEarnings,
             commissionRate: platformCommissionRate(),

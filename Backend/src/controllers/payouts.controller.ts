@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
 import { MailService } from '../services/mail.service';
-import { classifyBooking, platformCommissionRate, splitFee } from '../services/booking-finance';
+import { classifyBooking, platformCommissionRate, therapistShareOf } from '../services/booking-finance';
 import { consultantIds } from '../services/booking-refs';
 import { bookingStatusOf } from '../services/booking-status';
 import { bookingInstant, isDateLabel, istLabels } from '../services/booking-time';
@@ -14,13 +14,14 @@ export class PayoutsController {
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const responseData = await cacheService.wrap('payouts:all', ['payouts', 'consultants', 'bookings'], 20, async () => {
+      const responseData = await cacheService.wrap('payouts:all', ['payouts', 'consultants', 'bookings', 'services'], 20, async () => {
         const db = getDatabase();
-        const [consultants, bookings, storedPayouts, invoices] = await Promise.all([
+        const [consultants, bookings, storedPayouts, invoices, plans] = await Promise.all([
           db.collection('Consultant').find({}).toArray().catch(() => []),
           db.collection('Booking').find({}).toArray().catch(() => []),
           db.collection('Payout').find({}).toArray().catch(() => []),
-          db.collection('PayoutInvoice').find({}).sort({ payoutDate: -1, createdAt: -1 }).toArray().catch(() => [])
+          db.collection('PayoutInvoice').find({}).sort({ payoutDate: -1, createdAt: -1 }).toArray().catch(() => []),
+          db.collection('Service').find({}).toArray().catch(() => [])
         ]);
 
         // Sessions already settled by a released payout invoice
@@ -33,6 +34,8 @@ export class PayoutsController {
           const ids = consultantIds(c);
           const cId = String(c._id);
           const email = String(c.email || '').toLowerCase().trim();
+          // The therapist's share uses the platform fee set on their plans (as the admin payout wizard does)
+          const myPlans = plans.filter((p: any) => ids.includes(String(p.consultantId || '')));
 
           // Pending = completed sessions that were paid for, per consultant, not yet in a released invoice
           const unpaidSessions = bookings
@@ -51,7 +54,7 @@ export class PayoutsController {
                 clientName: b.clientName || 'Client',
                 serviceTitle: b.serviceTitle || '',
                 sessionFee: financial.net,
-                therapistShare: splitFee(financial.net).therapist,
+                therapistShare: therapistShareOf(financial.net, myPlans, c.platformFeeType),
                 status: 'Pending Review'
               };
             });

@@ -384,11 +384,53 @@ export async function consultantToAdmin(c: any): Promise<any> {
   const db = getDatabase();
   const id = String(c._id ?? c.id);
   const [services, reviews, seo, profession] = await Promise.all([
-    db.collection('Service').find({ consultantId: id, retired: { $ne: true } }).sort({ price: 1 }).toArray(),
+    db.collection('Service').find({ consultantId: id, retired: { $ne: true } }).sort({ price: 1, _id: 1 }).toArray(),
     db.collection('Review').find({ consultantId: id }).sort({ createdAt: -1 }).toArray(),
     readSeoMeta(c.seoMetaId),
     c.professionId ? db.collection('Profession').findOne({ _id: c.professionId }) : null
   ]);
+  return buildConsultantAdmin(c, services, reviews, seo, profession);
+}
+
+/**
+ * consultantToAdmin for a whole list in four queries (instead of four per consultant).
+ * The list endpoint is on every panel's first load, so per-consultant round trips to Atlas add up.
+ */
+export async function consultantsToAdmin(consultants: any[]): Promise<any[]> {
+  if (!consultants.length) return [];
+  const db = getDatabase();
+  const ids = consultants.map((c) => String(c._id ?? c.id));
+  const seoIds = consultants.map((c) => c.seoMetaId).filter(Boolean);
+  const professionIds = consultants.map((c) => c.professionId).filter(Boolean);
+  const [services, reviews, seos, professions] = await Promise.all([
+    db.collection('Service').find({ consultantId: { $in: ids }, retired: { $ne: true } }).sort({ price: 1, _id: 1 }).toArray(),
+    db.collection('Review').find({ consultantId: { $in: ids } }).sort({ createdAt: -1 }).toArray(),
+    seoIds.length ? db.collection('SeoMeta').find({ _id: { $in: seoIds } }).toArray() : Promise.resolve([] as any[]),
+    professionIds.length ? db.collection('Profession').find({ _id: { $in: professionIds } }).toArray() : Promise.resolve([] as any[])
+  ]);
+  const group = (docs: any[]) => {
+    const map = new Map<string, any[]>();
+    docs.forEach((d: any) => {
+      const key = String(d.consultantId);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(d);
+    });
+    return map;
+  };
+  const servicesBy = group(services);
+  const reviewsBy = group(reviews);
+  const seoBy = new Map(seos.map((x: any) => [String(x._id), x]));
+  const professionBy = new Map(professions.map((x: any) => [String(x._id), x]));
+  return consultants.map((c, i) => buildConsultantAdmin(
+    c,
+    servicesBy.get(ids[i]) || [],
+    reviewsBy.get(ids[i]) || [],
+    c.seoMetaId ? seoBy.get(String(c.seoMetaId)) || null : null,
+    c.professionId ? professionBy.get(String(c.professionId)) || null : null
+  ));
+}
+
+function buildConsultantAdmin(c: any, services: any[], reviews: any[], seo: any, profession: any): any {
   return {
     services: services.map((s: any) => ({
       id: String(s._id),

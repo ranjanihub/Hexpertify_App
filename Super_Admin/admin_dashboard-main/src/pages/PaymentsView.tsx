@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { TherapistPayout, Therapist } from '../types';
 import { HexpertifyLogo } from '../components/common/HexpertifyLogo';
+import { api } from '../lib/apiClient';
 
 interface PayoutHistoryRecord {
   id: string;
@@ -239,6 +240,8 @@ export const PaymentsView: React.FC = () => {
   const [isEditingDetailsModal, setIsEditingDetailsModal] = useState(false);
   const [isSavingDetails, setIsSavingDetails] = useState(false);
   const [payoutSaveNotice, setPayoutSaveNotice] = useState<string | null>(null);
+  const [isReleasing, setIsReleasing] = useState(false);
+  const [releaseError, setReleaseError] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (selectedTherapist) {
@@ -267,21 +270,32 @@ export const PaymentsView: React.FC = () => {
     ) || null;
   }, [selectedTherapist, therapists]);
 
-  // Compute per-session platform commission using consultant's configured rate
-  const getSessionCommission = React.useCallback((sessionFee: number): number => {
-    const feeType = selectedTherapistRecord?.platformFeeType || 'Percentage';
-    const feeValue = selectedTherapistRecord?.platformFeePerSession ?? 10;
-    if (feeType === 'Fixed') return feeValue;
-    return Math.round(sessionFee * (feeValue / 100));
+  // The therapist's platform fee comes from their plans (each plan stores the platform fee the admin set).
+  // The therapist-level platformFeePerSession can't be trusted: older saves stored the session price there.
+  const feeRule = React.useMemo((): { type: 'Fixed' | 'Percentage'; value: number } => {
+    const feeType: 'Fixed' | 'Percentage' = selectedTherapistRecord?.platformFeeType === 'Percentage' ? 'Percentage' : 'Fixed';
+    const services = (selectedTherapistRecord?.services || []).filter((s) => Number(s?.sessionFee) > 0 && Number.isFinite(Number(s?.platformFee)));
+    const plan = services[0];
+    if (plan) {
+      const planFee = Number(plan.platformFee);
+      return feeType === 'Percentage'
+        ? { type: 'Percentage', value: Math.round((planFee / Number(plan.sessionFee)) * 100) }
+        : { type: 'Fixed', value: planFee };
+    }
+    return { type: feeType, value: Number(selectedTherapistRecord?.platformFeePerSession) || 0 };
   }, [selectedTherapistRecord]);
 
+  // Per-session platform commission: the matching plan's fee, else the therapist's rule; never more than the session fee
+  const getSessionCommission = React.useCallback((sessionFee: number): number => {
+    const plan = (selectedTherapistRecord?.services || []).find((s) => Number(s?.sessionFee) === sessionFee && Number.isFinite(Number(s?.platformFee)));
+    const fee = plan
+      ? Number(plan.platformFee)
+      : feeRule.type === 'Fixed' ? feeRule.value : Math.round(sessionFee * (feeRule.value / 100));
+    return Math.min(Math.max(0, fee), Math.max(0, sessionFee));
+  }, [selectedTherapistRecord, feeRule]);
+
   // Human-readable label for the commission rate
-  const commissionLabel = React.useMemo(() => {
-    const feeType = selectedTherapistRecord?.platformFeeType || 'Percentage';
-    const feeValue = selectedTherapistRecord?.platformFeePerSession ?? 10;
-    if (feeType === 'Fixed') return `₹${feeValue} Fixed/Session`;
-    return `${feeValue}%`;
-  }, [selectedTherapistRecord]);
+  const commissionLabel = feeRule.type === 'Fixed' ? `₹${feeRule.value} Fixed/Session` : `${feeRule.value}%`;
 
   const handleSavePayoutDetails = async () => {
     if (!selectedTherapist) return;
@@ -362,8 +376,9 @@ export const PaymentsView: React.FC = () => {
   };
 
   // Step 3: Confirm Payout execution and Generate Invoice
-  const handleMarkAsPaid = () => {
-    if (!selectedTherapist) return;
+  const handleMarkAsPaid = async () => {
+    if (!selectedTherapist || isReleasing) return;
+    setReleaseError(null);
 
     const currentSessions = selectedTherapist.unpaidSessions || [];
     const selectedSessions = currentSessions.filter((s) => selectedSessionIds.includes(s.id));
@@ -401,14 +416,13 @@ export const PaymentsView: React.FC = () => {
       status: 'Completed'
     };
 
-    setHistoryList([newRecord, ...historyList]);
-
     // Persist to MongoDB Atlas Payout collection (includes sessions for email)
     const payoutPostBody = {
       invoiceNumber: invNo,
       therapistName: selectedTherapist.therapistName,
       profession: selectedTherapist.profession,
       therapistEmail: targetTherapistEmail,
+      therapistId: matchingTherapist?.id || selectedTherapist.therapistId,
       sessionsCount: selectedSessions.length,
       sessionIds: selectedSessionIds,
       grossAmount: grossTotal,
@@ -427,17 +441,19 @@ export const PaymentsView: React.FC = () => {
         net: s.sessionFee - getSessionCommission(s.sessionFee)
       }))
     };
-    fetch('/api/admin/payouts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payoutPostBody)
-    }).catch(() => {
-      fetch('http://localhost:5000/api/admin/payouts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payoutPostBody)
-      }).catch(() => {});
-    });
+    // Record the release on the server first: only a saved invoice keeps these sessions out of the pending list
+    setIsReleasing(true);
+    try {
+      const saved: any = await api.post('/api/admin/payouts', payoutPostBody);
+      if (saved?.success === false) throw new Error(saved?.error || 'the server did not save the payout');
+    } catch (e: any) {
+      setReleaseError(`Payout not released: ${e?.message || 'the server could not save it'}. Please try again.`);
+      return;
+    } finally {
+      setIsReleasing(false);
+    }
+
+    setHistoryList((prev) => [newRecord, ...prev]);
 
     // Create full Generated Invoice object
     const invoiceObj: GeneratedInvoice = {
@@ -1054,19 +1070,27 @@ export const PaymentsView: React.FC = () => {
                 </div>
               </div>
 
+              {releaseError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold">
+                  {releaseError}
+                </div>
+              )}
+
               <div className="flex gap-4">
                 <button
-                  onClick={() => setActiveStep(2)}
-                  className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-extrabold text-xs rounded-2xl transition-colors"
+                  onClick={() => { setReleaseError(null); setActiveStep(2); }}
+                  disabled={isReleasing}
+                  className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 font-extrabold text-xs rounded-2xl transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleMarkAsPaid}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
+                  disabled={isReleasing}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-extrabold text-xs rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Release Net Payout ({disbursalMethod}) & Generate Invoice
+                  {isReleasing ? 'Releasing…' : `Release Net Payout (${disbursalMethod}) & Generate Invoice`}
                 </button>
               </div>
             </div>

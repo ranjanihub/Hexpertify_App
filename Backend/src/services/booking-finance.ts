@@ -36,6 +36,31 @@ export function classifyBooking(b: any, servicePrice?: number): { kind: Financia
   return { kind: 'ignore', fee, net: 0 };
 }
 
+/**
+ * The platform fee for one paid session, from the therapist's plans (Service docs: price, platformFee).
+ * Uses the plan with the same price, else the first plan (as a % of it for Percentage therapists).
+ * Null when the therapist has no plans, so callers fall back to the default commission rate.
+ * Never more than the session amount. Keep in step with getSessionCommission in the admin PaymentsView.
+ */
+export function planPlatformFee(net: number, plans: any[], feeType?: string): number | null {
+  const amount = Number.isFinite(net) ? Math.max(0, net) : 0;
+  const usable = (Array.isArray(plans) ? plans : [])
+    .filter((p: any) => !p?.retired && Number(p?.price) > 0 && Number.isFinite(Number(p?.platformFee)));
+  if (!usable.length) return null;
+  const match = usable.find((p: any) => Number(p.price) === amount);
+  const plan = match || usable[0];
+  const fee = match || feeType !== 'Percentage'
+    ? Number(plan.platformFee)
+    : Math.round((amount * Number(plan.platformFee)) / Number(plan.price));
+  return Math.min(Math.max(0, fee), amount);
+}
+
+/** The therapist's share of one paid session: the amount minus the plan's platform fee (default rate without plans) */
+export function therapistShareOf(net: number, plans: any[], feeType?: string): number {
+  const fee = planPlatformFee(net, plans, feeType);
+  return fee === null ? splitFee(net).therapist : Math.max(0, net) - fee;
+}
+
 /** Splits a session fee into the platform commission and the therapist's share */
 export function splitFee(amount: number): { platform: number; therapist: number } {
   const gross = Number.isFinite(amount) ? amount : 0;

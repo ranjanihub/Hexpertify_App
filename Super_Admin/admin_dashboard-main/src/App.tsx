@@ -9,23 +9,33 @@ import { AppProvider } from './context/AppContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 import { DashboardView } from './pages/DashboardView';
-import { BookingsView } from './pages/BookingsView';
-import { PaymentsView } from './pages/PaymentsView';
-import { RevenueView } from './pages/RevenueView';
-import { TransactionsView } from './pages/TransactionsView';
-import { TherapistsView } from './pages/TherapistsView';
-import { AvailabilityView } from './pages/AvailabilityView';
-import { ClientsView } from './pages/ClientsView';
-import { ActivitiesView } from './pages/ActivitiesView';
-import { LogsView } from './pages/LogsView';
-import { AssessmentsView } from './pages/AssessmentsView';
-import { AssetsView } from './pages/AssetsView';
-import { ProfessionsView } from './pages/ProfessionsView';
-import { ResourcesView } from './pages/ResourcesView';
-import { HomepageView } from './pages/HomepageView';
-import { ZombiView } from './pages/ZombiView';
-import { SettingsView } from './pages/SettingsView';
-import { ReviewView } from './pages/ReviewView';
+
+// Every other page downloads when it is first opened, so the first load only carries the dashboard
+const BookingsView = React.lazy(() => import('./pages/BookingsView').then((m) => ({ default: m.BookingsView })));
+const PaymentsView = React.lazy(() => import('./pages/PaymentsView').then((m) => ({ default: m.PaymentsView })));
+const RevenueView = React.lazy(() => import('./pages/RevenueView').then((m) => ({ default: m.RevenueView })));
+const TransactionsView = React.lazy(() => import('./pages/TransactionsView').then((m) => ({ default: m.TransactionsView })));
+const TherapistsView = React.lazy(() => import('./pages/TherapistsView').then((m) => ({ default: m.TherapistsView })));
+const AvailabilityView = React.lazy(() => import('./pages/AvailabilityView').then((m) => ({ default: m.AvailabilityView })));
+const ClientsView = React.lazy(() => import('./pages/ClientsView').then((m) => ({ default: m.ClientsView })));
+const ActivitiesView = React.lazy(() => import('./pages/ActivitiesView').then((m) => ({ default: m.ActivitiesView })));
+const LogsView = React.lazy(() => import('./pages/LogsView').then((m) => ({ default: m.LogsView })));
+const AssessmentsView = React.lazy(() => import('./pages/AssessmentsView').then((m) => ({ default: m.AssessmentsView })));
+const AssetsView = React.lazy(() => import('./pages/AssetsView').then((m) => ({ default: m.AssetsView })));
+const ProfessionsView = React.lazy(() => import('./pages/ProfessionsView').then((m) => ({ default: m.ProfessionsView })));
+const ResourcesView = React.lazy(() => import('./pages/ResourcesView').then((m) => ({ default: m.ResourcesView })));
+const HomepageView = React.lazy(() => import('./pages/HomepageView').then((m) => ({ default: m.HomepageView })));
+const ZombiView = React.lazy(() => import('./pages/ZombiView').then((m) => ({ default: m.ZombiView })));
+const SettingsView = React.lazy(() => import('./pages/SettingsView').then((m) => ({ default: m.SettingsView })));
+const ReviewView = React.lazy(() => import('./pages/ReviewView').then((m) => ({ default: m.ReviewView })));
+
+function PageFallback() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center">
+      <div className="w-8 h-8 border-[3px] border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+    </div>
+  );
+}
 import { isAdminAuthenticated } from './lib/auth';
 
 import type { PageId } from './types';
@@ -181,6 +191,7 @@ export const App: React.FC = () => {
           {/* Dynamic Page Views */}
           <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
             <ErrorBoundary fallbackTitle="View Rendering Issue">
+              <React.Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/" element={<DashboardView onSelectPage={handleSelectPage} />} />
                 <Route path="/dashboard" element={<DashboardView onSelectPage={handleSelectPage} />} />
@@ -226,6 +237,7 @@ export const App: React.FC = () => {
                 <Route path="/settings" element={<SettingsView />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </React.Suspense>
             </ErrorBoundary>
           </main>
         </div>

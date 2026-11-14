@@ -5,7 +5,6 @@ import {
   Search,
   Clock,
   AlertTriangle,
-  Send,
   Eye,
   Play,
   Sparkles,
@@ -21,58 +20,19 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { mockAssessments } from '../data/mockData';
-import { useAppContext } from '../context/AppContext';
-import { api } from '../lib/apiClient';
 import type {
   ClinicalAssessment,
   AssessmentQuestion,
   AssessmentSeverityRange,
-  AssessmentSubmission,
-  AssessmentAssignment
+  AssessmentSubmission
 } from '../types';
 
-const ASSIGNMENT_FREQUENCIES: AssessmentAssignment['frequency'][] = ['One-time', 'Weekly', 'Bi-weekly', 'Monthly'];
-
-/** AssessmentAssignment document (Backend) → the shape this page displays */
-function toAdminAssignment(a: any): AssessmentAssignment {
-  const status = String(a?.status || 'Pending');
-  const dueDate = String(a?.dueDate || '');
-  const isOverdue = status === 'Pending' && dueDate && dueDate < new Date().toISOString().split('T')[0];
-  return {
-    id: String(a?.id || a?._id || ''),
-    assessmentId: String(a?.assessmentId || ''),
-    assessmentAcronym: String(a?.assessmentAcronym || ''),
-    assessmentTitle: String(a?.assessmentTitle || ''),
-    clientId: String(a?.clientId || ''),
-    clientName: String(a?.clientName || a?.clientEmail || 'Client'),
-    clientAvatar: a?.clientAvatar || undefined,
-    therapistName: String(a?.consultantName || a?.therapistName || ''),
-    assignedDate: String(a?.assignedDate || (a?.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : '')),
-    dueDate,
-    frequency: ASSIGNMENT_FREQUENCIES.find((f) => String(a?.frequency || '').startsWith(f)) || 'One-time',
-    status: status === 'Completed' ? 'Completed' : isOverdue ? 'Overdue' : status === 'Overdue' ? 'Overdue' : 'Pending'
-  };
-}
-
 export const AssessmentsView: React.FC = () => {
-  const { clients } = useAppContext();
   // Main State
   const [assessments, setAssessments] = useState<ClinicalAssessment[]>(mockAssessments);
-  const [assignments, setAssignments] = useState<AssessmentAssignment[]>([]);
 
-  // Fetch live assignments from MongoDB Atlas ({ submissions, assignments })
-  React.useEffect(() => {
-    api.get('/api/admin/assessments')
-      .then((data: any) => {
-        if (Array.isArray(data?.assignments)) {
-          setAssignments(data.assignments.map(toAdminAssignment));
-        }
-      })
-      .catch((e) => console.error('Error loading assessments data:', e));
-  }, []);
-
-  // Active Navigation Tab: 'library' | 'builder' | 'assignments'
-  const [activeTab, setActiveTab] = useState<'library' | 'builder' | 'assignments'>('library');
+  // Active Navigation Tab: 'library' | 'builder'
+  const [activeTab, setActiveTab] = useState<'library' | 'builder'>('library');
 
   // Filter and View States
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,7 +42,6 @@ export const AssessmentsView: React.FC = () => {
   // Modal States
   const [activeProtocolModal, setActiveProtocolModal] = useState<ClinicalAssessment | null>(null);
   const [activeRunnerModal, setActiveRunnerModal] = useState<ClinicalAssessment | null>(null);
-  const [assignModalAssessment, setAssignModalAssessment] = useState<ClinicalAssessment | null>(null);
   const [selectedSubmissionModal, setSelectedSubmissionModal] = useState<AssessmentSubmission | null>(null);
 
   // Runner Simulator Internal State
@@ -95,10 +54,6 @@ export const AssessmentsView: React.FC = () => {
     flagged: boolean;
   } | null>(null);
 
-  // Assignment Modal Internal State
-  const [assignClientId, setAssignClientId] = useState('');
-  const [assignFrequency, setAssignFrequency] = useState<'One-time' | 'Weekly' | 'Bi-weekly' | 'Monthly'>('Weekly');
-  const [assignDueDate, setAssignDueDate] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Custom Builder Form State
@@ -255,50 +210,6 @@ export const AssessmentsView: React.FC = () => {
     calculateResultsWithAnswers(runnerAnswers);
   };
 
-  // Handle Assigning Assessment to Client
-  const handleConfirmAssignment = async () => {
-    if (!assignModalAssessment || !assignClientId) return;
-    const clientObj = clients.find((c) => c.id === assignClientId);
-    if (!clientObj) {
-      showToast('Please select a client from the list.');
-      return;
-    }
-    const dueDate = assignDueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-
-    // Persist to MongoDB Atlas AssessmentAssignment collection (the client panel reads it by id/email)
-    let saved: any;
-    try {
-      const data = await api.post('/api/admin/assessments/assign', {
-        assessmentId: assignModalAssessment.id,
-        assessmentAcronym: assignModalAssessment.acronym,
-        assessmentTitle: assignModalAssessment.title,
-        clientId: clientObj.id,
-        clientName: clientObj.name,
-        clientEmail: clientObj.email,
-        consultantId: clientObj.assignedTherapistId || '',
-        consultantName: clientObj.assignedTherapistName || '',
-        dueDate,
-        frequency: assignFrequency
-      });
-      saved = data?.assignment;
-    } catch (e: any) {
-      console.error('Error persisting assignment to MongoDB:', e);
-      showToast(`Not assigned: ${e?.message || 'the server could not save the assignment'}`);
-      return;
-    }
-
-    const newAssignment: AssessmentAssignment = toAdminAssignment({
-      ...saved,
-      clientAvatar: clientObj.avatar || clientObj.avatarUrl,
-      frequency: assignFrequency
-    });
-
-    setAssignments((prev) => [newAssignment, ...prev]);
-    setAssignModalAssessment(null);
-    setAssignClientId('');
-    showToast(`Successfully assigned ${assignModalAssessment.acronym} to ${newAssignment.clientName}!`);
-  };
-
   // Handle Creating Custom Assessment from Builder
   const handleSaveCustomAssessment = () => {
     if (!builderData.title || !builderData.acronym) {
@@ -416,7 +327,7 @@ export const AssessmentsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Section: Replaces "Showing 8 of 8..." with the 3 navigation tabs */}
+        {/* Bottom Section: Replaces "Showing 8 of 8..." with the navigation tabs */}
         <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
             <button
@@ -441,18 +352,6 @@ export const AssessmentsView: React.FC = () => {
             >
               <Edit3 className="w-4 h-4" />
               Assessment Builder
-            </button>
-
-            <button
-              onClick={() => setActiveTab('assignments')}
-              className={`px-5 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition-all ${
-                activeTab === 'assignments'
-                  ? 'bg-[#5e2be2] text-white shadow-md'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Send className="w-4 h-4" />
-              Client Assignment Hub ({assignments.length})
             </button>
           </div>
         </div>
@@ -520,7 +419,7 @@ export const AssessmentsView: React.FC = () => {
                     </div>
 
                     {/* Action buttons */}
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => handleOpenRunner(ass)}
                         className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-all"
@@ -537,15 +436,6 @@ export const AssessmentsView: React.FC = () => {
                       >
                         <Eye className="w-3.5 h-3.5" />
                         Details
-                      </button>
-
-                      <button
-                        onClick={() => setAssignModalAssessment(ass)}
-                        className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-all"
-                        title="Assign Screener to Client"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        Assign
                       </button>
                     </div>
                   </div>
@@ -608,13 +498,6 @@ export const AssessmentsView: React.FC = () => {
                             title="Protocol Info"
                           >
                             <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setAssignModalAssessment(ass)}
-                            className="p-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-all"
-                            title="Assign to Client"
-                          >
-                            <Send className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -860,78 +743,6 @@ export const AssessmentsView: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: CLIENT ASSIGNMENT HUB */}
-      {activeTab === 'assignments' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="font-extrabold text-lg text-slate-900">Scheduled Screener Deliveries</h3>
-              <p className="text-xs text-slate-500">Track active recurring assessments sent to patients.</p>
-            </div>
-            <button
-              onClick={() => {
-                if (assessments.length > 0) setAssignModalAssessment(assessments[0]);
-              }}
-              className="px-5 py-2.5 bg-[#5e2be2] text-white font-extrabold text-xs rounded-2xl flex items-center gap-2 shadow-md hover:bg-[#4f28d9]"
-            >
-              <Send className="w-4 h-4" />
-              Assign New Assessment
-            </button>
-          </div>
-
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="p-4">Client Patient</th>
-                  <th className="p-4">Assigned Therapist</th>
-                  <th className="p-4">Assigned Assessment</th>
-                  <th className="p-4">Delivery Frequency</th>
-                  <th className="p-4">Due Date</th>
-                  <th className="p-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {assignments.map((asn) => (
-                  <tr key={asn.id} className="hover:bg-slate-50/80 transition-all">
-                    <td className="p-4">
-                      <div>
-                        <span className="font-extrabold text-slate-900 block">{asn.clientName}</span>
-                        <span className="text-[11px] text-slate-400">ID: {asn.clientId}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 font-extrabold text-slate-800">
-                      {asn.therapistName}
-                    </td>
-                    <td className="p-4">
-                      <span className="px-2 py-0.5 bg-purple-100 text-[#5e2be2] font-mono font-bold text-xs rounded-md mr-1.5">
-                        {asn.assessmentAcronym}
-                      </span>
-                      <span className="font-bold text-slate-800">{asn.assessmentTitle}</span>
-                    </td>
-                    <td className="p-4 font-semibold text-slate-700 whitespace-nowrap">{asn.frequency}</td>
-                    <td className="p-4 font-semibold text-slate-700 whitespace-nowrap">{asn.dueDate}</td>
-                    <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-[11px] font-bold ${
-                          asn.status === 'Pending'
-                            ? 'bg-amber-100 text-amber-800'
-                            : asn.status === 'Overdue'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
-                      >
-                        {asn.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
@@ -1298,88 +1109,6 @@ export const AssessmentsView: React.FC = () => {
                 className="px-5 py-2.5 bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
               >
                 Close Protocol
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* MODAL 3: ASSIGN ASSESSMENT TO CLIENT MODAL */}
-      {assignModalAssessment && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-md bg-white rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-100 p-4 sm:p-6 space-y-4 sm:space-y-5 my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Send className="w-5 h-5 text-[#5e2be2]" />
-                <h3 className="font-extrabold text-base text-slate-900">
-                  Assign {assignModalAssessment.acronym}
-                </h3>
-              </div>
-              <button onClick={() => setAssignModalAssessment(null)} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Select Patient Client *</label>
-                <select
-                  value={assignClientId}
-                  onChange={(e) => setAssignClientId(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800"
-                >
-                  <option value="">-- Choose Client --</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.service || 'Individual Therapy'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Recurrence Frequency</label>
-                <select
-                  value={assignFrequency}
-                  onChange={(e) => setAssignFrequency(e.target.value as any)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
-                >
-                  <option value="One-time">One-time Assessment</option>
-                  <option value="Weekly">Weekly (Recommended for PHQ-9/GAD-7)</option>
-                  <option value="Bi-weekly">Bi-weekly</option>
-                  <option value="Monthly">Monthly</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Due Date</label>
-                <input
-                  type="date"
-                  value={assignDueDate}
-                  onChange={(e) => setAssignDueDate(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium"
-                />
-              </div>
-
-              <div className="p-3 bg-purple-50 rounded-2xl text-[11px] text-purple-900 border border-purple-100 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#5e2be2] shrink-0" />
-                <span>The client will receive an automated in-app prompt & email link to complete this screener.</span>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setAssignModalAssessment(null)}
-                className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmAssignment}
-                className="px-6 py-2.5 bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl shadow-md hover:bg-[#4f28d9]"
-              >
-                Send Assignment
               </button>
             </div>
           </div>

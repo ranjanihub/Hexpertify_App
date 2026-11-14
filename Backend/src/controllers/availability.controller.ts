@@ -143,7 +143,8 @@ export class AvailabilityController {
                   status: 'Available',
                   clientName: 'Open Consultation Slot',
                   sessionType: 'Google Meet',
-                  price: c.platformFeePerSession || c.minPrice || 1500
+                  // The session price (platformFeePerSession is the platform's cut, not the price)
+                  price: Number((Array.isArray(c.services) ? c.services : []).find((s: any) => Number(s?.sessionFee) > 0)?.sessionFee) || c.minPrice || 1500
                 });
               });
             }

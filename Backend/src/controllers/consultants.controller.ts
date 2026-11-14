@@ -4,7 +4,7 @@ import { cacheService } from '../services/cache.service';
 import { isAdminUser, isInternalRequest } from '../middlewares/auth.middleware';
 import { resolveClientViewer } from '../services/client-access';
 import {
-  ContentInputError, consultantDefaults, consultantFieldsFromAdmin, consultantToAdmin, idQuery, newId,
+  ContentInputError, consultantDefaults, consultantFieldsFromAdmin, consultantToAdmin, consultantsToAdmin, idQuery, newId,
   replaceAdminReviews, replaceConsultantServices, slugify, stripConsultantPrivateFields, upsertSeoMeta
 } from '../services/live-content';
 
@@ -189,8 +189,9 @@ export class ConsultantsController {
         });
 
         // Plans, reviews (rating, reviewCount) and SEO come from the collections the public website reads
-        const withContent = await Promise.all(enriched.map(async (c: any) => {
-          const content = await consultantToAdmin(c);
+        const contents = await consultantsToAdmin(enriched);
+        const withContent = enriched.map((c: any, i: number) => {
+          const content = contents[i];
           const fee = content.services[0]?.sessionFee;
           return {
             ...c,
@@ -200,7 +201,7 @@ export class ConsultantsController {
             photoUrl: content.photo || c.photoUrl,
             ...(fee ? { fees: fee, minPrice: fee } : {})
           };
-        }));
+        });
 
         return {
           success: true,

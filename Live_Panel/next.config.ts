@@ -33,6 +33,14 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // Panel bundles (Vite) have content-hashed names, so browsers can keep them for a year
+  async headers() {
+    return ["/assets/:path*", "/admin/assets/:path*", "/consultant/assets/:path*"].map((source) => ({
+      source,
+      headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+    }));
+  },
+
   async rewrites() {
     let rawBackendUrl =
       process.env.BACKEND_API_URL ||

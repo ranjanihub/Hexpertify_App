@@ -109,11 +109,11 @@ export const ClientsView: React.FC = () => {
         <div className="relative z-10 space-y-1 sm:space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] sm:text-xs font-bold tracking-wide uppercase text-purple-200">
             <ClipboardList className="w-3.5 h-3.5" />
-            <span>Client Records & Directory</span>
+            <span>Client Records</span>
           </div>
-          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Client Medical Records & Intake Hub</h1>
+          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Clients</h1>
           <p className="text-purple-100 text-xs sm:text-sm max-w-xl leading-relaxed">
-            Access complete client medical details, AI intake surveys, assessment scores, mood tracking, and session notes.
+            Access complete client details.
           </p>
         </div>
 
