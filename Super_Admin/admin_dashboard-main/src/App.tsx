@@ -177,9 +177,17 @@ export const App: React.FC = () => {
           onSelectPage={handleSelectPage}
           isOpen={isSidebarOpen}
         />
+        {/* Tap-outside backdrop while the sidebar is a drawer (below lg) */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col md:pl-64 min-w-0">
+        <div className="flex-1 flex flex-col lg:pl-64 min-w-0">
           {/* Top Navigation Header */}
           <TopNav
             onOpenSearch={() => setIsSearchOpen(true)}

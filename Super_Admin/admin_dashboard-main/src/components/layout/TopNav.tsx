@@ -154,7 +154,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 mr-2" ref={searchContainerRef}>
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:bg-slate-100 md:hidden shrink-0"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:bg-slate-100 lg:hidden shrink-0"
             aria-label="Open sidebar menu"
           >
             <Menu className="w-5 h-5" />

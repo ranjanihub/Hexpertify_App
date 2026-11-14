@@ -14,6 +14,9 @@ import {
   X
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { PlanMonthModal } from '../components/common/PlanMonthModal';
+import { monthName, monthOf, shiftMonth, weekFromWeekly } from '../lib/month-plan';
+import type { PlanRange } from '../lib/month-plan';
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -100,6 +103,15 @@ export const AvailabilityView: React.FC = () => {
 
   // Modals state
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
+  const [isPlanOpen, setIsPlanOpen] = useState(false);
+  // Bookable hours per date from the backend (weekly hours or the month plan, plus opened hours)
+  const [offeredByDate, setOfferedByDate] = useState<Record<string, { start: string }[]>>({});
+  const [slotsVersion, setSlotsVersion] = useState(0);
+  const [viewedMonthPlanned, setViewedMonthPlanned] = useState<boolean | null>(null);
+  const [planOverview, setPlanOverview] = useState<{ month: string; planned: number; total: number; therapists: { consultantId: string; name: string; planned: boolean }[] } | null>(null);
+  const [showPlanList, setShowPlanList] = useState(false);
+  // Each day's saved time ranges, so saving the weekly form keeps split hours (10–1 and 4–7) the admin did not change
+  const savedRangesRef = React.useRef<Record<string, { start: string; end: string; slots: PlanRange[] }>>({});
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [activeMenuSlotIndex, setActiveMenuSlotIndex] = useState<number | null>(null);
@@ -143,14 +155,69 @@ export const AvailabilityView: React.FC = () => {
   }, [dbTherapists, selectedConsultantId]);
 
   // Sync working hours when active consultant changes
+  // The saved weekly hours in this form's shape (one start and end per day). Therapists save
+  // { enabled, slots: [{ start, end }] }, so read every shape instead of spreading it in as-is.
   useEffect(() => {
-    if (activeConsultant?.availability && typeof activeConsultant.availability === 'object') {
-      setWorkingHours((prev) => ({
-        ...prev,
-        ...activeConsultant.availability
-      }));
-    }
+    if (!activeConsultant) return;
+    const saved = activeConsultant.availability && typeof activeConsultant.availability === 'object' ? activeConsultant.availability : null;
+    if (!saved || !Object.keys(saved).length) return;
+    const week = weekFromWeekly(saved, {});
+    const next: Record<string, { enabled: boolean; start: string; end: string }> = {};
+    const ranges: Record<string, { start: string; end: string; slots: PlanRange[] }> = {};
+    Object.keys(workingHours).forEach((day) => {
+      const d = week[day];
+      const slots = d?.slots || [];
+      const start = slots[0]?.start || '9:00 AM';
+      const end = slots[slots.length - 1]?.end || '5:00 PM';
+      next[day] = { enabled: !!d?.enabled && slots.length > 0, start, end };
+      ranges[day] = { start, end, slots };
+    });
+    savedRangesRef.current = ranges;
+    setWorkingHours(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConsultant]);
+
+  // Different therapist: drop the previous one's slots
+  useEffect(() => {
+    setOfferedByDate({});
+  }, [activeConsultant?.id]);
+
+  // Slots clients can book this month, from the backend (follows the month plan when there is one)
+  useEffect(() => {
+    const cid = activeConsultant?.id;
+    if (!cid) return;
+    let active = true;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const from = `${year}-${pad(month + 1)}-01`;
+    const to = `${year}-${pad(month + 1)}-${pad(daysInMonth(year, month))}`;
+    setViewedMonthPlanned(null);
+    Promise.all([
+      fetch(`/api/availability/slots?consultantId=${encodeURIComponent(cid)}&from=${from}&to=${to}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`/api/availability/month-plan?consultantId=${encodeURIComponent(cid)}&month=${year}-${pad(month + 1)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    ]).then(([slots, plan]) => {
+      if (!active) return;
+      if (slots?.days) setOfferedByDate((prev) => ({ ...prev, ...slots.days }));
+      if (plan) setViewedMonthPlanned(Boolean(plan.plan));
+    });
+    return () => {
+      active = false;
+    };
+  }, [activeConsultant?.id, year, month, slotsVersion]);
+
+  // Which therapists have planned next month
+  const upcomingMonth = shiftMonth(monthOf(new Date()), 1);
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/availability/month-plan/status?month=${upcomingMonth}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && data?.therapists) setPlanOverview(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [upcomingMonth, slotsVersion]);
 
   // Fetch live real data from MongoDB Atlas API
   const fetchLiveScheduleData = async () => {
@@ -236,8 +303,14 @@ export const AvailabilityView: React.FC = () => {
       });
 
       // If working hours are enabled for this day, generate all standard working slots
-      if (dayConfig?.enabled) {
-        const timeSlots = generateHourlySlots(dayConfig.start || '09:00 AM', dayConfig.end || '05:00 PM');
+      // The backend's bookable hours for the date; the weekly form is only a fallback until they load
+      const offeredDay = offeredByDate[`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`];
+      const timeSlots = offeredDay
+        ? offeredDay.map((slot) => slot.start)
+        : dayConfig?.enabled
+        ? generateHourlySlots(dayConfig.start || '09:00 AM', dayConfig.end || '05:00 PM')
+        : [];
+      if (timeSlots.length) {
 
         timeSlots.forEach((timeStr) => {
           // Check if this time slot is booked
@@ -345,7 +418,7 @@ export const AvailabilityView: React.FC = () => {
     }
 
     return map;
-  }, [allRawBookings, allRawSlots, activeConsultant, workingHours, year, month]);
+  }, [allRawBookings, allRawSlots, activeConsultant, workingHours, year, month, offeredByDate]);
 
   // Calendar matrix computation
   const totalDays = daysInMonth(year, month);
@@ -539,29 +612,42 @@ export const AvailabilityView: React.FC = () => {
   const handleSaveWorkingHours = async () => {
     if (!activeConsultant) return;
 
+    // Saved in the therapist panel's shape; a day whose start and end were not changed keeps its split ranges
+    const timeRx = /^\d{1,2}:\d{2}\s*(AM|PM)$/i;
+    const availability: Record<string, { enabled: boolean; slots: PlanRange[] }> = {};
+    for (const [day, val] of Object.entries(workingHours)) {
+      if (!val.enabled) {
+        availability[day] = { enabled: false, slots: savedRangesRef.current[day]?.slots || [] };
+        continue;
+      }
+      const start = String(val.start || '').trim();
+      const end = String(val.end || '').trim();
+      if (!timeRx.test(start) || !timeRx.test(end) || parseTimeToMinutes(end) <= parseTimeToMinutes(start)) {
+        showToast(`${day.charAt(0).toUpperCase() + day.slice(1)}: use times like 9:00 AM, with the end after the start`);
+        return;
+      }
+      const saved = savedRangesRef.current[day];
+      const unchanged = saved && saved.slots.length > 0 && saved.start === start && saved.end === end;
+      availability[day] = { enabled: true, slots: unchanged ? saved.slots : [{ start, end }] };
+    }
+
     try {
-      let res = await fetch(`/api/consultants/${activeConsultant.id}`, {
+      const res = await fetch(`/api/consultants/${activeConsultant.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ availability: workingHours })
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        res = await fetch(`http://localhost:5000/api/consultants/${activeConsultant.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ availability: workingHours })
-        }).catch(() => null);
+        body: JSON.stringify({ availability })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Could not save working hours');
       }
-
-      showToast(`Working hours updated for ${activeConsultant.name} in MongoDB Atlas!`);
-      if (activeConsultant) {
-        activeConsultant.availability = { ...workingHours };
-      }
-      setWorkingHours({ ...workingHours });
+      showToast(`Working hours updated for ${activeConsultant.name}`);
+      activeConsultant.availability = availability;
       fetchLiveScheduleData();
-    } catch {
-      showToast('Error updating working hours');
+      setSlotsVersion((v) => v + 1);
+    } catch (err: any) {
+      showToast(err?.message || 'Error updating working hours');
+      return;
     }
 
     setIsAvailabilityModalOpen(false);
@@ -571,42 +657,42 @@ export const AvailabilityView: React.FC = () => {
     <div className="space-y-6 pb-20 animate-fade-in text-slate-800 font-['Plus_Jakarta_Sans']">
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-[#4f28d9] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in border border-purple-300">
+        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:top-5 sm:right-5 sm:max-w-sm z-50 bg-[#4f28d9] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in border border-purple-300">
           <Sparkles className="w-5 h-5 text-amber-300" />
           <span className="font-bold text-xs tracking-wide">{toastMessage}</span>
         </div>
       )}
 
       {/* Modern Gradient PageHeader Matching Consultant Calendar */}
-      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#5e2be2] to-[#361394] p-6 sm:p-7 md:p-8 text-white shadow-lg shadow-purple-900/10 overflow-hidden relative mb-6 border border-white/10">
+      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#5e2be2] to-[#361394] p-5 sm:p-7 xl:p-8 text-white shadow-lg shadow-purple-900/10 overflow-hidden relative mb-6 border border-white/10">
         {/* Decorative ambient background glows */}
         <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-purple-400/15 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row gap-4 md:gap-5 justify-between items-start md:items-center">
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-widest text-purple-100 border border-white/20 shadow-xs mb-1">
-              <CalendarDays className="w-3.5 h-3.5 text-purple-200" />
-              <span>THERAPIST CALENDAR & SCHEDULER</span>
+        <div className="relative z-10 flex flex-col xl:flex-row gap-4 xl:gap-5 justify-between items-start xl:items-center">
+          <div className="space-y-1.5 flex-1 min-w-0 w-full">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-purple-100 border border-white/20 shadow-xs mb-1 max-w-full">
+              <CalendarDays className="w-3.5 h-3.5 text-purple-200 shrink-0" />
+              <span className="truncate">THERAPIST CALENDAR & SCHEDULER</span>
             </div>
 
-            <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white leading-snug">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-extrabold tracking-tight text-white leading-snug break-words">
               {activeConsultant ? `${activeConsultant.name}'s Calendar` : 'Session Schedule & Availability'}
             </h1>
 
-            <p className="text-white/85 text-xs sm:text-sm md:text-base max-w-2xl leading-relaxed font-medium pt-0.5">
+            <p className="text-white/85 text-xs sm:text-sm xl:text-base max-w-2xl leading-relaxed font-medium pt-0.5">
               Live appointments and availability from MongoDB Atlas for {activeConsultant?.name || 'therapists'}.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 pt-1 md:pt-0">
+          <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto xl:shrink-0">
             {/* Consultant Selector */}
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/25 shadow-xs w-auto max-w-[200px]">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/25 shadow-xs min-w-0 flex-1 sm:flex-none sm:max-w-[240px]">
               <Users className="w-4 h-4 text-purple-200 shrink-0" />
               <select
                 value={selectedConsultantId}
                 onChange={(e) => setSelectedConsultantId(e.target.value)}
-                className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer truncate [&>option]:text-slate-900"
+                className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer truncate min-w-0 w-full [&>option]:text-slate-900"
               >
                 {dbTherapists.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -615,6 +701,16 @@ export const AvailabilityView: React.FC = () => {
                 ))}
               </select>
             </div>
+
+            {/* Plan Month Button */}
+            <button
+              type="button"
+              onClick={() => setIsPlanOpen(true)}
+              disabled={!activeConsultant}
+              className="bg-white text-[#5e2be2] hover:bg-white/90 font-extrabold text-xs px-3.5 py-1.5 rounded-full cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50"
+            >
+              Plan Month
+            </button>
 
             {/* Set Availability Button */}
             <button
@@ -628,10 +724,52 @@ export const AvailabilityView: React.FC = () => {
         </div>
       </div>
 
+      {/* Month plan status: the viewed month for this therapist, and next month for everyone */}
+      <div className="flex flex-col md:flex-row gap-3">
+        {activeConsultant && viewedMonthPlanned !== null && (
+          <div className={`flex-1 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${viewedMonthPlanned ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+            <p className="text-xs font-semibold text-slate-700">
+              <span className="font-extrabold text-slate-900">{MONTHS[month]} {year}:</span>{' '}
+              {viewedMonthPlanned ? `${activeConsultant.name} has a month plan` : `${activeConsultant.name} uses weekly hours (no month plan)`}
+            </p>
+            <button type="button" onClick={() => setIsPlanOpen(true)} className="text-xs font-extrabold text-[#5e2be2] hover:underline shrink-0">
+              {viewedMonthPlanned ? 'View / edit' : 'Plan'}
+            </button>
+          </div>
+        )}
+        {planOverview && planOverview.total > 0 && (
+          <div className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-slate-700">
+                <span className="font-extrabold text-slate-900">{monthName(planOverview.month)} plans:</span> {planOverview.planned} of {planOverview.total} therapists planned
+              </p>
+              <button type="button" onClick={() => setShowPlanList((v) => !v)} className="text-xs font-extrabold text-[#5e2be2] hover:underline shrink-0">
+                {showPlanList ? 'Hide' : 'Show list'}
+              </button>
+            </div>
+            <div className="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full bg-[#5e2be2] rounded-full" style={{ width: `${Math.round((planOverview.planned / planOverview.total) * 100)}%` }} />
+            </div>
+            {showPlanList && (
+              <ul className="mt-3 max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs">
+                {planOverview.therapists.map((t) => (
+                  <li key={t.consultantId} className="flex items-center justify-between gap-2 py-1.5">
+                    <span className="font-semibold text-slate-800 truncate">{t.name}</span>
+                    <span className={`shrink-0 px-2 py-0.5 rounded-full font-bold text-[10px] ${t.planned ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {t.planned ? 'Planned' : 'Not yet'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Main 12-Column Calendar & Daily Slots Workspace */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 min-h-[620px]">
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden grid grid-cols-1 xl:grid-cols-12 divide-y xl:divide-y-0 xl:divide-x divide-slate-100 xl:min-h-[620px]">
         {/* Left Side: Month Grid & Capacity Status (5 Columns) */}
-        <div className="lg:col-span-5 p-5 xl:p-6 bg-white flex flex-col justify-between">
+        <div className="xl:col-span-5 p-4 sm:p-5 xl:p-6 bg-white flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Select Date</span>
@@ -743,7 +881,7 @@ export const AvailabilityView: React.FC = () => {
         </div>
 
         {/* Right Side: Detailed Day Slots & Time Manager (7 Columns) */}
-        <div className="lg:col-span-7 p-5 xl:p-6 bg-slate-50/30 flex flex-col overflow-y-auto">
+        <div className="xl:col-span-7 p-4 sm:p-5 xl:p-6 bg-slate-50/30 flex flex-col overflow-y-auto">
           <div className="space-y-4">
             {/* Selected Date Header */}
             <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
@@ -872,7 +1010,7 @@ export const AvailabilityView: React.FC = () => {
                   return (
                     <div
                       key={i}
-                      className={`group flex items-center justify-between gap-3 rounded-2xl border p-3.5 transition-all bg-white shadow-xs hover:shadow-md ${
+                      className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 rounded-2xl border p-3 sm:p-3.5 transition-all bg-white shadow-xs hover:shadow-md ${
                         isBooked
                           ? 'border-slate-200/80 hover:border-slate-300'
                           : isAvailable
@@ -882,7 +1020,7 @@ export const AvailabilityView: React.FC = () => {
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div
-                          className={`shrink-0 w-24 text-center py-2 rounded-xl text-xs font-black transition-all ${
+                          className={`shrink-0 w-20 sm:w-24 text-center py-2 rounded-xl text-xs font-black transition-all ${
                             isBooked
                               ? 'bg-slate-100 text-slate-700 border border-slate-200'
                               : isAvailable
@@ -913,7 +1051,7 @@ export const AvailabilityView: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                         {isBooked ? (
                           <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-slate-200">
                             Confirmed
@@ -1035,7 +1173,7 @@ export const AvailabilityView: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="font-extrabold text-slate-700">Date</label>
                     <input
@@ -1059,7 +1197,7 @@ export const AvailabilityView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="font-extrabold text-slate-700">Duration</label>
                     <select
@@ -1130,8 +1268,8 @@ export const AvailabilityView: React.FC = () => {
               {Object.entries(workingHours).map(([dayKey, dayVal]) => {
                 const dayLabel = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
                 return (
-                  <div key={dayKey} className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors">
-                    <label className="flex items-center gap-2.5 cursor-pointer w-32 select-none">
+                  <div key={dayKey} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-2xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors">
+                    <label className="flex items-center gap-2.5 cursor-pointer sm:w-32 select-none">
                       <input
                         type="checkbox"
                         checked={dayVal.enabled}
@@ -1157,7 +1295,7 @@ export const AvailabilityView: React.FC = () => {
                               [dayKey]: { ...dayVal, start: e.target.value }
                             });
                           }}
-                          className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
+                          className="w-20 sm:w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
                         />
                         <span className="text-slate-400 font-bold">to</span>
                         <input
@@ -1169,7 +1307,7 @@ export const AvailabilityView: React.FC = () => {
                               [dayKey]: { ...dayVal, end: e.target.value }
                             });
                           }}
-                          className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
+                          className="w-20 sm:w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
                         />
                       </div>
                     ) : (
@@ -1250,6 +1388,19 @@ export const AvailabilityView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {activeConsultant && (
+        <PlanMonthModal
+          open={isPlanOpen}
+          onClose={() => setIsPlanOpen(false)}
+          consultantId={activeConsultant.id}
+          consultantName={activeConsultant.name}
+          initialMonth={monthOf(new Date(year, month, 1)) >= monthOf(new Date()) ? monthOf(new Date(year, month, 1)) : undefined}
+          onSaved={(message) => {
+            showToast(message);
+            setSlotsVersion((v) => v + 1);
+          }}
+        />
       )}
     </div>
   );

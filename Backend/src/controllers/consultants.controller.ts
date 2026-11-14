@@ -71,7 +71,7 @@ function summarizeAvailability(availability: any): string {
   return open.map((d) => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(', ');
 }
 
-async function canEditConsultant(req: Request, consultant: any): Promise<boolean> {
+export async function canEditConsultant(req: Request, consultant: any): Promise<boolean> {
   if (isInternalRequest(req) || isAdminUser(req.user)) return true;
   const viewer = await resolveClientViewer(req);
   if (viewer.kind !== 'therapist') return false;

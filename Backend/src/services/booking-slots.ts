@@ -3,6 +3,7 @@ import { config } from '../config';
 import { consultantIds } from './booking-refs';
 import { bookingStatusOf, SLOT_HOLDING_STATUSES } from './booking-status';
 import { bookingInstant, formatTimeLabel, istInstant, istLabels, isDateLabel, parseTimeLabel, weekdayOf } from './booking-time';
+import { loadPlannedDays, PlanDay } from './month-plan';
 
 /** Sessions are offered in one-hour slots */
 export const SLOT_MINUTES = 60;
@@ -39,7 +40,11 @@ function hasSchedule(availability: any): boolean {
  */
 function offeredStarts(availability: any, weekday: number): number[] {
   const dayKey = DAY_KEYS[weekday];
-  const entry = Object.entries(availability || {}).find(([k]) => k.toLowerCase() === dayKey)?.[1] as any;
+  return startsOfDay(Object.entries(availability || {}).find(([k]) => k.toLowerCase() === dayKey)?.[1]);
+}
+
+/** Slot start times for one day's hours: { enabled, slots: [{ start, end }] }, [{ start, end }] or ["09:00"] */
+function startsOfDay(entry: any): number[] {
   if (!entry) return [];
 
   const starts: number[] = [];
@@ -71,13 +76,15 @@ interface DayData {
   entries: any[];
   /** All bookings of the consultant */
   bookings: any[];
+  /** Month-plan hours by date; a planned date replaces the weekly hours */
+  planned: Record<string, PlanDay>;
 }
 
 /** The consultant's Availability entries for the given dates and their bookings, in two parallel queries */
 async function loadDayData(consultant: any, dates: string[]): Promise<DayData> {
   const db = getDatabase();
   const ids = consultantIds(consultant);
-  const [entries, bookings] = await Promise.all([
+  const [entries, bookings, planned] = await Promise.all([
     db.collection('Availability').find({
       $or: [{ therapistId: { $in: ids } }, { consultantId: { $in: ids } }],
       status: { $regex: '^(blocked|available)$', $options: 'i' },
@@ -85,9 +92,10 @@ async function loadDayData(consultant: any, dates: string[]): Promise<DayData> {
     }).toArray().catch(() => []),
     db.collection('Booking').find({
       $or: [{ consultantId: { $in: ids } }, { therapistId: { $in: ids } }]
-    }).toArray().catch(() => [])
+    }).toArray().catch(() => []),
+    loadPlannedDays(consultant, dates).catch(() => ({}))
   ]);
-  return { entries, bookings };
+  return { entries, bookings, planned };
 }
 
 /** Blocked periods (Availability collection, status Blocked) and active bookings of the consultant on a day */
@@ -133,9 +141,13 @@ function openedStarts(data: DayData, date: string): number[] {
 }
 
 function computeDaySlots(consultant: any, date: string, data: DayData, defaultSchedule: boolean): DaySlot[] {
-  const weekly = offeredStarts(defaultSchedule ? DEFAULT_SCHEDULE : consultant.availability, weekdayOf(date));
-  // Weekly hours plus any extra hours opened for this date
-  const starts = Array.from(new Set([...weekly, ...openedStarts(data, date)])).sort((x, y) => x - y);
+  // The month plan's hours for this date when one is saved, else the weekly hours
+  const planned = data.planned[date];
+  const base = planned
+    ? startsOfDay(planned)
+    : offeredStarts(defaultSchedule ? DEFAULT_SCHEDULE : consultant.availability, weekdayOf(date));
+  // Plus any extra hours opened for this date
+  const starts = Array.from(new Set([...base, ...openedStarts(data, date)])).sort((x, y) => x - y);
   const busy = starts.length ? busyPeriods(data, date) : [];
   const now = Date.now();
 
