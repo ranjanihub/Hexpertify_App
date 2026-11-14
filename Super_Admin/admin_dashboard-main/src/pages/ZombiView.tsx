@@ -189,7 +189,7 @@ export const ZombiView: React.FC = () => {
     const fetchZombiePages = async () => {
       try {
         let res = await fetch('/api/admin/zombie-pages').catch(() => null);
-        if (!res || !res.ok) {
+        if (!res && window.location.hostname === 'localhost') {
           res = await fetch('http://localhost:5000/api/admin/zombie-pages').catch(() => null);
         }
         if (res && res.ok) {

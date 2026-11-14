@@ -547,7 +547,7 @@ export const AvailabilityView: React.FC = () => {
         body: JSON.stringify(newBooking)
       }).catch(() => null);
 
-      if (!res || !res.ok) {
+      if (!res && window.location.hostname === 'localhost') {
         res = await fetch('http://localhost:5000/api/bookings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
@@ -590,7 +590,7 @@ export const AvailabilityView: React.FC = () => {
         body: JSON.stringify(assignPayload)
       }).catch(() => null);
 
-      if (!res || !res.ok) {
+      if (!res && window.location.hostname === 'localhost') {
         res = await fetch('http://localhost:5000/api/availability/assign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

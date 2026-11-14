@@ -68,7 +68,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
     const fetchHomepageCMS = async () => {
       try {
         let res = await fetch('/api/admin/homepage').catch(() => null);
-        if (!res || !res.ok) {
+        if (!res && window.location.hostname === 'localhost') {
           res = await fetch('http://localhost:5000/api/admin/homepage').catch(() => null);
         }
         if (res && res.ok) {
@@ -146,7 +146,9 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
         body: JSON.stringify(cms)
       }).catch(() => null);
 
-      if (!res || !res.ok) {
+      // Only retry the local backend when the request never reached a server (local dev). A real answer such as
+      // 401 "sign in again" must be shown as-is, not replaced by "could not be reached".
+      if (!res && window.location.hostname === 'localhost') {
         res = await fetch('http://localhost:5000/api/admin/homepage', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

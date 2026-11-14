@@ -51,7 +51,7 @@ export const RevenueView: React.FC = () => {
     const fetchRevenue = async () => {
       try {
         let res = await fetch('/api/admin/revenue').catch(() => null);
-        if (!res || !res.ok) {
+        if (!res && window.location.hostname === 'localhost') {
           res = await fetch('http://localhost:5000/api/admin/revenue').catch(() => null);
         }
         if (res && res.ok) {

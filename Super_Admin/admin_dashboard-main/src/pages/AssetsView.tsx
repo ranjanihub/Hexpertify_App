@@ -96,7 +96,7 @@ export const AssetsView: React.FC = () => {
     const fetchAssets = async () => {
       try {
         let res = await fetch('/api/admin/assets').catch(() => null);
-        if (!res || !res.ok) {
+        if (!res && window.location.hostname === 'localhost') {
           res = await fetch('http://localhost:5000/api/admin/assets').catch(() => null);
         }
         if (res && res.ok) {

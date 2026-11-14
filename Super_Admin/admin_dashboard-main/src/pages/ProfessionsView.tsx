@@ -373,7 +373,7 @@ export const ProfessionsView: React.FC = () => {
     const fetchProfessions = async () => {
       try {
         let res = await fetch('/api/admin/professions').catch(() => null);
-        if (!res || !res.ok) {
+        if (!res && window.location.hostname === 'localhost') {
           res = await fetch('http://localhost:5000/api/admin/professions').catch(() => null);
         }
         if (res && res.ok) {

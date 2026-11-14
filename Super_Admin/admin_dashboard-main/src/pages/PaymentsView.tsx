@@ -149,7 +149,7 @@ export const PaymentsView: React.FC = () => {
     const fetchPayouts = async () => {
       try {
         let res = await fetch('/api/admin/payouts').catch(() => null);
-        if (!res || !res.ok) {
+        if (!res && window.location.hostname === 'localhost') {
           res = await fetch('http://localhost:5000/api/admin/payouts').catch(() => null);
         }
         if (res && res.ok) {
@@ -323,7 +323,7 @@ export const PaymentsView: React.FC = () => {
         body: JSON.stringify(payload)
       }).catch(() => null);
 
-      if (!res || !res.ok) {
+      if (!res && window.location.hostname === 'localhost') {
         res = await fetch('http://localhost:5000/api/admin/consultants', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -541,7 +541,7 @@ export const PaymentsView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       }).catch(() => null);
-      if (!res || !res.ok) {
+      if (!res && window.location.hostname === 'localhost') {
         res = await fetch('http://localhost:5000/api/admin/payouts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
