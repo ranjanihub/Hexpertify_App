@@ -453,7 +453,8 @@ export const AvailabilityView: React.FC = () => {
       therapistId: activeConsultant.id,
       therapistName: activeConsultant.name,
       serviceTitle: eventType || 'Individual Therapy',
-      scheduledAt: `${targetDate}T10:00:00.000Z`,
+      // No scheduledAt: the Backend computes it from date + time in India time (a fixed 10:00 UTC put
+      // every session at 3:30 PM IST in emails and calendar invites)
       date: targetDate,
       time: eventTime || '10:00 AM',
       durationMinutes: parseInt(eventDuration) || 50,
@@ -461,7 +462,7 @@ export const AvailabilityView: React.FC = () => {
       status: 'CONFIRMED',
       paymentStatus: 'PAID',
       amount: 1500,
-      meetingLink: 'https://meet.google.com/hex-session-live',
+      // No made-up meeting link: emails would show it as a real "Join" button
       createdAt: new Date().toISOString()
     };
 

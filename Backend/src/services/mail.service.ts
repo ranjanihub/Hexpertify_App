@@ -61,6 +61,12 @@ function meetingLinkOf(link?: string): string {
   return link && /^https?:\/\//.test(link) && link !== PLACEHOLDER_MEETING_LINK ? link : '';
 }
 
+/** The SMTP password (SMTP_PASS or AUTH_EMAIL_PASSWORD); empty means emails are only logged, never sent */
+function smtpPassword(): string {
+  const pass = process.env.SMTP_PASS || process.env.AUTH_EMAIL_PASSWORD || '';
+  return pass && pass !== 'localpassword' ? pass : '';
+}
+
 export function adminAlertEmail(): string {
   return process.env.ADMIN_ALERT_EMAIL || process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.AUTH_EMAIL || 'admin@hexpertify.com';
 }
@@ -139,7 +145,7 @@ export class MailService {
     try {
       if (!m.to) return { success: false, error: 'No recipient email provided' };
       let messageId = `msg-${Date.now()}`;
-      if (process.env.AUTH_EMAIL_PASSWORD && process.env.AUTH_EMAIL_PASSWORD !== 'localpassword') {
+      if (smtpPassword()) {
         const info = await this.getTransporter().sendMail({
           from: process.env.MAIL_FROM || process.env.AUTH_EMAIL || '"Hexpertify" <support@hexpertify.com>',
           to: m.to,
@@ -696,7 +702,8 @@ export class MailService {
         clientName,
         subject,
         bookingId,
-        status: process.env.AUTH_EMAIL_PASSWORD ? 'SENT' : 'LOGGED',
+        // LOGGED = not sent: this server has no SMTP password configured
+        status: smtpPassword() ? 'SENT' : 'LOGGED',
         messageId,
         sentAt: new Date(),
         createdAt: new Date()
