@@ -66,27 +66,39 @@ function offeredStarts(availability: any, weekday: number): number[] {
 
 interface Busy { from: number; to: number }
 
-/** Blocked periods (Availability collection, status Blocked) and active bookings of the consultant on a day */
-async function busyPeriods(consultant: any, date: string, excludeBookingId?: string): Promise<Busy[]> {
+interface DayData {
+  /** Dated Availability entries (blocked and opened hours) of the consultant */
+  entries: any[];
+  /** All bookings of the consultant */
+  bookings: any[];
+}
+
+/** The consultant's Availability entries for the given dates and their bookings, in two parallel queries */
+async function loadDayData(consultant: any, dates: string[]): Promise<DayData> {
   const db = getDatabase();
   const ids = consultantIds(consultant);
-  const dayStart = istInstant(date, 0)!.getTime();
-  const dayEnd = dayStart + 24 * 60 * MINUTE;
-  const staleCutoff = Date.now() - config.payment.pendingExpiryMinutes * MINUTE;
-
-  const [blocks, bookings] = await Promise.all([
+  const [entries, bookings] = await Promise.all([
     db.collection('Availability').find({
       $or: [{ therapistId: { $in: ids } }, { consultantId: { $in: ids } }],
-      status: { $regex: '^blocked$', $options: 'i' },
-      date
+      status: { $regex: '^(blocked|available)$', $options: 'i' },
+      date: { $in: dates }
     }).toArray().catch(() => []),
     db.collection('Booking').find({
       $or: [{ consultantId: { $in: ids } }, { therapistId: { $in: ids } }]
     }).toArray().catch(() => [])
   ]);
+  return { entries, bookings };
+}
+
+/** Blocked periods (Availability collection, status Blocked) and active bookings of the consultant on a day */
+function busyPeriods(data: DayData, date: string, excludeBookingId?: string): Busy[] {
+  const dayStart = istInstant(date, 0)!.getTime();
+  const dayEnd = dayStart + 24 * 60 * MINUTE;
+  const staleCutoff = Date.now() - config.payment.pendingExpiryMinutes * MINUTE;
 
   const busy: Busy[] = [];
-  blocks.forEach((b: any) => {
+  data.entries.forEach((b: any) => {
+    if (b.date !== date || !/^blocked$/i.test(String(b.status || ''))) return;
     const from = parseTimeLabel(b.time || b.startTime);
     if (from === null) {
       busy.push({ from: dayStart, to: dayEnd }); // a block without a time blocks the whole day
@@ -97,7 +109,7 @@ async function busyPeriods(consultant: any, date: string, excludeBookingId?: str
     busy.push({ from: start, to: to !== null && to > from ? dayStart + to * MINUTE : start + SLOT_MINUTES * MINUTE });
   });
 
-  bookings.forEach((b: any) => {
+  data.bookings.forEach((b: any) => {
     if (excludeBookingId && (String(b.id) === excludeBookingId || String(b._id) === excludeBookingId)) return;
     const status = bookingStatusOf(b);
     if (!SLOT_HOLDING_STATUSES.has(status)) return;
@@ -112,15 +124,22 @@ async function busyPeriods(consultant: any, date: string, excludeBookingId?: str
   return busy;
 }
 
-/** The consultant's bookable slots on a day (India time), each marked available or not */
-export async function getDaySlots(consultant: any, date: string): Promise<{ slots: DaySlot[]; defaultSchedule: boolean }> {
-  if (!isDateLabel(date)) return { slots: [], defaultSchedule: false };
-  const defaultSchedule = !hasSchedule(consultant?.availability);
-  const starts = offeredStarts(defaultSchedule ? DEFAULT_SCHEDULE : consultant.availability, weekdayOf(date));
-  const busy = starts.length ? await busyPeriods(consultant, date) : [];
+/** Extra one-off hours the consultant opened on a day (Availability collection, status Available) */
+function openedStarts(data: DayData, date: string): number[] {
+  return data.entries
+    .filter((a: any) => a.date === date && /^available$/i.test(String(a.status || '')) && !a.bookingId)
+    .map((a: any) => parseTimeLabel(a.time || a.startTime))
+    .filter((m: number | null): m is number => m !== null);
+}
+
+function computeDaySlots(consultant: any, date: string, data: DayData, defaultSchedule: boolean): DaySlot[] {
+  const weekly = offeredStarts(defaultSchedule ? DEFAULT_SCHEDULE : consultant.availability, weekdayOf(date));
+  // Weekly hours plus any extra hours opened for this date
+  const starts = Array.from(new Set([...weekly, ...openedStarts(data, date)])).sort((x, y) => x - y);
+  const busy = starts.length ? busyPeriods(data, date) : [];
   const now = Date.now();
 
-  const slots = starts.map((m) => {
+  return starts.map((m) => {
     const startAt = istInstant(date, m)!;
     const from = startAt.getTime();
     const to = from + SLOT_MINUTES * MINUTE;
@@ -129,7 +148,31 @@ export async function getDaySlots(consultant: any, date: string): Promise<{ slot
     const end = formatTimeLabel(m + SLOT_MINUTES);
     return { time: `${start} - ${end}`, start, end, startAt: startAt.toISOString(), available: !taken && from > now };
   });
-  return { slots, defaultSchedule };
+}
+
+/** The consultant's bookable slots on a day (India time), each marked available or not */
+export async function getDaySlots(consultant: any, date: string): Promise<{ slots: DaySlot[]; defaultSchedule: boolean }> {
+  if (!isDateLabel(date)) return { slots: [], defaultSchedule: false };
+  const defaultSchedule = !hasSchedule(consultant?.availability);
+  const data = await loadDayData(consultant, [date]);
+  return { slots: computeDaySlots(consultant, date, data, defaultSchedule), defaultSchedule };
+}
+
+/** Slots for every day from `from` to `to` (inclusive, at most 62 days), loaded with two queries */
+export async function getRangeSlots(consultant: any, from: string, to: string): Promise<{ days: Record<string, DaySlot[]>; defaultSchedule: boolean }> {
+  const defaultSchedule = !hasSchedule(consultant?.availability);
+  if (!isDateLabel(from) || !isDateLabel(to)) return { days: {}, defaultSchedule };
+  const dates: string[] = [];
+  const cursor = new Date(`${from}T00:00:00Z`);
+  const last = new Date(`${to}T00:00:00Z`);
+  while (cursor <= last && dates.length < 62) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  const data = await loadDayData(consultant, dates);
+  const days: Record<string, DaySlot[]> = {};
+  dates.forEach((d) => { days[d] = computeDaySlots(consultant, d, data, defaultSchedule); });
+  return { days, defaultSchedule };
 }
 
 /**
@@ -144,7 +187,7 @@ export async function slotUnavailableReason(consultant: any, startAt: Date, dura
   const offered = slots.find((s) => new Date(s.startAt).getTime() === from);
   if (!offered) return 'The therapist is not available at this time. Please pick one of the offered slots.';
 
-  const busy = await busyPeriods(consultant, date, excludeBookingId);
+  const busy = busyPeriods(await loadDayData(consultant, [date]), date, excludeBookingId);
   const to = from + Math.max(durationMinutes, 1) * MINUTE;
   if (busy.some((p) => p.from < to && p.to > from)) return 'This time slot was just taken. Please pick another slot.';
   return null;

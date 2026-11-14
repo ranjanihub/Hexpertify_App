@@ -4,7 +4,7 @@ import { getDatabase } from '../db/mongodb';
 import { isAdminUser } from '../middlewares/auth.middleware';
 import { BookingInputError, createBooking } from '../services/booking-create';
 import { resolveConsultant } from '../services/booking-refs';
-import { getDaySlots } from '../services/booking-slots';
+import { getDaySlots, getRangeSlots } from '../services/booking-slots';
 import { bookingInstant, isDateLabel, istLabels, weekdayOf } from '../services/booking-time';
 
 const DAYS_MAP = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -266,8 +266,11 @@ export class AvailabilityController {
   static async getSlots(req: Request, res: Response): Promise<void> {
     try {
       const date = String(req.query.date || '').trim();
-      if (!isDateLabel(date)) {
-        res.status(400).json({ success: false, error: 'date must be YYYY-MM-DD' });
+      const from = String(req.query.from || '').trim();
+      const to = String(req.query.to || '').trim();
+      const isRange = isDateLabel(from) && isDateLabel(to);
+      if (!isDateLabel(date) && !isRange) {
+        res.status(400).json({ success: false, error: 'date (or from and to) must be YYYY-MM-DD' });
         return;
       }
       const consultant = await resolveConsultant({
@@ -276,6 +279,12 @@ export class AvailabilityController {
       });
       if (!consultant) {
         res.status(404).json({ success: false, error: 'Consultant not found' });
+        return;
+      }
+      // ?from=&to= returns every day in the range at once: { days: { "2026-11-19": [...] } }
+      if (isRange) {
+        const { days, defaultSchedule } = await getRangeSlots(consultant, from, to);
+        res.json({ success: true, consultantId: String(consultant._id), from, to, defaultSchedule, days });
         return;
       }
       const { slots, defaultSchedule } = await getDaySlots(consultant, date);
