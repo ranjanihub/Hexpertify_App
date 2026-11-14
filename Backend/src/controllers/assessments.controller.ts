@@ -35,6 +35,103 @@ async function protectSubmissions(req: Request, submissions: any[], isClientSelf
   });
 }
 
+/** One spelling per scale, so "WHO-5", "WHO5 Well-Being" and "who-5" are the same assessment */
+function normalizeAcronym(raw: unknown): string {
+  const upper = String(raw || '').trim().toUpperCase();
+  if (upper.includes('WHO')) return 'WHO-5';
+  if (upper.includes('PSS') || upper.includes('STRESS')) return 'PSS-10';
+  if (upper.includes('WSAS') || upper.includes('FUNCTION')) return 'WSAS';
+  if (upper.includes('GAD') || upper.includes('ANXIETY')) return 'GAD-7';
+  if (upper.includes('PHQ') || upper.includes('DEPRESSION')) return 'PHQ-9';
+  if (upper.includes('PCL') || upper.includes('PTSD') || upper.includes('TRAUMA')) return 'PCL-5';
+  if (upper.includes('OCI') || upper.includes('OCD')) return 'OCI-R';
+  if (upper.includes('ASRS') || upper.includes('ADHD')) return 'ASRS';
+  return upper.replace(/[^A-Z0-9-]/g, '');
+}
+
+/** Each scale's own cutoffs (the same ranges the client app scores with); WHO-5 is higher-is-better */
+const SCALES: Record<string, { title: string; max: number; ranges: Array<[number, string, string, boolean]> }> = {
+  'WHO-5': { title: 'WHO-5 Well-Being Index', max: 25, ranges: [[6, 'Poor Well-Being (<25%)', 'bg-rose-600', true], [12, 'Reduced Well-Being (28-48%)', 'bg-amber-500', false], [25, 'Good Well-Being (50-100%)', 'bg-emerald-500', false]] },
+  'PSS-10': { title: 'Perceived Stress Scale-10', max: 40, ranges: [[13, 'Low Perceived Stress', 'bg-emerald-500', false], [26, 'Moderate Stress', 'bg-amber-500', false], [40, 'High Perceived Stress', 'bg-rose-600', true]] },
+  'WSAS': { title: 'Work and Social Adjustment Scale', max: 40, ranges: [[9, 'Subthreshold Population', 'bg-emerald-500', false], [20, 'Significant Impairment', 'bg-amber-500', false], [40, 'Severe Impairment', 'bg-rose-600', true]] },
+  'PHQ-9': { title: 'Patient Health Questionnaire-9', max: 27, ranges: [[4, 'Minimal / None', 'bg-emerald-500', false], [9, 'Mild Depression', 'bg-amber-500', false], [14, 'Moderate Depression', 'bg-orange-500', false], [19, 'Moderately Severe', 'bg-rose-600', true], [27, 'Severe Depression', 'bg-purple-600', true]] },
+  'GAD-7': { title: 'Generalized Anxiety Disorder 7 (GAD-7)', max: 21, ranges: [[4, 'Minimal Anxiety', 'bg-emerald-500', false], [9, 'Mild Anxiety', 'bg-amber-500', false], [14, 'Moderate Anxiety', 'bg-orange-500', false], [21, 'Severe Anxiety', 'bg-rose-600', true]] },
+  'PCL-5': { title: 'PTSD Checklist (PCL-5)', max: 80, ranges: [[32, 'Subthreshold Symptoms', 'bg-emerald-500', false], [45, 'Moderate PTSD (Probable)', 'bg-amber-500', true], [80, 'Severe PTSD Symptoms', 'bg-rose-600', true]] },
+  'OCI-R': { title: 'Obsessive-Compulsive Inventory-Revised', max: 72, ranges: [[20, 'Subthreshold OCD Symptoms', 'bg-emerald-500', false], [40, 'OCD Elevation', 'bg-amber-500', false], [72, 'Severe OCD Impairment', 'bg-rose-600', true]] },
+};
+
+/** Calendar day (UTC) a submission or profile score belongs to */
+function dayOf(value: unknown): string {
+  if (!value) return '';
+  if (value instanceof Date) return isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+/**
+ * Attempts saved only on the client's profile (User.assessmentScores) with no AssessmentScore record,
+ * e.g. results whose record was lost in a reseed. Only entries with recorded answers count as real
+ * attempts (seeded profile scores have none); an entry already stored as a submission (same scale,
+ * day and score) is skipped. Severity is recomputed from the scale's cutoffs, since older entries
+ * carry a generic label (WHO-5 25/25 was saved as "Severe Elevation").
+ */
+function profileOnlySubmissions(user: any, stored: any[]): any[] {
+  const scores: any[] = Array.isArray(user?.assessmentScores) ? user.assessmentScores : [];
+  const userId = String(user?.id || user?._id || '');
+  const userEmail = String(user?.email || '').toLowerCase().trim();
+  const mine = stored.filter((s) =>
+    (userEmail && String(s.clientEmail || s.email || '').toLowerCase().trim() === userEmail) ||
+    (userId && String(s.clientId || s.userId || '') === userId)
+  );
+
+  const out: any[] = [];
+  scores.forEach((entry: any, idx: number) => {
+    if (!Array.isArray(entry?.answers) || entry.answers.length === 0) return;
+    const acronym = normalizeAcronym(entry.name || entry.type);
+    const totalScore = Number(entry.score);
+    const day = dayOf(entry.date);
+    if (!acronym || !Number.isFinite(totalScore) || !day) return;
+
+    const alreadyStored = mine.some((s) =>
+      normalizeAcronym(s.assessmentAcronym || s.assessmentTitle) === acronym &&
+      Number(s.totalScore ?? s.score) === totalScore &&
+      (dayOf(s.createdAt) === day || dayOf(s.completedAt) === day)
+    );
+    if (alreadyStored) return;
+
+    const scale = SCALES[acronym];
+    const maxScore = Number(entry.maxScore) || scale?.max || 21;
+    const range = scale?.ranges.find(([upTo]) => totalScore <= upTo);
+    const severityLabel = range ? range[1] : String(entry.severity || 'Completed');
+    const at = new Date(new Date(`${day}T00:00:00.000Z`).getTime() + idx * 1000);
+
+    out.push({
+      id: `SUB-PROFILE-${userId}-${idx}`,
+      assessmentId: `ASS-${acronym}`,
+      assessmentAcronym: acronym,
+      assessmentTitle: scale?.title || `${acronym} Assessment`,
+      clientId: userId,
+      clientName: user?.name || 'Client',
+      clientEmail: userEmail,
+      consultantId: String(user?.assignedTherapistId || ''),
+      consultantName: String(user?.assignedTherapistName || ''),
+      therapistName: String(user?.assignedTherapistName || ''),
+      totalScore,
+      score: totalScore,
+      maxScore,
+      severity: severityLabel,
+      severityLabel,
+      severityColor: range ? `${range[2]} text-white` : 'bg-emerald-500 text-white',
+      flaggedRisk: range ? range[3] : false,
+      answers: entry.answers,
+      notes: `${acronym} completed by ${user?.name || 'the client'}.`,
+      completedAt: day,
+      createdAt: at,
+      source: 'profile'
+    });
+  });
+  return out;
+}
+
 export class AssessmentsController {
   /**
    * GET /api/assessments and GET /api/assessments/scores
@@ -161,49 +258,30 @@ export class AssessmentsController {
         }
       });
 
-      // If assigned clients have assessment scores stored in their User document, synthesize submission objects if missing
-      if (assignedUsers.length > 0) {
-        for (const u of assignedUsers) {
-          if (Array.isArray(u.assessmentScores) && u.assessmentScores.length > 0) {
-            u.assessmentScores.forEach((as: any, idx: number) => {
-              const acronym = as.name || as.type || 'GAD-7';
-              const totalScore = Number(as.score ?? 0);
-              const maxScore = Number(as.maxScore || (acronym === 'PHQ-9' ? 27 : 21));
-              const userEmail = String(u.email || '').toLowerCase();
-              
-              const alreadyPresent = submissions.some((s: any) => 
-                (s.clientEmail && userEmail && s.clientEmail.toLowerCase() === userEmail) &&
-                (s.assessmentAcronym === acronym || s.assessmentTitle?.includes(acronym))
-              );
-
-              if (!alreadyPresent) {
-                const subObj = {
-                  id: `SUB-USR-${u.id || u._id}-${idx}`,
-                  assessmentId: `ASS-${acronym}`,
-                  assessmentAcronym: acronym,
-                  assessmentTitle: as.title || `${acronym} Assessment`,
-                  clientId: String(u.id || u._id || ''),
-                  clientName: u.name || 'Client User',
-                  clientEmail: userEmail,
-                  consultantId: String(u.assignedTherapistId || consultantId || ''),
-                  consultantName: String(u.assignedTherapistName || consultantName || ''),
-                  therapistName: String(u.assignedTherapistName || consultantName || ''),
-                  totalScore,
-                  score: totalScore,
-                  maxScore,
-                  severity: as.severity || (totalScore >= 15 ? 'Severe Elevation' : totalScore >= 10 ? 'Moderate' : 'Mild'),
-                  severityLabel: as.severity || (totalScore >= 15 ? 'Severe Elevation' : totalScore >= 10 ? 'Moderate' : 'Mild'),
-                  severityColor: totalScore >= 15 ? 'bg-rose-600 text-white' : totalScore >= 10 ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white',
-                  flaggedRisk: totalScore >= 15,
-                  answers: Array.isArray(as.answers) ? as.answers : [],
-                  notes: `Assessment submitted by ${u.name || 'Client'}.`,
-                  completedAt: as.date || new Date().toISOString().split('T')[0]
-                };
-                submissions.push(subObj);
-              }
-            });
-          }
-        }
+      // Attempts saved only on a client profile (no AssessmentScore record) are returned too, so the
+      // client panel and the therapist panel show the same results from this one endpoint
+      const profileUsers: any[] = [...assignedUsers];
+      const filterEmail = String(clientEmail || '').toLowerCase().trim();
+      const filterId = String(clientId || '').trim();
+      if (filterEmail || filterId) {
+        const userOr: any[] = [
+          ...(filterEmail ? [{ email: filterEmail }] : []),
+          ...(filterId ? idQuery(filterId).$or : [])
+        ];
+        const self = await db.collection('User').findOne({ $or: userOr }).catch(() => null)
+          || await db.collection('users').findOne({ $or: userOr }).catch(() => null);
+        if (self) profileUsers.push(self);
+      }
+      const seenUsers = new Set<string>();
+      for (const u of profileUsers) {
+        const uid = String(u.id || u._id || '');
+        const uemail = String(u.email || '').toLowerCase().trim();
+        // With a client filter, only that client; never other clients of the same therapist
+        if ((filterEmail || filterId) && !((filterEmail && uemail === filterEmail) || (filterId && (uid === filterId || String(u._id) === filterId)))) continue;
+        const key = uid || uemail;
+        if (!key || seenUsers.has(key)) continue;
+        seenUsers.add(key);
+        submissions.push(...profileOnlySubmissions(u, submissions));
       }
 
       const visibleSubmissions = await protectSubmissions(req, submissions, Boolean(clientEmail || clientId));
