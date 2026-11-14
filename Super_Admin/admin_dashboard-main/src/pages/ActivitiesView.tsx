@@ -435,7 +435,7 @@ export const ActivitiesView: React.FC = () => {
       {/* Toast Banner */}
       {toastMessage && (
         <div
-          className={`fixed top-20 right-8 z-50 px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border animate-in slide-in-from-top duration-300 ${
+          className={`fixed top-4 left-4 right-4 sm:left-auto sm:top-20 sm:right-8 sm:max-w-sm z-50 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl shadow-2xl flex items-center gap-3 border animate-in slide-in-from-top duration-300 ${
             toastMessage.type === 'success'
               ? 'bg-emerald-600 text-white border-emerald-500'
               : 'bg-amber-600 text-white border-amber-500'
@@ -452,19 +452,19 @@ export const ActivitiesView: React.FC = () => {
 
       {/* ── VIEW MODE 1: ACTIVITIES DIRECTORY ─────────────── */}
       {!selectedGameId ? (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Activities</h1>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:gap-6">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Activities</h1>
               <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1">
                 Prescribe and manage exercises with frequency schedules for your clients.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
               {/* Search Bar */}
-              <div className="relative w-full sm:w-72">
+              <div className="relative w-full sm:flex-1 lg:flex-none lg:w-72 min-w-0">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -497,7 +497,7 @@ export const ActivitiesView: React.FC = () => {
           </div>
 
           {/* Category Filter Pills Bar */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
             {categoriesList.map((cat) => {
               const isActive = selectedCategory.toUpperCase() === cat.toUpperCase();
               return (
@@ -518,7 +518,8 @@ export const ActivitiesView: React.FC = () => {
           </div>
 
           {/* Activity Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* auto-fill adapts to the real content width (sidebar open or closed), not the viewport */}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-4 sm:gap-6">
             {filteredGames.length === 0 ? (
               <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
                 <div className="max-w-xs mx-auto space-y-3">
@@ -549,7 +550,7 @@ export const ActivitiesView: React.FC = () => {
                     }`}
                   >
                     {/* Top Image & Badges Container */}
-                    <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100">
+                    <div className="relative h-40 sm:h-48 xl:h-52 w-full overflow-hidden bg-slate-100">
                       <img
                         src={game.imageUrl}
                         alt={game.name}
@@ -560,8 +561,8 @@ export const ActivitiesView: React.FC = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-black/20" />
 
                       {/* Top-Left Category Badge */}
-                      <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-2">
-                        <span className="px-3 py-1 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-extrabold text-slate-900 shadow-md flex items-center gap-1.5 uppercase tracking-wider border border-white/50">
+                      <div className="absolute top-3 left-3 right-28 z-10 flex items-center gap-2 min-w-0">
+                        <span className="max-w-full truncate px-3 py-1 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-extrabold text-slate-900 shadow-md flex items-center gap-1.5 uppercase tracking-wider border border-white/50">
                           {game.categoryTag === 'MINDFULNESS' && <Wind className="w-3 h-3 text-[#5e2be2]" />}
                           {game.categoryTag === 'CBT' && <Brain className="w-3 h-3 text-purple-600" />}
                           {game.categoryTag === 'SOMATIC' && <Sparkles className="w-3 h-3 text-emerald-500" />}
@@ -573,7 +574,7 @@ export const ActivitiesView: React.FC = () => {
                       </div>
 
                       {/* Top-Right Difficulty Badge & 3-Dots Admin Menu */}
-                      <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-2">
+                      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
                         <span className="px-3 py-1 bg-white/90 backdrop-blur-md text-slate-800 rounded-full text-[11px] font-extrabold shadow-md">
                           {game.difficulty}
                         </span>
@@ -651,8 +652,8 @@ export const ActivitiesView: React.FC = () => {
                     </div>
 
                     {/* Card Content Body */}
-                    <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
-                      <div className="space-y-2">
+                    <div className="p-4 sm:p-6 space-y-4 flex-1 flex flex-col justify-between min-w-0">
+                      <div className="space-y-2 min-w-0">
                         <h3 className="font-extrabold text-slate-900 text-base sm:text-lg group-hover:text-[#5e2be2] transition-colors leading-tight">
                           {game.name}
                         </h3>
@@ -668,7 +669,7 @@ export const ActivitiesView: React.FC = () => {
                       </div>
 
                       {/* Meta Footer: Duration & Repeat Frequency */}
-                      <div className="flex items-center justify-between text-xs text-slate-500 font-bold pt-2 border-t border-slate-100">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-slate-500 font-bold pt-2 border-t border-slate-100">
                         <span className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-slate-400" />
                           {game.duration}
@@ -680,8 +681,8 @@ export const ActivitiesView: React.FC = () => {
                       </div>
 
                       {/* Code File Badge & Admin Visibility Status */}
-                      <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
-                        <span className="font-mono text-slate-400 truncate max-w-[180px]" title={game.filePath}>
+                      <div className="pt-2 flex items-center justify-between gap-2 text-[11px] text-slate-400 min-w-0">
+                        <span className="font-mono text-slate-400 truncate min-w-0" title={game.filePath}>
                           {game.filePath.replace('src/activities/templates/', '')}
                         </span>
                         {!isVisible && (
@@ -697,8 +698,8 @@ export const ActivitiesView: React.FC = () => {
                         onClick={() => setSelectedGameId(game.id)}
                         className="w-full py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#5e2be2]/20 hover:shadow-lg transition-all active:scale-[0.98] mt-2"
                       >
-                        <Play className="w-4 h-4 fill-white" />
-                        <span>Play / Open Interactive Exercise</span>
+                        <Play className="w-4 h-4 fill-white shrink-0" />
+                        <span className="truncate">Play / Open Interactive Exercise</span>
                       </button>
                     </div>
                   </div>
@@ -709,20 +710,21 @@ export const ActivitiesView: React.FC = () => {
         </div>
       ) : (
         /* ── VIEW MODE 2: ACTIVE GAME PLAYER VIEW ───────────────────────── */
-        <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200">
           {/* Sticky Top Control Bar */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-4 z-30">
-            <div className="flex items-center gap-3">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-200/90 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 sticky top-2 sm:top-4 z-30">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => setSelectedGameId(null)}
-                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs flex items-center gap-1.5 transition-all active:scale-95"
+                title="Back to Activities"
+                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Back to Activities</span>
+                <span className="hidden sm:inline">Back to Activities</span>
               </button>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase font-mono">
                     Playing · {activeGameObj?.id}
                   </span>
@@ -737,15 +739,15 @@ export const ActivitiesView: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <h2 className="text-xl font-extrabold text-slate-900 leading-tight">{activeGameObj?.name}</h2>
+                <h2 className="text-base sm:text-xl font-extrabold text-slate-900 leading-tight truncate">{activeGameObj?.name}</h2>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               <button
                 type="button"
                 onClick={(e) => activeGameObj && handleToggleVisibility(activeGameObj.id, e)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition-all active:scale-95 ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition-all active:scale-95 shrink-0 ${
                   activeGameObj && activeGameObj.isVisible
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                     : 'bg-amber-100 text-amber-900 border-amber-300'
@@ -764,22 +766,25 @@ export const ActivitiesView: React.FC = () => {
                 )}
               </button>
 
-              <div className="px-3.5 py-2 bg-slate-900 text-emerald-400 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5 border border-slate-800">
-                <Code className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{activeGameComponent?.filePath || activeGameObj?.filePath}</span>
+              <div
+                className="hidden sm:flex px-3.5 py-2 bg-slate-900 text-emerald-400 rounded-xl font-mono text-xs font-bold items-center gap-1.5 border border-slate-800 min-w-0 max-w-full"
+                title={activeGameComponent?.filePath || activeGameObj?.filePath}
+              >
+                <Code className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">{activeGameComponent?.filePath || activeGameObj?.filePath}</span>
               </div>
             </div>
           </div>
 
           {/* Render Active Game Component */}
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto w-full min-w-0">
             {activeGameComponent ? (
               <activeGameComponent.component
                 activityId={activeGameComponent.id}
                 activityName={activeGameComponent.name}
               />
             ) : (
-              <div className="p-12 text-center bg-white rounded-3xl border border-slate-200">
+              <div className="p-6 sm:p-12 text-center bg-white rounded-3xl border border-slate-200">
                 <FileText className="w-10 h-10 text-purple-600 mx-auto mb-2" />
                 <h3 className="font-extrabold text-slate-900 text-base">{activeGameObj?.name}</h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">{activeGameObj?.description}</p>
@@ -794,9 +799,9 @@ export const ActivitiesView: React.FC = () => {
 
       {/* MODAL: CREATE & ASSIGN ACTIVITY */}
       {showCreateModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-5 my-auto max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-5 max-h-[92dvh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 text-[#5e2be2] flex items-center justify-center font-bold">
                   <Plus className="w-5 h-5" />
@@ -827,7 +832,7 @@ export const ActivitiesView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-extrabold text-slate-700">Category Tag *</label>
                   <select
@@ -859,7 +864,7 @@ export const ActivitiesView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-extrabold text-slate-700">Estimated Duration *</label>
                   <select
@@ -938,17 +943,17 @@ export const ActivitiesView: React.FC = () => {
 
 
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md"
                 >
                   Create & Prescribe Activity
                 </button>
