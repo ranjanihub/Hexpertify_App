@@ -13,23 +13,8 @@ import {
   PlayCircle,
   ChevronRight,
   User,
-  Search,
-  BarChart3,
-  Activity
+  Search
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid
-} from 'recharts';
 import type { PageId } from '../types';
 import { useAppContext } from '../context/AppContext';
 
@@ -37,150 +22,63 @@ interface DashboardViewProps {
   onSelectPage: (page: PageId) => void;
 }
 
-type Period = 'hourly' | 'daily' | 'weekly' | 'monthly';
 
-export interface ChartDataPoint {
-  label: string;
-  completed: number;
-  scheduled: number;
-  sessions: number;
-  revenue: number;
+/** "2026-11-14" for a date, in India time (booking dates are India-time days) */
+function isoDay(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
 
-const CustomChartTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload as ChartDataPoint;
-    return (
-      <div className="bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl border border-slate-800 text-xs space-y-2.5 min-w-[200px]">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span className="font-extrabold text-slate-200">{label}</span>
-          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-extrabold text-[10px]">
-            {data.sessions} Total
-          </span>
-        </div>
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> Completed
-            </span>
-            <span className="font-extrabold text-emerald-400">{data.completed}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-[#a855f7] inline-block" /> Scheduled
-            </span>
-            <span className="font-extrabold text-purple-300">{data.scheduled}</span>
-          </div>
-          <div className="flex items-center justify-between border-t border-slate-800/80 pt-1.5 text-slate-300">
-            <span className="text-slate-400">Est. Revenue</span>
-            <span className="font-extrabold text-white">₹{data.revenue.toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
-    );
+/** First and last day ("YYYY-MM-DD") of the selected count range */
+function rangeOf(range: 'all' | 'today' | 'week' | 'month' | 'day', day: string): [string, string] {
+  const today = isoDay(new Date());
+  if (range === 'today') return [today, today];
+  if (range === 'day') return [day, day];
+  const [y, m, d] = today.split('-').map(Number);
+  if (range === 'month') {
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return [`${today.slice(0, 8)}01`, `${today.slice(0, 8)}${String(last).padStart(2, '0')}`];
   }
-  return null;
-};
+  if (range === 'week') {
+    // Monday to Sunday of the current week
+    const base = new Date(Date.UTC(y, m - 1, d));
+    const offset = (base.getUTCDay() + 6) % 7;
+    const monday = new Date(base.getTime() - offset * 86400000);
+    const sunday = new Date(monday.getTime() + 6 * 86400000);
+    return [monday.toISOString().slice(0, 10), sunday.toISOString().slice(0, 10)];
+  }
+  return ['', ''];
+}
+
+const COUNT_RANGES: { key: 'all' | 'today' | 'week' | 'month'; label: string }[] = [
+  { key: 'all', label: 'All time' },
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This week' },
+  { key: 'month', label: 'This month' }
+];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) => {
   const { bookings, metrics, auditLogs, updateBookingStatus } = useAppContext();
-  const [chartPeriod, setChartPeriod] = useState<Period>('daily');
-  const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('line');
   const [scheduleSearch, setScheduleSearch] = useState('');
   const [scheduleFilter, setScheduleFilter] = useState<'All' | 'Scheduled' | 'Completed' | 'Rescheduled'>('All');
 
-  // Compute dynamic chart data with realistic status breakdown and volume variance
-  const dynamicChartDatasets: Record<Period, ChartDataPoint[]> = React.useMemo(() => {
-    const completedList = bookings.filter(b => b.status === 'Completed');
-    const scheduledList = bookings.filter(b => b.status !== 'Completed');
+  // Day filter for the session count cards
+  const [countRange, setCountRange] = useState<'all' | 'today' | 'week' | 'month' | 'day'>('all');
+  const [countDay, setCountDay] = useState(() => isoDay(new Date()));
 
-    // Hourly / Time Slot distribution for consultations throughout the day
-    const timeSlots = ['09:00 AM', '11:00 AM', '01:00 PM', '03:00 PM', '05:00 PM', '07:00 PM', '09:00 PM'];
-    const hourlyWeights = [0.12, 0.22, 0.16, 0.20, 0.18, 0.08, 0.04];
-    const hourly: ChartDataPoint[] = timeSlots.map((time, idx) => {
-      const weight = hourlyWeights[idx];
-      const compCount = Math.max(1, Math.round((completedList.length || 10) * weight * 2.5));
-      const schedCount = Math.max(1, Math.round((scheduledList.length || 8) * weight * 2.0));
-      const sessTotal = compCount + schedCount;
-      const rev = Math.round((compCount * 450) + (schedCount * 300));
-      return {
-        label: time,
-        completed: compCount,
-        scheduled: schedCount,
-        sessions: sessTotal,
-        revenue: rev
-      };
-    });
+  // Real booking counts for the session summary cards (abandoned checkouts are left out)
+  const sessionCounts = React.useMemo(() => {
+    const real = bookings.filter(b => b.status !== 'Pending Payment' && b.status !== 'Expired');
+    // Website bookings without a session time have no date, so they are counted for any range
+    const toBeScheduled = real.filter(b => b.toBeScheduled && b.status !== 'Cancelled' && b.status !== 'Completed').length;
 
-    // Daily distribution weights (Mon..Sun) - realistic therapy load peaks midweek
-    const dailyWeights = [0.14, 0.16, 0.20, 0.19, 0.18, 0.08, 0.05];
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-    const daily: ChartDataPoint[] = days.map((day, idx) => {
-      const weight = dailyWeights[idx];
-      const compCount = Math.max(1, Math.round((completedList.length || 14) * weight * 2.2));
-      const schedCount = Math.max(1, Math.round((scheduledList.length || 10) * weight * 1.8));
-      const sessTotal = compCount + schedCount;
-      const rev = Math.round((compCount * 450) + (schedCount * 300));
-      return {
-        label: day,
-        completed: compCount,
-        scheduled: schedCount,
-        sessions: sessTotal,
-        revenue: rev
-      };
-    });
-
-    // Weekly distribution (Weeks 1 to 4)
-    const weeklyWeights = [0.22, 0.26, 0.28, 0.24];
-    const weekly: ChartDataPoint[] = ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((w, idx) => {
-      const weight = weeklyWeights[idx];
-      const compCount = Math.max(4, Math.round((completedList.length || 20) * weight * 4.5));
-      const schedCount = Math.max(2, Math.round((scheduledList.length || 15) * weight * 3.5));
-      const sessTotal = compCount + schedCount;
-      const rev = Math.round((compCount * 450) + (schedCount * 300));
-      return {
-        label: w,
-        completed: compCount,
-        scheduled: schedCount,
-        sessions: sessTotal,
-        revenue: rev
-      };
-    });
-
-    // Monthly distribution (Jan - Aug)
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
-    const monthlyWeights = [0.10, 0.11, 0.13, 0.12, 0.14, 0.15, 0.12, 0.13];
-    const monthly: ChartDataPoint[] = months.map((m, idx) => {
-      const weight = monthlyWeights[idx];
-      const compCount = Math.max(8, Math.round((completedList.length || 30) * weight * 8));
-      const schedCount = Math.max(4, Math.round((scheduledList.length || 20) * weight * 6));
-      const sessTotal = compCount + schedCount;
-      const rev = Math.round((compCount * 450) + (schedCount * 300));
-      return {
-        label: m,
-        completed: compCount,
-        scheduled: schedCount,
-        sessions: sessTotal,
-        revenue: rev
-      };
-    });
-
-    return { hourly, daily, weekly, monthly };
-  }, [bookings]);
-
-  const currentChartData = dynamicChartDatasets[chartPeriod];
-  const chartTotals = React.useMemo(() => {
-    const total = currentChartData.reduce((acc, d) => acc + d.sessions, 0);
-    const completed = currentChartData.reduce((acc, d) => acc + d.completed, 0);
-    const scheduled = currentChartData.reduce((acc, d) => acc + d.scheduled, 0);
-    const totalRev = currentChartData.reduce((acc, d) => acc + d.revenue, 0);
-    const peak = currentChartData.reduce((prev, curr) => (curr.sessions > prev.sessions ? curr : prev), currentChartData[0]);
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const avg = total > 0 ? (total / currentChartData.length).toFixed(1) : '0';
-
-    return { total, completed, scheduled, totalRev, peak, completionRate, avg };
-  }, [currentChartData]);
+    const [from, to] = rangeOf(countRange, countDay);
+    const inRange = real.filter(b => !b.toBeScheduled && (countRange === 'all' || (/^\d{4}-\d{2}-\d{2}$/.test(b.date) && b.date >= from && b.date <= to)));
+    const scheduled = inRange.filter(b => b.status === 'Scheduled' || b.status === 'Rescheduled' || b.status === 'Pending').length;
+    const completed = inRange.filter(b => b.status === 'Completed').length;
+    const cancelled = inRange.filter(b => b.status === 'Cancelled').length;
+    const noShows = inRange.filter(b => b.status === 'No Show - Client' || b.status === 'No Show - Consultant').length;
+    return { total: inRange.length, scheduled, toBeScheduled, completed, cancelled, noShows };
+  }, [bookings, countRange, countDay]);
 
   const todayFormatted = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -381,256 +279,78 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Charts & Today's Schedule */}
         <div className="lg:col-span-8 space-y-8">
-          {/* Daily & Weekly Session Analytics Chart */}
+          {/* Session counts */}
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
-            {/* Top Row: Title, Subtitle, Mode Switcher & Period Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-lg text-slate-900">Session Volume & Analytics</h3>
-                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5e2be2] border border-purple-100">
-                    Live Insights
-                  </span>
+            <div className="flex flex-col gap-3 border-b border-slate-100 pb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-extrabold text-lg text-slate-900">Sessions</h3>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    {countRange === 'all'
+                      ? 'All bookings on the platform, by status'
+                      : (() => {
+                          const [from, to] = rangeOf(countRange, countDay);
+                          const fmt = (v: string) => new Date(`${v}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                          return `Sessions dated ${from === to ? fmt(from) : `${fmt(from)} – ${fmt(to)}`}, by status`;
+                        })()}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400 font-medium mt-0.5">
-                  Completed vs scheduled consultations with volume metrics
-                </p>
+                <button
+                  type="button"
+                  onClick={() => onSelectPage('bookings')}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#5e2be2] hover:underline shrink-0"
+                >
+                  View bookings
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                {/* View Mode Toggle: Line with Points vs Bar vs Trend Curve */}
-                <div className="flex items-center bg-slate-100 p-1 rounded-xl shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setChartType('line')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                      chartType === 'line'
-                        ? 'bg-white shadow-2xs text-[#5e2be2]'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                    title="Line Graph with Points"
-                  >
-                    <Activity className="w-3.5 h-3.5" />
-                    <span>Line</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setChartType('bar')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                      chartType === 'bar'
-                        ? 'bg-white shadow-2xs text-[#5e2be2]'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                    title="Bar Chart Breakdown"
-                  >
-                    <BarChart3 className="w-3.5 h-3.5" />
-                    <span>Bar</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setChartType('area')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                      chartType === 'area'
-                        ? 'bg-white shadow-2xs text-[#5e2be2]'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                    title="Trend Area Curve"
-                  >
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>Trend</span>
-                  </button>
-                </div>
-
-                {/* Period Selector */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
-                  {(['daily', 'weekly', 'monthly'] as Period[]).map((period) => (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                  {COUNT_RANGES.map((r) => (
                     <button
-                      key={period}
+                      key={r.key}
                       type="button"
-                      onClick={() => setChartPeriod(period)}
-                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all capitalize ${
-                        chartPeriod === period
-                          ? 'bg-white shadow-2xs text-[#5e2be2]'
-                          : 'text-slate-500 hover:text-slate-900'
+                      onClick={() => setCountRange(r.key)}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                        countRange === r.key ? 'bg-white shadow-2xs text-[#5e2be2]' : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
-                      {period}
+                      {r.label}
                     </button>
                   ))}
                 </div>
+                <input
+                  type="date"
+                  value={countDay}
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    setCountDay(e.target.value);
+                    setCountRange('day');
+                  }}
+                  title="Pick a day"
+                  className={`h-8 px-2.5 text-xs font-bold rounded-xl border bg-white outline-none cursor-pointer ${
+                    countRange === 'day' ? 'border-[#5e2be2] text-[#5e2be2]' : 'border-slate-200 text-slate-500'
+                  }`}
+                />
               </div>
             </div>
 
-            {/* Quick Metrics KPI Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
-              <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Volume</span>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-base font-extrabold text-slate-900">{chartTotals.total}</span>
-                  <span className="text-[10px] font-semibold text-slate-500">sessions</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[
+                { label: 'Total sessions', value: sessionCounts.total, tone: 'text-slate-900', bg: 'bg-slate-50 border-slate-100' },
+                { label: 'Scheduled', value: sessionCounts.scheduled, tone: 'text-[#5e2be2]', bg: 'bg-purple-50/60 border-purple-100' },
+                { label: 'To be scheduled', value: sessionCounts.toBeScheduled, tone: 'text-amber-600', bg: 'bg-amber-50/60 border-amber-100', note: countRange === 'all' ? '' : 'No date yet · not filtered' },
+                { label: 'Completed', value: sessionCounts.completed, tone: 'text-emerald-600', bg: 'bg-emerald-50/60 border-emerald-100' },
+                { label: 'Cancelled', value: sessionCounts.cancelled, tone: 'text-rose-600', bg: 'bg-rose-50/60 border-rose-100' },
+                { label: 'No-shows', value: sessionCounts.noShows, tone: 'text-slate-600', bg: 'bg-slate-50 border-slate-100' }
+              ].map((card) => (
+                <div key={card.label} className={`p-4 rounded-2xl border ${card.bg}`}>
+                  <span className="text-[11px] uppercase font-bold text-slate-500 block tracking-wider">{card.label}</span>
+                  <span className={`text-2xl font-extrabold mt-1 block ${card.tone}`}>{card.value}</span>
+                  {card.note && <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">{card.note}</span>}
                 </div>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Completion Rate</span>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-base font-extrabold text-emerald-600">{chartTotals.completionRate}%</span>
-                  <span className="text-[10px] font-semibold text-emerald-600">({chartTotals.completed})</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                  Avg / {chartPeriod === 'hourly' ? 'Hour' : chartPeriod === 'daily' ? 'Day' : chartPeriod === 'weekly' ? 'Week' : 'Month'}
-                </span>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-base font-extrabold text-slate-900">{chartTotals.avg}</span>
-                  <span className="text-[10px] font-semibold text-slate-500">sessions</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                  Peak {chartPeriod === 'hourly' ? 'Time' : chartPeriod === 'daily' ? 'Day' : 'Period'}
-                </span>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-base font-extrabold text-[#5e2be2] truncate">{chartTotals.peak?.label}</span>
-                  <span className="text-[10px] font-semibold text-purple-600">({chartTotals.peak?.sessions})</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Clear Legend */}
-            <div className="flex items-center justify-between text-xs px-1">
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block ring-2 ring-emerald-200" />
-                  <span>Completed ({chartTotals.completed})</span>
-                </div>
-                <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#7c3aed] inline-block ring-2 ring-purple-200" />
-                  <span>Scheduled ({chartTotals.scheduled})</span>
-                </div>
-                <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block ring-2 ring-blue-200" />
-                  <span>Total Volume ({chartTotals.total})</span>
-                </div>
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-                Hover points & columns to inspect details
-              </span>
-            </div>
-
-            {/* Chart Canvas */}
-            <div className="w-full h-72 pt-2" style={{ minHeight: '288px', height: '288px' }}>
-              <ResponsiveContainer width="100%" height="100%" minHeight={280}>
-                {chartType === 'line' ? (
-                  <LineChart data={currentChartData} margin={{ top: 12, right: 16, left: -15, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="label" stroke="#64748b" fontSize={12} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} dy={5} />
-                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <Line
-                      type="monotone"
-                      dataKey="completed"
-                      name="Completed Sessions"
-                      stroke="#10b981"
-                      strokeWidth={3}
-                      dot={{ r: 5, fill: '#10b981', stroke: '#ffffff', strokeWidth: 2 }}
-                      activeDot={{ r: 7, fill: '#10b981', stroke: '#ffffff', strokeWidth: 3 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="scheduled"
-                      name="Scheduled Sessions"
-                      stroke="#7c3aed"
-                      strokeWidth={3}
-                      dot={{ r: 5, fill: '#7c3aed', stroke: '#ffffff', strokeWidth: 2 }}
-                      activeDot={{ r: 7, fill: '#7c3aed', stroke: '#ffffff', strokeWidth: 3 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="sessions"
-                      name="Total Volume"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      strokeDasharray="4 4"
-                      dot={{ r: 4, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 1.5 }}
-                      activeDot={{ r: 6, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                ) : chartType === 'bar' ? (
-                  <BarChart data={currentChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="barGradCompleted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#059669" stopOpacity={0.85} />
-                      </linearGradient>
-                      <linearGradient id="barGradScheduled" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#7c3aed" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#5e2be2" stopOpacity={0.85} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="label" stroke="#64748b" fontSize={12} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} dy={5} />
-                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <Bar
-                      dataKey="completed"
-                      name="Completed Sessions"
-                      fill="url(#barGradCompleted)"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={32}
-                    />
-                    <Bar
-                      dataKey="scheduled"
-                      name="Scheduled Sessions"
-                      fill="url(#barGradScheduled)"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={32}
-                    />
-                  </BarChart>
-                ) : (
-                  <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="areaGradTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#5e2be2" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#5e2be2" stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="areaGradCompleted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="label" stroke="#64748b" fontSize={12} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} dy={5} />
-                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="sessions"
-                      name="Total Sessions"
-                      stroke="#5e2be2"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#areaGradTotal)"
-                      dot={{ r: 4, fill: '#5e2be2', strokeWidth: 2, stroke: '#ffffff' }}
-                      activeDot={{ r: 6, fill: '#5e2be2' }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="completed"
-                      name="Completed Sessions"
-                      stroke="#10b981"
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#areaGradCompleted)"
-                      dot={{ r: 3, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}
-                      activeDot={{ r: 5, fill: '#10b981' }}
-                    />
-                  </AreaChart>
-                )}
-              </ResponsiveContainer>
+              ))}
             </div>
           </div>
 
