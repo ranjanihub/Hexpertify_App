@@ -46,3 +46,6 @@ backups/
 /Backend/public/index.js
 /Backend/public/index.cjs
 /Backend/public/index.mjs
+
+# Backend single-file bundle for the Vercel Services deploy (built on Vercel)
+Backend/bundle/

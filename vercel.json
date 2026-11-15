@@ -13,8 +13,9 @@
     "backend": {
       "root": "Backend",
       "framework": "express",
-      "entrypoint": "src/index.ts",
-      "installCommand": "npm install --include=dev"
+      "installCommand": "npm install --include=dev",
+      "buildCommand": "node scripts/bundle-service.js",
+      "entrypoint": "bundle/index.js"
     }
   },
   "rewrites": [
