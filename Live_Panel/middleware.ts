@@ -67,6 +67,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Node.js runtime (stable since Next 15.5): Vercel Services does not support Edge Functions
+  runtime: "nodejs",
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|images|sitemap.xml|robots.txt).*)",
   ],
