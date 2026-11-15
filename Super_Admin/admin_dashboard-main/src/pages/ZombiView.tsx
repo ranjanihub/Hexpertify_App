@@ -30,7 +30,11 @@ import type { ZombiPage } from '../types';
 // hexpertify.com points at this site). The editor also previews drafts inside its header and footer.
 const LIVE_SITE_URL = String(
   import.meta.env.VITE_LIVE_SITE_URL ||
-    (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://hexpertify-app.vercel.app')
+    (window.location.hostname === 'localhost'
+      ? 'http://localhost:3000'
+      : window.location.hostname.startsWith('hexpertify-test')
+        ? window.location.origin // test deploy: website and admin share one domain
+        : 'https://hexpertify-app.vercel.app')
 ).replace(/\/$/, '');
 
 const normalizePath = (path: string) => '/' + String(path || '').replace(/^\/+|\/+$/g, '').toLowerCase();
