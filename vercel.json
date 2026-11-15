@@ -15,7 +15,7 @@
       "framework": "express",
       "installCommand": "npm install --include=dev",
       "buildCommand": "node scripts/bundle-service.js",
-      "entrypoint": "bundle/index.js"
+      "entrypoint": "service.js"
     }
   },
   "rewrites": [
