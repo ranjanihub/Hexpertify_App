@@ -22,8 +22,16 @@ export interface ZombiePage {
   };
 }
 
-/** Same rules as the /api rewrite in next.config.ts */
-export function backendBaseUrl(): string {
+/**
+ * Same rules as the /api rewrite in next.config.ts.
+ * Vercel Services deploy (NEXT_PUBLIC_SAME_ORIGIN_API=1): functions reach the Backend over the BACKEND_URL
+ * service binding; middleware gets no bindings, so it passes its own origin, where /api routes to the Backend.
+ */
+export function backendBaseUrl(origin?: string): string {
+  if (process.env.NEXT_PUBLIC_SAME_ORIGIN_API === "1") {
+    const sameDeployment = origin || process.env.BACKEND_URL;
+    if (sameDeployment) return sameDeployment.replace(/\/$/, "");
+  }
   let url =
     process.env.BACKEND_API_URL ||
     process.env.NEXT_PUBLIC_BACKEND_API_URL ||
@@ -40,8 +48,8 @@ export function normalizeSlug(path: string): string {
 }
 
 /** Fetches every zombie page from the Backend (no caching: callers decide) */
-export async function fetchZombiePages(): Promise<ZombiePage[]> {
-  const res = await fetch(`${backendBaseUrl()}/api/zombie-pages`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+export async function fetchZombiePages(origin?: string): Promise<ZombiePage[]> {
+  const res = await fetch(`${backendBaseUrl(origin)}/api/zombie-pages`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
   if (!res.ok) return [];
   const data = await res.json().catch(() => null);
   return Array.isArray(data?.pages) ? data.pages : [];
@@ -56,10 +64,10 @@ export async function getActiveZombiePage(id: string): Promise<ZombiePage | null
 const SLUG_CACHE_MS = 60 * 1000;
 let slugCache: { at: number; map: Map<string, string> } | null = null;
 
-export async function matchZombieSlug(pathname: string): Promise<string | null> {
+export async function matchZombieSlug(pathname: string, origin?: string): Promise<string | null> {
   if (!slugCache || Date.now() - slugCache.at > SLUG_CACHE_MS) {
     try {
-      const pages = await fetchZombiePages();
+      const pages = await fetchZombiePages(origin);
       slugCache = {
         at: Date.now(),
         map: new Map(pages.filter((p) => p.status === "Active" && p.slug).map((p) => [normalizeSlug(p.slug), p.id])),

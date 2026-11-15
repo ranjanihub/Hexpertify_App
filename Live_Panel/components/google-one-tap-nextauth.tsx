@@ -102,9 +102,10 @@ export function GoogleOneTapNextAuth() {
     async (response: CredentialResponse) => {
       try {
         const isProd = typeof window !== "undefined" && (window.location.hostname.includes("vercel.app") || window.location.hostname.includes("hexpertify"));
-        const centralAuthUrl = isProd
-          ? "https://hexpertify-backend.vercel.app/api/auth/google"
-          : "http://localhost:5000/api/auth/google";
+        // Vercel Services deploy: Backend API and panels live on this same domain
+        const sameOrigin = process.env.NEXT_PUBLIC_SAME_ORIGIN_API === "1";
+        const panelBase = sameOrigin ? "" : isProd ? "https://hexpertify-backend.vercel.app" : "http://localhost:5000";
+        const centralAuthUrl = `${panelBase}/api/auth/google`;
 
         // Authenticate with central auth API to determine user role and target panel
         const res = await fetch(centralAuthUrl, {
@@ -116,10 +117,10 @@ export function GoogleOneTapNextAuth() {
         if (data?.success) {
           const targetUrl = data.redirectUrl || (
             data.role === "super_admin" || data.role === "admin"
-              ? (isProd ? "https://hexpertify-backend.vercel.app/admin" : "http://localhost:5000/admin")
+              ? `${panelBase}/admin`
               : data.role === "therapist"
-              ? (isProd ? "https://hexpertify-backend.vercel.app/consultant" : "http://localhost:5000/consultant")
-              : (isProd ? "https://hexpertify-backend.vercel.app/client" : "http://localhost:5000/client")
+              ? `${panelBase}/consultant`
+              : `${panelBase}/client`
           );
           redirectToPanel(targetUrl, data);
           return;

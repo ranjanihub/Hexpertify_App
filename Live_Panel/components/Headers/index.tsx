@@ -6,6 +6,8 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 
 const getBackendUrl = () => {
+  // Vercel Services deploy: the Backend is served on this same domain under /api
+  if (process.env.NEXT_PUBLIC_SAME_ORIGIN_API === "1") return "";
   if (typeof window !== "undefined") {
     if (
       window.location.hostname.includes("vercel.app") ||

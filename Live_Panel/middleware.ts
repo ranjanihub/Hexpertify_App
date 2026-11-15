@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isReserved = pathname === "/" || RESERVED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (!isReserved && !pathname.includes(".")) {
-    const zombieId = await matchZombieSlug(pathname);
+    const zombieId = await matchZombieSlug(pathname, request.nextUrl.origin);
     if (zombieId) {
       return NextResponse.rewrite(new URL(`/z/${encodeURIComponent(zombieId)}`, request.url));
     }
