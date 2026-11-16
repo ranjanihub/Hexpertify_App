@@ -55,7 +55,8 @@ export class AuthController {
         return;
       }
 
-      const isAdminEmail = !isExplicitTherapist && (isMasterAdminEmail || (role === 'admin' && hasDbAdminRole) || (hasDbAdminRole && role !== 'client' && role !== 'therapist'));
+      // A DB admin signs in as admin from any non-therapist form (the /login page has only Client and Therapist tabs)
+      const isAdminEmail = !isExplicitTherapist && (isMasterAdminEmail || hasDbAdminRole);
 
       if (isAdminEmail) {
         const adminDoc = existingUser;

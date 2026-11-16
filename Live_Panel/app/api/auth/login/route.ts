@@ -48,7 +48,8 @@ export async function POST(req: Request) {
 
     const hasAdminRole = dbUser?.role === "ADMIN";
 
-    if (isMasterAdminEmail || (role === "admin" && hasAdminRole) || (hasAdminRole && role !== "client" && role !== "therapist")) {
+    // A DB admin signs in as admin from any non-therapist form (keep in sync with Backend auth.controller)
+    if (isMasterAdminEmail || (hasAdminRole && role !== "therapist")) {
       let adminUser = dbUser;
 
       if (!adminUser && isMasterAdminEmail) {
