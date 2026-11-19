@@ -5,30 +5,10 @@
       "root": "Live_Panel",
       "framework": "nextjs",
       "installCommand": "npm install --include=dev",
-      "buildCommand": "NEXT_PUBLIC_SAME_ORIGIN_API=1 npm run build",
-      "bindings": [
-        { "type": "service", "service": "backend", "format": "url", "env": "BACKEND_URL" }
-      ]
-    },
-    "backend": {
-      "root": "Backend",
-      "framework": "express",
-      "installCommand": "npm install --include=dev",
-      "buildCommand": "node scripts/bundle-service.js",
-      "entrypoint": "service.js"
+      "buildCommand": "npm run build"
     }
   },
   "rewrites": [
-    {
-      "source": "/api/auth/(login|register|sso-ticket|sso-verify|session|csrf|providers|signin|signout|callback|error|_log|verify-request)",
-      "destination": { "service": "web" }
-    },
-    {
-      "source": "/api/auth/(signin|callback)/(.*)",
-      "destination": { "service": "web" }
-    },
-    { "source": "/api", "destination": { "service": "backend" } },
-    { "source": "/api/(.*)", "destination": { "service": "backend" } },
     { "source": "/(.*)", "destination": { "service": "web" } }
   ]
 }

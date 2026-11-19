@@ -79,7 +79,7 @@ export function LoginForm({
     }
 
     try {
-      // Same-origin route; it forwards to the Backend
+      // The platform API's login (Backend auth controller), served on this same domain
       const endpoints = ["/api/auth/login"];
       let res: Response | null = null;
       let data: any = null;
@@ -125,15 +125,15 @@ export function LoginForm({
         } catch {}
       }
 
-      // Construct target URL for the specific panel on port 5000
+      // The panels are served on this same domain
       let targetUrl = data.redirectUrl;
-      if (!targetUrl || targetUrl.includes("localhost:3000") || targetUrl.includes("5175") || targetUrl.includes("5173")) {
+      if (!targetUrl || /^https?:\/\//i.test(targetUrl)) {
         if (data.role === "super_admin" || data.role === "admin") {
-          targetUrl = "http://localhost:5000/admin";
+          targetUrl = "/admin";
         } else if (data.role === "therapist") {
-          targetUrl = "http://localhost:5000/consultant";
+          targetUrl = "/consultant";
         } else {
-          targetUrl = "http://localhost:5000/client";
+          targetUrl = "/client";
         }
       }
 
@@ -307,8 +307,7 @@ export function LoginForm({
                       localStorage.removeItem("hexpertify_auth_user");
                       localStorage.removeItem("consultant_token");
                     } catch {}
-                    const backendBase = process.env.NEXT_PUBLIC_BACKEND_API_URL || (window.location.port === "3000" ? "http://localhost:5000" : "");
-                    window.location.href = `${backendBase}/api/auth/google?role=${role}`;
+                    window.location.href = `/api/auth/google?role=${role}`;
                   }}
                   className="w-full h-11 border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold rounded-xl transition-all flex items-center justify-center gap-2.5 cursor-pointer text-sm shadow-xs mt-3"
                 >

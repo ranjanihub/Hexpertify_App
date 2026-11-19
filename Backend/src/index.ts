@@ -4,42 +4,19 @@ import path from 'path';
 import fs from 'fs';
 import { config } from './config';
 import { connectToDatabase, closeDatabase } from './db/mongodb';
-import { corsMiddleware } from './middlewares/cors.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
-import router from './routes';
+import apiApp from './app';
 
+// Standalone server (local dev on port 5000). In production the website (Live_Panel) serves the same API app.
 const app: Express = express();
 
-// Global Middlewares
-app.use(corsMiddleware);
 app.use(compression({
   threshold: 1024,
   level: 6
 }));
-// Payment gateway webhooks need the exact raw body for signature verification (must precede express.json)
-app.use('/api/payments/webhook', express.raw({ type: '*/*', limit: '1mb' }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Request Logger
-app.use((req, _res, next) => {
-  const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
-  console.log(`[${timestamp}] ${req.method} ${req.path}`);
-  next();
-});
-
-// Auto DB Connection Middleware for Serverless & Long-running
-app.use(async (_req, _res, next) => {
-  try {
-    await connectToDatabase();
-  } catch (err) {
-    console.error('[DB Middleware] Auto-connect error:', err);
-  }
-  next();
-});
-
-// 1. Mount Central Backend REST API
-app.use('/api', router);
+// 1. Mount Central Backend REST API (CORS, body parsing, DB connection, /api routes)
+app.use(apiApp);
 
 // 2. Static Assets for Unified Frontend & Panels (Standalone / Local Mode only; Vercel CDN handles static assets in production)
 if (!process.env.VERCEL) {

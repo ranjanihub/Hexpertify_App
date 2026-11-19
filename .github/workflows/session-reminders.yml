@@ -1,6 +1,6 @@
 # Sends the "session tomorrow" and "starts soon" reminder emails.
 # Needs the repository secret INTERNAL_API_KEY (same value as the Backend's Vercel env var).
-# Optional repository variable BACKEND_URL (defaults to the Vercel backend).
+# Optional repository variable BACKEND_URL (defaults to the site, which serves the API on /api).
 name: Session reminders
 
 on:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Trigger reminder emails
         env:
-          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://hexpertify-backend.vercel.app' }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://hexpertify-app.vercel.app' }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
         run: |
           # Not configured yet: skip with a visible warning instead of failing (and emailing) every run

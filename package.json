@@ -1,10 +1,10 @@
 {
   "name": "hexpertify-ecosystem-root",
   "version": "1.0.0",
-  "description": "Unified Hexpertify Ecosystem",
+  "description": "Hexpertify platform: one Next.js app (Live_Panel) serving the website, the panels and the API",
   "main": "index.js",
   "scripts": {
-    "dev": "npm --prefix Backend run dev",
+    "dev": "npm --prefix Live_Panel run dev",
     "dev:backend": "npm --prefix Backend run dev",
     "dev:live": "npm --prefix Live_Panel run dev",
     "dev:client": "npm --prefix Client_Panel/Client-Dashboard-Pro/artifacts/client-dashboard run dev",
@@ -14,7 +14,7 @@
     "vercel-build": "node scripts/vercel-build.js",
     "postinstall": "npm --prefix Live_Panel install && npm --prefix Backend install",
     "build:all": "npm --prefix Backend run build:all",
-    "start": "npm --prefix Backend run start"
+    "start": "npm --prefix Live_Panel run start"
   },
   "dependencies": {
     "next": "15.5.7",

@@ -101,11 +101,9 @@ export function GoogleOneTapNextAuth() {
   const handleCredentialResponse = useCallback(
     async (response: CredentialResponse) => {
       try {
-        const isProd = typeof window !== "undefined" && (window.location.hostname.includes("vercel.app") || window.location.hostname.includes("hexpertify"));
-        // Vercel Services deploy: Backend API and panels live on this same domain
-        const sameOrigin = process.env.NEXT_PUBLIC_SAME_ORIGIN_API === "1";
-        const panelBase = sameOrigin ? "" : isProd ? "https://hexpertify-backend.vercel.app" : "http://localhost:5000";
-        const centralAuthUrl = `${panelBase}/api/auth/google`;
+        // The API and the panels are served on this same domain
+        const panelBase = "";
+        const centralAuthUrl = "/api/auth/google";
 
         // Authenticate with central auth API to determine user role and target panel
         const res = await fetch(centralAuthUrl, {

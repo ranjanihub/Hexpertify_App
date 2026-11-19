@@ -101,9 +101,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={() => {
-                fetch('http://localhost:5000/api/auth/logout', { method: 'POST' }).catch(() => {
-                  fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-                });
+                fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
                 signOut();
               }}>
                 <LogOut className="mr-2 h-4 w-4" />

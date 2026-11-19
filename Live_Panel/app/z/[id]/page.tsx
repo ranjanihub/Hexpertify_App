@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Script from "next/script";
-import { getActiveZombiePage, normalizeSlug } from "@/lib/zombie-pages";
+import { normalizeSlug } from "@/lib/zombie-pages";
+import { getActiveZombiePage } from "@/lib/zombie-pages.server";
 import ZombieArticle from "@/components/ZombieArticle";
 
 // Zombie pages are edited in the Super Admin panel; always render the latest version

@@ -5,7 +5,12 @@ import path from "path";
 
 dns.setServers(["8.8.8.8", "1.1.1.1", "8.8.4.4"]);
 
-const SOURCE_URI = "mongodb+srv://hexpertifybookings:LCN86tX7nBfAZXLv@cluster0.kp0ce.mongodb.net/cms?retryWrites=true&w=majority";
+// The old cluster this one-off migration copied from is no longer configured anywhere; pass it explicitly to re-run
+const SOURCE_URI = process.env.SOURCE_MONGODB_URI;
+if (!SOURCE_URI) {
+  console.error("Set SOURCE_MONGODB_URI to the database to copy from.");
+  process.exit(1);
+}
 const TARGET_URI = "mongodb+srv://ranjaniranjani5694_db_user:1kCjOE72je4p0CFU@cluster0.ibhuunq.mongodb.net/hexpertify?retryWrites=true&w=majority";
 
 const BACKUP_DIR = path.resolve("d:/Hexpertify_Panel/backups", `backup_${new Date().toISOString().replace(/[:.]/g, "-")}`);

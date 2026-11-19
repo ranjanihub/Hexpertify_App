@@ -1,0 +1,1 @@
+import{P as e}from"./index-Bdby5x3_.js";var t=e(`square`,[[`rect`,{width:`18`,height:`18`,x:`3`,y:`3`,rx:`2`,key:`afitv7`}]]);export{t};

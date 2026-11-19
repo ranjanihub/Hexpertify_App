@@ -2,7 +2,7 @@
 
 import { authConfig } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { backendConfigured, callBackend } from "@/lib/backend";
+import { callBackend } from "@/lib/backend";
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 
@@ -186,21 +186,14 @@ export async function cancelBooking(bookingId: string) {
       return { success: false, error: "This booking can no longer be cancelled" };
     }
 
-    if (backendConfigured()) {
-      const { ok, data } = await callBackend(
-        `/api/bookings/${encodeURIComponent(bookingId)}`,
-        { status: "CANCELLED", actor: "client" },
-        "PUT",
-      );
-      if (!ok || !data?.success) {
-        return { success: false, error: data?.error || "Failed to cancel booking" };
-      }
-    } else {
-      // Local development without the Backend: status change only, no emails
-      await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: "CANCELLED" },
-      });
+    // The API cancels it and sends the cancellation emails
+    const { ok, data } = await callBackend(
+      `/api/bookings/${encodeURIComponent(bookingId)}`,
+      { status: "CANCELLED", actor: "client" },
+      "PUT",
+    );
+    if (!ok || !data?.success) {
+      return { success: false, error: data?.error || "Failed to cancel booking" };
     }
 
     revalidatePath("/profile");

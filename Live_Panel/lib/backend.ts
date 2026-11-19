@@ -1,21 +1,44 @@
 import "server-only";
+import http from "http";
+import type { AddressInfo } from "net";
+import apiApp from "@backend/app";
+import { inProcessKey } from "@backend/middlewares/auth.middleware";
 
-/** True when the central Backend (payments, emails) is configured for this deployment */
-export function backendConfigured(): boolean {
-  return !!process.env.BACKEND_URL && !!process.env.INTERNAL_API_KEY;
+/**
+ * The website's server code calls the Hexpertify API (Backend/src/app.ts) inside this same process: the
+ * Express app gets a private listener on 127.0.0.1 (random port, started on first use), so requests are
+ * real Node HTTP requests that never leave the machine. No BACKEND_URL, no deployment-to-deployment hop.
+ * Requests carry the per-process internal key, so internal-only endpoints accept them.
+ */
+let localApi: Promise<string> | null = null;
+
+function localApiBase(): Promise<string> {
+  if (!localApi) {
+    localApi = new Promise<string>((resolve, reject) => {
+      const server = http.createServer(apiApp);
+      server.once("error", (err) => {
+        localApi = null;
+        reject(err);
+      });
+      server.listen(0, "127.0.0.1", () => {
+        server.unref(); // never keeps the process alive on its own
+        resolve(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
+      });
+    });
+  }
+  return localApi;
 }
 
-/** Server-to-server call to the central Backend, authenticated with the internal key */
-export async function callBackend(path: string, body: Record<string, any>, method: "POST" | "PUT" = "POST") {
-  const baseUrl = process.env.BACKEND_URL;
-  const internalKey = process.env.INTERNAL_API_KEY;
-  if (!baseUrl || !internalKey) {
-    throw new Error("Online payments are not configured. Please contact support.");
-  }
-  const res = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
+export async function callBackend(
+  path: string,
+  body?: Record<string, any>,
+  method: "GET" | "POST" | "PUT" | "DELETE" = "POST",
+): Promise<{ ok: boolean; status: number; data: any }> {
+  const base = await localApiBase();
+  const res = await fetch(`${base}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", "X-Internal-Key": internalKey },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", "X-Internal-Key": inProcessKey },
+    body: method === "GET" || body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
@@ -24,7 +47,6 @@ export async function callBackend(path: string, body: Record<string, any>, metho
 
 /** Welcome email for a new website account; never throws (sign-up must not fail on email) */
 export async function sendWelcomeEmail(name: string, email: string): Promise<void> {
-  if (!backendConfigured()) return;
   try {
     await callBackend("/api/emails/welcome", { name, email });
   } catch (err) {

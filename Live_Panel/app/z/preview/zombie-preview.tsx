@@ -5,11 +5,10 @@ import ZombieArticle from "@/components/ZombieArticle";
 
 /**
  * The Super Admin panel loads this page in an iframe and posts the page being edited, so admins
- * see it inside the real website header and footer before publishing. Only the admin panel's
- * origins may send content (anything else could inject HTML into this site).
+ * see it inside the real website header and footer before publishing. Only this site (where the admin
+ * panel is served) and the listed origins may send content (anything else could inject HTML into this site).
  */
 const ADMIN_ORIGINS = [
-  "https://hexpertify-backend.vercel.app",
   "https://hexpertify.com",
   "https://www.hexpertify.com",
   "http://localhost:5175",

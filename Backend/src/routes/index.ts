@@ -34,9 +34,9 @@ router.get('/', (_req: Request, res: Response) => {
     version: '1.0.0',
     database: 'MongoDB Atlas (Connected)',
     panels: {
-      superAdmin: 'http://localhost:5000/admin',
-      consultantSuite: 'http://localhost:5000/consultant',
-      clientPortal: 'http://localhost:5000/client'
+      superAdmin: '/admin',
+      consultantSuite: '/consultant',
+      clientPortal: '/client'
     }
   });
 });

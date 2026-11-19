@@ -3,7 +3,7 @@
 import { BookingStatus } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { backendConfigured, callBackend } from "@/lib/backend";
+import { callBackend } from "@/lib/backend";
 
 // ------------------------------------------------------
 // ✅ 1. Get Paginated Bookings
@@ -113,14 +113,10 @@ export async function updateBookingStatus(id: string, status: string) {
       return { success: false, message: "Invalid booking status" };
     }
 
-    if (backendConfigured()) {
-      const { ok, data } = await callBackend(`/api/bookings/${encodeURIComponent(id)}`, { status }, "PUT");
-      if (!ok || !data?.success) {
-        return { success: false, message: data?.error || "Could not update the booking" };
-      }
-    } else {
-      // Local development without the Backend: status changes only, no emails
-      await prisma.booking.update({ where: { id }, data: { status: status as BookingStatus } });
+    // The API updates it and sends the status emails
+    const { ok, data } = await callBackend(`/api/bookings/${encodeURIComponent(id)}`, { status }, "PUT");
+    if (!ok || !data?.success) {
+      return { success: false, message: data?.error || "Could not update the booking" };
     }
 
     const updated = await prisma.booking.findUnique({

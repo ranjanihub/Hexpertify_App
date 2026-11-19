@@ -19,6 +19,18 @@ const activeTickets = new Map<string, { payload: any; expiresAt: number; used: b
 /** Thrown by handleVerifiedGoogleProfile when a client has no completed session yet */
 class ClientPanelLockedError extends Error {}
 
+/**
+ * Google OAuth redirect URI: GOOGLE_REDIRECT_URI when set, else this same host (the API is served on the
+ * website's own domain). The URI must be listed under the OAuth client's authorized redirect URIs.
+ */
+function googleRedirectUri(req: Request): string {
+  if (config.googleRedirectUri) return config.googleRedirectUri;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000').split(',')[0].trim();
+  const isLocal = /^(localhost|127\.0\.0\.1)(:|$)/.test(host);
+  const proto = String(req.headers['x-forwarded-proto'] || (isLocal ? 'http' : 'https')).split(',')[0].trim();
+  return `${proto}://${host}/api/auth/google/callback`;
+}
+
 export class AuthController {
   /**
    * POST /api/auth/login
@@ -689,7 +701,7 @@ export class AuthController {
       const client = new OAuth2Client(
         config.googleClientId,
         config.googleClientSecret,
-        config.googleRedirectUri
+        googleRedirectUri(req)
       );
 
       const statePayload = Buffer.from(JSON.stringify({ role, returnUrl, timestamp: Date.now() })).toString('base64url');
@@ -735,7 +747,7 @@ export class AuthController {
       const client = new OAuth2Client(
         config.googleClientId,
         config.googleClientSecret,
-        config.googleRedirectUri
+        googleRedirectUri(req)
       );
 
       const { tokens } = await client.getToken(code);
@@ -748,7 +760,7 @@ export class AuthController {
 
       const ticket = await client.verifyIdToken({
         idToken: tokens.id_token,
-        audience: config.googleClientId
+        audience: config.googleAudiences
       });
 
       const payload = ticket.getPayload();
@@ -813,7 +825,7 @@ export class AuthController {
         const client = new OAuth2Client(config.googleClientId);
         const ticket = await client.verifyIdToken({
           idToken: credential,
-          audience: config.googleClientId
+          audience: config.googleAudiences
         });
         const payload = ticket.getPayload();
         if (!payload || !payload.email) {

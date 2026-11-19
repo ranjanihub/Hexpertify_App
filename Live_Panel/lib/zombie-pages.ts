@@ -22,49 +22,32 @@ export interface ZombiePage {
   };
 }
 
-/**
- * Same rules as the /api rewrite in next.config.ts.
- * Vercel Services deploy (NEXT_PUBLIC_SAME_ORIGIN_API=1): functions reach the Backend over the BACKEND_URL
- * service binding; middleware gets no bindings, so it passes its own origin, where /api routes to the Backend.
- */
-export function backendBaseUrl(origin?: string): string {
-  if (process.env.NEXT_PUBLIC_SAME_ORIGIN_API === "1") {
-    const sameDeployment = origin || process.env.BACKEND_URL;
-    if (sameDeployment) return sameDeployment.replace(/\/$/, "");
-  }
-  let url =
-    process.env.BACKEND_API_URL ||
-    process.env.NEXT_PUBLIC_BACKEND_API_URL ||
-    (process.env.VERCEL || process.env.NODE_ENV === "production" ? "https://hexpertify-backend.vercel.app" : "http://localhost:5000");
-  if (!url || url.includes("hexpertify-app") || url === "/" || (Boolean(process.env.VERCEL) && url.includes("localhost"))) {
-    url = "https://hexpertify-backend.vercel.app";
-  }
-  return url.replace(/\/$/, "");
-}
-
 export function normalizeSlug(path: string): string {
   const clean = "/" + String(path || "").split(/[?#]/)[0].replace(/^https?:\/\/[^/]+/i, "").replace(/^\/+|\/+$/g, "");
   return clean.toLowerCase();
 }
 
-/** Fetches every zombie page from the Backend (no caching: callers decide) */
-export async function fetchZombiePages(origin?: string): Promise<ZombiePage[]> {
-  const res = await fetch(`${backendBaseUrl(origin)}/api/zombie-pages`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
-  if (!res.ok) return [];
-  const data = await res.json().catch(() => null);
+/** Parses the API's zombie-page list response */
+export function zombiePagesFrom(data: any): ZombiePage[] {
   return Array.isArray(data?.pages) ? data.pages : [];
 }
 
-export async function getActiveZombiePage(id: string): Promise<ZombiePage | null> {
-  const pages = await fetchZombiePages().catch(() => []);
-  return pages.find((p) => p.id === id && p.status === "Active") || null;
+/**
+ * Fetches every zombie page from this site's own API. The middleware passes its request origin; it does not
+ * load the API in-process (that would put the whole Express app into the middleware bundle).
+ * Server pages use getActiveZombiePage in lib/zombie-pages.server.ts instead.
+ */
+export async function fetchZombiePages(origin: string): Promise<ZombiePage[]> {
+  const res = await fetch(`${origin.replace(/\/$/, "")}/api/zombie-pages`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+  if (!res.ok) return [];
+  return zombiePagesFrom(await res.json().catch(() => null));
 }
 
 // Middleware-side cache of active slugs → id (refreshed at most once a minute per instance)
 const SLUG_CACHE_MS = 60 * 1000;
 let slugCache: { at: number; map: Map<string, string> } | null = null;
 
-export async function matchZombieSlug(pathname: string, origin?: string): Promise<string | null> {
+export async function matchZombieSlug(pathname: string, origin: string): Promise<string | null> {
   if (!slugCache || Date.now() - slugCache.at > SLUG_CACHE_MS) {
     try {
       const pages = await fetchZombiePages(origin);

@@ -1,7 +1,6 @@
 import { MongoClient } from 'mongodb';
 
-// SRV connection string 
-const uri = 'mongodb+srv://ranjaniranjani5694_db_user:1kCjOE72je4p0CFU@cluster0.ibhuunq.mongodb.net/hexpertify?retryWrites=true&w=majority';
+import { mongodbUri as uri } from '../config/database';
 
 async function dropAll() {
   console.log('Connecting to MongoDB Atlas (SRV)...');

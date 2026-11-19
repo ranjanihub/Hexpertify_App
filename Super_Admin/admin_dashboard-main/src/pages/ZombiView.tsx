@@ -26,15 +26,11 @@ import {
 } from 'lucide-react';
 import type { ZombiPage } from '../types';
 
-// The public website that serves zombie pages (set VITE_LIVE_SITE_URL to change it, e.g. once
-// hexpertify.com points at this site). The editor also previews drafts inside its header and footer.
+// The public website that serves zombie pages: this same domain (the website and the admin panel are one
+// app). VITE_LIVE_SITE_URL overrides it. The editor also previews drafts inside its header and footer.
+const isStandaloneDev = window.location.hostname === 'localhost' && window.location.port !== '3000';
 const LIVE_SITE_URL = String(
-  import.meta.env.VITE_LIVE_SITE_URL ||
-    (window.location.hostname === 'localhost'
-      ? 'http://localhost:3000'
-      : window.location.hostname.startsWith('hexpertify-test')
-        ? window.location.origin // test deploy: website and admin share one domain
-        : 'https://hexpertify-app.vercel.app')
+  import.meta.env.VITE_LIVE_SITE_URL || (isStandaloneDev ? 'http://localhost:3000' : window.location.origin)
 ).replace(/\/$/, '');
 
 const normalizePath = (path: string) => '/' + String(path || '').replace(/^\/+|\/+$/g, '').toLowerCase();

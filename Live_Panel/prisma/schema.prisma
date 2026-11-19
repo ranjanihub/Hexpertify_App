@@ -5,7 +5,8 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  url      = env("DATABASE_URL")
+  // Runtime uses lib/prisma.ts (the shared URI); this env var is only read by the Prisma CLI (db push, studio)
+  url      = env("MONGODB_URI")
 }
 
 // -----------------------------------------------------

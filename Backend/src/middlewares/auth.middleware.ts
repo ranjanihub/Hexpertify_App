@@ -18,11 +18,20 @@ function readBearer(req: Request): string {
   return header.replace(/^Bearer\s+/i, '').trim();
 }
 
-export function isInternalRequest(req: Request): boolean {
-  const provided = String(req.headers['x-internal-key'] || '');
-  const expected = config.internalApiKey;
+/**
+ * Per-process key for calls the website's own server code makes to this API in the same process
+ * (see Live_Panel/lib/backend.ts). It never leaves the process, so no shared secret has to be configured.
+ */
+export const inProcessKey = crypto.randomBytes(32).toString('hex');
+
+function keyMatches(provided: string, expected: string): boolean {
   if (!expected || !provided || provided.length !== expected.length) return false;
   return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+}
+
+export function isInternalRequest(req: Request): boolean {
+  const provided = String(req.headers['x-internal-key'] || '');
+  return keyMatches(provided, inProcessKey) || keyMatches(provided, config.internalApiKey);
 }
 
 export function isAdminUser(user?: AuthTokenPayload): boolean {

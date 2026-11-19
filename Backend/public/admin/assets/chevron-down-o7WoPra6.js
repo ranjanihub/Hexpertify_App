@@ -1,0 +1,1 @@
+import{P as e}from"./index-Bdby5x3_.js";var t=e(`chevron-down`,[[`path`,{d:`m6 9 6 6 6-6`,key:`qrunsl`}]]);export{t};

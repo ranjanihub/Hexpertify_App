@@ -1,12 +1,24 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+// Packages the API (Backend/src) uses; installed in this app
+const API_PACKAGES = [
+  "express", "compression", "cors", "mongodb", "nodemailer", "google-auth-library", "web-push",
+  "bcryptjs", "zod", "dotenv",
+];
+
+// NextAuth's own endpoints; every other /api/auth/* path (login, register, google, sso-*, logout, me) is the API's
+const NEXTAUTH_ACTIONS = "session|csrf|providers|signin|signout|callback|error|_log|verify-request";
+
+/**
+ * Monolith: this Next.js app is the whole platform. The website pages, the panel bundles in public/
+ * (/admin, /consultant, /client) and the REST API (Backend/src/app.ts, served by pages/api/core) are one
+ * deployment on one domain, using one database.
+ */
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.resolve(__dirname),
-  // ───── Next 15 SAFE PERFORMANCE SETUP ─────
-  // Browserslist file will control SWC output.
-  // No experimental flags needed in this version.
-  // ───────────────────────────────────────────
+  // The API's packages load at runtime from this app's node_modules (never bundled from ../Backend/node_modules)
+  serverExternalPackages: API_PACKAGES,
 
   async redirects() {
     return [
@@ -42,27 +54,15 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    let rawBackendUrl =
-      process.env.BACKEND_API_URL ||
-      process.env.NEXT_PUBLIC_BACKEND_API_URL ||
-      (process.env.VERCEL || process.env.NODE_ENV === "production"
-        ? "https://hexpertify-backend.vercel.app"
-        : "http://localhost:5000");
-
-    // CRITICAL LOOP GUARD: If backendUrl is set to the frontend app (hexpertify-app),
-    // empty, relative, or pointing to localhost in Vercel, force to hexpertify-backend.
-    if (
-      !rawBackendUrl ||
-      rawBackendUrl.includes("hexpertify-app") ||
-      rawBackendUrl === "/" ||
-      (Boolean(process.env.VERCEL) && rawBackendUrl.includes("localhost"))
-    ) {
-      rawBackendUrl = "https://hexpertify-backend.vercel.app";
-    }
-
-    const backendUrl = rawBackendUrl.replace(/\/$/, "");
-
     return {
+      // The API, in this same app: /api/<path> → pages/api/core (except NextAuth's endpoints)
+      beforeFiles: [
+        { source: "/api", destination: "/api/core" },
+        {
+          source: `/api/:path((?!core(?:/|$)|auth/(?:${NEXTAUTH_ACTIONS})(?:/|$)).*)`,
+          destination: "/api/core/:path",
+        },
+      ],
       afterFiles: [
         { source: "/login", destination: "/index.html" },
         { source: "/signin", destination: "/index.html" },
@@ -75,7 +75,6 @@ const nextConfig: NextConfig = {
         { source: "/client/:path((?!assets|_next|favicon|.*\\..*).*)", destination: "/client/index.html" },
       ],
       fallback: [
-        { source: "/api/:path*", destination: `${backendUrl}/api/:path*` },
         { source: "/admin/:path*", destination: "/admin/index.html" },
         { source: "/consultant/:path*", destination: "/consultant/index.html" },
         { source: "/client/:path*", destination: "/client/index.html" },
@@ -87,11 +86,26 @@ const nextConfig: NextConfig = {
     };
   },
 
-  webpack(config) {
+  webpack(config, { isServer, nextRuntime }) {
     config.module.rules.push({
       test: /\.svg$/,
       type: "asset/resource",
     });
+    // The API source lives in ../Backend/src; its packages are installed here (Live_Panel/package.json)
+    config.resolve.modules = [...(config.resolve.modules || ["node_modules"]), path.resolve(__dirname, "node_modules")];
+    // serverExternalPackages does not cover imports made from ../Backend files, so keep them external here
+    // (loaded at runtime from this app's node_modules, never bundled)
+    if (isServer && nextRuntime === "nodejs") {
+      const external = new Set(API_PACKAGES);
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : [config.externals].filter(Boolean)),
+        ({ request }: { request?: string }, callback: (err?: Error | null, result?: string) => void) => {
+          const name = request?.startsWith("@") ? request.split("/").slice(0, 2).join("/") : request?.split("/")[0];
+          if (request && name && external.has(name)) return callback(null, `commonjs ${request}`);
+          callback();
+        },
+      ];
+    }
     return config;
   },
 
@@ -135,6 +149,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     webpackBuildWorker: false,
+    // Compile the API source from ../Backend/src (imported as @backend/*)
+    externalDir: true,
   },
 };
 

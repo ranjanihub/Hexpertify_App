@@ -1,15 +1,14 @@
-# Hexpertify - Live Panel (Local Isolated Setup)
+# Hexpertify - Live Panel (website, panels and API in one app)
 
 **Version:** 0.1.0  
-**Environment:** Local Development (`hexpertify_local` Database)
+**Database:** the shared `hexpertify` MongoDB database
 
 ## Local Environment Setup
 
-This workspace is fully disconnected from live production hosts (`hexpertify.com`) and live databases (`cluster0.kp0ce.mongodb.net`). It operates as an independent local repository with its own cloned local database (`hexpertify_local`).
+The website, the panels and the API are one Next.js app using one MongoDB database, defined in `Backend/src/config/database.ts` (`MONGODB_URI` overrides it).
 
 ### 1. Environment Configuration
-- `.env.local`: Configured for local development (`DATABASE_URL="mongodb://127.0.0.1:27017/hexpertify_local"`).
-- `.env.production`: Preserved for production reference (ignored by git).
+- `.env.local`: local secrets (NextAuth, Google, Cloudinary, mail, payments). `MONGODB_URI` is optional.
 
 ### 2. Local Database & Prisma Setup
 To initialize and push schema to your local database:
@@ -18,7 +17,7 @@ To initialize and push schema to your local database:
 # Generate Prisma Client
 npm run prisma-push
 
-# Seed initial data into hexpertify_local
+# Seed initial data
 npm run prisma-seed
 ```
 

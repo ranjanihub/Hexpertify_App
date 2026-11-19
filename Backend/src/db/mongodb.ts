@@ -2,10 +2,20 @@ import { MongoClient, Db } from 'mongodb';
 import { config } from '../config';
 import dns from 'dns';
 
-if (!process.env.VERCEL) {
+/**
+ * Local machines (Windows especially) often refuse the SRV lookup a mongodb+srv:// URI needs, so outside
+ * Vercel the lookup goes to public DNS. Applied right before connecting: setServers throws while another
+ * lookup is in flight, which can happen at import time inside the website's server.
+ */
+function usePublicDnsLocally(): void {
+  if (process.env.VERCEL) return;
+  const servers = ['8.8.8.8', '1.1.1.1'];
   try {
-    dns.setServers(['8.8.8.8', '1.1.1.1']);
-  } catch {}
+    dns.setServers(servers);
+    dns.promises.setServers(servers);
+  } catch (err: any) {
+    console.warn('[MongoDB] Could not switch to public DNS:', err?.message || err);
+  }
 }
 
 let client: MongoClient | null = null;
@@ -24,6 +34,7 @@ export async function connectToDatabase(): Promise<Db> {
 
   connectionPromise = (async () => {
     try {
+      usePublicDnsLocally();
       console.log('[MongoDB] Connecting to MongoDB Atlas cluster with optimized pool...');
       client = new MongoClient(config.mongodbUri, {
         maxPoolSize: 50,
