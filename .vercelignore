@@ -4,5 +4,5 @@ backups
 *.md
 
 # Never ship committed env files: the Backend loads .env with override:true, which would beat the Vercel env vars
-Backend/.env
-Backend/.env.local
+server/.env
+server/.env.local

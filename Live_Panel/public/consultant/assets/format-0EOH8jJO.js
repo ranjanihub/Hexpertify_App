@@ -1,1 +1,0 @@
-function n(t){return t.split(" ").map(e=>e[0]).join("").toUpperCase()}function r(t){return t?new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"N/A"}export{r as f,n as g};

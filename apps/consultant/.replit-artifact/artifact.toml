@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Hexpertify Therapist Dashboard"
+version = "1.0.0"
+id = "artifacts/hexpertify-dashboard"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22281
+
+[services.development]
+run = "pnpm --filter @workspace/hexpertify-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hexpertify-dashboard", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/hexpertify-dashboard/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22281"
+BASE_PATH = "/"
