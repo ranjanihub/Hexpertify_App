@@ -13,7 +13,6 @@ import {
   Award,
   ExternalLink,
   Briefcase,
-  Database,
   RefreshCw
 } from 'lucide-react';
 import { launchConsultantPanel } from '../lib/auth';
@@ -39,7 +38,7 @@ export interface ConsultantUser {
 
 export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'admins' | 'consultants'>('admins');
-  const [isDbConnected, setIsDbConnected] = useState(false);
+  const [, setIsDbConnected] = useState(false);
   const [isLoadingDb, setIsLoadingDb] = useState(false);
 
   // Admin users state (real accounts only: the last loaded list until the database answers)
@@ -507,10 +506,6 @@ export const SettingsView: React.FC = () => {
             <span className="px-3.5 py-1.5 bg-white/15 backdrop-blur-md rounded-full text-xs font-bold tracking-wide uppercase text-purple-200 border border-white/20">
               Platform Configuration
             </span>
-            <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-md">
-              <Database className="w-3.5 h-3.5 text-emerald-400" />
-              {isDbConnected ? 'MongoDB Live Sync' : 'Database Ready'}
-            </span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight mt-1">Admin Settings & RBAC Control</h1>
           <p className="text-purple-100 text-sm mt-1 max-w-xl">
@@ -593,9 +588,6 @@ export const SettingsView: React.FC = () => {
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                         {usr.name}
-                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
-                          {usr.id}
-                        </span>
                       </h4>
                       <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                         <Mail className="w-3 h-3 text-slate-400" />
@@ -664,9 +656,6 @@ export const SettingsView: React.FC = () => {
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                         {usr.name}
-                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
-                          {usr.id}
-                        </span>
                       </h4>
                       <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                         <Mail className="w-3 h-3 text-slate-400" />

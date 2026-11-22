@@ -59,19 +59,33 @@ export interface AdminSeo {
   canonicalUrl?: string;
 }
 
+/**
+ * The panels receive each SEO field under several names (seoToAdmin) and send all of them back, but an editor
+ * changes only the name it shows: e.g. the homepage editor edits openGraphImageUrl and returns ogImageUrl
+ * untouched (''). Taking the first defined name dropped the edit, so the value that differs from what is
+ * stored wins; if none changed, the stored value is kept.
+ */
+function editedValue(stored: unknown, ...names: unknown[]): string {
+  const current = str(stored).trim();
+  const sent = names.filter((v) => v !== undefined && v !== null).map((v) => str(v).trim());
+  const changed = sent.find((v) => v !== current);
+  return changed !== undefined ? changed : sent.length ? sent[0] : current;
+}
+
 /** Creates or updates the SeoMeta document and returns its id */
 export async function upsertSeoMeta(existingId: string | null | undefined, seo: AdminSeo | undefined, fallbackTitle: string): Promise<string> {
   const db = getDatabase();
   const s = seo || {};
+  const stored: any = existingId ? await db.collection('SeoMeta').findOne({ _id: existingId as any }) : null;
   const doc = {
     metaTitle: str(s.metaTitle).trim() || fallbackTitle,
     metaDescription: str(s.metaDescription).trim() || fallbackTitle,
     metaKeywords: toStrArr(s.keywords),
-    ogTitle: str(s.ogTitle ?? s.openGraphTitle).trim() || null,
-    ogDescription: str(s.ogDescription ?? s.openGraphDescription).trim() || null,
-    ogImage: str(s.ogImageUrl ?? s.openGraphImageUrl).trim() || null,
-    ogImageAlt: str(s.ogImageAltText ?? s.openGraphImageAltText).trim() || null,
-    htmlChunk: str(s.htmlChunk ?? s.structuredData ?? s.structuredDataJson).trim() || null,
+    ogTitle: editedValue(stored?.ogTitle, s.ogTitle, s.openGraphTitle) || null,
+    ogDescription: editedValue(stored?.ogDescription, s.ogDescription, s.openGraphDescription) || null,
+    ogImage: editedValue(stored?.ogImage, s.ogImageUrl, s.openGraphImageUrl) || null,
+    ogImageAlt: editedValue(stored?.ogImageAlt, s.ogImageAltText, s.openGraphImageAltText) || null,
+    htmlChunk: editedValue(stored?.htmlChunk, s.htmlChunk, s.structuredData, s.structuredDataJson) || null,
     canonicalUrl: str(s.canonicalUrl).trim() || null
   };
   if (existingId) {

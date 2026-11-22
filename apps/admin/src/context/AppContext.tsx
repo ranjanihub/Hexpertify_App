@@ -297,12 +297,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           isArchived: Boolean(c.isArchived),
           availability: c.availability,
           assignedClientIds: Array.isArray(c.assignedClientIds) ? c.assignedClientIds : [],
-          outcomes: c.outcomes || {
-            clientImprovementScore: 92,
-            goalAchievementRate: 88,
-            homeworkAdherenceRate: 90,
-            attendanceRate: 96
-          }
+          // No invented outcome scores: the therapist profile loads real ones from the API
+          outcomes: c.outcomes || undefined
         }));
         setTherapists(liveTherapists);
         try {

@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react';
 // https://vite.dev/config/
 export default defineConfig({
   base: '/admin/',
+  // The project's one env file is at the repo root (only VITE_* variables reach the browser)
+  envDir: path.resolve(__dirname, '../..'),
   plugins: [
     react(),
     {

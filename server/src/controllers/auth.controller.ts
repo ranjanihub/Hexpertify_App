@@ -878,9 +878,11 @@ export class AuthController {
       });
     } catch (error: any) {
       if (error instanceof ClientPanelLockedError) {
+        console.warn('[Auth] Google sign-in: client has no completed session yet');
         res.status(403).json({ success: false, code: 'NO_COMPLETED_SESSION', error: error.message });
         return;
       }
+      console.error('[Auth] Google sign-in failed:', error?.message || error);
       res.status(500).json({ success: false, error: error?.message || 'Failed to verify Google token' });
     }
   }

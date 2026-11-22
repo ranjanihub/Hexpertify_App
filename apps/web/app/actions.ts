@@ -1,5 +1,7 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { isConsultantPublic, isProfessionPublic } from "@/lib/visibility";
+import { withPageMediaUrls } from "@/lib/page-media";
 
 const CONSULTANT_FLAGS = { isHiddenFromLive: true, isArchived: true, accountStatus: true } as const;
 
@@ -13,10 +15,15 @@ async function section<T>(label: string, load: () => Promise<T>, fallback: T): P
   }
 }
 
-export const getPageData = async () => {
+// cache(): generateMetadata and the page itself share one load per request (it used to query the database twice)
+export const getPageData = cache(async () => {
   const [metaData, professions, topConsultants, recentlyBookedConsultants] = await Promise.all([
-    // Home page metadata, carousel, FAQs and testimonials
-    section("page", () => prisma.page.findUnique({ where: { identifier: "home" }, include: { seoMeta: true } }), null),
+    // Home page metadata, carousel, FAQs and testimonials (inline base64 images become /media URLs)
+    section(
+      "page",
+      async () => withPageMediaUrls(await prisma.page.findUnique({ where: { identifier: "home" }, include: { seoMeta: true } })),
+      null,
+    ),
 
     // Professions (with their consultants)
     section("professions", async () => {
@@ -91,4 +98,4 @@ export const getPageData = async () => {
   ]);
 
   return { metaData, professions, topConsultants, recentlyBookedConsultants };
-};
+});

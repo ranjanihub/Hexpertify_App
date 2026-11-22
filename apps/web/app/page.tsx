@@ -26,6 +26,7 @@ import Header from "@/components/Headers";
 import NotificationTitleBar from "@/components/NotificationTitleBar";
 
 import { Metadata } from "next";
+import { headers } from "next/headers";
 import { BlogGridContainer } from "@/components/BlogGridCard";
 import { lowestPrice } from "@/lib/visibility";
 import TherapySections, {
@@ -58,6 +59,19 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://hexpertify.com";
 
+  // OG image: the one set in the admin homepage editor, else the first desktop carousel banner. Social
+  // previews need an absolute URL, so relative ones (e.g. /media/...) are resolved against this site's own host.
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
+  const proto = requestHeaders.get("x-forwarded-proto") || (host?.startsWith("localhost") ? "http" : "https");
+  const origin = host ? `${proto}://${host}` : siteUrl;
+  const carousel: string[] = metaData.carouselImageUrls || [];
+  const mobileFlags: boolean[] = metaData.carouselImageIsMobileFlags || [];
+  const banner = carousel.find((url, i) => url && !mobileFlags[i]) || carousel[0];
+  const rawOgImage = seoMeta.ogImage || banner;
+  const ogImageUrl = rawOgImage && !rawOgImage.startsWith("data:") ? new URL(rawOgImage, origin).toString() : undefined;
+  const ogImages = ogImageUrl ? [{ url: ogImageUrl, alt: seoMeta.ogImageAlt || "Hexpertify" }] : undefined;
+
   return {
     title: seoMeta.metaTitle,
     description: seoMeta.metaDescription,
@@ -79,9 +93,13 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: seoMeta.ogTitle || seoMeta.metaTitle,
       description: seoMeta.ogDescription || seoMeta.metaDescription,
-      images: seoMeta.ogImage
-        ? [{ url: seoMeta.ogImage, alt: seoMeta.ogImageAlt || "Hexpertify" }]
-        : undefined,
+      images: ogImages,
+    },
+    twitter: {
+      card: ogImages ? "summary_large_image" : "summary",
+      title: seoMeta.ogTitle || seoMeta.metaTitle,
+      description: seoMeta.ogDescription || seoMeta.metaDescription,
+      images: ogImages?.map((image) => image.url),
     },
   };
 }

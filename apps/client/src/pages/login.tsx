@@ -5,17 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { CareProviderAvatars } from "@/components/care-provider-avatars";
 import { 
-  ShieldCheck, 
   Lock, 
   Eye, 
   EyeOff, 
   ArrowRight, 
-  Sparkles, 
   CheckCircle2, 
   UserCheck, 
   User, 
-  HeartPulse, 
   Video, 
   Activity, 
   Mail
@@ -440,38 +438,23 @@ export default function Login() {
 
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-slate-50 font-['Plus_Jakarta_Sans'] antialiased">
+    // Laptop/desktop: exactly one screen tall, never scrolls (short screens drop the optional hero blocks below)
+    <div className="min-h-dvh lg:h-dvh lg:overflow-hidden grid grid-cols-1 lg:grid-cols-12 bg-slate-50 font-['Plus_Jakarta_Sans'] antialiased">
       {/* Left Column - Hero Visual Presentation */}
-      <div className="hidden lg:flex lg:col-span-7 bg-[#5e2be2] flex-col justify-between p-10 xl:p-14 text-white relative overflow-hidden">
+      <div className="hidden lg:flex lg:col-span-7 bg-[#5e2be2] flex-col justify-between p-8 xl:p-12 text-white relative overflow-hidden">
         {/* Background decorative elements */}
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-96 h-96 bg-indigo-600/30 rounded-full blur-3xl pointer-events-none" />
 
         {/* Top bar branding */}
         <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner">
-              <HeartPulse className="w-5 h-5 text-amber-300" />
-            </div>
-            <div>
-              <span className="font-extrabold text-xl tracking-tight block">Hexpertify</span>
-              <span className="text-[10px] text-purple-200 uppercase tracking-widest font-semibold block">Care Portal</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm text-xs font-medium text-purple-100">
-            <ShieldCheck className="w-4 h-4 text-emerald-300" />
-            <span>Secure Single Sign-On</span>
-          </div>
+          {/* White logo for the purple panel (the phone header below keeps the purple one on white) */}
+          <img src="/hexpertify-logo-white.png" alt="Hexpertify" className="h-12 xl:h-14 w-auto object-contain drop-shadow-sm" />
         </div>
 
         {/* Center hero copy */}
-        <div className="relative z-10 max-w-lg my-auto py-8 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 border border-amber-300/30 rounded-full text-amber-200 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Empowering Mental Wellness & Care</span>
-          </div>
-
-          <h1 className="text-4xl xl:text-5xl font-extrabold leading-[1.15] tracking-tight">
+        <div className="relative z-10 max-w-lg my-auto py-4 space-y-4 xl:space-y-5">
+          <h1 className="text-3xl xl:text-4xl 2xl:text-5xl font-extrabold leading-[1.15] tracking-tight">
             Connect With Your Care. Track Your Outcomes.
           </h1>
 
@@ -480,7 +463,7 @@ export default function Login() {
           </p>
 
           {/* Feature Highlights */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/15">
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/15 [@media(max-height:520px)]:hidden">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                 <Video className="w-4 h-4 text-purple-200" />
@@ -503,19 +486,10 @@ export default function Login() {
         </div>
 
         {/* Bottom practitioner assurance banner */}
-        <div className="relative z-10 p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-4">
-          <div className="flex -space-x-2 shrink-0">
-            <img 
-              src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=80&q=80" 
-              alt="Therapist" 
-              className="w-9 h-9 rounded-full border-2 border-white object-cover" 
-            />
-            <img 
-              src="https://images.unsplash.com/photo-1594824813571-638f02614d3f?auto=format&fit=crop&w=80&q=80" 
-              alt="Doctor" 
-              className="w-9 h-9 rounded-full border-2 border-white object-cover" 
-            />
-          </div>
+        <div className="relative z-10 p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-4 [@media(max-height:560px)]:hidden">
+          {/* Real verified consultants from the platform */}
+          <CareProviderAvatars />
+
           <div className="text-xs">
             <div className="font-bold text-white flex items-center gap-1.5">
               <span>Licensed Care Providers</span>
@@ -527,28 +501,21 @@ export default function Login() {
       </div>
 
       {/* Right Column - Dedicated Authentication Panel */}
-      <div className="lg:col-span-5 flex flex-col justify-between p-6 sm:p-10 xl:p-14 bg-white relative">
+      {/* If a long form (registration) is still taller than a short screen, only this panel scrolls, never the page */}
+      <div className="lg:col-span-5 flex flex-col justify-between p-6 sm:p-8 xl:px-12 xl:py-8 bg-white relative lg:overflow-y-auto">
         {/* Top Header Mobile Branding */}
-        <div className="flex lg:hidden items-center justify-between pb-6 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#5e2be2] flex items-center justify-center text-white">
-              <HeartPulse className="w-4 h-4 text-amber-300" />
-            </div>
-            <span className="font-bold text-lg text-slate-900 tracking-tight">Hexpertify</span>
-          </div>
+        <div className="flex lg:hidden items-center justify-between pb-4 border-b border-slate-100">
+          <img src="/expertify-logo.png" alt="Hexpertify" className="h-10 w-auto object-contain" />
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-50 text-[#5e2be2]">Single-Port</span>
         </div>
 
         {/* Center Form Container */}
-        <div className="my-auto max-w-md w-full mx-auto py-8 space-y-6">
+        <div className="my-auto max-w-md w-full mx-auto py-4 space-y-4 [@media(max-height:700px)]:space-y-3">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#5e2be2] block mb-1">
-              Secure Gateway
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-2xl xl:text-3xl font-extrabold text-slate-900 tracking-tight">
               {role === "client" ? "Client Care Portal" : "Practitioner Suite"}
             </h2>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1">
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 [@media(max-height:640px)]:hidden">
               {role === "client"
                 ? "Sign in to access your sessions, personalized therapy tools, and care outcomes."
                 : "Sign in to manage appointments, review assessments, and chart client progress."}
@@ -560,7 +527,7 @@ export default function Login() {
             <button
               type="button"
               onClick={() => handleSelectRole("client")}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 role === "client"
                   ? "bg-white text-[#5e2be2] shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -572,7 +539,7 @@ export default function Login() {
             <button
               type="button"
               onClick={() => handleSelectRole("therapist")}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 role === "therapist"
                   ? "bg-white text-[#5e2be2] shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -585,20 +552,20 @@ export default function Login() {
 
           {/* TAB 1: THERAPIST / PRACTITIONER LOGIN */}
           {role === "therapist" && (
-            <form onSubmit={handleTherapistLogin} className="space-y-4 animate-fade-in">
+            <form onSubmit={handleTherapistLogin} className="space-y-3 animate-fade-in">
               <div className="space-y-1.5">
                 <Label htmlFor="therapist-email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Practitioner Email
                 </Label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <Input
                     id="therapist-email"
                     type="email"
                     placeholder="e.g. evelyn.reed@example.com"
                     value={therapistEmail}
                     onChange={(e) => setTherapistEmail(e.target.value)}
-                    className="h-11 pl-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                    className="h-10 pl-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                     required
                   />
                 </div>
@@ -609,19 +576,19 @@ export default function Login() {
                   Password
                 </Label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <Input
                     id="therapist-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={therapistPassword}
                     onChange={(e) => setTherapistPassword(e.target.value)}
-                    className="h-11 pl-10 pr-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                    className="h-10 pl-10 pr-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -629,7 +596,7 @@ export default function Login() {
               </div>
 
               {/* Quick Auto-Fill Demo Pill: a therapist registered in the Super Admin panel */}
-              <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
+              <div className="px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
                 <span className="text-[11px] text-purple-900 font-medium">Demo: marcus.vance@hexpertify.com</span>
                 <button
                   type="button"
@@ -646,7 +613,7 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-11 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full h-10 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isLoading ? "Verifying Practitioner..." : "Sign In as Therapist"}
                 <ArrowRight className="w-4 h-4" />
@@ -656,7 +623,7 @@ export default function Login() {
 
           {/* TAB 2: CLIENT / PATIENT LOGIN */}
           {role === "client" && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="space-y-3 animate-fade-in">
               {/* Sign In vs Register sub-toggle */}
               <div className="flex border-b border-slate-200 pb-1 gap-4 text-xs font-bold">
                 <button
@@ -685,7 +652,7 @@ export default function Login() {
 
               {clientMode === "signup" ? (
                 /* Registration */
-                <form onSubmit={handleClientRegister} className="space-y-4">
+                <form onSubmit={handleClientRegister} className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="fullname" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Full Name
@@ -696,7 +663,7 @@ export default function Login() {
                       placeholder="e.g. Sarah Jenkins"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="h-11 pl-3.5 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                      className="h-10 pl-3.5 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                       required
                     />
                   </div>
@@ -706,14 +673,14 @@ export default function Login() {
                       Email Address
                     </Label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <Input
                         id="reg-client-email"
                         type="email"
                         placeholder="e.g. sarah.jenkins@example.com"
                         value={clientEmail}
                         onChange={(e) => setClientEmail(e.target.value)}
-                        className="h-11 pl-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                        className="h-10 pl-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                         required
                       />
                     </div>
@@ -729,7 +696,7 @@ export default function Login() {
                       placeholder="+91 98765 43210"
                       value={clientPhone}
                       onChange={(e) => setClientPhone(e.target.value)}
-                      className="h-11 pl-3.5 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                      className="h-10 pl-3.5 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                     />
                   </div>
 
@@ -738,7 +705,7 @@ export default function Login() {
                       Create Password
                     </Label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <Input
                         id="reg-client-password"
                         type={showPassword ? "text" : "password"}
@@ -746,13 +713,13 @@ export default function Login() {
                         value={clientPassword}
                         onChange={(e) => setClientPassword(e.target.value)}
                         minLength={6}
-                        className="h-11 pl-10 pr-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                        className="h-10 pl-10 pr-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -763,7 +730,7 @@ export default function Login() {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-11 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full h-10 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isLoading ? "Creating Account..." : "Create Client Account & Sign In"}
                     <ArrowRight className="w-4 h-4" />
@@ -771,20 +738,20 @@ export default function Login() {
                 </form>
               ) : (
                 /* Sign In */
-                <form onSubmit={handleClientLogin} className="space-y-4">
+                <form onSubmit={handleClientLogin} className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="client-email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Client Email Address
                     </Label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <Input
                         id="client-email"
                         type="email"
                         placeholder="e.g. ranjaniranjani5694@gmail.com"
                         value={clientEmail}
                         onChange={(e) => setClientEmail(e.target.value)}
-                        className="h-11 pl-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                        className="h-10 pl-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                         required
                       />
                     </div>
@@ -795,19 +762,19 @@ export default function Login() {
                       Password
                     </Label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <Input
                         id="client-password"
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={clientPassword}
                         onChange={(e) => setClientPassword(e.target.value)}
-                        className="h-11 pl-10 pr-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
+                        className="h-10 pl-10 pr-10 bg-slate-50 border-slate-200 focus:bg-white text-slate-900 font-medium rounded-xl"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -815,7 +782,7 @@ export default function Login() {
                   </div>
 
                   {/* Quick Auto-Fill Demo Pill */}
-                  <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
+                  <div className="px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
                     <span className="text-[11px] text-purple-900 font-medium">Demo: ranjaniranjani5694@gmail.com</span>
                     <button
                       type="button"
@@ -832,7 +799,7 @@ export default function Login() {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-11 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full h-10 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isLoading ? "Signing In..." : "Sign In to Client Portal"}
                     <ArrowRight className="w-4 h-4" />
@@ -843,7 +810,7 @@ export default function Login() {
           )}
 
           {/* Social Sign-In Divider */}
-          <div className="relative my-4">
+          <div className="relative my-1">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200" />
             </div>
@@ -854,13 +821,13 @@ export default function Login() {
 
           {/* Google Login Button (Official Google Identity Services Popup - No redirect_uri_mismatch) */}
           <div className="w-full relative">
-            <div id="google-signin-btn-container" className="w-full flex items-center justify-center [&>div]:!w-full min-h-[44px]">
+            <div id="google-signin-btn-container" className="w-full flex items-center justify-center [&>div]:!w-full min-h-[40px]">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleGoogleButtonClick}
                 disabled={isLoading}
-                className="w-full h-11 border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm rounded-xl flex items-center justify-center gap-2.5 shadow-xs transition-all cursor-pointer"
+                className="w-full h-10 border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm rounded-xl flex items-center justify-center gap-2.5 shadow-xs transition-all cursor-pointer"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path

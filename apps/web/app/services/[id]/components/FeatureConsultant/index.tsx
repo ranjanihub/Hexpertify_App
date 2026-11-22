@@ -36,7 +36,7 @@ const FeatureConsultant = ({ data, serviceNo }: props) => {
         <Link
           key={index}
           href={`/services/${serviceNo}/${item?.identifier}`}
-          className="mb-[10px] flex flex-row justify-start items-stretch rounded-[16px] bg-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)] p-3 sm:p-1 overflow-hidden gap-3 sm:gap-0 scale-[1.02] cursor-pointer no-underline transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="min-w-0 mb-[10px] flex flex-row justify-start items-stretch rounded-[16px] bg-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)] p-3 sm:p-1 overflow-hidden gap-3 sm:gap-0 scale-[1.02] cursor-pointer no-underline transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <div className="relative w-[120px] h-[165px] sm:h-[300px] sm:w-[254px] shrink-0 rounded-lg  overflow-hidden bg-gray-100">
             <Image
@@ -47,7 +47,7 @@ const FeatureConsultant = ({ data, serviceNo }: props) => {
             />
           </div>
 
-          <div className="flex flex-col justify-between w-full sm:p-[15px]">
+          <div className="min-w-0 flex flex-col justify-between w-full sm:p-[15px]">
             <div className="flex justify-between items-start">
               <div className="block"></div>
 

@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 import path from "path";
+import dotenv from "dotenv";
+
+// The one env file for the whole project lives at the repo root (local only; on Vercel the project settings
+// provide the variables, and values already set always win). Loaded here, before anything reads process.env.
+dotenv.config({ path: path.resolve(__dirname, "../../.env"), quiet: true });
 
 // Packages the API (server/src) uses; installed in this app
 const API_PACKAGES = [

@@ -3,6 +3,8 @@
 backups
 *.md
 
-# Never ship committed env files: the Backend loads .env with override:true, which would beat the Vercel env vars
-server/.env
-server/.env.local
+# Never upload local env files: Vercel uses the variables set in the project settings
+.env
+.env.*
+**/.env
+**/.env.*

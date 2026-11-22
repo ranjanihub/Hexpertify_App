@@ -37,6 +37,8 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   root: path.resolve(import.meta.dirname),
+  // The project's one env file is at the repo root (only VITE_* variables reach the browser)
+  envDir: path.resolve(import.meta.dirname, '../..'),
   build: {
     outDir: path.resolve(import.meta.dirname, '../web/public/consultant'),
     emptyOutDir: true,

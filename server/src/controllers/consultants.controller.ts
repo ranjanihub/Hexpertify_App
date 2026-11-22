@@ -3,6 +3,7 @@ import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
 import { isAdminUser, isInternalRequest } from '../middlewares/auth.middleware';
 import { resolveClientViewer } from '../services/client-access';
+import { consultantOutcomes } from '../services/consultant-outcomes';
 import {
   ContentInputError, consultantDefaults, consultantFieldsFromAdmin, consultantToAdmin, consultantsToAdmin, idQuery, newId,
   replaceAdminReviews, replaceConsultantServices, slugify, stripConsultantPrivateFields, upsertSeoMeta
@@ -224,6 +225,23 @@ export class ConsultantsController {
   /**
    * GET /api/consultants/:id
    */
+  /**
+   * GET /api/admin/consultants/:id/outcomes
+   * Outcome scores from real records (attendance, homework, goals, assessment improvement); null = no data yet
+   */
+  static async getOutcomes(req: Request, res: Response): Promise<void> {
+    try {
+      const outcomes = await consultantOutcomes(String(req.params.id));
+      if (!outcomes) {
+        res.status(404).json({ success: false, error: 'Consultant not found' });
+        return;
+      }
+      res.json({ success: true, outcomes });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Failed to calculate outcome scores' });
+    }
+  }
+
   static async getById(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || '');

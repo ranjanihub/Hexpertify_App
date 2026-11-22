@@ -1,10 +1,11 @@
+import path from 'path';
 import dotenv from 'dotenv';
 
-// Standalone API only: inside the website (Next.js) the env files are already loaded by Next
+// Standalone API only (npm run dev:server): read the project's one env file at the repo root.
+// Inside the website (Next.js) apps/web/next.config.ts has already loaded it.
 if (!process.env.NEXT_RUNTIME) {
-  dotenv.config({ override: true });
-  // Local secrets (e.g. payment gateway keys) live in the git-ignored .env.local and take precedence
-  dotenv.config({ path: '.env.local', override: true });
+  // server/src/config or server/dist/config → repo root
+  dotenv.config({ path: path.resolve(__dirname, '../../../.env'), quiet: true });
 }
 
 // Read after dotenv so a MONGODB_URI in the env files still applies

@@ -4,14 +4,15 @@ import type { NextRequest } from "next/server";
 import { matchZombieSlug } from "./lib/zombie-pages";
 
 export const ROOT = "/";
-export const AUTH_ROUTES = ["/login", "/signup"];
+// /login is the panels' login page (the client app); only the website's own sign-up redirects signed-in users
+export const AUTH_ROUTES = ["/signup"];
 export const PRIVATE_ROUTES = [/^\/profile$/];
 export const ADMIN_PRIVATE_ROUTES = [/^\/dashboard\/.*$/];
 
 // Paths the website itself owns; zombie pages never take these over
 const RESERVED_PREFIXES = [
   "/services", "/login", "/signup", "/profile", "/dashboard", "/admin", "/consultant", "/client",
-  "/blog", "/blogs", "/about-us", "/contact-us", "/hire-a-mentor", "/privacy-policy", "/terms-conditions",
+  "/media", "/blog", "/blogs", "/about-us", "/contact-us", "/hire-a-mentor", "/privacy-policy", "/terms-conditions",
   "/refund-policy", "/z", "/sitemap", "/portal", "/therapist", "/sessions", "/messages", "/activities",
   "/assessments", "/progress", "/resources",
 ];

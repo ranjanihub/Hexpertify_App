@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -10,6 +10,7 @@ import {
   X,
   UserPlus,
   Plus,
+  Minus,
   ArrowLeft,
   DollarSign,
   Trash2,
@@ -299,6 +300,42 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProfession, setSelectedProfession] = useState<string>('All');
   const [selectedTherapist, setSelectedTherapist] = useState<Therapist | null>(null);
+
+  // Outcome scores calculated by the API from real sessions, homework, goals and assessments (null = no data yet)
+  type OutcomeScores = {
+    improvementScore: number | null;
+    goalAchievementRate: number | null;
+    homeworkAdherenceRate: number | null;
+    attendanceRate: number | null;
+    basis: {
+      sessionsCompleted: number; sessionsMissed: number; activitiesAssigned: number; activitiesCompleted: number;
+      goals: number; goalsAchieved: number; assessmentPairs: number;
+    };
+  };
+  const [outcomeScores, setOutcomeScores] = useState<OutcomeScores | null>(null);
+  const [outcomesState, setOutcomesState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const selectedTherapistId = selectedTherapist?.id;
+  useEffect(() => {
+    setOutcomeScores(null);
+    if (!selectedTherapistId) return;
+    let cancelled = false;
+    setOutcomesState('loading');
+    fetch(`/api/admin/consultants/${encodeURIComponent(selectedTherapistId)}/outcomes`)
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+        if (ok && data?.success) {
+          setOutcomeScores(data.outcomes);
+          setOutcomesState('idle');
+        } else {
+          setOutcomesState('error');
+        }
+      })
+      .catch(() => !cancelled && setOutcomesState('error'));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTherapistId]);
   const [showClientsWorkspaceModal, setShowClientsWorkspaceModal] = useState(false);
   const [activeClientInWorkspace, setActiveClientInWorkspace] = useState<Client | null>(null);
   const [isAddModalInternalOpen, setIsAddModalInternalOpen] = useState(false);
@@ -1262,7 +1299,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
           return (
             <div
               key={t.id}
-              className={`bg-white rounded-3xl p-6 border shadow-sm card-hover flex flex-col justify-between space-y-4 relative transition-all ${
+              className={`bg-white rounded-3xl p-6 border shadow-sm card-hover flex flex-col gap-4 relative transition-all ${
                 t.isArchived
                   ? 'border-slate-300 bg-slate-100/50 opacity-80'
                   : t.isBookingGreyedOut
@@ -1272,30 +1309,6 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   : 'border-slate-100'
               }`}
             >
-              {/* Status indicators */}
-              {(t.isBookingGreyedOut || t.isArchived || t.isHiddenFromLive) && (
-                <div className="flex flex-wrap gap-1.5 mb-1">
-                  {t.isBookingGreyedOut && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-900 rounded-lg text-[10px] font-extrabold border border-amber-300/80">
-                      <CalendarOff className="w-3 h-3" />
-                      <span>Bookings Greyed Out</span>
-                    </span>
-                  )}
-                  {t.isArchived && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-extrabold border border-slate-300">
-                      <Archive className="w-3 h-3" />
-                      <span>Archived</span>
-                    </span>
-                  )}
-                  {t.isHiddenFromLive && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-100 text-rose-700 rounded-lg text-[10px] font-extrabold border border-rose-200">
-                      <EyeOff className="w-3 h-3" />
-                      <span>Hidden from Live</span>
-                    </span>
-                  )}
-                </div>
-              )}
-
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative shrink-0">
@@ -1314,19 +1327,19 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                     />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-1.5 truncate">
-                      <span className="truncate">{t.name}</span>
-                      <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />
+                    <h3 className="font-extrabold text-slate-900 text-base leading-snug flex items-start gap-1.5">
+                      <span className="truncate" title={t.name}>{t.name}</span>
+                      <ShieldCheck className="w-4 h-4 mt-0.5 text-purple-600 shrink-0" />
                     </h3>
-                    <p className="text-xs text-slate-500 font-medium truncate">{t.profession}</p>
+                    <p className="text-xs text-slate-500 font-medium truncate" title={t.profession}>{t.profession}</p>
+                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                      {getTherapistAverageRating(t).toFixed(1)}
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-xl">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    {getTherapistAverageRating(t).toFixed(1)}
-                  </span>
 
                   {/* 3-Dots Action Menu */}
                   <div className="relative">
@@ -1427,21 +1440,51 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                 </div>
               </div>
 
+              {/* Status row: present on every card so the cards line up */}
+              <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+                {t.isBookingGreyedOut && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-900 rounded-lg text-[10px] font-extrabold border border-amber-300/80">
+                    <CalendarOff className="w-3 h-3" />
+                    <span>Bookings Greyed Out</span>
+                  </span>
+                )}
+                {t.isArchived && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-extrabold border border-slate-300">
+                    <Archive className="w-3 h-3" />
+                    <span>Archived</span>
+                  </span>
+                )}
+                {t.isHiddenFromLive && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-100 text-rose-700 rounded-lg text-[10px] font-extrabold border border-rose-200">
+                    <EyeOff className="w-3 h-3" />
+                    <span>Hidden from Live</span>
+                  </span>
+                )}
+                {!t.isBookingGreyedOut && !t.isArchived && !t.isHiddenFromLive && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-extrabold border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>Live · Accepting bookings</span>
+                  </span>
+                )}
+              </div>
+
               {/* Session Fee & Active Clients Badges */}
               <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl text-xs">
-                <div className="bg-purple-50/70 p-2 rounded-xl border border-purple-100">
-                  <span className="text-[10px] text-purple-600 block font-bold uppercase tracking-wider">Session Fee</span>
-                  <span className="font-extrabold text-purple-900 text-sm">
-                    ₹{t.services?.[0]?.sessionFee || (t.services?.[0] as any)?.price || (t as any).fees || (t as any).minPrice || t.platformFeePerSession || 2000}/session
+                <div className="min-w-0 bg-purple-50/70 p-2 rounded-xl border border-purple-100">
+                  <span className="text-[10px] text-purple-600 block font-bold uppercase tracking-wider truncate">Session Fee</span>
+                  <span className="font-extrabold text-purple-900 text-sm block truncate">
+                    ₹{t.services?.[0]?.sessionFee || (t.services?.[0] as any)?.price || (t as any).fees || (t as any).minPrice || t.platformFeePerSession || 2000}
                   </span>
+                  <span className="text-[10px] text-purple-500 font-semibold block">per session</span>
                 </div>
-                <div className="bg-slate-100/70 p-2 rounded-xl">
-                  <span className="text-[10px] text-slate-400 block font-medium">Active Clients</span>
-                  <span className="font-bold text-slate-900 text-sm">{t.activeClientsCount || 0} Clients</span>
+                <div className="min-w-0 bg-slate-100/70 p-2 rounded-xl">
+                  <span className="text-[10px] text-slate-400 block font-medium truncate">Active Clients</span>
+                  <span className="font-bold text-slate-900 text-sm block truncate">{t.activeClientsCount || 0}</span>
+                  <span className="text-[10px] text-slate-400 font-semibold block">{(t.activeClientsCount || 0) === 1 ? 'client' : 'clients'}</span>
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="mt-auto pt-2">
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedTherapist(t)}
@@ -1467,17 +1510,31 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 max-h-[94vh] sm:max-h-[90vh] my-auto overflow-y-auto p-4 sm:p-6 space-y-6">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-4">
-                <img src={selectedTherapist.photo} className="w-16 h-16 rounded-2xl object-cover ring-2 ring-purple-200" />
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-900">{selectedTherapist.name}</h2>
-                  <p className="text-xs text-slate-500 font-medium">{selectedTherapist.profession} · License: {selectedTherapist.licenseNumber || '—'}</p>
-                  {selectedTherapist.email && <p className="text-[11px] text-purple-600 font-bold">{selectedTherapist.email}</p>}
+            <div className="pb-4 border-b border-slate-100 space-y-4">
+              {/* Row 1: who (full width for the name) + close */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-4 min-w-0">
+                  <img src={selectedTherapist.photo} alt={selectedTherapist.name} className="w-16 h-16 shrink-0 rounded-2xl object-cover ring-2 ring-purple-200" />
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-extrabold text-slate-900 truncate">{selectedTherapist.name}</h2>
+                    <p className="text-xs text-slate-500 font-medium truncate">
+                      {selectedTherapist.profession}
+                      {selectedTherapist.licenseNumber ? ` · License: ${selectedTherapist.licenseNumber}` : ''}
+                    </p>
+                    {selectedTherapist.email && <p className="text-[11px] text-purple-600 font-bold truncate">{selectedTherapist.email}</p>}
+                  </div>
                 </div>
+                <button
+                  onClick={() => setSelectedTherapist(null)}
+                  className="p-2 -mr-1 shrink-0 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Row 2: actions (one line each, wrapping on small screens) */}
+              <div className="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
                 {/* Launch Consultant Suite Button */}
                 <button
                   type="button"
@@ -1536,10 +1593,6 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   <Trash2 className="w-4 h-4" />
                   <span>Delete Profile</span>
                 </button>
-
-                <button onClick={() => setSelectedTherapist(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl">
-                  <X className="w-5 h-5" />
-                </button>
               </div>
             </div>
 
@@ -1596,24 +1649,51 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
             {/* Clinical Outcomes Metrics */}
             <div>
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Outcome Scores</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-purple-50/60 p-3 rounded-2xl text-center border border-purple-100">
-                  <span className="text-[11px] text-slate-500 font-medium block">Improvement Score</span>
-                  <span className="text-lg font-extrabold text-purple-700">{selectedTherapist.outcomes?.clientImprovementScore ?? 94}%</span>
+              {outcomesState === 'error' ? (
+                <p className="text-xs text-rose-500">Outcome scores could not be loaded. Please try again.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {([
+                    {
+                      label: 'Improvement Score', value: outcomeScores?.improvementScore,
+                      detail: outcomeScores ? `${outcomeScores.basis.assessmentPairs} repeat assessment${outcomeScores.basis.assessmentPairs === 1 ? '' : 's'}` : '',
+                      box: 'bg-purple-50/60 border-purple-100', text: 'text-purple-700',
+                    },
+                    {
+                      label: 'Goal Achievement', value: outcomeScores?.goalAchievementRate,
+                      detail: outcomeScores ? `${outcomeScores.basis.goalsAchieved} of ${outcomeScores.basis.goals} goals` : '',
+                      box: 'bg-emerald-50/60 border-emerald-100', text: 'text-emerald-700',
+                    },
+                    {
+                      label: 'Homework Adherence', value: outcomeScores?.homeworkAdherenceRate,
+                      detail: outcomeScores ? `${outcomeScores.basis.activitiesCompleted} of ${outcomeScores.basis.activitiesAssigned} activities` : '',
+                      box: 'bg-blue-50/60 border-blue-100', text: 'text-blue-700',
+                    },
+                    {
+                      label: 'Attendance Rate', value: outcomeScores?.attendanceRate,
+                      detail: outcomeScores ? `${outcomeScores.basis.sessionsCompleted} of ${outcomeScores.basis.sessionsCompleted + outcomeScores.basis.sessionsMissed} sessions` : '',
+                      box: 'bg-amber-50/60 border-amber-100', text: 'text-amber-700',
+                    },
+                  ] as const).map((m) => (
+                    <div key={m.label} className={`p-3 rounded-2xl text-center border ${m.box}`}>
+                      <span className="text-[11px] text-slate-500 font-medium block">{m.label}</span>
+                      {outcomesState === 'loading' ? (
+                        <span className="text-lg font-extrabold text-slate-300 animate-pulse">…</span>
+                      ) : m.value === null || m.value === undefined ? (
+                        <>
+                          <span className="text-lg font-extrabold text-slate-300">—</span>
+                          <span className="text-[10px] text-slate-400 block">No data yet</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className={`text-lg font-extrabold ${m.text}`}>{m.value}%</span>
+                          <span className="text-[10px] text-slate-400 block">{m.detail}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <div className="bg-emerald-50/60 p-3 rounded-2xl text-center border border-emerald-100">
-                  <span className="text-[11px] text-slate-500 font-medium block">Goal Achievement</span>
-                  <span className="text-lg font-extrabold text-emerald-700">{selectedTherapist.outcomes?.goalAchievementRate ?? 88}%</span>
-                </div>
-                <div className="bg-blue-50/60 p-3 rounded-2xl text-center border border-blue-100">
-                  <span className="text-[11px] text-slate-500 font-medium block">Homework Adherence</span>
-                  <span className="text-lg font-extrabold text-blue-700">{selectedTherapist.outcomes?.homeworkAdherenceRate ?? 85}%</span>
-                </div>
-                <div className="bg-amber-50/60 p-3 rounded-2xl text-center border border-amber-100">
-                  <span className="text-[11px] text-slate-500 font-medium block">Attendance Rate</span>
-                  <span className="text-lg font-extrabold text-amber-700">{selectedTherapist.outcomes?.attendanceRate ?? 92}%</span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Bio & Qualifications */}
@@ -2227,257 +2307,188 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                 </div>
               )}
 
-              {/* SECTION 4: SERVICES & PLATFORM FEE */}
-              {activeSection === 'services' && (
-                <div id="sec-services" className="space-y-6 pt-2 pb-8 animate-slide-in">
-                  <div className="flex items-center gap-2.5 text-[#5e2be2]">
-                    <DollarSign className="w-5 h-5" />
-                    <div>
-                      <h3 className="text-lg font-extrabold text-slate-900">Services & Platform Fee</h3>
-                      <p className="text-xs text-slate-500 font-medium">Manage services offered by this consultant and configure individual platform fee per session</p>
-                    </div>
+              {/* SECTION 4: SERVICES (simple: one fee line, then one card per service, like a cart) */}
+              {activeSection === 'services' && (() => {
+                const feeIsPercent = formData.platformFeeType === 'Percentage';
+                const rupees = (n: number) => `₹${Math.max(0, Math.round(n)).toLocaleString('en-IN')}`;
+                const removeService = (id: string) =>
+                  setFormData((prev) => ({ ...prev, services: prev.services.filter((s) => s.id !== id) }));
+                const stepper = (label: string, onMinus: () => void, onPlus: () => void, minusDisabled: boolean) => (
+                  <div className="flex items-center justify-between bg-slate-100 rounded-xl px-1 py-1">
+                    <button
+                      type="button"
+                      onClick={onMinus}
+                      disabled={minusDisabled}
+                      aria-label="Less"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-700 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm font-extrabold text-slate-900 whitespace-nowrap">{label}</span>
+                    <button
+                      type="button"
+                      onClick={onPlus}
+                      aria-label="More"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-700 hover:bg-white"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
+                );
 
-                  {/* INDIVIDUAL PLATFORM FEE PER SESSION FIELD */}
-                  <div className="bg-purple-50/80 p-4 sm:p-5 rounded-2xl border border-purple-200/80 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-                      <div>
-                        <h4 className="text-sm font-extrabold text-purple-900 flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-[#5e2be2] shrink-0" />
-                          <span>Individual Platform Fee Per Session</span>
-                        </h4>
-                        <p className="text-xs text-purple-700 font-medium leading-relaxed">
-                          Set the separate platform commission/fee charged for each session booked with this therapist.
-                        </p>
-                      </div>
-                      <span className="self-start sm:self-auto px-3 py-1 bg-purple-200 text-purple-900 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0">
-                        Per Therapist Config
-                      </span>
+                return (
+                  <div id="sec-services" className="space-y-5 pt-2 pb-8 animate-slide-in">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-900">Services</h3>
+                      <p className="text-xs text-slate-500 font-medium">What this therapist offers, what clients pay, and what the therapist earns.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Calculation Type */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-extrabold text-purple-900">Platform Fee Calculation Type</label>
-                        <select
-                          value={formData.platformFeeType}
-                          onChange={(e) => handlePlatformFeeChange(formData.platformFeePerSession, e.target.value as 'Fixed' | 'Percentage')}
-                          className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm font-bold text-purple-900 outline-none focus:border-[#5e2be2]"
-                        >
-                          <option value="Fixed">Fixed Amount per session (₹)</option>
-                          <option value="Percentage">Percentage of session fee (%)</option>
-                        </select>
+                    {/* Hexpertify's fee: one line */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-extrabold text-slate-900">Hexpertify's fee per session</p>
+                        <p className="text-xs text-slate-500">The therapist gets the rest of the price.</p>
                       </div>
-
-                      {/* Fee Value Input */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-extrabold text-purple-900">
-                          {formData.platformFeeType === 'Percentage' ? 'Platform Fee Percentage (%) *' : 'Platform Fee Amount (₹) *'}
-                        </label>
-                        <div className="relative">
+                      <div className="flex items-center gap-2">
+                        <div className="flex p-1 bg-white border border-slate-200 rounded-xl" role="group" aria-label="Fee type">
+                          {(['Fixed', 'Percentage'] as const).map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => handlePlatformFeeChange(formData.platformFeePerSession, type)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition-colors ${
+                                formData.platformFeeType === type ? 'bg-[#5e2be2] text-white' : 'text-slate-500 hover:text-slate-800'
+                              }`}
+                            >
+                              {type === 'Fixed' ? '₹ Amount' : '% Percent'}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="relative w-28">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">{feeIsPercent ? '%' : '₹'}</span>
                           <input
                             type="number"
                             min="0"
-                            max={formData.platformFeeType === 'Percentage' ? 100 : undefined}
+                            max={feeIsPercent ? 100 : undefined}
                             value={formData.platformFeePerSession}
                             onChange={(e) => handlePlatformFeeChange(e.target.value, formData.platformFeeType as 'Fixed' | 'Percentage')}
-                            onInput={(e: React.FormEvent<HTMLInputElement>) => {
-                              if (formData.platformFeeType === 'Percentage') {
-                                const num = Number(e.currentTarget.value);
-                                if (num > 100) {
-                                  e.currentTarget.value = '100';
-                                  handlePlatformFeeChange('100', 'Percentage');
-                                }
-                              }
-                            }}
-                            placeholder={formData.platformFeeType === 'Percentage' ? 'e.g. 20' : 'e.g. 500'}
-                            className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm font-bold text-purple-900 outline-none focus:border-[#5e2be2]"
+                            placeholder={feeIsPercent ? '20' : '500'}
+                            aria-label="Hexpertify's fee"
+                            className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-[#5e2be2]"
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 font-extrabold text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-md">
-                            {formData.platformFeeType === 'Percentage' ? '%' : '₹'}
-                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Live Financial Breakdown Preview Box */}
-                    <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-purple-200/90 shadow-2xs space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2">
-                        <span className="text-[10px] sm:text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                          Live Calculation Preview (Assuming ₹2,000 Session Fee)
-                        </span>
-                        <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 self-start sm:self-auto">
-                          Net Payout = Session Fee - Platform Fee
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-1 text-center">
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                          <span className="text-[10px] text-slate-500 font-bold block uppercase">Client Pays</span>
-                          <span className="text-sm font-extrabold text-slate-900">₹2,000</span>
-                        </div>
-                        <div className="bg-purple-50 p-2.5 rounded-xl border border-purple-200">
-                          <span className="text-[10px] text-purple-700 font-bold block uppercase">
-                            Platform Fee {formData.platformFeeType === 'Percentage' ? `(${formData.platformFeePerSession || 0}%)` : '(Fixed)'}
-                          </span>
-                          <span className="text-sm font-extrabold text-[#5e2be2]">
-                            ₹{formData.platformFeeType === 'Percentage' 
-                              ? Math.round((2000 * (Number(formData.platformFeePerSession) || 0)) / 100) 
-                              : (Number(formData.platformFeePerSession) || 0)}
-                          </span>
-                        </div>
-                        <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
-                          <span className="text-[10px] text-emerald-700 font-bold block uppercase">Therapist Earns</span>
-                          <span className="text-sm font-extrabold text-emerald-800">
-                            ₹{Math.max(0, 2000 - (formData.platformFeeType === 'Percentage' 
-                              ? Math.round((2000 * (Number(formData.platformFeePerSession) || 0)) / 100) 
-                              : (Number(formData.platformFeePerSession) || 0)))}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* List of Configured Services */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                        Configured Services ({formData.services.length})
-                      </span>
-                    </div>
-
+                    {/* Services: one card each */}
                     {formData.services.length === 0 ? (
-                      <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-                        <p className="text-xs font-semibold text-slate-400">No services added yet. Click "Add Service" below.</p>
+                      <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-300 rounded-2xl">
+                        <p className="text-sm font-bold text-slate-700">No services yet</p>
+                        <p className="text-xs text-slate-500 mt-1">Add the sessions this therapist offers, e.g. "1-on-1 Therapy, 60 min".</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        {formData.services.map((srv, index) => (
-                          <div key={srv.id} className="p-6 bg-white border border-slate-200 rounded-2xl space-y-4 shadow-sm relative">
-                            {/* Header Label & Financial Badges */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                                Service Item #{index + 1}
-                              </span>
+                      <div className="space-y-3">
+                        {formData.services.map((srv) => {
+                          const price = Number(srv.sessionFee) || 0;
+                          const fee = Math.min(price, Number(srv.platformFee) || 0);
+                          const sessions = Math.max(1, Number(srv.sessions) || 1);
+                          const minutes = Math.max(0, Number(srv.durationMinutes) || 0);
+                          return (
+                            <div key={srv.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+                              {/* Name + remove */}
                               <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-extrabold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-100 flex items-center gap-1">
-                                  <span>Platform Fee:</span>
-                                  <span className="font-mono text-xs text-[#5e2be2]">₹{srv.platformFee}</span>
-                                  <span className="text-[9px] text-purple-500 font-semibold">
-                                    ({formData.platformFeeType === 'Percentage' ? `${formData.platformFeePerSession}%` : 'Fixed'})
-                                  </span>
-                                </span>
-                                <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 flex items-center gap-1">
-                                  <span>Therapist Net:</span>
-                                  <span className="font-mono text-xs text-emerald-800">
-                                    ₹{Math.max(0, srv.sessionFee - srv.platformFee)}
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Grid 1: Name and Platform */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1.5">
-                                <label className="text-xs font-extrabold text-slate-700">Service Name *</label>
                                 <input
                                   type="text"
-                                  placeholder="e.g., 1-on-1 Consultation"
+                                  placeholder="Service name, e.g. 1-on-1 Therapy"
                                   value={srv.serviceName}
                                   onChange={(e) => handleUpdateServiceField(srv.id, 'serviceName', e.target.value)}
-                                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all text-slate-800"
+                                  className="flex-1 min-w-0 px-3 py-2 bg-transparent border border-slate-200 hover:border-slate-300 focus:border-[#5e2be2] rounded-xl text-base font-extrabold text-slate-900 outline-none placeholder:font-semibold placeholder:text-slate-400"
                                 />
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <label className="text-xs font-extrabold text-slate-700">Platform *</label>
-                                <select
-                                  value={srv.platform || 'Google Meet'}
-                                  onChange={(e) => handleUpdateServiceField(srv.id, 'platform', e.target.value)}
-                                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all text-slate-800"
+                                <button
+                                  type="button"
+                                  onClick={() => removeService(srv.id)}
+                                  title="Remove this service"
+                                  aria-label="Remove this service"
+                                  className="p-2.5 text-rose-600 hover:bg-rose-50 rounded-xl shrink-0"
                                 >
-                                  <option value="Google Meet">Google Meet</option>
-                                  <option value="Zoom">Zoom</option>
-                                  <option value="In Person">In Person</option>
-                                  <option value="Phone Call">Phone Call</option>
-                                </select>
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
                               </div>
+
+                              {/* Price, length, sessions, where */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <label className="space-y-1 block">
+                                  <span className="text-[11px] font-bold text-slate-500 block">Price</span>
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-extrabold text-emerald-700">₹</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={srv.sessionFee}
+                                      onChange={(e) => handleUpdateServiceField(srv.id, 'sessionFee', Number(e.target.value))}
+                                      className="w-full pl-7 pr-2 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-extrabold text-emerald-700 outline-none focus:border-[#5e2be2] focus:bg-white"
+                                    />
+                                  </div>
+                                </label>
+
+                                <div className="space-y-1">
+                                  <span className="text-[11px] font-bold text-slate-500 block">Length</span>
+                                  {stepper(
+                                    `${minutes} min`,
+                                    () => handleUpdateServiceField(srv.id, 'durationMinutes', Math.max(15, minutes - 15)),
+                                    () => handleUpdateServiceField(srv.id, 'durationMinutes', minutes + 15),
+                                    minutes <= 15
+                                  )}
+                                </div>
+
+                                <div className="space-y-1">
+                                  <span className="text-[11px] font-bold text-slate-500 block">Sessions</span>
+                                  {stepper(
+                                    String(sessions),
+                                    () => handleUpdateServiceField(srv.id, 'sessions', Math.max(1, sessions - 1)),
+                                    () => handleUpdateServiceField(srv.id, 'sessions', sessions + 1),
+                                    sessions <= 1
+                                  )}
+                                </div>
+
+                                <label className="space-y-1 block">
+                                  <span className="text-[11px] font-bold text-slate-500 block">Where</span>
+                                  <select
+                                    value={srv.platform || 'Google Meet'}
+                                    onChange={(e) => handleUpdateServiceField(srv.id, 'platform', e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#5e2be2] focus:bg-white"
+                                  >
+                                    <option value="Google Meet">Google Meet</option>
+                                    <option value="Zoom">Zoom</option>
+                                    <option value="In Person">In Person</option>
+                                    <option value="Phone Call">Phone Call</option>
+                                  </select>
+                                </label>
+                              </div>
+
+                              {/* Who gets what, in one line */}
+                              <p className="text-xs text-slate-500 pt-2.5 border-t border-slate-100 flex flex-wrap gap-x-3 gap-y-1">
+                                <span>Client pays <b className="text-slate-900">{rupees(price)}</b></span>
+                                <span>Hexpertify <b className="text-[#5e2be2]">{rupees(fee)}</b></span>
+                                <span>Therapist gets <b className="text-emerald-700">{rupees(price - fee)}</b></span>
+                              </p>
                             </div>
-
-                            {/* Grid 2: Price, Duration, Sessions */}
-                            <div className="grid grid-cols-3 gap-4">
-                              <div className="space-y-1.5">
-                                <label className="text-xs font-extrabold text-slate-700">Price (₹) *</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  value={srv.sessionFee}
-                                  onChange={(e) => handleUpdateServiceField(srv.id, 'sessionFee', Number(e.target.value))}
-                                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all text-slate-800"
-                                />
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <label className="text-xs font-extrabold text-slate-700">Duration (mins) *</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="60"
-                                  value={srv.durationMinutes}
-                                  onChange={(e) => handleUpdateServiceField(srv.id, 'durationMinutes', Number(e.target.value))}
-                                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all text-slate-800"
-                                />
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <label className="text-xs font-extrabold text-slate-700">Sessions *</label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  placeholder="1"
-                                  value={srv.sessions || 1}
-                                  onChange={(e) => handleUpdateServiceField(srv.id, 'sessions', Number(e.target.value))}
-                                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all text-slate-800"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Remove button */}
-                            <div className="pt-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    services: prev.services.filter((s) => s.id !== srv.id)
-                                  }))
-                                }
-                                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors active:scale-95"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Remove Service
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
-                    {/* Add Service Trigger Button */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={handleAddService}
-                        className="flex items-center gap-1.5 px-5 py-2.5 border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-800 transition-colors shadow-xs"
-                      >
-                        <Plus className="w-4 h-4 text-slate-800" />
-                        Add Service
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddService}
+                      className="w-full flex items-center justify-center gap-1.5 py-3 border-2 border-dashed border-slate-300 hover:border-[#5e2be2] hover:text-[#5e2be2] rounded-2xl text-sm font-bold text-slate-600 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add service
+                    </button>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* SECTION 5: CLIENT REVIEWS */}
               {activeSection === 'reviews' && (
@@ -2842,16 +2853,6 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                     <div>
                       <h3 className="text-lg font-extrabold text-slate-900">Banking & Payout Details</h3>
                       <p className="text-xs text-slate-500 font-medium">Configure bank transfer and UPI credentials for consultant disbursals</p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-purple-50/70 border border-purple-150 rounded-2xl flex items-start gap-3 text-purple-950">
-                    <CheckCircle2 className="w-5 h-5 text-[#5e2be2] shrink-0 mt-0.5" />
-                    <div className="text-xs leading-relaxed">
-                      <p className="font-extrabold text-slate-900">Persistent Disbursal Configuration</p>
-                      <p className="text-purple-700 mt-0.5">
-                        These details only need to be entered once and are stored permanently in MongoDB Atlas. Whenever this consultant is selected for payout release, these bank and UPI coordinates are automatically pre-filled.
-                      </p>
                     </div>
                   </div>
 

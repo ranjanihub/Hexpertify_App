@@ -56,27 +56,22 @@ const ServicesMain = ({ FeatureConsultantData, faqs, serviceId, profession: prof
           </p>
         </Link>
 
-        <div
-          className="w-full flex justify-center items-center h-[200px] rounded-[16px] shadow-xl overflow-hidden bg-gray-100" // Added bg-gray-100 as fallback color for empty spaces
-          style={{
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${profession?.bannerUrl})`,
-
-            // CHANGE 1: "contain" ensures the full image is visible.
-            // Use "auto" if you want the image's raw pixel size (which might crop).
-            backgroundSize: "cover",
-
-            // CHANGE 2: Prevents the image from tiling if it is smaller than the box
-            backgroundRepeat: "no-repeat",
-
-            backgroundPosition: "top",
-          }}
-        >
-          <h1 className="text-[18px] sm:text-[22px] md:text-[28px] text-white font-semibold leading-tight drop-shadow-md text-center px-4">
-            
-            {
-              profession?.bannerTitle || `Consult Certified ${profession?.name}`
-            }
-          </h1>
+        {/* Banner exactly as set in the admin Professions editor: the title, and the whole image (never cropped or dimmed) */}
+        <div className="w-full flex flex-col-reverse md:flex-row items-center rounded-[16px] shadow-xl overflow-hidden border border-purple-100 bg-gradient-to-r from-[#f3eeff] via-[#faf8ff] to-white">
+          <div className="flex-1 min-w-0 w-full px-5 py-6 md:px-12 md:py-10 text-center md:text-left">
+            <h1 className="text-[22px] sm:text-[30px] md:text-[38px] lg:text-[44px] font-extrabold text-[#24135f] leading-tight break-words">
+              {profession?.bannerTitle || `Consult Certified ${profession?.name || "Experts"}`}
+            </h1>
+          </div>
+          {profession?.bannerUrl && (
+            <div className="w-full md:w-[46%] h-[220px] sm:h-[280px] md:h-[340px] flex items-center justify-center p-4 md:p-6">
+              <img
+                src={profession.bannerUrl}
+                alt={profession?.imageAltText || profession?.bannerTitle || profession?.name || "Banner"}
+                className="max-h-full max-w-full object-contain rounded-xl"
+              />
+            </div>
+          )}
         </div>
         <div className="my-[30px]">
           <p className="text-2xl sm:text-3xl md:text-4xl lg:text-[36px] font-semibold text-black mt-5 mb-10">

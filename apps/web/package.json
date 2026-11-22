@@ -8,9 +8,9 @@
     "build": "node ../../scripts/build-panels.mjs && npm run build:next",
     "format": "prettier --write .",
     "start": "next start",
-    "prisma-push": "npx prisma generate && npx prisma db push",
-    "prisma-seed": "npx prisma db seed",
-    "prisma-studio": "npx prisma studio",
+    "prisma-push": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js db push",
+    "prisma-seed": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js db seed",
+    "prisma-studio": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js studio",
     "build:next": "prisma generate && node --max-old-space-size=6144 ./node_modules/next/dist/bin/next build",
     "build:panels": "node ../../scripts/build-panels.mjs"
   },

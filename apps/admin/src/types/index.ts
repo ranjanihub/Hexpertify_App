@@ -235,7 +235,8 @@ export interface Therapist {
   bankIfsc?: string;
   accountHolderName?: string;
   upiId?: string;
-  outcomes: {
+  /** Not stored scores: the profile loads real ones from /api/admin/consultants/:id/outcomes */
+  outcomes?: {
     clientImprovementScore: number;
     goalAchievementRate: number;
     homeworkAdherenceRate: number;

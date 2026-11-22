@@ -28,6 +28,17 @@ Login happens on the website (`/login`). The API's login sends each role to its 
 
 The panel builds (`apps/web/public/{admin,consultant,client,assets,index.html}`) are generated, not committed.
 
+## Environment
+
+There is one env file for the whole project: `.env` at the repo root, which is git-ignored. Copy `.env.example` to create it. Everything reads it:
+
+- the website and its API, through `apps/web/next.config.ts`
+- the standalone API (`npm run dev:server`)
+- the three panels, which see only `VITE_*` variables
+- the Prisma scripts (`prisma-push`, `prisma-studio`)
+
+On Vercel, the same variable names are set in the project settings instead.
+
 ## Database
 
 `server/src/config/database.ts` holds the one database URI; `MONGODB_URI` overrides it.

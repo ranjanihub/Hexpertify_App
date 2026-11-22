@@ -3,7 +3,9 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { redirectToPanel } from "@/lib/panel-redirect";
 import Script from "next/script";
+import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 declare global {
   interface Window {
@@ -48,9 +50,11 @@ interface PromptNotification {
 
 export function GoogleOneTapNextAuth() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const isPromptedRef = useRef(false);
+  const fedcmNoticeShownRef = useRef(false);
 
   // Suppress benign GSI / FedCM abort errors that trigger Next.js console error overlays
   useEffect(() => {
@@ -64,6 +68,18 @@ export function GoogleOneTapNextAuth() {
         (firstArg.includes("AbortError") || firstArg.includes("signal is aborted"))
       ) {
         // Benign Google Identity Services FedCM abort (user dismissed, tapped outside, or unmounted)
+        return;
+      }
+      if (firstArg.includes("[GSI_LOGGER]") && firstArg.includes("FedCM")) {
+        // Google refused to issue the sign-in token (most often: this site's address is not an Authorized
+        // JavaScript origin of the Google OAuth client). Not an app crash: warn instead of the dev error overlay.
+        console.warn(...args);
+        if (!fedcmNoticeShownRef.current) {
+          fedcmNoticeShownRef.current = true;
+          toast.error("Google sign-in is not available right now", {
+            description: "Please sign in with your email and password instead.",
+          });
+        }
         return;
       }
       originalConsoleError.apply(console, args);
@@ -100,40 +116,53 @@ export function GoogleOneTapNextAuth() {
 
   const handleCredentialResponse = useCallback(
     async (response: CredentialResponse) => {
-      try {
-        // The API and the panels are served on this same domain
-        const panelBase = "";
-        const centralAuthUrl = "/api/auth/google";
+      if (!response?.credential) return;
 
-        // Authenticate with central auth API to determine user role and target panel
-        const res = await fetch(centralAuthUrl, {
+      // 1. The platform API (same domain): admins, therapists and clients with a completed session go to their panel
+      let apiError = "";
+      try {
+        const res = await fetch("/api/auth/google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ credential: response.credential }),
         });
-        const data = await res.json();
-        if (data?.success) {
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.success) {
           const targetUrl = data.redirectUrl || (
             data.role === "super_admin" || data.role === "admin"
-              ? `${panelBase}/admin`
+              ? "/admin"
               : data.role === "therapist"
-              ? `${panelBase}/consultant`
-              : `${panelBase}/client`
+              ? "/consultant"
+              : "/client"
           );
           redirectToPanel(targetUrl, data);
           return;
         }
+        apiError = data?.error || `Sign-in was refused (HTTP ${res.status}).`;
+        console.warn("[Google One Tap] API sign-in refused:", res.status, apiError);
+      } catch (err) {
+        console.error("[Google One Tap] API sign-in failed:", err);
+      }
 
-        // Fallback to NextAuth signIn if central verification fails
-        await signIn("google-one-tap", {
-          credential: response.credential,
-          redirect: false,
-        });
-      } catch {
+      // 2. Not a panel user yet (e.g. a client before the first completed session): sign in to the website itself
+      const result = await signIn("google-one-tap", {
+        credential: response.credential,
+        redirect: false,
+      }).catch((err) => {
+        console.error("[Google One Tap] website sign-in failed:", err);
+        return undefined;
+      });
+
+      if (result?.ok && !result.error) {
+        toast.success("Signed in with Google", apiError ? { description: apiError } : undefined);
+        router.refresh();
         return;
       }
+      toast.error("Google sign-in failed", {
+        description: apiError || result?.error || "Please try again, or sign in with your email and password.",
+      });
     },
-    [],
+    [router],
   );
 
   const initializeOneTap = useCallback(() => {
