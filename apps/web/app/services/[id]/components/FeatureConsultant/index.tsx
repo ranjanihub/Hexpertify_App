@@ -10,7 +10,7 @@ interface consultants {
   name: string;
   Description: string;
   Languages: string;
-  Price: string;
+  Price: number | string | null;
   rating: number;
   reviewsCount: number;
   certified: Boolean;
@@ -124,9 +124,13 @@ const FeatureConsultant = ({ data, serviceNo }: props) => {
             </div>
 
             <div className="flex flex-row justify-between items-center mt-2 sm:mt-[10px] gap-2">
-              <p className="text-black text-[20px] sm:text-[26px] font-bold">
-                ₹{item?.Price}
-              </p>
+              {item?.Price ? (
+                <p className="text-black text-[20px] sm:text-[26px] font-bold">
+                  ₹{Number(item.Price).toLocaleString("en-IN")}
+                </p>
+              ) : (
+                <span />
+              )}
 
               <Button className="bg-[#2e048a] hover:bg-[#1a0255] text-white text-[13px] sm:text-[16px] h-9 sm:h-10 px-4 rounded-full font-semibold">
                 Consult Now

@@ -535,24 +535,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  /**
+   * Deletes a therapist on the server first; only a real delete removes them here and is audit-logged.
+   * The server refuses therapists with bookings (so booking history stays intact) and that error is passed on.
+   */
   const deleteTherapist = async (therapistId: string) => {
     const target = therapists.find((t) => t.id === therapistId);
+    await api.delete(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`);
+
     const updated = therapists.filter((t) => t.id !== therapistId);
     setTherapists(updated);
     try {
       localStorage.setItem(`${LOCAL_STORAGE_KEY}_therapists`, JSON.stringify(updated));
     } catch {}
-
     if (target) {
       addAuditLog(`Deleted Consultant ${target.name} (ID: ${therapistId})`, 'Therapists');
-    }
-
-    try {
-      await api.delete(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`);
-    } catch (err) {
-      console.error('Error deleting therapist from DB:', err);
-      // Fallback try /api/consultants
-      await api.delete(`/api/consultants?id=${encodeURIComponent(therapistId)}`).catch(() => {});
     }
   };
 

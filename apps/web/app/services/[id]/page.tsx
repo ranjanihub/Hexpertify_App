@@ -89,7 +89,8 @@ export default async function ServiceByIdPage(props: {
     name: item?.name,
     Description: item?.about,
     Languages: item?.languages?.join(" ,"),
-    Price: lowestPrice(item?.services, item?.minPrice) ?? 0,
+    // No current plan → no price shown (never ₹0)
+    Price: lowestPrice(item?.services, item?.minPrice),
     rating: item?.reviews?.length
       ? item.reviews.reduce((sum, review) => sum + (review.rating || 0), 0) /
         item.reviews.length

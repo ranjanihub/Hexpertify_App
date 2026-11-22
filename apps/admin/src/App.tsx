@@ -36,7 +36,7 @@ function PageFallback() {
     </div>
   );
 }
-import { isAdminAuthenticated } from './lib/auth';
+import { clearAdminAuth, isAdminAuthenticated, verifyAdminSession } from './lib/auth';
 
 import type { PageId } from './types';
 
@@ -104,6 +104,24 @@ export const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddTherapistModalOpen, setIsAddTherapistModalOpen] = useState(false);
 
+  // The server must accept the stored token as an admin's before anything is shown (null = still checking)
+  const [sessionOk, setSessionOk] = useState<boolean | null>(null);
+  React.useEffect(() => {
+    if (!isAdminAuthenticated()) {
+      setSessionOk(false);
+      return;
+    }
+    let cancelled = false;
+    verifyAdminSession().then((ok) => {
+      if (cancelled) return;
+      if (!ok) clearAdminAuth();
+      setSessionOk(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Unsaved Changes Navigation Guard state
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingPageId, setPendingPageId] = useState<PageId | null>(null);
@@ -159,10 +177,17 @@ export const App: React.FC = () => {
     return match ? (match[0] as PageId) : 'dashboard';
   };
 
-  if (location.pathname === '/login' || !isAdminAuthenticated()) {
+  if (location.pathname === '/login' || sessionOk === false || !isAdminAuthenticated()) {
     window.location.href = '/login?role=admin';
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (sessionOk === null) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center" aria-label="Checking sign-in">
         <div className="w-8 h-8 border-3 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
       </div>
     );

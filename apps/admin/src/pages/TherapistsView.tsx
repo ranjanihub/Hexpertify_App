@@ -364,6 +364,8 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  // Failures (e.g. a delete the server refused) show in red, not as a success
+  const [errorToast, setErrorToast] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionKey>('basic');
   const [previewTab, setPreviewTab] = useState<'search' | 'social' | 'html'>('search');
   const [editingTherapistId, setEditingTherapistId] = useState<string | null>(null);
@@ -1167,16 +1169,16 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       } else {
         await api.delete(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`);
       }
-      setSuccessToast(`Therapist ${targetName} permanently deleted from database.`);
+      setSuccessToast(`Therapist ${targetName} deleted.`);
       setTimeout(() => setSuccessToast(null), 4000);
     } catch (err: any) {
-      console.error('Error deleting consultant from DB:', err);
-      // Revert optimistic update
+      console.error('Error deleting consultant:', err);
+      // Not deleted: put the card back and say why (e.g. the therapist has bookings)
       if (target) {
-        setTherapistsList((prev) => [target, ...prev]);
-        setSuccessToast(`Failed to delete ${targetName}: ${err?.message || 'Database error'}`);
-        setTimeout(() => setSuccessToast(null), 5000);
+        setTherapistsList((prev) => (prev.some((t) => t.id === target.id) ? prev : [target, ...prev]));
       }
+      setErrorToast(`Could not delete ${targetName}. ${err?.message || 'Please try again.'}`);
+      setTimeout(() => setErrorToast(null), 9000);
     }
   };
 
@@ -1207,6 +1209,13 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative">
       {/* Toast Notification */}
+      {errorToast && (
+        <div role="alert" className="fixed top-24 right-8 z-50 max-w-md bg-rose-600 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-start gap-3 border border-rose-500 animate-fade-in">
+          <AlertCircle className="w-6 h-6 text-white shrink-0" />
+          <span className="font-bold text-xs leading-relaxed">{errorToast}</span>
+          <button type="button" onClick={() => setErrorToast(null)} className="ml-1 text-white/80 hover:text-white text-xs font-extrabold" aria-label="Dismiss">✕</button>
+        </div>
+      )}
       {successToast && (
         <div className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500 animate-fade-in">
           <CheckCircle2 className="w-6 h-6 text-white" />
@@ -1473,10 +1482,22 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl text-xs">
                 <div className="min-w-0 bg-purple-50/70 p-2 rounded-xl border border-purple-100">
                   <span className="text-[10px] text-purple-600 block font-bold uppercase tracking-wider truncate">Session Fee</span>
-                  <span className="font-extrabold text-purple-900 text-sm block truncate">
-                    ₹{t.services?.[0]?.sessionFee || (t.services?.[0] as any)?.price || (t as any).fees || (t as any).minPrice || t.platformFeePerSession || 2000}
-                  </span>
-                  <span className="text-[10px] text-purple-500 font-semibold block">per session</span>
+                  {(() => {
+                    // The price clients see on the website: the cheapest current plan, else the stored minimum price
+                    const fees = (t.services || []).map((s: any) => Number(s?.sessionFee ?? s?.price)).filter((n) => n > 0);
+                    const fee = fees.length ? Math.min(...fees) : Number((t as any).minPrice) > 0 ? Number((t as any).minPrice) : null;
+                    return fee !== null ? (
+                      <>
+                        <span className="font-extrabold text-purple-900 text-sm block truncate">₹{fee.toLocaleString('en-IN')}</span>
+                        <span className="text-[10px] text-purple-500 font-semibold block">per session</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-extrabold text-amber-600 text-sm block truncate">Not set</span>
+                        <span className="text-[10px] text-amber-600 font-semibold block">Add a service plan</span>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="min-w-0 bg-slate-100/70 p-2 rounded-xl">
                   <span className="text-[10px] text-slate-400 block font-medium truncate">Active Clients</span>

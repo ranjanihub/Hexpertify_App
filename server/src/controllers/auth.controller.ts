@@ -909,6 +909,19 @@ export class AuthController {
   /**
    * GET /api/auth/me
    */
+  /**
+   * GET /api/auth/whoami — the signed-in user from the Bearer token (id, email, role), or 401.
+   * The admin panel only opens for a valid admin token (localStorage alone proves nothing).
+   */
+  static async getSession(req: Request, res: Response): Promise<void> {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Please sign in again.' });
+      return;
+    }
+    const { sub, email, role, exp } = req.user;
+    res.json({ success: true, user: { id: sub, email, role }, expiresAt: exp ? new Date(exp * 1000).toISOString() : null });
+  }
+
   static async getMe(req: Request, res: Response): Promise<void> {
     res.json({
       success: true,

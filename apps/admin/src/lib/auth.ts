@@ -6,14 +6,6 @@ export interface AdminAuthUser {
   avatarUrl?: string;
 }
 
-export const DEFAULT_ADMIN: AdminAuthUser = {
-  id: "admin-1",
-  name: "Super Administrator",
-  email: "admin@example.com",
-  role: "super_admin",
-  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
-};
-
 const STORAGE_KEY = "hexpertify_admin_auth";
 // Signed API token issued by the backend at login (shared with the central login page on the same origin)
 const API_TOKEN_KEY = "hexpertify_api_token";
@@ -34,34 +26,24 @@ export function getApiAuthHeaders(): Record<string, string> {
   }
 }
 
-function checkSsoTransfer(): AdminAuthUser | null {
+/**
+ * Old links could carry a user in the address (?sso_user=…). That is never trusted: anyone can type it.
+ * It is only removed from the address bar. Admins sign in on /login, which stores a signed API token.
+ */
+function stripSsoParams(): void {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const ssoRaw = params.get("sso_user") || params.get("sso");
-    if (ssoRaw) {
-      let user: AdminAuthUser;
-      try {
-        user = JSON.parse(decodeURIComponent(ssoRaw));
-      } catch {
-        user = DEFAULT_ADMIN;
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-      const url = new URL(window.location.href);
-      url.searchParams.delete("sso_user");
-      url.searchParams.delete("sso");
-      window.history.replaceState({}, document.title, url.pathname + url.search);
-      return user;
-    }
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("sso_user") && !url.searchParams.has("sso")) return;
+    url.searchParams.delete("sso_user");
+    url.searchParams.delete("sso");
+    window.history.replaceState({}, document.title, url.pathname + url.search);
   } catch (e) {}
-  return null;
 }
 
 export function getAdminAuth(): AdminAuthUser | null {
   try {
-    const ssoUser = checkSsoTransfer();
-    if (ssoUser) return ssoUser;
     const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return null;
+    if (!data || data === "logged_out") return null;
     return JSON.parse(data);
   } catch (e) {
     return null;
@@ -75,36 +57,40 @@ export function setAdminAuth(user: AdminAuthUser): void {
   } catch (e) {}
 }
 
+/**
+ * Quick local check before anything renders: a stored admin user and a signed API token from /login.
+ * It never signs anyone in by itself; verifyAdminSession asks the server whether the token is real.
+ */
 export function isAdminAuthenticated(): boolean {
+  stripSsoParams();
   try {
-    const ssoUser = checkSsoTransfer();
-    if (ssoUser) {
-      if (ssoUser.role === 'super_admin' || ssoUser.role === 'admin') {
-        return true;
-      }
-      if (ssoUser.role === 'therapist') {
-        launchConsultantPanel(ssoUser);
-        return false;
-      }
-      if (ssoUser.role === 'client') {
-        launchClientPanel(ssoUser);
-        return false;
-      }
-      return false;
-    }
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_ADMIN));
-      return true;
-    }
-    if (data === 'logged_out') {
-      return false;
-    }
-    const parsed = JSON.parse(data);
-    return parsed?.role === 'super_admin' || parsed?.role === 'admin';
+    const user = getAdminAuth();
+    const hasToken = Boolean(localStorage.getItem(API_TOKEN_KEY));
+    return hasToken && (user?.role === "super_admin" || user?.role === "admin");
   } catch (e) {
     return false;
   }
+}
+
+/** True only when the server accepts the stored token as an admin's (not forged, not expired) */
+export async function verifyAdminSession(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/whoami", { headers: getApiAuthHeaders(), cache: "no-store" });
+    if (!res.ok) return false;
+    const data = await res.json().catch(() => null);
+    const role = data?.user?.role;
+    return role === "super_admin" || role === "admin";
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Forget the local sign-in (used when the server rejects the token) */
+export function clearAdminAuth(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(API_TOKEN_KEY);
+  } catch (e) {}
 }
 
 export function logoutAdmin(): void {
