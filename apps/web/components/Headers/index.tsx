@@ -58,7 +58,7 @@ const Header = () => {
             </>
           )}
           <li>
-            <Link href="/blogs">Blogs</Link>
+            <Link href="/blog">Blogs</Link>
           </li>
           <li>
             <Link href="/services">Services</Link>
@@ -206,7 +206,7 @@ const Header = () => {
 
             <li onClick={closeMenu}>
               <Link
-                href="/blogs"
+                href="/blog"
                 className="hover:text-[#450bc8] transition-colors"
               >
                 Blogs

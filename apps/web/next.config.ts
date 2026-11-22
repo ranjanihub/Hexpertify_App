@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      // The blog lives at /blog; older links used /blogs
+      { source: "/blogs", destination: "/blog", permanent: true },
+      { source: "/blogs/:path*", destination: "/blog", permanent: true },
       {
         source: "/services/mental-health-counsellor/66e67d54936952f23fab26d4",
         destination: "/services/mental-health-counsellor",

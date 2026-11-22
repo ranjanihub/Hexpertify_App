@@ -149,7 +149,7 @@ export async function BlogGridContainer({
       {showSeeMore && (
         <div className="mt-5 flex justify-end">
           <Link
-            href="/blogs"
+            href="/blog"
             className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700"
           >
             See more

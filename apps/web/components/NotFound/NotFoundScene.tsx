@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { Fraunces } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 import { hexpertify } from "@/asset/images";
 
-const serif = Fraunces({ subsets: ["latin"], weight: ["300", "400"], display: "swap" });
+// The panels' font (admin, consultant and client use Plus Jakarta Sans)
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
 const BALLS = 5;
 const LABELS = ["", "4", "0", "4", ""];
@@ -184,7 +185,7 @@ function useCradle(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
         ctx.fill();
         if (LABELS[i]) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-          ctx.font = `400 ${Math.round(g.r * 0.95)}px ${serif.style.fontFamily}`;
+          ctx.font = `800 ${Math.round(g.r * 0.8)}px ${jakarta.style.fontFamily}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(LABELS[i], b.x, b.y + g.r * 0.04);
@@ -194,7 +195,7 @@ function useCradle(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
       // Hint until the visitor has tried it
       if (!touched) {
         ctx.fillStyle = "rgba(69, 11, 200, 0.55)";
-        ctx.font = `500 ${w < 640 ? 12 : 13}px ui-sans-serif, system-ui, sans-serif`;
+        ctx.font = `600 ${w < 640 ? 12 : 13}px ${jakarta.style.fontFamily}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("Drag a ball and let go", g.cx, floor + g.r * 1.4);
@@ -342,7 +343,7 @@ export default function NotFoundScene({ fullScreen = true }: { fullScreen?: bool
 
   return (
     <div
-      className={`relative isolate flex flex-col overflow-hidden bg-[radial-gradient(ellipse_at_70%_45%,#efe9ff_0%,#f8f6ff_45%,#ffffff_100%)] ${
+      className={`${jakarta.className} relative isolate flex flex-col overflow-hidden bg-[radial-gradient(ellipse_at_70%_45%,#efe9ff_0%,#f8f6ff_45%,#ffffff_100%)] ${
         fullScreen ? "min-h-screen" : "min-h-[calc(100vh-110px)]"
       }`}
     >
@@ -373,11 +374,11 @@ export default function NotFoundScene({ fullScreen = true }: { fullScreen?: bool
             <Reveal text="Error 404 · Page not found" step={12} />
           </p>
 
-          <h1 className={`${serif.className} text-balance text-4xl font-light leading-[1.15] text-slate-900 lg:text-6xl`}>
+          <h1 className="text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 lg:text-6xl">
             <Reveal text="Oops! This page is missing." start={250} step={22} />
           </h1>
 
-          <p className="hx404-fade max-w-md text-lg font-light leading-relaxed text-slate-600" style={{ animationDelay: "900ms" }}>
+          <p className="hx404-fade max-w-md text-lg font-medium leading-relaxed text-slate-500" style={{ animationDelay: "900ms" }}>
             The page you&apos;re looking for doesn&apos;t exist.
           </p>
 
