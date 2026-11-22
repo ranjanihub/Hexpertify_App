@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 import { hexpertify } from "@/asset/images";
 
-// The panels' font (admin, consultant and client use Plus Jakarta Sans)
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
+/**
+ * The panels' font (admin, consultant and client load Plus Jakarta Sans from Google Fonts the same way).
+ * Not next/font: its Google loader in this Next version fails the build on this font's extension-less file URLs.
+ */
+const FONT_HREF = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";
+const FONT_FAMILY = "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif";
 
 const BALLS = 5;
 const LABELS = ["", "4", "0", "4", ""];
@@ -185,7 +188,7 @@ function useCradle(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
         ctx.fill();
         if (LABELS[i]) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-          ctx.font = `800 ${Math.round(g.r * 0.8)}px ${jakarta.style.fontFamily}`;
+          ctx.font = `800 ${Math.round(g.r * 0.8)}px ${FONT_FAMILY}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(LABELS[i], b.x, b.y + g.r * 0.04);
@@ -195,7 +198,7 @@ function useCradle(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
       // Hint until the visitor has tried it
       if (!touched) {
         ctx.fillStyle = "rgba(69, 11, 200, 0.55)";
-        ctx.font = `600 ${w < 640 ? 12 : 13}px ${jakarta.style.fontFamily}`;
+        ctx.font = `600 ${w < 640 ? 12 : 13}px ${FONT_FAMILY}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("Drag a ball and let go", g.cx, floor + g.r * 1.4);
@@ -343,10 +346,13 @@ export default function NotFoundScene({ fullScreen = true }: { fullScreen?: bool
 
   return (
     <div
-      className={`${jakarta.className} relative isolate flex flex-col overflow-hidden bg-[radial-gradient(ellipse_at_70%_45%,#efe9ff_0%,#f8f6ff_45%,#ffffff_100%)] ${
+      style={{ fontFamily: FONT_FAMILY }}
+      className={`relative isolate flex flex-col overflow-hidden bg-[radial-gradient(ellipse_at_70%_45%,#efe9ff_0%,#f8f6ff_45%,#ffffff_100%)] ${
         fullScreen ? "min-h-screen" : "min-h-[calc(100vh-110px)]"
       }`}
     >
+      {/* React hoists this stylesheet into <head> once */}
+      <link rel="stylesheet" href={FONT_HREF} precedence="default" />
       <style>{`
         .hx404-letter { display: inline-block; opacity: 0; transform: translateY(0.35em); filter: blur(6px);
           animation: hx404-in 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
