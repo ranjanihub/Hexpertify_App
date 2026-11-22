@@ -1,0 +1,101 @@
+import { cache } from "react";
+import { prisma } from "@/lib/prisma";
+import { isConsultantPublic, isProfessionPublic } from "@/lib/visibility";
+import { withPageMediaUrls } from "@/lib/page-media";
+
+const CONSULTANT_FLAGS = { isHiddenFromLive: true, isArchived: true, accountStatus: true } as const;
+
+/** Loads one homepage section; a failure (e.g. one malformed record) only empties that section */
+async function section<T>(label: string, load: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await load();
+  } catch (error) {
+    console.error(`Error loading home page section "${label}":`, error);
+    return fallback;
+  }
+}
+
+// cache(): generateMetadata and the page itself share one load per request (it used to query the database twice)
+export const getPageData = cache(async () => {
+  const [metaData, professions, topConsultants, recentlyBookedConsultants] = await Promise.all([
+    // Home page metadata, carousel, FAQs and testimonials (inline base64 images become /media URLs)
+    section(
+      "page",
+      async () => withPageMediaUrls(await prisma.page.findUnique({ where: { identifier: "home" }, include: { seoMeta: true } })),
+      null,
+    ),
+
+    // Professions (with their consultants)
+    section("professions", async () => {
+      const list = await prisma.profession.findMany({
+        include: {
+          consultants: {
+            select: {
+              id: true,
+              name: true,
+              identifier: true,
+              photoUrl: true,
+              photoAltText: true,
+              experience: true,
+              specialties: true,
+              ...CONSULTANT_FLAGS,
+            },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      return list
+        .filter(isProfessionPublic)
+        .map((p) => ({ ...p, consultants: p.consultants.filter(isConsultantPublic) }));
+    }, []),
+
+    // Top consultants by admin-defined sequence; consultants without a sequence come after the ranked ones
+    section("topConsultants", async () => {
+      const all = await prisma.consultant.findMany({
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          sequence: true,
+          name: true,
+          identifier: true,
+          photoUrl: true,
+          photoAltText: true,
+          clientCount: true,
+          specialties: true,
+          about: true,
+          ...CONSULTANT_FLAGS,
+          profession: { select: { name: true, identifier: true, status: true, visibility: true } },
+        },
+      });
+      const ranked = all.filter((c) => typeof c.sequence === "number").sort((a, b) => (a.sequence as number) - (b.sequence as number));
+      const list = [...ranked, ...all.filter((c) => typeof c.sequence !== "number")];
+      return list.filter((c) => isConsultantPublic(c) && (!c.profession || isProfessionPublic(c.profession))).slice(0, 10);
+    }, []),
+
+    // Recently onboarded consultants
+    section("recentConsultants", async () => {
+      const list = await prisma.consultant.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: {
+          id: true,
+          name: true,
+          identifier: true,
+          photoUrl: true,
+          clientCount: true,
+          specialties: true,
+          about: true,
+          services: true,
+          minPrice: true,
+          photoAltText: true,
+          experience: true,
+          ...CONSULTANT_FLAGS,
+          profession: { select: { name: true, identifier: true, status: true, visibility: true } },
+        },
+      });
+      return list.filter((c) => isConsultantPublic(c) && (!c.profession || isProfessionPublic(c.profession))).slice(0, 10);
+    }, []),
+  ]);
+
+  return { metaData, professions, topConsultants, recentlyBookedConsultants };
+});

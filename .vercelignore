@@ -1,5 +1,10 @@
-node_modules/
 .git
 .vscode
 backups
 *.md
+
+# Never upload local env files: Vercel uses the variables set in the project settings
+.env
+.env.*
+**/.env
+**/.env.*

@@ -1,25 +1,17 @@
 {
-  "name": "hexpertify-ecosystem-root",
+  "name": "hexpertify",
   "version": "1.0.0",
-  "description": "Unified Hexpertify Ecosystem",
-  "main": "index.js",
+  "description": "Hexpertify: the website (apps/web, Next.js) serves the React panels (apps/admin, apps/consultant, apps/client) and the API (server)",
   "scripts": {
-    "dev": "npm --prefix Backend run dev",
-    "dev:backend": "npm --prefix Backend run dev",
-    "dev:live": "npm --prefix Live_Panel run dev",
-    "dev:client": "npm --prefix Client_Panel/Client-Dashboard-Pro/artifacts/client-dashboard run dev",
-    "dev:consultant": "npm --prefix Consultant_Panel/Therapy-Flow-Design/artifacts/hexpertify-dashboard run dev",
-    "dev:admin": "npm --prefix Super_Admin/admin_dashboard-main run dev",
-    "build": "node scripts/vercel-build.js",
-    "vercel-build": "node scripts/vercel-build.js",
-    "postinstall": "npm --prefix Live_Panel install && npm --prefix Backend install",
-    "build:all": "npm --prefix Backend run build:all",
-    "start": "npm --prefix Backend run start"
+    "dev": "npm --prefix apps/web run dev",
+    "dev:server": "npm --prefix server run dev",
+    "dev:admin": "npm --prefix apps/admin run dev",
+    "dev:consultant": "npm --prefix apps/consultant run dev",
+    "dev:client": "npm --prefix apps/client run dev",
+    "build": "npm --prefix apps/web run build",
+    "build:panels": "node scripts/build-panels.mjs",
+    "start": "npm --prefix apps/web run start",
+    "postinstall": "npm --prefix apps/web install && npm --prefix apps/admin install && npm --prefix apps/consultant install && npm --prefix apps/client install && npm --prefix server install"
   },
-  "dependencies": {
-    "next": "15.5.7",
-    "react": "19.1.2",
-    "react-dom": "19.1.2",
-    "typescript": "^5.8.2"
-  }
+  "private": true
 }

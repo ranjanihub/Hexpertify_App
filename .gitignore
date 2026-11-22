@@ -22,11 +22,10 @@ pnpm-debug.log*
 lerna-debug.log*
 *.log
 
-# Environment variables
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Environment variables: one .env at the repo root (secrets, never committed); .env.example is the template
+.env
+.env.*
+!.env.example
 
 # OS & Editor files
 .DS_Store
@@ -37,12 +36,12 @@ Thumbs.db
 # Backups
 backups/
 
-# Vercel entry stubs from the client panel's public/ folder; its build copies them into
-# Backend/public, where they are not used (Live_Panel/public keeps its tracked copies)
-/Backend/public/api/
-/Backend/public/src/
-/Backend/public/app.js
-/Backend/public/server.js
-/Backend/public/index.js
-/Backend/public/index.cjs
-/Backend/public/index.mjs
+# React panel builds (npm run build:panels writes them into the website's public folder; built on every deploy)
+/apps/web/public/index.html
+/apps/web/public/assets/
+/apps/web/public/client/
+/apps/web/public/admin/
+/apps/web/public/consultant/
+
+# Local archive of the old nested panel repos (git bundles + leftover folders), not part of the project
+/.archive/
