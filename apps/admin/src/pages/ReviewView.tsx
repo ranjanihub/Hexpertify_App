@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FileCheck,
   Clock,
   CheckCircle2,
   XCircle,
@@ -557,10 +556,6 @@ export const ReviewView: React.FC = () => {
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#5e2be2] via-[#6d35f0] to-[#804bee] p-7 text-white shadow-xl shadow-[#5e2be2]/15">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold tracking-wider uppercase text-purple-100">
-              <FileCheck className="w-3.5 h-3.5" />
-              <span>Editorial & Quality Control</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Consultant Blog & Article Reviews
             </h1>

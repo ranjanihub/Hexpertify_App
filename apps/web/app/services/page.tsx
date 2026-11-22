@@ -6,7 +6,7 @@ import {
   Ongoing,
 } from "@/asset/images";
 import ExploreConsultant from "@/components/Home/Explore";
-import { getPageData } from "../actions";
+import { getPublicProfessions } from "../actions";
 import Image from "next/image";
 
 // Professions are edited in the Super Admin panel; render on every request so changes show immediately
@@ -62,7 +62,7 @@ export default async function ServicesPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { professions } = await getPageData();
+  const professions = await getPublicProfessions();
 
   return (
     <div className="p-4 md:p-6 lg:p-[50px] w-full">

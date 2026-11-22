@@ -26,7 +26,7 @@ import {
   Edit,
   Save
 } from 'lucide-react';
-import { mockProfessions, mockTherapists } from '../data/mockData';
+import { mockTherapists } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
 import type { Booking } from '../types';
 
@@ -65,6 +65,89 @@ const isDateLabel = (value?: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(valu
 const scheduledDateOf = (b: Booking): string => (b.toBeScheduled || !isDateLabel(b.date) ? '' : b.date);
 const scheduledTimeOf = (b: Booking): string => (b.toBeScheduled ? '' : b.time || '');
 
+type TherapistDaySlot = { time: string; startAt: string; available: boolean };
+
+/** Start of a session in ms from its India-time labels ("2026-11-24", "09:00 AM - 10:00 AM"); null if unreadable */
+const sessionStartMs = (date: string, time: string): number | null => {
+  const m = String(time || '').split(/\s+-\s+/)[0].trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!isDateLabel(date) || !m) return null;
+  let hours = Number(m[1]) % 12;
+  if (m[3].toUpperCase() === 'PM') hours += 12;
+  return new Date(`${date}T${String(hours).padStart(2, '0')}:${m[2]}:00+05:30`).getTime();
+};
+
+/**
+ * Time slots from the therapist's own availability on the chosen day (GET /api/admin/availability/slots).
+ * Free slots can be picked; booked/blocked ones are shown greyed out. Past slots stay pickable so an admin
+ * can record a session that already happened. `keepValue` (the booking's current time) is always listed.
+ */
+const TherapistSlotSelect: React.FC<{
+  therapistId?: string;
+  date: string;
+  value: string;
+  onChange: (time: string) => void;
+  className: string;
+  keepValue?: string;
+  /** Pick the first free slot when the current value is not one of the therapist's free slots */
+  autoSelect?: boolean;
+  unscheduledOption?: boolean;
+  required?: boolean;
+}> = ({ therapistId, date, value, onChange, className, keepValue, autoSelect, unscheduledOption, required = true }) => {
+  const [slots, setSlots] = useState<TherapistDaySlot[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (!therapistId || !isDateLabel(date)) {
+      setSlots(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    api
+      .get<any>(`/api/admin/availability/slots?consultantId=${encodeURIComponent(therapistId)}&date=${date}`)
+      .then((data) => { if (!cancelled) setSlots(Array.isArray(data?.slots) ? data.slots : []); })
+      .catch(() => { if (!cancelled) setSlots([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [therapistId, date]);
+
+  const now = Date.now();
+  const isPast = (s: TherapistDaySlot) => new Date(s.startAt).getTime() <= now;
+  const pickable = (s: TherapistDaySlot) => s.available || isPast(s);
+
+  React.useEffect(() => {
+    if (!autoSelect || loading || !slots) return;
+    if (value && (value === keepValue || slots.some((s) => s.time === value && pickable(s)))) return;
+    const first = slots.find((s) => s.available) || slots.find(pickable);
+    if ((first?.time || '') !== value) onChange(first?.time || '');
+  }, [slots, loading]);
+
+  const extra = keepValue && !(slots || []).some((s) => s.time === keepValue) ? keepValue : '';
+
+  return (
+    <select required={required} value={value} onChange={(e) => onChange(e.target.value)} className={className}>
+      {unscheduledOption && <option value="" disabled>To be scheduled</option>}
+      {!therapistId || !isDateLabel(date) ? (
+        <option value="" disabled>Choose a therapist and date first</option>
+      ) : loading ? (
+        <option value={value}>Loading slots…</option>
+      ) : (
+        <>
+          {extra && <option value={extra}>{extra} (current)</option>}
+          {(slots || []).length === 0 && !extra && (
+            <option value="" disabled>Therapist is not available on this day</option>
+          )}
+          {(slots || []).map((s) => (
+            <option key={s.startAt} value={s.time} disabled={!pickable(s)}>
+              {s.time}{s.available ? '' : isPast(s) ? ' (past)' : ' (booked)'}
+            </option>
+          ))}
+        </>
+      )}
+    </select>
+  );
+};
+
 export const BookingsView: React.FC = () => {
   const { bookings, therapists, clients, refreshAllData } = useAppContext();
   const [bookingsList, setBookingsList] = useState<Booking[]>(bookings);
@@ -75,19 +158,19 @@ export const BookingsView: React.FC = () => {
   const [isEditingSelectedBooking, setIsEditingSelectedBooking] = useState(false);
   const [editBookingData, setEditBookingData] = useState<Booking | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [professionsList, setProfessionsList] = useState<{ id: string; serviceName: string; price?: number }[]>([]);
-
-  React.useEffect(() => {
-    const fetchProfessions = async () => {
-      try {
-        const data = await api.get('/api/admin/professions');
-        if (data?.professions && Array.isArray(data.professions)) {
-          setProfessionsList(data.professions);
-        }
-      } catch {}
-    };
-    fetchProfessions();
-  }, []);
+  /** The services (plans) a therapist currently offers; the API already leaves out removed plans */
+  const servicesOf = (therapistName: string) => {
+    const t = therapists.find((x) => x.name === therapistName);
+    return (t?.services || []).filter((s) => s?.serviceName && Number(s.sessionFee) > 0);
+  };
+  /** A therapist's id from their name (the booking forms select therapists by name) */
+  const therapistIdOf = (therapistName?: string, fallbackId?: string) =>
+    therapists.find((x) => x.name === therapistName)?.id || fallbackId;
+  /** First offered service of a therapist, as the booking form's service + fee */
+  const firstServiceOf = (therapistName: string) => {
+    const s = servicesOf(therapistName)[0];
+    return { service: s?.serviceName || '', amount: Number(s?.sessionFee) || 0 };
+  };
 
   React.useEffect(() => {
     if (bookings && bookings.length > 0) {
@@ -170,24 +253,19 @@ export const BookingsView: React.FC = () => {
     status: 'Scheduled'
   });
 
+  /** New booking's status, from its slot: Completed once the session time has passed, else Scheduled */
+  const newBookingStart = sessionStartMs(newBooking.date, newBooking.time);
+  const newBookingStatus = newBookingStart !== null && newBookingStart <= Date.now() ? 'Completed' : 'Scheduled';
+
   React.useEffect(() => {
     if (!newBooking.therapistName && therapists.length > 0) {
       setNewBooking((prev) => ({
         ...prev,
-        therapistName: therapists[0].name
+        therapistName: therapists[0].name,
+        ...firstServiceOf(therapists[0].name)
       }));
     }
   }, [therapists]);
-
-  React.useEffect(() => {
-    if (!newBooking.service && professionsList.length > 0) {
-      setNewBooking((prev) => ({
-        ...prev,
-        service: professionsList[0].serviceName,
-        amount: Number((professionsList[0] as any).price) || 0
-      }));
-    }
-  }, [professionsList]);
 
   // Toast Notification state
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' } | null>(null);
@@ -459,7 +537,7 @@ export const BookingsView: React.FC = () => {
       date: newBooking.date,
       time: newBooking.time,
       paymentStatus: toCanonical(PAYMENT_TO_CANONICAL, newBooking.paymentStatus),
-      status: toCanonical(STATUS_TO_CANONICAL, newBooking.status)
+      status: toCanonical(STATUS_TO_CANONICAL, newBookingStatus)
     };
     if (selectedClient) {
       payload.clientId = selectedClient.id;
@@ -489,10 +567,9 @@ export const BookingsView: React.FC = () => {
       clientName: '',
       clientAvatar: '',
       therapistName: therapists[0]?.name || '',
-      service: professionsList[0]?.serviceName || 'Individual Therapy',
+      ...firstServiceOf(therapists[0]?.name || ''),
       date: new Date().toISOString().split('T')[0],
       time: '09:00 AM - 10:00 AM',
-      amount: Number((professionsList[0] as any)?.price) || 0,
       paymentStatus: 'Paid',
       status: 'Scheduled'
     });
@@ -1104,7 +1181,15 @@ export const BookingsView: React.FC = () => {
                     <label className="font-extrabold text-slate-700">Assigned Therapist *</label>
                     <select
                       value={editBookingData?.therapistName || ''}
-                      onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, therapistName: e.target.value } : null))}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        // A different therapist: pick one of their services (the old one may not be offered)
+                        setEditBookingData((prev) => {
+                          if (!prev) return null;
+                          const offered = servicesOf(name).some((s) => s.serviceName === prev.service);
+                          return { ...prev, therapistName: name, service: offered ? prev.service : firstServiceOf(name).service || prev.service };
+                        });
+                      }}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
                     >
                       {therapists.map((t) => (
@@ -1121,11 +1206,18 @@ export const BookingsView: React.FC = () => {
                       onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, service: e.target.value } : null))}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
                     >
-                      {mockProfessions.map((p) => (
-                        <option key={p.id} value={p.serviceName}>
-                          {p.serviceName}
-                        </option>
-                      ))}
+                      {(() => {
+                        // The therapist's offered services, plus the booking's own service if it is no longer offered
+                        const offered = servicesOf(editBookingData?.therapistName || '').map((s) => s.serviceName);
+                        const current = editBookingData?.service || '';
+                        const names = current && !offered.includes(current) ? [current, ...offered] : offered;
+                        if (names.length === 0) return <option value="" disabled>No services offered by this therapist</option>;
+                        return names.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ));
+                      })()}
                     </select>
                   </div>
                 </div>
@@ -1143,20 +1235,16 @@ export const BookingsView: React.FC = () => {
                   </div>
                   <div className="space-y-1">
                     <label className="font-extrabold text-slate-700">Time Slot *</label>
-                    <select
+                    <TherapistSlotSelect
+                      therapistId={therapistIdOf(editBookingData?.therapistName, editBookingData?.consultantId)}
+                      date={editBookingData ? scheduledDateOf(editBookingData) : ''}
                       value={editBookingData ? scheduledTimeOf(editBookingData) : ''}
-                      onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, time: e.target.value, ...(prev.toBeScheduled ? { date: '', toBeScheduled: false } : {}) } : null))}
+                      keepValue={editBookingData ? scheduledTimeOf(editBookingData) : ''}
+                      unscheduledOption
+                      required={!editBookingData?.toBeScheduled}
+                      onChange={(time) => setEditBookingData((prev) => (prev ? { ...prev, time, ...(prev.toBeScheduled ? { date: '', toBeScheduled: false } : {}) } : null))}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
-                    >
-                      <option value="" disabled>To be scheduled</option>
-                      <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM</option>
-                      <option value="10:30 AM - 11:30 AM">10:30 AM - 11:30 AM</option>
-                      <option value="01:00 PM - 02:00 PM">01:00 PM - 02:00 PM</option>
-                      <option value="02:00 PM">02:00 PM</option>
-                      <option value="03:00 PM - 04:00 PM">03:00 PM - 04:00 PM</option>
-                      <option value="05:00 PM - 06:00 PM">05:00 PM - 06:00 PM</option>
-                      <option value="07:00 PM - 08:00 PM">07:00 PM - 08:00 PM</option>
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -1325,19 +1413,14 @@ export const BookingsView: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-700">New Time Slot *</label>
-                <select
+                <TherapistSlotSelect
+                  therapistId={therapistIdOf(rescheduleBooking.therapistName, rescheduleBooking.consultantId)}
+                  date={newDate}
                   value={newTime}
-                  onChange={(e) => setNewTime(e.target.value)}
+                  onChange={setNewTime}
+                  autoSelect
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-amber-500 focus:bg-white"
-                >
-                  <option value="09:00 AM">09:00 AM</option>
-                  <option value="10:30 AM">10:30 AM</option>
-                  <option value="01:00 PM">01:00 PM</option>
-                  <option value="02:00 PM">02:00 PM</option>
-                  <option value="04:00 PM">04:00 PM</option>
-                  <option value="06:00 PM">06:00 PM</option>
-                  <option value="07:30 PM">07:30 PM</option>
-                </select>
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -1532,10 +1615,11 @@ export const BookingsView: React.FC = () => {
                   <select
                     value={newBooking.therapistName}
                     onChange={(e) => {
-                      // The platform fee is not the session price; the fee comes from the service
+                      // Each therapist has their own services; the fee comes from the chosen service
                       setNewBooking({
                         ...newBooking,
-                        therapistName: e.target.value
+                        therapistName: e.target.value,
+                        ...firstServiceOf(e.target.value)
                       });
                     }}
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
@@ -1551,23 +1635,27 @@ export const BookingsView: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="font-extrabold text-slate-700 block">Service Type *</label>
                   <select
+                    required
                     value={newBooking.service}
                     onChange={(e) => {
-                      const sName = e.target.value;
-                      const selectedProf = professionsList.find((p) => p.serviceName === sName);
+                      const selected = servicesOf(newBooking.therapistName).find((s) => s.serviceName === e.target.value);
                       setNewBooking({
                         ...newBooking,
-                        service: sName,
-                        amount: (selectedProf as any)?.price || newBooking.amount
+                        service: e.target.value,
+                        amount: Number(selected?.sessionFee) || newBooking.amount
                       });
                     }}
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
                   >
-                    {(professionsList.length > 0 ? professionsList : mockProfessions).map((p: any) => (
-                      <option key={p.id || p.serviceName} value={p.serviceName}>
-                        {p.serviceName}
-                      </option>
-                    ))}
+                    {servicesOf(newBooking.therapistName).length === 0 ? (
+                      <option value="" disabled>No services offered by this therapist</option>
+                    ) : (
+                      servicesOf(newBooking.therapistName).map((s) => (
+                        <option key={s.id || s.serviceName} value={s.serviceName}>
+                          {s.serviceName} (₹{Number(s.sessionFee).toLocaleString('en-IN')})
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>
@@ -1586,32 +1674,25 @@ export const BookingsView: React.FC = () => {
 
                 <div className="space-y-1.5">
                   <label className="font-extrabold text-slate-700 block">Time Slot *</label>
-                  <select
+                  <TherapistSlotSelect
+                    therapistId={therapistIdOf(newBooking.therapistName)}
+                    date={newBooking.date}
                     value={newBooking.time}
-                    onChange={(e) => setNewBooking({ ...newBooking, time: e.target.value })}
+                    onChange={(time) => setNewBooking((prev) => ({ ...prev, time }))}
+                    autoSelect
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
-                  >
-                    <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM</option>
-                    <option value="10:30 AM - 11:30 AM">10:30 AM - 11:30 AM</option>
-                    <option value="01:00 PM - 02:00 PM">01:00 PM - 02:00 PM</option>
-                    <option value="03:00 PM - 04:00 PM">03:00 PM - 04:00 PM</option>
-                    <option value="05:00 PM - 06:00 PM">05:00 PM - 06:00 PM</option>
-                    <option value="07:00 PM - 08:00 PM">07:00 PM - 08:00 PM</option>
-                  </select>
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
                   <label className="font-extrabold text-slate-700 block">Session Fee (₹)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Service price"
-                    value={newBooking.amount || ''}
-                    onChange={(e) => setNewBooking({ ...newBooking, amount: Number(e.target.value) })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
-                  />
+                  {/* The therapist's price for the chosen service */}
+                  <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl font-mono font-semibold text-slate-800 cursor-not-allowed">
+                    {newBooking.amount > 0 ? `₹${Number(newBooking.amount).toLocaleString('en-IN')}` : '—'}
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium">From the therapist&apos;s service</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -1629,18 +1710,11 @@ export const BookingsView: React.FC = () => {
 
                 <div className="space-y-1.5">
                   <label className="font-extrabold text-slate-700 block">Initial Status</label>
-                  <select
-                    value={newBooking.status}
-                    onChange={(e) => setNewBooking({ ...newBooking, status: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
-                  >
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Rescheduled">Rescheduled</option>
-                    <option value="Cancelled">Cancelled</option>
-                    <option value="No Show - Client">No Show - Client</option>
-                    <option value="No Show - Consultant">No Show - Consultant</option>
-                  </select>
+                  {/* Set from the slot: a session that already took place is recorded as Completed */}
+                  <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl font-semibold text-slate-800 cursor-not-allowed">
+                    {newBookingStatus}
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium">From the session date &amp; time</p>
                 </div>
               </div>
 

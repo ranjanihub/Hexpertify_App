@@ -25,6 +25,7 @@ import { HexpertifyLogo } from '../common/HexpertifyLogo';
 import type { PageId } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { logoutAdmin, getAdminAuth } from '../../lib/auth';
+import { api } from '../../lib/apiClient';
 
 interface SidebarProps {
   currentPage?: PageId;
@@ -54,24 +55,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
   const location = useLocation();
   const navigate = useNavigate();
   const { clients } = useAppContext();
-  const [pendingReviewCount, setPendingReviewCount] = useState<number>(1);
+  // Real counts only: a badge is shown when there is something to count (no placeholder numbers)
+  const [pendingReviewCount, setPendingReviewCount] = useState<number>(0);
 
   useEffect(() => {
-    fetch('/api/blog/posts?status=pending')
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setPendingReviewCount(data.length);
-        } else {
-          setPendingReviewCount(1);
-        }
-      })
-      .catch(() => {
-        setPendingReviewCount(1);
-      });
+    api
+      .get<any>('/api/blog/posts?status=pending')
+      .then((data) => setPendingReviewCount(Array.isArray(data) ? data.length : Array.isArray(data?.posts) ? data.posts.length : 0))
+      .catch(() => setPendingReviewCount(0));
   }, [location.pathname]);
 
-  const clientCount = clients && clients.length > 0 ? clients.length : 120;
+  const clientCount = clients?.length || 0;
 
   const sections: NavSection[] = [
     {
@@ -103,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
         {
           title: 'People',
           items: [
-            { id: 'clients', path: '/clients', label: 'Clients', icon: Users, badge: clientCount },
+            { id: 'clients', path: '/clients', label: 'Clients', icon: Users, badge: clientCount || undefined },
             { id: 'therapists', path: '/therapists', label: 'Therapists', icon: UserCheck },
             { id: 'professions', path: '/professions', label: 'Professions', icon: Award }
           ]
@@ -125,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
           title: 'Website',
           items: [
             { id: 'homepage', path: '/homepage', label: 'Homepage', icon: Globe },
-            { id: 'review', path: '/review', label: 'Review', icon: FileCheck, badge: pendingReviewCount },
+            { id: 'review', path: '/review', label: 'Review', icon: FileCheck, badge: pendingReviewCount || undefined },
             { id: 'zombi', path: '/zombie-pages', label: 'Zombie Pages', icon: FileCode }
           ]
         },

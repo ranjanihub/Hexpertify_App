@@ -117,7 +117,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             </h1>
 
             <p className="text-purple-100/90 text-xs sm:text-sm md:text-base leading-relaxed font-normal">
-              Hexpertify Operations Hub · <span className="font-semibold text-white">{metrics.sessionsTodayCount} Sessions Today</span> · <span className="font-semibold text-white">₹{metrics.pendingPayoutsAmount.toLocaleString()} Pending Payouts</span> · <span className="font-semibold text-white">{metrics.pendingReportsCount} Pending Reports</span>
+              <span className="font-semibold text-white">{metrics.sessionsTodayCount} Sessions Today</span> · <span className="font-semibold text-white">₹{metrics.pendingPayoutsAmount.toLocaleString()} Pending Payouts</span> · <span className="font-semibold text-white">{metrics.pendingReportsCount} Pending Reports</span>
             </p>
 
             <div className="pt-1 sm:pt-2 flex flex-wrap items-center gap-2.5 sm:gap-3">
@@ -152,9 +152,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Video className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] sm:text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-emerald-100">
-              +2
-            </span>
           </div>
           <div>
             <p className="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 truncate">Sessions today</p>
@@ -171,9 +168,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] sm:text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-emerald-100">
-              +3
-            </span>
           </div>
           <div>
             <p className="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 truncate">Active clients</p>
@@ -190,9 +184,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] sm:text-xs font-extrabold text-amber-600 bg-amber-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-amber-100">
-              Action Req.
-            </span>
+            {metrics.pendingReportsCount > 0 && (
+              <span className="text-[10px] sm:text-xs font-extrabold text-amber-600 bg-amber-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-amber-100">
+                Action Req.
+              </span>
+            )}
           </div>
           <div>
             <p className="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 truncate">Pending reports</p>
@@ -209,9 +205,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] sm:text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-emerald-100">
-              +6h
-            </span>
           </div>
           <div>
             <p className="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 truncate">Therapy hours</p>

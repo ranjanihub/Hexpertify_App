@@ -37,8 +37,10 @@ export async function connectToDatabase(): Promise<Db> {
       usePublicDnsLocally();
       console.log('[MongoDB] Connecting to MongoDB Atlas cluster with optimized pool...');
       client = new MongoClient(config.mongodbUri, {
-        maxPoolSize: 50,
-        minPoolSize: 10,
+        // Serverless: each instance handles few concurrent requests, so a small pool that opens connections on
+        // demand. A min pool made every cold start open 10 TLS connections up front (the cluster is M0).
+        maxPoolSize: 10,
+        minPoolSize: 0,
         maxIdleTimeMS: 60000,
         connectTimeoutMS: 10000,
         socketTimeoutMS: 45000,

@@ -15,6 +15,26 @@ async function section<T>(label: string, load: () => Promise<T>, fallback: T): P
   }
 }
 
+/** Public professions, as the home and /services pages list them (name, image and link only) */
+async function loadPublicProfessions() {
+  const list = await prisma.profession.findMany({
+    select: {
+      id: true,
+      name: true,
+      identifier: true,
+      imageUrl: true,
+      imageAltText: true,
+      status: true,
+      visibility: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  return list.filter(isProfessionPublic);
+}
+
+/** The /services page needs only the professions (it used to load the whole home page) */
+export const getPublicProfessions = cache(async () => section("professions", loadPublicProfessions, []));
+
 // cache(): generateMetadata and the page itself share one load per request (it used to query the database twice)
 export const getPageData = cache(async () => {
   const [metaData, professions, topConsultants, recentlyBookedConsultants] = await Promise.all([
@@ -25,29 +45,7 @@ export const getPageData = cache(async () => {
       null,
     ),
 
-    // Professions (with their consultants)
-    section("professions", async () => {
-      const list = await prisma.profession.findMany({
-        include: {
-          consultants: {
-            select: {
-              id: true,
-              name: true,
-              identifier: true,
-              photoUrl: true,
-              photoAltText: true,
-              experience: true,
-              specialties: true,
-              ...CONSULTANT_FLAGS,
-            },
-          },
-        },
-        orderBy: { createdAt: "asc" },
-      });
-      return list
-        .filter(isProfessionPublic)
-        .map((p) => ({ ...p, consultants: p.consultants.filter(isConsultantPublic) }));
-    }, []),
+    section("professions", loadPublicProfessions, []),
 
     // Top consultants by admin-defined sequence; consultants without a sequence come after the ranked ones
     section("topConsultants", async () => {
