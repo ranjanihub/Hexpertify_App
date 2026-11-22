@@ -74,12 +74,37 @@ const assetLabel = (a: { type?: string; category?: string }): string => {
   return 'Other';
 };
 
+/** Readable file size: KB under 1 MB (so small images never show as "0.0 MB") */
+const formatBytes = (bytes: number): string =>
+  bytes >= 1024 * 1024 ? (bytes / (1024 * 1024)).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+
+/** The stored size, or for an image kept inline (data: URI) the size of its bytes */
+const assetSize = (a: any): string => {
+  if (typeof a.size === 'number' && a.size > 0) return formatBytes(a.size);
+  const url = String(a.url || '');
+  const header = /^data:[^;,]+;base64,/.exec(url);
+  if (header) return formatBytes(Math.round(((url.length - header[0].length) * 3) / 4));
+  return typeof a.size === 'string' ? a.size : '';
+};
+
+const IMAGE_ASSET_TYPES = ['Banner', 'Consultant', 'Icon', 'Professional', 'Certificate', 'Blog', 'Images'];
+
+/** True when the asset can be shown as an image (inline data: images and http(s) image links) */
+const isImageAsset = (a: { url?: string; type?: string }): boolean => {
+  const url = String(a.url || '');
+  if (url.startsWith('data:image/')) return true;
+  // Uploads served by the API (/api/assets/<id>/file) and other links on this site
+  if (url.startsWith('/api/assets/')) return true;
+  if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) return false;
+  return IMAGE_ASSET_TYPES.includes(String(a.type)) || url.includes('cloudinary.com') || /\.(webp|png|jpe?g|svg|gif|avif)($|\?)/i.test(url);
+};
+
 /** Assets from the API in the shape this view shows (label in `type`, readable size and date) */
 const normalizeAsset = (a: any): MediaAsset => ({
   ...a,
   id: a.id || String(a._id || ''),
   type: assetLabel(a),
-  size: typeof a.size === 'number' ? (a.size / (1024 * 1024)).toFixed(1) + ' MB' : a.size || '',
+  size: assetSize(a),
   uploadedDate: a.uploadedDate || (a.createdAt ? String(a.createdAt).split('T')[0] : ''),
   category: a.category || ''
 });
@@ -237,7 +262,7 @@ export const AssetsView: React.FC = () => {
     }
 
     const fileSizeFormatted = selectedFile && !hostedUrl.trim()
-      ? (selectedFile.size / (1024 * 1024)).toFixed(1) + ' MB'
+      ? formatBytes(selectedFile.size)
       : '';
 
     let saved: any;
@@ -416,14 +441,13 @@ export const AssetsView: React.FC = () => {
             >
               {/* Media Thumbnail Container */}
               <div className="h-36 bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center relative border border-slate-100 group-hover:border-purple-200 transition-colors">
-                {ast.url && (ast.url.startsWith('http') || ast.url.startsWith('data:')) && (ast.type === 'Banner' || ast.type === 'Consultant' || ast.type === 'Icon' || ast.type === 'Professional' || ast.type === 'Certificate' || ast.type === 'Blog' || ast.type === 'Images' || ast.url.includes('cloudinary.com') || ast.url.match(/\.(webp|png|jpg|jpeg|svg|gif)($|\?)/i)) ? (
+                {isImageAsset(ast) ? (
                   <img
                     src={ast.url}
                     alt={ast.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80';
+                      (e.target as HTMLImageElement).style.visibility = 'hidden';
                     }}
                   />
                 ) : (
@@ -684,7 +708,7 @@ export const AssetsView: React.FC = () => {
             </div>
 
             <div className="h-64 bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-200">
-              {activePreviewAsset.type === 'Images' || activePreviewAsset.url.startsWith('http') ? (
+              {isImageAsset(activePreviewAsset) ? (
                 <img src={activePreviewAsset.url} alt={activePreviewAsset.name} className="w-full h-full object-contain" />
               ) : (
                 <div className="flex flex-col items-center gap-3 text-slate-400">

@@ -275,7 +275,7 @@ export const App: React.FC = () => {
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                You modified Homepage CMS settings. Do you want to save your changes before navigating to <span className="font-extrabold text-slate-900 capitalize">{pendingPageId}</span>?
+                You changed the homepage. Do you want to save your changes before navigating to <span className="font-extrabold text-slate-900 capitalize">{pendingPageId}</span>?
               </p>
 
               <div className="flex flex-col gap-2.5 pt-2">

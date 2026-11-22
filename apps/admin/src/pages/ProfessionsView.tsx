@@ -29,9 +29,11 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Loader2,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { KeywordsTagInput } from '../components/common/KeywordsTagInput';
+import { ImageUploadButton } from '../components/common/ImageUploadButton';
 import { api } from '../lib/apiClient';
 import type { ProfessionService } from '../types';
 
@@ -361,6 +363,8 @@ export const ProfessionsView: React.FC = () => {
   const [editingProf, setEditingProf] = useState<ProfessionService | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'Basic Info' | 'FAQs' | 'SEO'>('Basic Info');
+  // Required (*) fields left empty on the last save attempt
+  const [missingFields, setMissingFields] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
@@ -403,13 +407,12 @@ export const ProfessionsView: React.FC = () => {
     slug: '',
     status: 'Active',
     description: '',
-    imageUrl: 'https://res.cloudinary.com/ddgvdabyf/image/upload/v1766960577/uploads/vxgxmznjcqf88gd7b3hz.webp',
-    imageAltText: 'consultation category icon',
-    heroBannerUrl: 'https://res.cloudinary.com/ddgvdabyf/image/upload/v1767777320/uploads/ktdvkdkkxecmoxzba5k6.webp',
-    heroBannerTitle: 'Affordable Online Consultations in India',
-    faqs: [
-      { question: 'How do I book a consultation?', answer: 'Select a verified specialist and schedule your session online in seconds.' }
-    ],
+    // A new profession starts empty: the admin sets its own icon, banner and FAQs
+    imageUrl: '',
+    imageAltText: '',
+    heroBannerUrl: '',
+    heroBannerTitle: '',
+    faqs: [],
     consultationFee: 998,
     sessionDurationMinutes: 50,
     visibility: 'Public',
@@ -437,6 +440,7 @@ export const ProfessionsView: React.FC = () => {
   const handleInspect = (prof: ProfessionService) => {
     setEditingProf({ ...prof });
     setIsNewModalOpen(false);
+    setMissingFields([]);
     setActiveTab('Basic Info');
     setAutoSaveStatus('saved');
   };
@@ -444,9 +448,14 @@ export const ProfessionsView: React.FC = () => {
   const handleAddNewTrigger = () => {
     setEditingProf(createBlankProfession());
     setIsNewModalOpen(true);
+    setMissingFields([]);
     setActiveTab('Basic Info');
     setAutoSaveStatus('idle');
   };
+
+  // Changes some fields of the profession being edited (used after an upload, so typing meanwhile is kept)
+  const patchEditingProf = (patch: Partial<ProfessionService>) =>
+    setEditingProf((prev) => (prev ? { ...prev, ...patch } : prev));
 
   const handleModalFieldChange = (updated: ProfessionService) => {
     setEditingProf(updated);
@@ -460,12 +469,39 @@ export const ProfessionsView: React.FC = () => {
     }
   };
 
+  /** Every field marked * in the form; FAQs are optional, but an added FAQ needs both its question and answer */
+  const missingRequiredFields = (prof: ProfessionService): { tab: 'Basic Info' | 'FAQs' | 'SEO'; label: string }[] => {
+    const blank = (v: unknown) => !String(v ?? '').trim();
+    const checks: { tab: 'Basic Info' | 'FAQs' | 'SEO'; label: string; value: unknown }[] = [
+      { tab: 'Basic Info', label: 'Profession Name', value: prof.serviceName },
+      { tab: 'Basic Info', label: 'Identifier', value: prof.identifier },
+      { tab: 'Basic Info', label: 'Image URL or Icon URL', value: prof.imageUrl },
+      { tab: 'Basic Info', label: 'Alt Text for that Icon/Image', value: prof.imageAltText },
+      { tab: 'Basic Info', label: 'Banner URL', value: prof.heroBannerUrl || prof.bannerUrl },
+      { tab: 'Basic Info', label: 'Banner Title', value: prof.heroBannerTitle || prof.bannerTitle },
+      ...(prof.faqs || []).flatMap((faq, i) => [
+        { tab: 'FAQs' as const, label: `FAQ ${i + 1} question`, value: faq.question },
+        { tab: 'FAQs' as const, label: `FAQ ${i + 1} answer`, value: faq.answer },
+      ]),
+      { tab: 'SEO', label: 'Meta Title', value: prof.seo?.metaTitle },
+      { tab: 'SEO', label: 'Meta Description', value: prof.seo?.metaDescription },
+      { tab: 'SEO', label: 'OG Title', value: prof.seo?.openGraphTitle },
+      { tab: 'SEO', label: 'OG Image URL', value: prof.seo?.openGraphImageUrl },
+      { tab: 'SEO', label: 'OG Description', value: prof.seo?.openGraphDescription },
+      { tab: 'SEO', label: 'OG Image Alt Text', value: prof.seo?.openGraphImageAltText },
+    ];
+    return checks.filter((c) => blank(c.value)).map(({ tab, label }) => ({ tab, label }));
+  };
+
   const handleSaveModal = () => {
     if (!editingProf) return;
-    if (!editingProf.serviceName.trim()) {
-      alert('Please enter a Profession Name (e.g. Couple Therapist).');
+    const missing = missingRequiredFields(editingProf);
+    if (missing.length) {
+      setMissingFields(missing.map((m) => m.label));
+      setActiveTab(missing[0].tab);
       return;
     }
+    setMissingFields([]);
 
     const draft = editingProf;
     const isNew = isNewModalOpen;
@@ -590,14 +626,21 @@ export const ProfessionsView: React.FC = () => {
           >
             {/* Card Top Banner Area */}
             <div className="relative aspect-[16/9] w-full bg-slate-100 overflow-hidden">
-              <img
-                src={prof.heroBannerUrl || prof.imageUrl || 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800'}
-                alt={prof.imageAltText || prof.serviceName}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800';
-                }}
-              />
+              {/* The profession's own banner (or icon); no stock photo when none is set */}
+              {(prof.heroBannerUrl || prof.imageUrl) ? (
+                <img
+                  src={prof.heroBannerUrl || prof.imageUrl}
+                  alt={prof.imageAltText || prof.serviceName}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.visibility = 'hidden';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                  <ImageIcon className="w-10 h-10" />
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/20 to-transparent" />
 
               <div className="absolute top-3 right-3 flex items-center gap-2 pointer-events-none">
@@ -759,6 +802,13 @@ export const ProfessionsView: React.FC = () => {
             {/* Modal Body Scrollable Content */}
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 bg-slate-50/30">
 
+              {missingFields.length > 0 && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800" role="alert">
+                  <p className="font-extrabold">Please fill in the required fields (*) before saving:</p>
+                  <p className="mt-1">{missingFields.join(' · ')}</p>
+                </div>
+              )}
+
               {/* ── TAB 1: BASIC INFO ────────────────────────────────────────────── */}
               {activeTab === 'Basic Info' && (
                 <div className="space-y-6 text-xs">
@@ -825,13 +875,20 @@ export const ProfessionsView: React.FC = () => {
                       {/* Image URL or Icon URL */}
                       <div className="space-y-1.5">
                         <label className="font-extrabold text-slate-700 block">Image URL or Icon URL *</label>
-                        <input
-                          type="text"
-                          placeholder="https://images.unsplash.com/..."
-                          value={editingProf.imageUrl || ''}
-                          onChange={(e) => handleModalFieldChange({ ...editingProf, imageUrl: e.target.value })}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Upload an icon, or paste its link"
+                            value={editingProf.imageUrl || ''}
+                            onChange={(e) => handleModalFieldChange({ ...editingProf, imageUrl: e.target.value })}
+                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          />
+                          <ImageUploadButton
+                            assetType="Icon"
+                            assetName={editingProf.serviceName ? `${editingProf.serviceName} icon` : 'Profession icon'}
+                            onUploaded={(url) => patchEditingProf({ imageUrl: url })}
+                          />
+                        </div>
                       </div>
 
                       {/* Alt Text for that Icon */}
@@ -860,13 +917,20 @@ export const ProfessionsView: React.FC = () => {
                       {/* Banner URL */}
                       <div className="space-y-1.5">
                         <label className="font-extrabold text-slate-700 block">Banner URL *</label>
-                        <input
-                          type="text"
-                          placeholder="https://images.unsplash.com/..."
-                          value={editingProf.heroBannerUrl || editingProf.bannerUrl || ''}
-                          onChange={(e) => handleModalFieldChange({ ...editingProf, heroBannerUrl: e.target.value, bannerUrl: e.target.value })}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Upload a banner, or paste its link"
+                            value={editingProf.heroBannerUrl || editingProf.bannerUrl || ''}
+                            onChange={(e) => handleModalFieldChange({ ...editingProf, heroBannerUrl: e.target.value, bannerUrl: e.target.value })}
+                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          />
+                          <ImageUploadButton
+                            assetType="Banner"
+                            assetName={editingProf.serviceName ? `${editingProf.serviceName} banner` : 'Profession banner'}
+                            onUploaded={(url) => patchEditingProf({ heroBannerUrl: url, bannerUrl: url })}
+                          />
+                        </div>
                       </div>
 
                       {/* Banner Title */}
@@ -1182,18 +1246,27 @@ export const ProfessionsView: React.FC = () => {
 
                       <div className="space-y-1.5">
                         <label className="font-extrabold text-slate-700 block">OG Image URL *</label>
-                        <input
-                          type="text"
-                          placeholder="https://... (1200×630 recommended)"
-                          value={editingProf.seo?.openGraphImageUrl || ''}
-                          onChange={(e) =>
-                            handleModalFieldChange({
-                              ...editingProf,
-                              seo: { ...editingProf.seo, openGraphImageUrl: e.target.value }
-                            })
-                          }
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2]"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Upload an image (1200×630), or paste its link"
+                            value={editingProf.seo?.openGraphImageUrl || ''}
+                            onChange={(e) =>
+                              handleModalFieldChange({
+                                ...editingProf,
+                                seo: { ...editingProf.seo, openGraphImageUrl: e.target.value }
+                              })
+                            }
+                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          />
+                          <ImageUploadButton
+                            assetType="Banner"
+                            assetName={editingProf.serviceName ? `${editingProf.serviceName} social share image` : 'Profession social share image'}
+                            onUploaded={(url) =>
+                              setEditingProf((prev) => (prev ? { ...prev, seo: { ...prev.seo, openGraphImageUrl: url } } : prev))
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
 

@@ -48,6 +48,7 @@ import {
 import { useAppContext } from '../context/AppContext';
 import { launchConsultantPanel } from '../lib/auth';
 import { api } from '../lib/apiClient';
+import { ImageUploadButton } from '../components/common/ImageUploadButton';
 import type {
   Therapist,
   Client,
@@ -872,7 +873,6 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
     setValidationError(null);
 
     const original = editingTherapistId ? therapistsList.find((t) => t.id === editingTherapistId) : undefined;
-    const defaultPhoto = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300';
     // The name is saved exactly as the admin typed it
     const displayName = formData.name.trim();
     const slug = formData.identifier || displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -884,7 +884,8 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       email: formData.email.trim().toLowerCase() || `${slug}@hexpertify.com`,
       identifier: slug,
       sequence: formData.sequence.trim() === '' ? null : Number(formData.sequence),
-      photo: formData.photo.trim() || defaultPhoto,
+      // No stock photo: without a photo the website shows a profile icon
+      photo: formData.photo.trim(),
       photoAltText: formData.photoAltText.trim() || `Photo of ${displayName}`,
       profession: professionName,
       qualifications: formData.qualifications.filter((q) => q.trim().length > 0),
@@ -2043,13 +2044,30 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-extrabold text-slate-700">Photo URL *</label>
-                      <input
-                        type="text"
-                        placeholder="https://example.com/photo.jpg"
-                        value={formData.photo}
-                        onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
-                      />
+                      <div className="flex items-center gap-2">
+                        {formData.photo && (
+                          <img
+                            src={formData.photo}
+                            alt=""
+                            className="w-10 h-10 shrink-0 rounded-full object-cover ring-2 ring-purple-100 bg-slate-100"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.visibility = 'hidden';
+                            }}
+                          />
+                        )}
+                        <input
+                          type="text"
+                          placeholder="Upload a photo, or paste its link"
+                          value={formData.photo}
+                          onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
+                          className="flex-1 min-w-0 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        />
+                        <ImageUploadButton
+                          assetType="Consultant"
+                          assetName={formData.name ? `${formData.name} photo` : 'Consultant photo'}
+                          onUploaded={(url) => setFormData((prev) => ({ ...prev, photo: url }))}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">

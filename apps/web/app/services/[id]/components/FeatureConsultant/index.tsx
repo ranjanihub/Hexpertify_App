@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
-import { Star } from "lucide-react";
+import { Star, UserRound } from "lucide-react";
 
 interface consultants {
   name: string;
@@ -39,12 +39,22 @@ const FeatureConsultant = ({ data, serviceNo }: props) => {
           className="min-w-0 mb-[10px] flex flex-row justify-start items-stretch rounded-[16px] bg-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)] p-3 sm:p-1 overflow-hidden gap-3 sm:gap-0 scale-[1.02] cursor-pointer no-underline transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <div className="relative w-[120px] h-[165px] sm:h-[300px] sm:w-[254px] shrink-0 rounded-lg  overflow-hidden bg-gray-100">
-            <Image
-              src={item?.profile}
-              alt={item?.profileAltText || "Doctor Profile"}
-              fill
-              className="object-cover object-top"
-            />
+            {item?.profile ? (
+              <Image
+                src={item.profile}
+                alt={item?.profileAltText || "Doctor Profile"}
+                fill
+                className="object-cover object-top"
+              />
+            ) : (
+              // No photo uploaded yet: a plain profile icon instead of an empty image
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400"
+                aria-label={item?.name}
+              >
+                <UserRound className="w-14 h-14 sm:w-24 sm:h-24" strokeWidth={1.5} />
+              </div>
+            )}
           </div>
 
           <div className="min-w-0 flex flex-col justify-between w-full sm:p-[15px]">

@@ -4,6 +4,8 @@ import { AssetsController } from '../controllers/assets.controller';
 const router = Router();
 
 router.get('/', AssetsController.getAll);
+// The file itself (uploads are stored inline and served here)
+router.get('/:id/file', AssetsController.getFile);
 router.get('/:id', AssetsController.getById);
 router.post('/', AssetsController.create);
 router.put('/', AssetsController.update);

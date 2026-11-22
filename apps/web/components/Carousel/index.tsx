@@ -64,11 +64,15 @@ const CarouselCommon = ({
       isMobile: HeroBanner?.carouselImageIsMobileFlags?.[index],
     })) || [];
 
+  // Phones show the banners marked "mobile" and larger screens the others; when one set is empty
+  // the other is used, so the banner never disappears
+  const mobileBanners = combined.filter((item: any) => item?.isMobile);
+  const desktopBanners = combined.filter((item: any) => !item?.isMobile);
   const heroBanner = isCleanMeta
     ? HeroBanner || []
-    : combined.filter((item: any) =>
-        isMobile ? item?.isMobile : !item?.isMobile,
-      );
+    : isMobile
+      ? mobileBanners.length ? mobileBanners : desktopBanners
+      : desktopBanners.length ? desktopBanners : mobileBanners;
 
   return (
     <div className="mx-auto flex flex-col justify-center items-center overflow-hidden w-full">

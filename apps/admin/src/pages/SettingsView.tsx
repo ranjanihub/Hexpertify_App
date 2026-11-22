@@ -41,29 +41,10 @@ export const SettingsView: React.FC = () => {
   const [, setIsDbConnected] = useState(false);
   const [isLoadingDb, setIsLoadingDb] = useState(false);
 
-  // Admin users state (real accounts only: the last loaded list until the database answers)
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(() => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem('hexpertify_admin_users') || '[]');
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  // Consultant users state
-  const [consultantUsers, setConsultantUsers] = useState<ConsultantUser[]>(() => {
-    const saved = localStorage.getItem('hexpertify_consultant_users');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (e) {}
-    }
-    return [];
-  });
+  // Admin and consultant users: straight from the database (no browser copy, which could show old or sample data)
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [consultantUsers, setConsultantUsers] = useState<ConsultantUser[]>([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
 
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
@@ -97,7 +78,7 @@ export const SettingsView: React.FC = () => {
   }>({
     name: '',
     email: '',
-    profession: 'Licensed Psychologist',
+    profession: '',
     status: 'Active'
   });
 
@@ -114,19 +95,18 @@ export const SettingsView: React.FC = () => {
     try {
       // 1. Fetch Consultants from MongoDB Atlas
       const dataCons: any = await api.get('/api/admin/consultants').catch(() => null);
-      if (dataCons) {
-        if (dataCons?.consultants && Array.isArray(dataCons.consultants) && dataCons.consultants.length > 0) {
-          const liveCons: ConsultantUser[] = dataCons.consultants.map((c: any) => ({
-            id: c.id || `CON-${String(c._id || '').slice(-4)}`,
-            name: c.name,
-            profession: c.profession || c.title || 'Consultant',
-            email: c.email || `${c.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@hexpertify.com`,
-            status: (c.accountStatus || 'Active') as any,
-            createdAt: c.createdAt ? new Date(c.createdAt).toISOString().split('T')[0] : '2025-01-10'
-          }));
-          setConsultantUsers(liveCons);
-          setIsDbConnected(true);
-        }
+      if (dataCons && Array.isArray(dataCons.consultants)) {
+        // The database's list as it is (also when it is empty); nothing invented for missing details
+        const liveCons: ConsultantUser[] = dataCons.consultants.map((c: any) => ({
+          id: c.id || String(c._id || ''),
+          name: c.name || '',
+          profession: c.professionName || (typeof c.profession === 'string' ? c.profession : c.profession?.name) || c.title || '',
+          email: c.email || '',
+          status: (c.accountStatus || 'Active') as any,
+          createdAt: c.createdAt ? new Date(c.createdAt).toISOString().split('T')[0] : ''
+        }));
+        setConsultantUsers(liveCons);
+        setIsDbConnected(true);
       }
     } catch (e) {
       // Offline fallback
@@ -135,39 +115,36 @@ export const SettingsView: React.FC = () => {
     try {
       // 2. Fetch Admin Users from MongoDB Atlas
       const dataUsers: any = await api.get('/api/admin/users').catch(() => null);
-      if (dataUsers) {
-        if (dataUsers?.users && Array.isArray(dataUsers.users)) {
-          const adminOnly = dataUsers.users.filter((u: any) => String(u.role).toUpperCase() === 'ADMIN');
-          if (adminOnly.length > 0) {
-            const liveAdmins: AdminUser[] = adminOnly.map((a: any) => ({
-              id: a.id || String(a._id || `ADM-${String(a.email || '').slice(0, 4)}`),
-              name: a.name || 'Admin User',
-              role: 'Super Admin',
-              email: a.email,
-              status: (a.status || 'Active') as any,
-              createdAt: a.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : '2025-01-15'
-            }));
-            setAdminUsers(liveAdmins);
-            setIsDbConnected(true);
-          }
-        }
+      if (dataUsers && Array.isArray(dataUsers.users)) {
+        const adminOnly = dataUsers.users.filter((u: any) => String(u.role).toUpperCase() === 'ADMIN');
+        const liveAdmins: AdminUser[] = adminOnly.map((a: any) => ({
+          id: a.id || String(a._id || ''),
+          name: a.name || a.email || '',
+          role: 'Super Admin',
+          email: a.email || '',
+          status: (a.status || 'Active') as any,
+          createdAt: a.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : ''
+        }));
+        setAdminUsers(liveAdmins);
+        setIsDbConnected(true);
       }
     } catch (e) {}
 
     setIsLoadingDb(false);
+    setUsersLoaded(true);
   };
 
   useEffect(() => {
     fetchLiveDatabaseData();
   }, []);
 
+  // Drop the browser copies older versions of this page kept (they could show sample users)
   useEffect(() => {
-    localStorage.setItem('hexpertify_admin_users', JSON.stringify(adminUsers));
-  }, [adminUsers]);
-
-  useEffect(() => {
-    localStorage.setItem('hexpertify_consultant_users', JSON.stringify(consultantUsers));
-  }, [consultantUsers]);
+    try {
+      localStorage.removeItem('hexpertify_admin_users');
+      localStorage.removeItem('hexpertify_consultant_users');
+    } catch {}
+  }, []);
 
   // ── ADMIN USER HANDLERS ──────────────────────────────────────
   const handleOpenAddAdminModal = () => {
@@ -574,7 +551,9 @@ export const SettingsView: React.FC = () => {
         {/* ── ADMIN USERS TAB ── */}
         {activeTab === 'admins' && (
           <div className="divide-y divide-slate-100">
-            {adminUsers.length === 0 ? (
+            {!usersLoaded ? (
+              <div className="py-12 text-center text-slate-400 text-sm">Loading admin users…</div>
+            ) : adminUsers.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-sm">
                 No admin users found. Click <strong className="text-slate-700">Add Admin User</strong> to create one.
               </div>
@@ -589,10 +568,12 @@ export const SettingsView: React.FC = () => {
                       <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                         {usr.name}
                       </h4>
-                      <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <Mail className="w-3 h-3 text-slate-400" />
-                        {usr.email}
-                      </p>
+                      {usr.email && (
+                        <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                          <Mail className="w-3 h-3 text-slate-400" />
+                          {usr.email}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -642,7 +623,9 @@ export const SettingsView: React.FC = () => {
         {/* ── CONSULTANT USERS TAB ── */}
         {activeTab === 'consultants' && (
           <div className="divide-y divide-slate-100">
-            {consultantUsers.length === 0 ? (
+            {!usersLoaded ? (
+              <div className="py-12 text-center text-slate-400 text-sm">Loading consultant users…</div>
+            ) : consultantUsers.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-sm">
                 No consultant users found. Click <strong className="text-slate-700">Add Consultant User</strong> to create one.
               </div>
@@ -657,18 +640,22 @@ export const SettingsView: React.FC = () => {
                       <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                         {usr.name}
                       </h4>
-                      <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <Mail className="w-3 h-3 text-slate-400" />
-                        {usr.email}
-                      </p>
+                      {usr.email && (
+                        <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                          <Mail className="w-3 h-3 text-slate-400" />
+                          {usr.email}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-amber-50 text-amber-800 font-bold text-xs rounded-full border border-amber-200/60 flex items-center gap-1">
-                      <Award className="w-3 h-3 text-amber-600" />
-                      {usr.profession}
-                    </span>
+                    {usr.profession && (
+                      <span className="px-3 py-1 bg-amber-50 text-amber-800 font-bold text-xs rounded-full border border-amber-200/60 flex items-center gap-1">
+                        <Award className="w-3 h-3 text-amber-600" />
+                        {usr.profession}
+                      </span>
+                    )}
 
                     <button
                       onClick={() => handleToggleConsultantStatus(usr.id)}

@@ -1,6 +1,8 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { idQuery, newId } from '../services/live-content';
+import { ASSET_FOLDER, deleteFromCloudinary, uploadToCloudinary, type UploadedFile } from '../services/cloudinary';
 
 /** apps/web/prisma/schema.prisma enum AssetCategory */
 const ASSET_CATEGORIES = ['PROFESSIONAL', 'BLOG', 'CONSULTANT', 'BANNER', 'CERTIFICATE', 'ICON', 'OTHER'] as const;
@@ -25,6 +27,39 @@ function cloudinaryPublicId(url: string): string {
 /** By _id (string or ObjectId), id, or the id the admin panel generated before saving */
 const assetQuery = (id: string) => ({ $or: [...idQuery(id).$or, { clientRef: id }] });
 
+/**
+ * Uploaded files arrive as base64 data: URIs. The bytes are kept in the asset's `data` field and the asset gets a
+ * real address instead, /api/assets/<id>/file?v=<content hash> (served by getFile, cacheable for good), so pages
+ * link to the image rather than repeating it inline. Older assets stored with a data: url are served the same way.
+ */
+const DATA_URI = /^data:([^;,]+);base64,/;
+const isDataUri = (value: unknown): value is string => typeof value === 'string' && DATA_URI.test(value);
+const contentVersion = (dataUri: string) => crypto.createHash('sha1').update(dataUri).digest('hex').slice(0, 12);
+const fileUrl = (id: string, dataUri: string) => `/api/assets/${encodeURIComponent(id)}/file?v=${contentVersion(dataUri)}`;
+const isOwnFileUrl = (value: string) => /^\/api\/assets\/[^/]+\/file(\?|$)/.test(value);
+
+function readableBytes(bytes: number): string {
+  return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function readableSize(dataUri: string): string {
+  return readableBytes(Math.round(((dataUri.length - (DATA_URI.exec(dataUri)?.[0].length || 0)) * 3) / 4));
+}
+
+/** An asset as the API returns it: never the inline bytes, always a usable url */
+function publicAsset(a: any): any {
+  const { data, ...rest } = a;
+  const id = a.id || String(a._id);
+  const inline = isDataUri(data) ? data : isDataUri(a.url) ? a.url : null;
+  return {
+    ...rest,
+    id,
+    url: inline ? fileUrl(id, inline) : rest.url,
+    // The real size of a stored file (older uploads saved sizes like "0.0 MB")
+    ...(inline ? { size: readableSize(inline) } : {})
+  };
+}
+
 export class AssetsController {
   /**
    * GET /api/assets and GET /api/admin/assets
@@ -37,10 +72,7 @@ export class AssetsController {
       res.json({
         success: true,
         count: assets.length,
-        assets: assets.map((a) => ({
-          ...a,
-          id: a.id || String(a._id)
-        }))
+        assets: assets.map(publicAsset)
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch assets' });
@@ -63,10 +95,38 @@ export class AssetsController {
 
       res.json({
         success: true,
-        asset: { ...asset, id: asset.id || String(asset._id) }
+        asset: publicAsset(asset)
       });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch asset' });
+    }
+  }
+
+  /**
+   * GET /api/assets/:id/file
+   * The asset's file (for uploads kept inline). The url carries a content hash, so it can be cached for good.
+   */
+  static async getFile(req: Request, res: Response): Promise<void> {
+    try {
+      const id = String(req.params.id || '');
+      const asset: any = await getDatabase().collection('Asset').findOne(assetQuery(id), { projection: { data: 1, url: 1 } });
+      const inline = asset && (isDataUri(asset.data) ? asset.data : isDataUri(asset.url) ? asset.url : null);
+      if (!inline) {
+        if (asset?.url && /^https?:\/\//i.test(asset.url)) {
+          res.redirect(302, asset.url);
+          return;
+        }
+        res.status(404).json({ success: false, error: 'Asset file not found' });
+        return;
+      }
+      const header = DATA_URI.exec(inline)!;
+      const bytes = Buffer.from(inline.slice(header[0].length), 'base64');
+      res.setHeader('Content-Type', header[1]);
+      res.setHeader('Content-Length', String(bytes.length));
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.end(bytes);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error?.message || 'Failed to load asset file' });
     }
   }
 
@@ -84,6 +144,17 @@ export class AssetsController {
         return;
       }
 
+      // An uploaded file (data: URI) is stored on Cloudinary; the asset keeps its Cloudinary URL
+      let uploaded: UploadedFile | null = null;
+      if (isDataUri(url)) {
+        try {
+          uploaded = await uploadToCloudinary(url);
+        } catch (err: any) {
+          res.status(502).json({ success: false, error: err?.message || 'The file could not be uploaded to Cloudinary' });
+          return;
+        }
+      }
+
       // The website reads Asset through Prisma: string _id, enum category, required url and publicId
       const id = newId();
       const label = String(body.category || body.type || '').trim();
@@ -92,11 +163,12 @@ export class AssetsController {
         id,
         name: String(body.name || '').trim() || 'Untitled',
         category: toAssetCategory(label),
-        url,
-        publicId: String(body.publicId || '').trim() || cloudinaryPublicId(url),
+        url: uploaded ? uploaded.url : url,
+        publicId: uploaded ? uploaded.publicId : String(body.publicId || '').trim() || cloudinaryPublicId(url),
+        ...(uploaded ? { resourceType: uploaded.resourceType } : {}),
         // Admin panel display fields (ignored by the website)
         type: label || 'Other',
-        ...(body.size ? { size: String(body.size) } : {}),
+        ...(uploaded ? { size: readableBytes(uploaded.bytes) } : body.size ? { size: String(body.size) } : {}),
         ...(body.uploadedDate ? { uploadedDate: String(body.uploadedDate) } : {}),
         ...(body.id ? { clientRef: String(body.id) } : {}),
         createdAt: new Date(),
@@ -107,7 +179,7 @@ export class AssetsController {
 
       res.status(201).json({
         success: true,
-        asset: newAsset,
+        asset: publicAsset(newAsset),
         message: 'Asset created successfully in MongoDB'
       });
     } catch (error: any) {
@@ -129,23 +201,45 @@ export class AssetsController {
         updates.category = toAssetCategory(label);
         updates.type = label || 'Other';
       }
-      if (body.url) {
-        updates.url = String(body.url).trim();
-        updates.publicId = String(body.publicId || '').trim() || cloudinaryPublicId(updates.url);
-      } else if (body.publicId !== undefined) {
-        updates.publicId = String(body.publicId || '').trim();
-      }
-
       if (!id) {
         res.status(400).json({ success: false, error: 'Asset ID is required' });
         return;
       }
-
       const db = getDatabase();
-      const result = await db.collection('Asset').updateOne(assetQuery(id), { $set: updates });
-      if (!result.matchedCount) {
+      const existing: any = await db.collection('Asset').findOne(assetQuery(id), { projection: { publicId: 1, resourceType: 1 } });
+      if (!existing) {
         res.status(404).json({ success: false, error: 'Asset not found' });
         return;
+      }
+
+      const newUrl = String(body.url || '').trim();
+      let replacedPublicId = '';
+      if (newUrl && isDataUri(newUrl)) {
+        // A replacement file: upload it to Cloudinary, then remove the old upload
+        let uploaded: UploadedFile;
+        try {
+          uploaded = await uploadToCloudinary(newUrl);
+        } catch (err: any) {
+          res.status(502).json({ success: false, error: err?.message || 'The file could not be uploaded to Cloudinary' });
+          return;
+        }
+        updates.url = uploaded.url;
+        updates.publicId = uploaded.publicId;
+        updates.resourceType = uploaded.resourceType;
+        updates.size = readableBytes(uploaded.bytes);
+        updates.data = null;
+        replacedPublicId = existing.publicId || '';
+      } else if (newUrl && !isOwnFileUrl(newUrl)) {
+        updates.url = newUrl;
+        updates.data = null;
+        updates.publicId = String(body.publicId || '').trim() || cloudinaryPublicId(newUrl);
+      } else if (body.publicId !== undefined) {
+        updates.publicId = String(body.publicId || '').trim();
+      }
+
+      await db.collection('Asset').updateOne(assetQuery(id), { $set: updates });
+      if (replacedPublicId.startsWith(`${ASSET_FOLDER}/`)) {
+        await deleteFromCloudinary(replacedPublicId, existing.resourceType);
       }
 
       res.json({
@@ -170,7 +264,12 @@ export class AssetsController {
       }
 
       const db = getDatabase();
+      const asset: any = await db.collection('Asset').findOne(assetQuery(id), { projection: { publicId: 1, resourceType: 1 } });
       await db.collection('Asset').deleteOne(assetQuery(id));
+      // Files uploaded from the admin panel are removed from Cloudinary too (other images are left alone)
+      if (asset?.publicId && String(asset.publicId).startsWith(`${ASSET_FOLDER}/`)) {
+        await deleteFromCloudinary(asset.publicId, asset.resourceType);
+      }
 
       res.json({
         success: true,

@@ -288,9 +288,11 @@ export default async function HomePage() {
             HeroBanner={metaData}
             autoSlide={true}
             DotSlider={true}
-            width={1400}
-            height={550}
-            ImageclassName="w-full h-[220px] sm:h-[320px] md:h-[400px] lg:h-[460px] xl:h-[500px] object-cover rounded-[20px] shadow-sm"
+            // The banner keeps its own proportions (full width, height from the image), so nothing is cropped.
+            // width/height only reserve space before it loads (the usual 1920×716 banner).
+            width={1920}
+            height={716}
+            ImageclassName="w-full h-auto rounded-[20px] shadow-sm"
             type={"heroBanner"}
             SlideButton={true}
           />
