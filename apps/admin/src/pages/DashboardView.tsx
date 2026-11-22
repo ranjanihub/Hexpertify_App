@@ -130,7 +130,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
               </button>
 
               <button
-                onClick={() => onSelectPage('bookings')}
+                onClick={() => onSelectPage('availability')}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-white/90 hover:text-white bg-black/20 hover:bg-black/30 px-4 py-2 rounded-full border border-white/10 transition-all"
               >
                 <span>View Full Calendar</span>

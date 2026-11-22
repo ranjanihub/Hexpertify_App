@@ -184,7 +184,7 @@ export const ZombiView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
-  // Fetch live from MongoDB Atlas Collection: zombie_pages
+  // Fetch the zombie pages from the API
   useEffect(() => {
     const fetchZombiePages = async () => {
       try {
@@ -195,13 +195,12 @@ export const ZombiView: React.FC = () => {
         if (res && res.ok) {
           const data = await res.json();
           const pagesList = Array.isArray(data?.zombiePages) ? data.zombiePages : Array.isArray(data?.pages) ? data.pages : [];
-          if (pagesList.length > 0) {
-            const normalized = pagesList.map((p: any, i: number) => normalizeZombiePage(p, i));
-            setZombiPagesList(normalized);
-            try {
-              localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(normalized));
-            } catch {}
-          }
+          // The server's list always wins, even when empty (an old browser copy must not bring pages back)
+          const normalized = pagesList.map((p: any, i: number) => normalizeZombiePage(p, i));
+          setZombiPagesList(normalized);
+          try {
+            localStorage.setItem('hexpertify_zombie_pages', JSON.stringify(normalized));
+          } catch {}
         }
       } catch (err) {
         console.error('[ZombiView] Failed to fetch zombie pages:', err);
@@ -282,9 +281,9 @@ export const ZombiView: React.FC = () => {
     );
 
     if (targetStatus === 'Active') {
-      showToast(`Zombie Page ${id} is now LIVE & Saved to MongoDB Atlas (zombie_pages)!`, 'success');
+      showToast(`Zombie Page ${id} is now live!`, 'success');
     } else {
-      showToast(`Zombie Page ${id} moved to Draft in MongoDB Atlas.`, 'warning');
+      showToast(`Zombie Page ${id} moved to Draft.`, 'warning');
     }
   };
 
@@ -446,7 +445,7 @@ export const ZombiView: React.FC = () => {
       return;
     }
     setZombiPagesList((prev) => storeList(prev.filter((p) => p.id !== id)));
-    showToast(`Zombie Page ${target?.id || id} deleted from DB (zombie_pages).`, 'warning');
+    showToast(`Zombie Page ${target?.id || id} deleted.`, 'warning');
   };
 
   const handleInsertHtmlPreset = (preset: 'hero' | 'cta' | 'faq' | 'doctor') => {

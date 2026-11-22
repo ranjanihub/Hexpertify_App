@@ -533,7 +533,7 @@ export const ProfessionsView: React.FC = () => {
         setEditingProf(null);
       }
       setDeletingId(null);
-      showToast(`Deleted "${target?.serviceName || id}" from MongoDB Atlas`);
+      showToast(`Deleted "${target?.serviceName || id}"`);
     } catch (err) {
       console.error('Error deleting profession from DB:', err);
       showToast(`Error deleting "${target?.serviceName || id}" from database.`);
@@ -609,7 +609,7 @@ export const ProfessionsView: React.FC = () => {
         <div className="text-center py-24 bg-white border border-slate-100 rounded-3xl space-y-3">
           <Loader2 className="w-10 h-10 text-[#5e2be2] animate-spin mx-auto" />
           <p className="text-sm font-extrabold text-slate-800">Loading Live Professions & Categories...</p>
-          <p className="text-xs text-slate-400">Fetching verified services and SEO metadata from MongoDB Atlas</p>
+          <p className="text-xs text-slate-400">Fetching verified services and SEO metadata</p>
         </div>
       ) : filteredProfessions.length === 0 ? (
         <div className="text-center py-16 bg-white border border-dashed border-slate-200 rounded-3xl space-y-3">

@@ -1444,7 +1444,7 @@ export const PaymentsView: React.FC = () => {
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900">Configure Payout Channels</h3>
                   <p className="text-xs text-slate-500 font-medium">
-                    Store details permanently in MongoDB Atlas for <span className="font-bold text-slate-700">{selectedTherapist.therapistName}</span>
+                    Store details permanently for <span className="font-bold text-slate-700">{selectedTherapist.therapistName}</span>
                   </p>
                 </div>
               </div>

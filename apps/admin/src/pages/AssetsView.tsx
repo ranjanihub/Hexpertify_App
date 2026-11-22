@@ -301,11 +301,11 @@ export const AssetsView: React.FC = () => {
   };
 
   const handleDeleteAsset = async (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete asset "${name}" from MongoDB Atlas?`)) {
+    if (confirm(`Are you sure you want to delete asset "${name}"?`)) {
       try {
         await api.delete(`/api/admin/assets?id=${encodeURIComponent(id)}`);
         setAssets((prev) => prev.filter((a) => a.id !== id));
-        triggerToast(`Asset "${name}" deleted from MongoDB Atlas.`);
+        triggerToast(`Asset "${name}" deleted.`);
       } catch (err: any) {
         console.error("Error deleting asset:", err);
         triggerToast(`Not deleted: ${err?.message || 'the server could not delete the asset'}`);

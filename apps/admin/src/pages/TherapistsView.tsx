@@ -1425,7 +1425,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveDropdownId(null);
-                              if (window.confirm(`Are you sure you want to delete ${t.name}? This will permanently remove the therapist from MongoDB.`)) {
+                              if (window.confirm(`Are you sure you want to delete ${t.name}? This will permanently remove the therapist.`)) {
                                 handleDeleteTherapist(t.id);
                               }
                             }}
@@ -1584,7 +1584,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
                 <button
                   onClick={() => {
-                    if (window.confirm(`Are you sure you want to permanently delete ${selectedTherapist.name}? This will remove their record from MongoDB.`)) {
+                    if (window.confirm(`Are you sure you want to permanently delete ${selectedTherapist.name}? This will permanently remove their record.`)) {
                       handleDeleteTherapist(selectedTherapist.id);
                     }
                   }}

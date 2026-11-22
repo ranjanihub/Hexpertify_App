@@ -293,7 +293,7 @@ export const ResourcesView: React.FC = () => {
     setSelectedContexts([]);
     setIsAddModalOpen(false);
 
-    showToast(`Successfully added "${createdResource.title}" to MongoDB Atlas!`);
+    showToast(`Successfully added "${createdResource.title}"!`);
   };
 
   const handleUpdateResourceSubmit = (e: React.FormEvent) => {
@@ -317,7 +317,7 @@ export const ResourcesView: React.FC = () => {
     }
 
     setEditingResource(null);
-    showToast(`Successfully updated "${editingResource.title}" in MongoDB Atlas!`);
+    showToast(`Successfully updated "${editingResource.title}"!`);
   };
 
   const filteredResources = resources.filter((res) => {
@@ -753,7 +753,7 @@ export const ResourcesView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Edit Resource</h3>
-                  <p className="text-xs text-slate-500">Update resource details and sync to MongoDB Atlas</p>
+                  <p className="text-xs text-slate-500">Update resource details</p>
                 </div>
               </div>
               <button

@@ -339,7 +339,7 @@ export const ActivitiesView: React.FC = () => {
     const target = activitiesList.find((a) => a.id === activityId);
     setActivitiesList((prev) => prev.filter((a) => a.id !== activityId));
     if (target) {
-      showToast(`Activity "${target.name}" permanently deleted from MongoDB.`, 'warning');
+      showToast(`Activity "${target.name}" permanently deleted.`, 'warning');
     }
 
     // Delete from MongoDB Atlas
@@ -385,7 +385,7 @@ export const ActivitiesView: React.FC = () => {
     };
 
     setActivitiesList([newActivityItem, ...activitiesList]);
-    showToast(`Activity "${newActivityData.title}" created & saved to MongoDB Atlas!`, 'success');
+    showToast(`Activity "${newActivityData.title}" created & saved!`, 'success');
     setShowCreateModal(false);
 
     // Persist to MongoDB Atlas

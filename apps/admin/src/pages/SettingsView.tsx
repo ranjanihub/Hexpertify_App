@@ -409,7 +409,7 @@ export const SettingsView: React.FC = () => {
         createdAt: new Date().toISOString().split('T')[0]
       };
       setConsultantUsers((prev) => [newConsultant, ...prev]);
-      showToast(`New consultant user "${newConsultant.name}" saved to MongoDB Atlas database.`);
+      showToast(`New consultant user "${newConsultant.name}" saved.`);
 
       try {
         // Sent with the admin's token; the Backend assigns the consultant's id
@@ -863,7 +863,7 @@ export const SettingsView: React.FC = () => {
                   <h3 className="font-extrabold text-slate-900 text-base">
                     {editingConsultant ? 'Edit Consultant User' : 'Add New Consultant User'}
                   </h3>
-                  <p className="text-xs text-slate-500">Configure credentials & live MongoDB Atlas persistence</p>
+                  <p className="text-xs text-slate-500">Configure credentials</p>
                 </div>
               </div>
               <button

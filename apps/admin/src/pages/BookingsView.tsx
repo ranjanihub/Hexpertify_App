@@ -510,7 +510,7 @@ export const BookingsView: React.FC = () => {
         setSelectedBooking(null);
       }
       setDeletingBookingTarget(null);
-      showToast(`Booking ${target?.bookingCode || bookingId} permanently deleted from MongoDB Atlas.`, 'warning');
+      showToast(`Booking ${target?.bookingCode || bookingId} permanently deleted.`, 'warning');
 
       await refreshAllData();
     } catch (err) {
@@ -553,7 +553,7 @@ export const BookingsView: React.FC = () => {
       if (data?.booking) {
         setBookingsList((prev) => [data.booking, ...prev]);
       }
-      showToast(`Booking created and saved in MongoDB Atlas!`, 'success');
+      showToast(`Booking created and saved!`, 'success');
       setIsNewBookingModalOpen(false);
 
       await refreshAllData();

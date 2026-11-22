@@ -681,7 +681,7 @@ export const AvailabilityView: React.FC = () => {
             </h1>
 
             <p className="text-white/85 text-xs sm:text-sm xl:text-base max-w-2xl leading-relaxed font-medium pt-0.5">
-              Live appointments and availability from MongoDB Atlas for {activeConsultant?.name || 'therapists'}.
+              Live appointments and availability for {activeConsultant?.name || 'therapists'}.
             </p>
           </div>
 
@@ -919,9 +919,7 @@ export const AvailabilityView: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-1">
-                {daySessions.length === 0 ? (
-                  <span className="text-xs text-slate-400 font-medium italic">No time slots scheduled for this day in MongoDB.</span>
-                ) : (
+                {daySessions.length === 0 ? null : (
                   daySessions.map((slot, index) => {
                     const isBooked = slot.status === 'booked' && slot.client !== 'Open Consultation Slot' && slot.client !== 'Blocked Time Slot';
                     const isBlocked = slot.status === 'blocked' || slot.client === 'Blocked Time Slot';
@@ -984,12 +982,6 @@ export const AvailabilityView: React.FC = () => {
             {daySessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[240px] text-center p-6 bg-white rounded-2xl border border-dashed border-slate-200">
                 <CalendarDays className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-sm font-extrabold text-slate-800">
-                  No sessions scheduled for {activeConsultant?.name || 'this therapist'} on this day
-                </p>
-                <p className="text-xs text-slate-500 mt-1 max-w-xs">
-                  This day is clear in MongoDB. You can add session slots or schedule appointments anytime.
-                </p>
                 <button
                   onClick={() => {
                     setEventDate(`${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`);
