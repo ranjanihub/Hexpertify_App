@@ -102,6 +102,9 @@ export interface Payment {
   provider: 'razorpay' | 'cashfree' | 'manual';
   providerOrderId: string;
   providerPaymentId?: string;
+  /** Running numbers: TXN-00001 (gateway payments only) and the booking's BK-00001 */
+  paymentNumber?: string;
+  bookingNumber?: string;
   method?: string;
   amount: number;
   refundedAmount: number;

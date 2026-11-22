@@ -65,78 +65,11 @@ interface GeneratedInvoice {
 import { useAppContext } from '../context/AppContext';
 
 export const PaymentsView: React.FC = () => {
-  const { therapists, bookings } = useAppContext();
+  const { therapists } = useAppContext();
   
-  const livePayouts: TherapistPayout[] = React.useMemo(() => {
-    // Filter out cancelled/refunded bookings
-    const activeBookings = bookings.filter(
-      (b) =>
-        b.paymentStatus !== 'Refunded' &&
-        b.status !== 'Rescheduled' &&
-        b.status !== 'Cancelled' &&
-        (b as any).status !== 'CANCELLED'
-    );
 
-    const bookingsByTherapist: Record<string, { therapist: any; sessions: any[] }> = {};
-
-    activeBookings.forEach((b) => {
-      const therapistName = b.therapistName || 'Dr. Specialist';
-      const matchingTherapist =
-        (b.consultantId ? therapists.find((t) => t.id === b.consultantId) : undefined) ||
-        therapists.find((t) => t.name.toLowerCase().trim() === therapistName.toLowerCase().trim()) || {
-          id: `t-${b.id.slice(0, 6)}`,
-          name: therapistName,
-          email: `${therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@hexpertify.com`,
-          profession: 'Specialist',
-          photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100',
-          platformFeePerSession: 150
-        };
-
-      const groupKey = matchingTherapist.name.toLowerCase().trim();
-      if (!bookingsByTherapist[groupKey]) {
-        bookingsByTherapist[groupKey] = {
-          therapist: matchingTherapist,
-          sessions: []
-        };
-      }
-
-      bookingsByTherapist[groupKey].sessions.push({
-        id: `SR-${b.id}`,
-        sessionId: b.id,
-        sessionDate: b.date || '2026-08-20',
-        clientName: b.clientName,
-        sessionFee: Number(b.amount || 150),
-        status: 'Pending Review' as const,
-        notes: 'Consultation note submitted'
-      });
-    });
-
-    return Object.values(bookingsByTherapist).map(({ therapist, sessions }) => {
-      const gross = sessions.reduce((sum, s) => sum + s.sessionFee, 0);
-      // Use consultant-specific platform fee
-      const feeType = therapist.platformFeeType || 'Percentage';
-      const feeValue = therapist.platformFeePerSession || 150;
-      const platformShare = feeType === 'Fixed'
-        ? sessions.length * feeValue
-        : Math.round(gross * (feeValue / 100));
-      const net = gross - platformShare;
-
-      return {
-        id: `PO-${therapist.id.slice(0, 6).toUpperCase()}`,
-        therapistId: therapist.id,
-        therapistName: therapist.name,
-        therapistAvatar: therapist.photo || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100',
-        profession: therapist.profession || 'Specialist',
-        pendingReportsCount: Math.max(0, sessions.length - 1),
-        sessionsCount: sessions.length,
-        lastSessionDate: sessions[0]?.sessionDate || '2026-08-20',
-        pendingAmount: net,
-        unpaidSessions: sessions
-      };
-    }).sort((a, b) => b.pendingAmount - a.pendingAmount);
-  }, [therapists, bookings]);
-
-  const [payouts, setPayouts] = useState<TherapistPayout[]>(livePayouts);
+  // What is still owed comes only from the server (sessions in a released invoice are already left out)
+  const [payouts, setPayouts] = useState<TherapistPayout[]>([]);
   const [historyList, setHistoryList] = useState<PayoutHistoryRecord[]>([]);
   const [liveSummary, setLiveSummary] = useState<{
     pendingSessionsCount: number;
@@ -163,35 +96,14 @@ export const PaymentsView: React.FC = () => {
                 id: p.id || `PO-${p.therapistId || Math.random()}`,
                 therapistId: p.therapistId || p.id,
                 therapistName: p.therapistName || 'Therapist Specialist',
-                therapistAvatar: p.therapistAvatar || p.photo || p.image || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100',
+                therapistAvatar: p.therapistAvatar || p.photo || p.image || '',
                 profession: p.profession || 'Specialist',
                 pendingAmount: Number(p.pendingAmount || 0),
                 totalEarned: Number(p.totalEarned || p.pendingAmount || 0),
                 pendingReportsCount: Number(p.pendingReportsCount || (p.unpaidSessions?.length || 0)),
                 sessionsCount: Number(p.sessionsCount || (p.unpaidSessions?.length || 0)),
                 lastSessionDate: p.lastSessionDate || '2026-08-20',
-                unpaidSessions: Array.isArray(p.unpaidSessions) && p.unpaidSessions.length > 0
-                  ? p.unpaidSessions
-                  : [
-                      {
-                        id: `SR-${p.therapistId || p.id}-1`,
-                        sessionId: `SESS-${String(p.therapistId || p.id).slice(0, 4)}-01`,
-                        sessionDate: '2026-08-18',
-                        clientName: 'Sarah Jenkins',
-                        sessionFee: Math.round(Number(p.pendingAmount || 1500) * 0.6),
-                        status: 'Pending Review' as const,
-                        notes: 'Cognitive behavioral session'
-                      },
-                      {
-                        id: `SR-${p.therapistId || p.id}-2`,
-                        sessionId: `SESS-${String(p.therapistId || p.id).slice(0, 4)}-02`,
-                        sessionDate: '2026-08-20',
-                        clientName: 'Michael Chen',
-                        sessionFee: Math.round(Number(p.pendingAmount || 1500) * 0.4),
-                        status: 'Pending Review' as const,
-                        notes: 'Anxiety follow-up'
-                      }
-                    ]
+                unpaidSessions: Array.isArray(p.unpaidSessions) ? p.unpaidSessions : []
               }));
               setPayouts(normalized);
             }
@@ -462,7 +374,8 @@ export const PaymentsView: React.FC = () => {
       therapistName: selectedTherapist.therapistName,
       therapistEmail: targetTherapistEmail,
       profession: selectedTherapist.profession,
-      adminEmail: 'finance@hexpertify.com',
+      // The Super Admin's copy of every payout invoice
+      adminEmail: 'admin@hexpertify.com',
       paymentMethod: disbursalMethod,
       accountNumber: targetAccountOrUpi,
       transactionRef: txnRef,
@@ -553,7 +466,9 @@ export const PaymentsView: React.FC = () => {
       showToast(`Invoice email queued for ${generatedInvoice.therapistEmail} & Super Admin.`);
     }
   };
+  // Step 1 lists only therapists with sessions still to pay; a released payout takes them off the list
   const filteredPayouts = payouts.filter((p) => {
+    if (!(p.unpaidSessions || []).length) return false;
     const matchesSearch =
       p.therapistName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.profession.toLowerCase().includes(searchTerm.toLowerCase());
@@ -776,7 +691,13 @@ export const PaymentsView: React.FC = () => {
                         className="p-6 bg-slate-50/70 hover:bg-purple-50/40 border border-slate-200/80 hover:border-[#5e2be2] rounded-3xl cursor-pointer transition-all hover:shadow-md space-y-4 group"
                       >
                         <div className="flex items-center gap-3">
-                          <img src={p.therapistAvatar} alt={p.therapistName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-purple-100 shrink-0" />
+                          {p.therapistAvatar ? (
+                            <img src={p.therapistAvatar} alt={p.therapistName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-purple-100 shrink-0" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-2xl bg-purple-100 text-[#5e2be2] font-extrabold text-lg flex items-center justify-center ring-2 ring-purple-100 shrink-0">
+                              {(p.therapistName || 'T').charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-[#5e2be2] transition-colors truncate">
                               {p.therapistName}
@@ -793,7 +714,7 @@ export const PaymentsView: React.FC = () => {
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-500 font-medium">Pending Gross:</span>
+                            <span className="text-slate-500 font-medium">Pending Payout:</span>
                             <span className="font-extrabold text-emerald-600 text-sm">₹{p.pendingAmount.toLocaleString()}</span>
                           </div>
                         </div>
@@ -815,7 +736,13 @@ export const PaymentsView: React.FC = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between bg-purple-50/70 border border-purple-100 p-4 rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <img src={selectedTherapist.therapistAvatar} className="w-10 h-10 rounded-2xl object-cover ring-2 ring-purple-200" />
+                  {selectedTherapist.therapistAvatar ? (
+                    <img src={selectedTherapist.therapistAvatar} alt={selectedTherapist.therapistName} className="w-10 h-10 rounded-2xl object-cover ring-2 ring-purple-200" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#5e2be2] font-extrabold flex items-center justify-center ring-2 ring-purple-200">
+                      {(selectedTherapist.therapistName || 'T').charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-sm">{selectedTherapist.therapistName}</h4>
                     <p className="text-xs text-purple-700 font-semibold">{selectedTherapist.profession}</p>
@@ -1076,21 +1003,24 @@ export const PaymentsView: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex gap-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3">
                 <button
                   onClick={() => { setReleaseError(null); setActiveStep(2); }}
                   disabled={isReleasing}
-                  className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 font-extrabold text-xs rounded-2xl transition-colors"
+                  className="sm:w-40 shrink-0 py-3 px-5 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 font-extrabold text-xs rounded-2xl transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleMarkAsPaid}
                   disabled={isReleasing}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-extrabold text-xs rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
+                  className="flex-1 min-w-0 py-3 px-5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-3 transition-colors"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {isReleasing ? 'Releasing…' : `Release Net Payout (${disbursalMethod}) & Generate Invoice`}
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  <span className="flex flex-col items-start text-left leading-tight">
+                    <span className="font-extrabold text-sm">{isReleasing ? 'Releasing…' : 'Release Payout & Generate Invoice'}</span>
+                    {!isReleasing && <span className="text-[11px] font-semibold text-emerald-100">via {disbursalMethod}</span>}
+                  </span>
                 </button>
               </div>
             </div>

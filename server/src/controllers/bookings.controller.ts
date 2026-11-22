@@ -14,6 +14,7 @@ import { bookingInstant, isDateLabel, istLabels, resolveScheduledAt, ScheduleErr
 // Bookings awaiting gateway payment (or abandoned) are not real sessions yet
 const UNSETTLED_STATUSES = new Set(['PENDING_PAYMENT', 'EXPIRED']);
 import { cacheService } from '../services/cache.service';
+import { numberMissing } from '../services/sequence';
 
 /** The booking's therapist email: stored on the booking, else looked up from the consultant record */
 async function consultantEmailFor(booking: any): Promise<string> {
@@ -66,6 +67,8 @@ export class BookingsController {
       const consultantId = req.query.consultantId || req.query.therapistId;
       const isConsultantQuery = Boolean(consultantId || consultantEmail);
       const cacheKey = `bookings:all:${clientEmail || ''}:${clientId || ''}:${consultantId || ''}:${consultantEmail || ''}:${status || ''}`;
+      // Older bookings get their running numbers (BK-00001…, in creation order) the first time they are listed
+      await numberMissing('booking').catch((err) => console.warn('[bookings] numbering failed:', err?.message || err));
 
       const responseData = await cacheService.wrap(cacheKey, ['bookings', 'users', 'consultants'], 15, async () => {
         const db = getDatabase();

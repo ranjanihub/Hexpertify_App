@@ -18,6 +18,8 @@ const ExploreConsultant = ({ data }: props) => {
 
   // 1. Create a reference to the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Fewer than 4 professions fit in one row: no two-row slider, no arrows, no empty second row
+  const compact = (data?.length || 0) < 4;
 
   // 2. Function to handle scrolling left and right
   const scroll = (direction: "left" | "right") => {
@@ -36,13 +38,14 @@ const ExploreConsultant = ({ data }: props) => {
   return (
     <section
       id="categories"
-      className="mt-[10px] w-full relative group min-h-[360px]"
+      className={`mt-[10px] w-full relative group ${compact ? "" : "min-h-[360px]"}`}
     >
       <p className="titleText mb-[20px] text-left">Explore Categories</p>
 
       {/* Wrapper for Buttons and List */}
       <div className="relative w-full">
         {/* --- Left Scroll Button --- */}
+        {!compact && (
         <button
           type="button"
           onClick={() => scroll("left")}
@@ -64,11 +67,16 @@ const ExploreConsultant = ({ data }: props) => {
             />
           </svg>
         </button>
+        )}
 
         {/* --- The Grid Container --- */}
         <div
           ref={scrollContainerRef}
-          className="grid grid-rows-2 grid-flow-col gap-[20px] overflow-x-auto pb-4 scroll-smooth hide-scrollbar"
+          className={
+            compact
+              ? "flex flex-wrap gap-[20px] pb-4"
+              : "grid grid-rows-2 grid-flow-col gap-[20px] overflow-x-auto pb-4 scroll-smooth hide-scrollbar"
+          }
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {/* Style to hide scrollbar in Webkit browsers (Chrome, Safari, Edge) */}
@@ -109,6 +117,7 @@ const ExploreConsultant = ({ data }: props) => {
         </div>
 
         {/* --- Right Scroll Button --- */}
+        {!compact && (
         <button
           type="button"
           onClick={() => scroll("right")}
@@ -130,6 +139,7 @@ const ExploreConsultant = ({ data }: props) => {
             />
           </svg>
         </button>
+        )}
       </div>
     </section>
   );

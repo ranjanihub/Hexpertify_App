@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
 import { cacheService } from './cache.service';
+import { numberMissing } from './sequence';
 import { dispatchBookingConfirmed } from './booking-confirmation.service';
 import { resolveClientUser, resolveConsultant, resolveService } from './booking-refs';
 import { consultantBookingBlockReason, isConsultantBookable } from './live-content';
@@ -131,6 +132,10 @@ export async function insertBooking(doc: Record<string, any>): Promise<{ booking
     return { booking: await db.collection('Booking').findOne({ id: doc.id }), duplicate: true };
   }
   await db.collection('bookings').insertOne({ ...doc } as any).catch(() => {});
+  // Running booking number (BK-00001), given after the booking is stored so retries never use up numbers
+  await numberMissing('booking', true).catch((err) => console.warn('[booking] numbering failed:', err?.message || err));
+  const numbered = await db.collection('Booking').findOne({ id: doc.id }, { projection: { bookingNumber: 1 } }).catch(() => null);
+  if (numbered?.bookingNumber) doc.bookingNumber = numbered.bookingNumber;
   cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants', 'revenue', 'payouts', 'payments']);
   return { booking: doc, duplicate: false };
 }

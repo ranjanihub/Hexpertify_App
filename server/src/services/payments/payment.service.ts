@@ -9,6 +9,7 @@ import { consultantBookingBlockReason } from '../live-content';
 import { slotUnavailableReason } from '../booking-slots';
 import { bookingStatusOf, normalizePaymentStatus } from '../booking-status';
 import { bookingInstant } from '../booking-time';
+import { numberMissing } from '../sequence';
 import { MailService } from '../mail.service';
 import { portalUrl, WEBSITE_URL } from '../email-layout';
 import { getActivePaymentProvider, getPaymentProvider } from './index';
@@ -238,6 +239,8 @@ async function createPaymentForBooking(provider: ReturnType<typeof getActivePaym
     updatedAt: now
   };
   await db.collection(PAYMENTS).insertOne(payment);
+  // Running transaction number (TXN-00001), given once the payment is stored
+  await numberMissing('payment', true).catch((err) => console.warn('[payment] numbering failed:', err?.message || err));
   await updateBooking(payment, { paymentId });
 
   return {
@@ -519,6 +522,7 @@ async function listManualPayments(filters: { status?: string; provider?: string;
       return {
         id: `MANUAL-${bookingId}`,
         bookingId,
+        bookingNumber: b.bookingNumber,
         bookingSource: b.id ? 'backend' : 'live',
         provider: 'manual',
         method: 'MANUAL',
@@ -547,7 +551,7 @@ async function listManualPayments(filters: { status?: string; provider?: string;
       const created = new Date(p.createdAt || 0).getTime();
       if (!isNaN(from) && created < from) return false;
       if (!isNaN(to) && created > to) return false;
-      if (q && ![p.id, p.bookingId, p.clientName, p.clientEmail, p.consultantName].some((v) => q.test(String(v || '')))) return false;
+      if (q && ![p.id, p.bookingId, p.bookingNumber, p.clientName, p.clientEmail, p.consultantName].some((v) => q.test(String(v || '')))) return false;
       return true;
     });
 }
@@ -556,6 +560,10 @@ async function listManualPayments(filters: { status?: string; provider?: string;
 export async function listPayments(filters: { status?: string; provider?: string; from?: string; to?: string; q?: string }) {
   const db = getDatabase();
   await expireStalePayments();
+  // Older records get their running numbers (in creation order) the first time they are listed
+  await Promise.all([numberMissing('payment'), numberMissing('booking')]).catch((err) =>
+    console.warn('[payments] numbering failed:', err?.message || err)
+  );
 
   const query: any = {};
   if (filters.status) query.status = String(filters.status).toUpperCase();
@@ -567,14 +575,27 @@ export async function listPayments(filters: { status?: string; provider?: string
   }
   if (filters.q) {
     const rx = { $regex: String(filters.q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-    query.$or = [{ id: rx }, { bookingId: rx }, { clientName: rx }, { clientEmail: rx }, { consultantName: rx }, { providerOrderId: rx }, { providerPaymentId: rx }];
+    query.$or = [{ id: rx }, { paymentNumber: rx }, { bookingId: rx }, { clientName: rx }, { clientEmail: rx }, { consultantName: rx }, { providerOrderId: rx }, { providerPaymentId: rx }];
   }
 
   const [payments, manual] = await Promise.all([
     db.collection(PAYMENTS).find(query).sort({ createdAt: -1 }).limit(500).toArray(),
     listManualPayments(filters)
   ]);
-  return [...payments.map(serializePayment), ...manual]
+  // Each gateway payment's booking number, for the transaction details
+  const bookingIds = [...new Set(payments.map((p: any) => String(p.bookingId || '')).filter(Boolean))];
+  const bookingNumbers = new Map<string, string>();
+  if (bookingIds.length) {
+    const docs = await db.collection('Booking')
+      .find({ $or: [{ id: { $in: bookingIds } }, { _id: { $in: bookingIds as any[] } }] }, { projection: { id: 1, bookingNumber: 1 } })
+      .toArray()
+      .catch(() => []);
+    for (const d of docs as any[]) if (d.bookingNumber) bookingNumbers.set(String(d.id || d._id), d.bookingNumber);
+  }
+  return [
+    ...payments.map((p: any) => ({ ...serializePayment(p), bookingNumber: bookingNumbers.get(String(p.bookingId)) })),
+    ...manual
+  ]
     .sort((x: any, y: any) => new Date(y.createdAt || 0).getTime() - new Date(x.createdAt || 0).getTime())
     .slice(0, 500);
 }

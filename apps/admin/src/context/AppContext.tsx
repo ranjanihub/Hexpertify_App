@@ -317,7 +317,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           return {
             id: b.id || String(b._id),
-            bookingCode: b.bookingCode || `HEX-${String(b.id || b._id).slice(-6).toUpperCase()}`,
+            bookingCode: b.bookingNumber || b.bookingCode || `HEX-${String(b.id || b._id).slice(-6).toUpperCase()}`,
             clientName: b.clientName || "Client User",
             clientId: b.clientId || b.userId || undefined,
             clientEmail: b.clientEmail || undefined,

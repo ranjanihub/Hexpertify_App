@@ -4,7 +4,6 @@ import {
   Calendar as CalendarIcon,
   Bell,
   UserPlus,
-  Command,
   Menu,
   CheckCircle2,
   AlertCircle,
@@ -172,18 +171,13 @@ export const TopNav: React.FC<TopNavProps> = ({
                 placeholder="Search therapists, clients, bookings..."
                 className="w-full pl-10 pr-10 py-2 sm:py-2.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-slate-200/80 focus:border-[#5e2be2] rounded-full text-slate-800 placeholder-slate-400 text-xs sm:text-sm outline-none transition-all shadow-inner"
               />
-              {searchQuery ? (
+              {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="p-1 text-slate-400 hover:text-slate-600 absolute right-3"
                 >
                   <X className="w-4 h-4" />
                 </button>
-              ) : (
-                <div className="hidden md:flex items-center gap-1 bg-white border border-slate-200/80 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-400 shadow-2xs absolute right-3 pointer-events-none">
-                  <Command className="w-3 h-3" />
-                  <span>K</span>
-                </div>
               )}
             </div>
 

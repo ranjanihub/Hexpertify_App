@@ -10,9 +10,7 @@ import {
   ArrowUpRight,
   CheckCircle2,
   AlertCircle,
-  PlayCircle,
   ChevronRight,
-  User,
   Search
 } from 'lucide-react';
 import type { PageId } from '../types';
@@ -57,7 +55,7 @@ const COUNT_RANGES: { key: 'all' | 'today' | 'week' | 'month'; label: string }[]
 ];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) => {
-  const { bookings, metrics, auditLogs, updateBookingStatus } = useAppContext();
+  const { bookings, metrics, updateBookingStatus } = useAppContext();
   const [scheduleSearch, setScheduleSearch] = useState('');
   const [scheduleFilter, setScheduleFilter] = useState<'All' | 'Scheduled' | 'Completed' | 'Rescheduled'>('All');
 
@@ -508,41 +506,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             </div>
           </div>
 
-          {/* Recent Platform Activity */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-base text-slate-900">Recent Platform Activity</h3>
-              <button
-                onClick={() => onSelectPage('logs')}
-                className="text-xs font-bold text-[#5e2be2] hover:underline"
-              >
-                View Logs
-              </button>
-            </div>
-            
-            <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100 max-h-96 overflow-y-auto">
-              {auditLogs.slice(0, 5).map((log, idx) => (
-                <div key={log.id || idx} className="relative flex items-start gap-3 pl-2">
-                  <div className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center z-10 text-purple-600 shrink-0 shadow-2xs">
-                    {log.module === 'Therapists' ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    ) : log.module === 'Payments' ? (
-                      <CreditCard className="w-4 h-4 text-amber-600" />
-                    ) : log.module === 'Bookings' ? (
-                      <PlayCircle className="w-4 h-4 text-purple-600" />
-                    ) : (
-                      <User className="w-4 h-4 text-blue-600" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">{log.action}</p>
-                    <p className="text-xs text-slate-500 leading-snug">{log.user} · {log.module}</p>
-                    <span className="text-[10px] text-slate-400">{log.timestamp}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
