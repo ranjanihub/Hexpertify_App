@@ -512,7 +512,6 @@ export const ZombiView: React.FC = () => {
       'Meta Description',
       'Keywords',
       'Canonical URL',
-      'Organic Views',
       'Created At',
       'Updated At'
     ];
@@ -530,7 +529,6 @@ export const ZombiView: React.FC = () => {
           `"${(p.seo?.metaDescription || '').replace(/"/g, '""')}"`,
           `"${(p.seo?.keywords || '').replace(/"/g, '""')}"`,
           `"${p.seo?.canonicalUrl || ''}"`,
-          `"${p.viewsCount || 0}"`,
           `"${p.createdAt || ''}"`,
           `"${p.updatedAt || ''}"`
         ].join(',')
@@ -570,7 +568,6 @@ export const ZombiView: React.FC = () => {
     return zombiPagesList.filter((p) => p.status === status).length;
   };
 
-  const totalOrganicViews = zombiPagesList.reduce((acc, curr) => acc + (curr.viewsCount || 0), 0);
 
   // Calculate SEO Health score for current editor formData
   const currentHasTitle = Boolean(formData.seo?.metaTitle);
@@ -608,16 +605,7 @@ export const ZombiView: React.FC = () => {
           <div className="relative rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
             <div className="relative z-10">
-              <div className="flex items-center gap-2">
-                <span className="px-3.5 py-1.5 bg-white/15 backdrop-blur-md rounded-full text-xs font-bold tracking-wide uppercase text-purple-200 border border-white/20 flex items-center gap-1.5">
-                  <FileCode className="w-3.5 h-3.5 text-purple-300" />
-                  Content Management & Programmatic SEO
-                </span>
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight mt-3">Zombie Pages</h1>
-              <p className="text-purple-100 text-sm mt-1 max-w-xl">
-                Create lightweight programmatic SEO pages using HTML chunks and connect them directly to your desired URLs with complete search engine optimization metadata.
-              </p>
+              <h1 className="text-3xl font-extrabold tracking-tight">Zombie Pages</h1>
             </div>
 
             {/* Header Actions & Stats */}
@@ -625,11 +613,6 @@ export const ZombiView: React.FC = () => {
               <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-200 block">Total Pages</span>
                 <span className="text-xl font-extrabold text-white">{zombiPagesList.length}</span>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-200 block">Organic Views</span>
-                <span className="text-xl font-extrabold text-white">{totalOrganicViews.toLocaleString()}</span>
               </div>
 
               <button
