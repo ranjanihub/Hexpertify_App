@@ -581,7 +581,7 @@ function FullBlogForm({
             />
 
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-border">
               <Button type="button" variant="outline" onClick={handleSaveDraft}>
                 Save Draft
               </Button>
@@ -781,7 +781,7 @@ function OutlineForm({
               )}
             />
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-border">
               <Button type="button" variant="outline" onClick={handleSaveDraft}>
                 Save Draft
               </Button>

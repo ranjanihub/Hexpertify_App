@@ -24,6 +24,7 @@ import blogRoutes from './blog.routes';
 import dashboardRoutes from './dashboard.routes';
 import logsRoutes from './logs.routes';
 import emailsRoutes from './emails.routes';
+import { getDatabase } from '../db/mongodb';
 
 const router = Router();
 
@@ -33,7 +34,6 @@ router.get('/', (_req: Request, res: Response) => {
     status: 'ONLINE',
     service: 'Hexpertify Central Backend & Identity Gateway',
     version: '1.0.0',
-    database: 'MongoDB Atlas (Connected)',
     panels: {
       superAdmin: '/admin',
       consultantSuite: '/consultant',
@@ -42,14 +42,19 @@ router.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// Health check endpoint
-router.get('/health', (_req: Request, res: Response) => {
+// Health check endpoint: the database state is a real ping, not a fixed claim
+router.get('/health', async (_req: Request, res: Response) => {
+  let database: 'connected' | 'unreachable' = 'unreachable';
+  try {
+    await getDatabase().command({ ping: 1 });
+    database = 'connected';
+  } catch {}
   res.json({
-    status: 'OK',
+    status: database === 'connected' ? 'OK' : 'DEGRADED',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     service: 'Hexpertify Central API Gateway',
-    database: 'MongoDB Atlas (Connected)'
+    database
   });
 });
 

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import type { ResourceItem, ResourceType } from '../types';
 import { api } from '../lib/apiClient';
+import { useUrlSearch } from '../lib/global-search';
 
 const categories = [
   'All Resources',
@@ -54,6 +55,8 @@ export const ResourcesView: React.FC = () => {
 
   const [activeCategory, setActiveCategory] = useState<string>('All Resources');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  // Opened from the admin search (e.g. ?q=CL-00001): filter to that record
+  useUrlSearch(setSearchQuery);
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(ADMIN_BOOKMARKS_KEY) || '[]');

@@ -19,8 +19,9 @@ export interface DashboardMetrics {
   revenueToday: number;
   pendingPayoutsAmount: number;
   pendingPayoutsTherapistsCount: number;
+  /** Completed, paid sessions not yet paid out to their therapist (from the payouts endpoint) */
+  pendingPayoutSessionsCount: number;
   monthlyRevenue: number;
-  databaseConnected?: string;
 }
 
 export interface AppContextType {
@@ -32,10 +33,14 @@ export interface AppContextType {
   assessments: ClinicalAssessment[];
   auditLogs: AuditLog[];
   metrics: DashboardMetrics;
+  /** Set when the last load could not reach the server (the lists then show what was loaded before, if anything) */
+  dataError: string | null;
+  /** True once the first load has finished (successfully or not) */
+  dataLoaded: boolean;
 
-  updateBookingStatus: (bookingId: string, status: Booking['status']) => void;
+  /** Saves the status on the server first; the list changes only after it succeeds (errors are thrown) */
+  updateBookingStatus: (bookingId: string, status: Booking['status']) => Promise<void>;
   releasePayout: (payoutId: string) => void;
-  verifyTherapist: (therapistId: string) => void;
   deleteTherapist: (therapistId: string) => Promise<void>;
   deleteClient: (clientId: string) => Promise<void>;
   assignClientTherapist: (clientId: string, therapistId: string, therapistName: string, therapistEmail?: string, therapistPhoto?: string) => Promise<void>;
@@ -103,12 +108,17 @@ function formatBookingStatus(raw?: string): Booking['status'] {
 /** Payment states that count as collected revenue */
 const PAID_LABELS = new Set<Booking['paymentStatus']>(['Paid', 'Partially Refunded', 'Refund Pending']);
 
-/** YYYY-MM-DD in UTC, the same calendar the Backend uses for booking dates */
-const todayIsoDate = () => new Date().toISOString().split('T')[0];
+/** YYYY-MM-DD of a moment in India time (sessions and booking dates are India-time days) */
+function istDay(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
+/** Today in India time, whatever the admin's computer clock zone is */
+const todayIsoDate = () => istDay(new Date());
 
 function isoDateOf(value: unknown): string {
   const d = new Date(value as any);
-  return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+  return isNaN(d.getTime()) ? '' : istDay(d);
 }
 
 function formatClientStatus(raw?: string): Client['status'] {
@@ -119,80 +129,60 @@ function formatClientStatus(raw?: string): Client['status'] {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [bookings, setBookings] = useState<Booking[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_bookings`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [];
-  });
-
-  const [therapists, setTherapists] = useState<Therapist[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_therapists`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [];
-  });
-
-  const [clients, setClients] = useState<Client[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_clients`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [];
-  });
-
-  const [payouts, setPayouts] = useState<TherapistPayout[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_payouts`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [];
-  });
+  // Lists are loaded from the server each time; nothing with client data is kept in this browser between visits
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [payouts, setPayouts] = useState<TherapistPayout[]>([]);
 
   const [activities, setActivities] = useState<Activity[]>([]);
   // Assessment instruments are defined in the Assessments page; the Backend serves submissions/assignments only
   const [assessments] = useState<ClinicalAssessment[]>([]);
 
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_auditLogs`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [];
-  });
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Revenue figures computed by the Backend (/api/admin/revenue); null until loaded
   const [revenueStats, setRevenueStats] = useState<{ monthlyRevenue: number; revenueToday: number } | null>(null);
 
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Copies older versions of the panel cached in this browser (names, emails, phones) are removed
+  useEffect(() => {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith(LOCAL_STORAGE_KEY))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {}
+  }, []);
+
+  /**
+   * GET that never throws: the data, or null when the request failed. A failure is remembered so the panel can
+   * say the server couldn't be reached instead of passing old lists off as live. A 401 is not handled here:
+   * the fetch wrapper (lib/api-auth.ts) asks the server whether the sign-in ended and the panel then signs out.
+   */
+  const failures = React.useRef(new Set<string>());
   const fetchWithFallback = async (endpoint: string) => {
     try {
-      return await api.get(endpoint);
-    } catch {
+      const data = await api.get(endpoint);
+      failures.current.delete(endpoint);
+      return data;
+    } catch (err: any) {
+      failures.current.add(endpoint);
+      console.warn('[admin] could not load', endpoint, err?.message || err);
       return null;
     }
   };
 
   const refreshAllData = async () => {
-    // 1. Fetch Users
-    // A list the API returns (even empty) replaces the cached copy; the cache is kept only on network errors
-    fetchWithFallback("/api/admin/users").then((data) => {
+    const pending: Promise<unknown>[] = [];
+    const load = (endpoint: string) => {
+      const p = fetchWithFallback(endpoint);
+      pending.push(p);
+      return p;
+    };
+    // 1. Fetch Users (a list the API returns, even empty, replaces what is shown)
+    load("/api/admin/users").then((data) => {
       if (data?.users && Array.isArray(data.users)) {
         const liveClients: Client[] = data.users
           // Therapist and admin accounts are not clients
@@ -244,14 +234,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           detailsRestricted: Boolean(u.detailsRestricted)
         }));
         setClients(liveClients);
-        try {
-          localStorage.setItem(`${LOCAL_STORAGE_KEY}_clients`, JSON.stringify(liveClients));
-        } catch {}
       }
     });
 
     // 2. Fetch Consultants
-    fetchWithFallback("/api/admin/consultants").then((data) => {
+    load("/api/admin/consultants").then((data) => {
       if (data?.consultants && Array.isArray(data.consultants)) {
         const liveTherapists: Therapist[] = data.consultants.map((c: any) => ({
           id: c.id || String(c._id),
@@ -264,7 +251,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           photoAltText: c.photoAltText || `certified therapist ${c.name}`,
           profession: c.profession || c.title || "Specialist",
           professionId: c.professionId ? String(c.professionId) : undefined,
-          rating: c.rating !== undefined ? Number(c.rating) : 5.0,
+          // 0 = no reviews yet (never an unearned 5.0)
+          rating: Number(c.rating) || 0,
           reviewCount: c.reviewCount !== undefined ? Number(c.reviewCount) : 0,
           activeClientsCount: c.activeClientsCount !== undefined ? Number(c.activeClientsCount) : 0,
           verificationStatus: (c.verificationStatus as any) || (c.isCertified !== false ? "Verified" : "Pending"),
@@ -303,14 +291,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           outcomes: c.outcomes || undefined
         }));
         setTherapists(liveTherapists);
-        try {
-          localStorage.setItem(`${LOCAL_STORAGE_KEY}_therapists`, JSON.stringify(liveTherapists));
-        } catch {}
       }
     });
 
     // 3. Fetch Bookings (display values are derived here and never written back)
-    fetchWithFallback("/api/admin/bookings").then((data) => {
+    load("/api/admin/bookings").then((data) => {
       if (data?.bookings && Array.isArray(data.bookings)) {
         const liveBookings: Booking[] = data.bookings.map((b: any) => {
           // Website bookings can arrive without a session time; they are scheduled later
@@ -327,7 +312,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             consultantId: b.consultantId || b.therapistId || undefined,
             therapistName: b.therapistName || b.consultantName || "Specialist",
             therapistAvatar: b.therapistAvatar || b.consultantAvatar || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100",
-            therapistProfession: b.therapistProfession || b.profession || b.consultantProfession || "Specialist",
+            // No made-up fallback: the Bookings page looks the therapist up by id, else shows "Consultant"
+            therapistProfession: b.therapistProfession || b.profession || b.consultantProfession || undefined,
             service: b.serviceTitle || b.service || "1-on-1 Consultation",
             date: toBeScheduled
               ? "To be scheduled"
@@ -344,34 +330,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             channel: "Video Call (Google Meet)" as const,
             notes: b.notes || "",
             meetingUrl: b.meetingLink || b.meetingUrl || "",
+            // The therapist has filed the session report (the dashboard counts completed sessions without one)
+            hasSessionReport: Boolean(b.sessionReportSubmittedAt || b.sessionReport),
           };
         });
         setBookings(liveBookings);
-        try {
-          localStorage.setItem(`${LOCAL_STORAGE_KEY}_bookings`, JSON.stringify(liveBookings));
-        } catch {}
       }
     });
 
     // 4. Fetch Payouts
-    fetchWithFallback("/api/admin/payouts").then((data) => {
+    load("/api/admin/payouts").then((data) => {
       if (data?.payouts && Array.isArray(data.payouts)) {
         setPayouts(data.payouts);
-        try {
-          localStorage.setItem(`${LOCAL_STORAGE_KEY}_payouts`, JSON.stringify(data.payouts));
-        } catch {}
       }
     });
 
     // 5. Fetch Activities
-    fetchWithFallback("/api/admin/activities").then((data) => {
+    load("/api/admin/activities").then((data) => {
       if (data?.activities && Array.isArray(data.activities)) {
         setActivities(data.activities);
       }
     });
 
     // 6. Revenue figures (paid bookings only, net of refunds) computed by the Backend
-    fetchWithFallback("/api/admin/revenue").then((data) => {
+    load("/api/admin/revenue").then((data) => {
       if (!data || !Array.isArray(data.monthlyAnalytics)) return;
       const currentMonth = data.monthlyAnalytics[data.monthlyAnalytics.length - 1];
       const today = todayIsoDate();
@@ -382,41 +364,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     // 7. Fetch Audit Logs
-    fetchWithFallback("/api/admin/logs?limit=100").then((data) => {
+    load("/api/admin/logs?limit=100").then((data) => {
       if (data?.logs && Array.isArray(data.logs)) {
         setAuditLogs(data.logs);
-        try {
-          localStorage.setItem(`${LOCAL_STORAGE_KEY}_auditLogs`, JSON.stringify(data.logs));
-        } catch {}
       }
     });
+
+    // The core lists decide whether the panel says the server could not be reached
+    await Promise.allSettled(pending);
+    const core = ['/api/admin/users', '/api/admin/consultants', '/api/admin/bookings', '/api/admin/payouts'];
+    const failed = core.filter((e) => failures.current.has(e));
+    setDataError(
+      failed.length
+        ? 'Could not reach the server, so some lists may be missing or out of date. Check your connection and use Retry.'
+        : null
+    );
+    setDataLoaded(true);
   };
 
-  // Fetch live MongoDB Atlas data on mount
+  // Load the live data on mount
   useEffect(() => {
     refreshAllData();
   }, []);
-
-  // Save to localStorage when state changes
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_bookings`, JSON.stringify(bookings));
-  }, [bookings]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_therapists`, JSON.stringify(therapists));
-  }, [therapists]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_clients`, JSON.stringify(clients));
-  }, [clients]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_payouts`, JSON.stringify(payouts));
-  }, [payouts]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_auditLogs`, JSON.stringify(auditLogs));
-  }, [auditLogs]);
 
   // Session counts and last/next session dates from the client's real bookings, when the user record has none
   const clientsWithSessions = useMemo<Client[]>(() => {
@@ -456,8 +425,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     const sessionsTodayCount = todaysBookings.length;
-    const activeClientsCount = clients.length;
-    const pendingReportsCount = completedBookings.length;
+    // Client accounts that are not switched off (Inactive)
+    const activeClientsCount = clients.filter((c) => c.status !== 'Inactive').length;
+    // Completed sessions whose therapist has not filed the session report yet
+    const pendingReportsCount = completedBookings.filter((b) => !b.hasSessionReport).length;
 
     const therapyHoursToday = Math.round(
       todaysBookings.reduce((acc, b) => {
@@ -481,6 +452,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const pendingPayouts = payouts.filter((p) => Number(p.pendingAmount) > 0);
     const pendingPayoutsAmount = pendingPayouts.reduce((acc, p) => acc + Number(p.pendingAmount), 0);
     const pendingPayoutsTherapistsCount = pendingPayouts.length;
+    const pendingPayoutSessionsCount = payouts.reduce(
+      (acc, p: any) => acc + (Array.isArray(p.unpaidSessions) ? p.unpaidSessions.length : Number(p.sessionsCount) || 0),
+      0
+    );
 
     return {
       sessionsTodayCount,
@@ -491,22 +466,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       revenueToday,
       pendingPayoutsAmount: Math.round(pendingPayoutsAmount),
       pendingPayoutsTherapistsCount,
+      pendingPayoutSessionsCount,
       monthlyRevenue,
-      databaseConnected: "MongoDB Atlas (Connected)",
     };
   };
 
-  const updateBookingStatus = (bookingId: string, status: Booking['status']) => {
-    setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status } : b))
-    );
-    addAuditLog(`Booking #${bookingId} set to ${status}`, 'Bookings');
-
-    // Persist to MongoDB Atlas
-    // Only the status is written, as the canonical value the website and panels use
-    api.put(`/api/admin/bookings/${bookingId}`, { status: BOOKING_STATUS_CANONICAL[status] || status.toUpperCase() }).catch((err) => {
-      console.error('Error updating booking status in DB:', err);
+  /**
+   * Saves a booking's status on the server first (only the status, as the canonical value the website and panels
+   * use); the list changes only after the server confirms, and a failure is thrown for the caller to show.
+   * The server records the change in the audit log with the signed-in admin.
+   */
+  const updateBookingStatus = async (bookingId: string, status: Booking['status']) => {
+    await api.put(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
+      status: BOOKING_STATUS_CANONICAL[status] || status.toUpperCase()
     });
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status } : b)));
+    refreshAllData();
   };
 
   const releasePayout = (payoutId: string) => {
@@ -523,20 +498,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const verifyTherapist = (therapistId: string) => {
-    setTherapists((prev) =>
-      prev.map((t) =>
-        t.id === therapistId ? { ...t, verificationStatus: 'Verified' as const } : t
-      )
-    );
-    addAuditLog(`Verified Therapist ID #${therapistId}`, 'Therapists');
-
-    // Persist to MongoDB Atlas
-    api.put(`/api/admin/consultants/${therapistId}`, { verificationStatus: 'Verified', isCertified: true }).catch((err) => {
-      console.error('Error verifying therapist in DB:', err);
-    });
-  };
-
   /**
    * Deletes a therapist on the server first; only a real delete removes them here and is audit-logged.
    * The server refuses therapists with bookings (so booking history stays intact) and that error is passed on.
@@ -545,11 +506,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = therapists.find((t) => t.id === therapistId);
     await api.delete(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`);
 
-    const updated = therapists.filter((t) => t.id !== therapistId);
-    setTherapists(updated);
-    try {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_therapists`, JSON.stringify(updated));
-    } catch {}
+    setTherapists((prev) => prev.filter((t) => t.id !== therapistId));
     if (target) {
       addAuditLog(`Deleted Consultant ${target.name} (ID: ${therapistId})`, 'Therapists');
     }
@@ -579,7 +536,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     therapistEmail?: string,
     therapistPhoto?: string
   ) => {
-    // 1. Immediately update state so client is assigned exclusively to this single therapist
+    // Saved on the server first; a failure is passed on (no retry elsewhere, nothing shown or logged as done)
+    await api.put(`/api/admin/users/${clientId}`, {
+      assignedTherapistId: therapistId,
+      assignedTherapistName: therapistName,
+      assignedTherapistEmail: therapistEmail,
+      assignedTherapistPhoto: therapistPhoto,
+    });
+
     setClients((prev) =>
       prev.map((c) =>
         c.id === clientId
@@ -591,50 +555,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : c
       )
     );
-
     addAuditLog(`Assigned Client #${clientId} exclusively to Consultant ${therapistName}`, 'Clients');
-
-    // 2. Persist to MongoDB Atlas via Backend API
-    try {
-      await api.put(`/api/admin/users/${clientId}`, {
-        assignedTherapistId: therapistId,
-        assignedTherapistName: therapistName,
-        assignedTherapistEmail: therapistEmail,
-        assignedTherapistPhoto: therapistPhoto,
-      });
-    } catch (err) {
-      console.error('Error assigning client therapist in DB:', err);
-      try {
-        await api.put(`/api/users/${clientId}`, {
-          assignedTherapistId: therapistId,
-          assignedTherapistName: therapistName,
-          assignedTherapistEmail: therapistEmail,
-          assignedTherapistPhoto: therapistPhoto,
-        });
-      } catch {}
-    }
 
     // Refresh data in background to sync state across panels
     refreshAllData();
   };
 
-  const addAuditLog = (action: string, moduleName: string, role = 'Super Admin') => {
-    const newLog: AuditLog = {
-      id: `LOG-${Date.now().toString().slice(-6)}`,
-      user: 'Super Administrator',
-      role,
-      action,
-      module: moduleName,
-      severity: 'INFO',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      ipAddress: '127.0.0.1'
-    };
-    setAuditLogs((prev) => [newLog, ...prev]);
-
-    // Persist to MongoDB Atlas
-    api.post('/api/admin/logs', newLog).catch((err) => {
-      console.warn('Could not persist audit log to DB:', err);
-    });
+  /**
+   * Adds a readable description of an admin action to the audit log. The server fills in who did it (from the
+   * signed-in token), the IP and the time; nothing about the person is sent from here. The list is reloaded from
+   * the server afterwards, so only entries the server stored are shown. (The `role` argument is ignored.)
+   */
+  const addAuditLog = (action: string, moduleName: string, _role?: string) => {
+    const severity = /\b(delet|refund|payout)/i.test(action) ? 'CRITICAL' : /\b(cancel|suspend|deactivat)/i.test(action) ? 'WARNING' : 'INFO';
+    api
+      .post('/api/admin/logs', { action, module: moduleName, severity })
+      .then(() => api.get('/api/admin/logs?limit=100'))
+      .then((data: any) => {
+        if (Array.isArray(data?.logs)) setAuditLogs(data.logs);
+      })
+      .catch((err) => {
+        console.warn('Could not record the audit entry:', err?.message || err);
+      });
   };
 
   return (
@@ -648,9 +590,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assessments,
         auditLogs,
         metrics: getMetrics(),
+        dataError,
+        dataLoaded,
         updateBookingStatus,
         releasePayout,
-        verifyTherapist,
         deleteTherapist,
         deleteClient,
         assignClientTherapist,

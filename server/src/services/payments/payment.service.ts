@@ -13,7 +13,7 @@ import { numberMissing } from '../sequence';
 import { MailService } from '../mail.service';
 import { portalUrl, WEBSITE_URL } from '../email-layout';
 import { getActivePaymentProvider, getPaymentProvider } from './index';
-import { PaymentGatewayError, VerifyResult, WebhookEvent } from './provider';
+import { PaymentGatewayError, RefundResult, VerifyResult, WebhookEvent } from './provider';
 
 /**
  * Payment document (collection `Payment`). Amounts are integers in paise.
@@ -375,43 +375,96 @@ async function syncRefundState(paymentId: string): Promise<any> {
   return { ...payment, status, refundedAmount };
 }
 
+/** A refund being sent to the gateway holds its amount for this long; a crashed request's hold then lapses */
+const REFUND_RESERVATION_MS = 10 * 60 * 1000;
+
+/** Refund amounts already committed: successful, in flight at the gateway, or reserved by a request in progress */
+function committedRefunds(refunds: any[], now = Date.now()): number {
+  return (refunds || [])
+    .filter((r: any) => r.status === 'SUCCESS' || r.status === 'PENDING' ||
+      (r.status === 'RESERVED' && now - new Date(r.createdAt || 0).getTime() < REFUND_RESERVATION_MS))
+    .reduce((sum: number, r: any) => sum + Number(r.amount || 0), 0);
+}
+
+/**
+ * Refunds a gateway payment. The amount is first reserved on the payment with one conditional update (only if
+ * it still fits in what is left to refund), so two admins refunding at once can never return more than was
+ * paid. The gateway is called only after the reservation; a gateway error releases it again.
+ */
 export async function refundPayment(paymentId: string, amountRupees: number | undefined, reason: string, adminEmail: string) {
   const db = getDatabase();
   const payment: any = await getPayment(paymentId);
   if (!payment) throw new PaymentGatewayError('Payment not found');
   if (!REFUNDABLE.includes(payment.status)) throw new PaymentGatewayError(`A ${payment.status} payment cannot be refunded`);
 
-  const committed = (payment.refunds || [])
-    .filter((r: any) => r.status === 'SUCCESS' || r.status === 'PENDING')
-    .reduce((sum: number, r: any) => sum + Number(r.amount || 0), 0);
-  const refundable = payment.amount - committed;
+  const now = new Date();
+  const refundable = payment.amount - committedRefunds(payment.refunds, now.getTime());
   const amountPaise = amountRupees ? toPaise(amountRupees) : refundable;
 
   if (!(amountPaise > 0) || amountPaise > refundable) {
-    throw new PaymentGatewayError(`Refund amount must be between ₹1 and ₹${toRupees(refundable)}`);
+    throw new PaymentGatewayError(refundable > 0
+      ? `Refund amount must be between ₹1 and ₹${toRupees(refundable)}`
+      : 'This payment has already been fully refunded (or a refund for it is in progress).');
   }
 
-  const provider = getPaymentProvider(payment.provider);
   const refundId = newId('RFD');
-  const result = await provider.refund(payment, amountPaise, refundId, reason);
-
-  await db.collection(PAYMENTS).updateOne(
-    { id: paymentId },
+  const cutoff = new Date(now.getTime() - REFUND_RESERVATION_MS);
+  // Committed refunds, computed by the database at write time (same rule as committedRefunds above)
+  const committedExpr = {
+    $sum: {
+      $map: {
+        input: {
+          $filter: {
+            input: { $ifNull: ['$refunds', []] },
+            as: 'r',
+            cond: {
+              $or: [
+                { $in: ['$$r.status', ['SUCCESS', 'PENDING']] },
+                { $and: [{ $eq: ['$$r.status', 'RESERVED'] }, { $gt: ['$$r.createdAt', cutoff] }] }
+              ]
+            }
+          }
+        },
+        as: 'r',
+        in: { $ifNull: ['$$r.amount', 0] }
+      }
+    }
+  };
+  const reserved = await db.collection(PAYMENTS).updateOne(
+    {
+      id: paymentId,
+      status: { $in: REFUNDABLE },
+      $expr: { $lte: [{ $add: [committedExpr, amountPaise] }, '$amount'] }
+    },
     {
       $push: {
-        refunds: {
-          id: refundId,
-          providerRefundId: result.providerRefundId,
-          amount: amountPaise,
-          status: result.status,
-          reason,
-          requestedBy: adminEmail,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
+        refunds: { id: refundId, amount: amountPaise, status: 'RESERVED', reason, requestedBy: adminEmail, createdAt: now, updatedAt: now }
       } as any
     }
   );
+  if (!reserved.modifiedCount) {
+    throw new PaymentGatewayError('Another refund for this payment was just made or is in progress. Reload to see what is left to refund.');
+  }
+
+  let result: RefundResult;
+  try {
+    const provider = getPaymentProvider(payment.provider);
+    result = await provider.refund(payment, amountPaise, refundId, reason);
+  } catch (err) {
+    // The gateway refused or failed: release the reservation so the amount can be refunded later
+    await db.collection(PAYMENTS).updateOne({ id: paymentId }, { $pull: { refunds: { id: refundId, status: 'RESERVED' } } as any }).catch(() => {});
+    throw err;
+  }
+
+  // A webhook may already have reported this refund's outcome; only a still-reserved entry takes the gateway's answer
+  await db.collection(PAYMENTS).updateOne(
+    { id: paymentId, refunds: { $elemMatch: { id: refundId, status: 'RESERVED' } } },
+    { $set: { 'refunds.$.status': result.status, 'refunds.$.providerRefundId': result.providerRefundId, 'refunds.$.updatedAt': new Date() } }
+  );
+  await db.collection(PAYMENTS).updateOne(
+    { id: paymentId, refunds: { $elemMatch: { id: refundId, providerRefundId: { $exists: false } } } },
+    { $set: { 'refunds.$.providerRefundId': result.providerRefundId } }
+  ).catch(() => {});
   await emailRefund(payment, { id: refundId, amount: amountPaise, status: result.status });
   return syncRefundState(paymentId);
 }
@@ -481,6 +534,14 @@ export async function applyWebhookEvent(providerName: string, event: WebhookEven
 
 const escapeRx = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** The from/to filter (YYYY-MM-DD) as the start of the first and the end of the last India-time day */
+function istDayRange(filters: { from?: string; to?: string }): { from: Date | null; to: Date | null } {
+  const day = (v?: string) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
+  const from = day(filters.from) ? new Date(`${day(filters.from)}T00:00:00.000+05:30`) : null;
+  const to = day(filters.to) ? new Date(`${day(filters.to)}T23:59:59.999+05:30`) : null;
+  return { from: from && !isNaN(from.getTime()) ? from : null, to: to && !isNaN(to.getTime()) ? to : null };
+}
+
 /**
  * Bookings an administrator marked paid without a gateway payment, listed as MANUAL transactions
  * (provider 'manual', method 'MANUAL') so the admin transactions view matches revenue.
@@ -506,8 +567,9 @@ async function listManualPayments(filters: { status?: string; provider?: string;
   const serviceMap = byId(services);
 
   const status = filters.status ? String(filters.status).toUpperCase() : '';
-  const from = filters.from ? new Date(filters.from).getTime() : NaN;
-  const to = filters.to ? new Date(`${filters.to}T23:59:59.999Z`).getTime() : NaN;
+  const { from: fromDate, to: toDate } = istDayRange(filters);
+  const from = fromDate ? fromDate.getTime() : NaN;
+  const to = toDate ? toDate.getTime() : NaN;
   const q = filters.q ? new RegExp(escapeRx(String(filters.q)), 'i') : null;
 
   return bookings
@@ -548,9 +610,10 @@ async function listManualPayments(filters: { status?: string; provider?: string;
     })
     .filter((p) => {
       if (status && p.status !== status) return false;
-      const created = new Date(p.createdAt || 0).getTime();
-      if (!isNaN(from) && created < from) return false;
-      if (!isNaN(to) && created > to) return false;
+      // The date the list shows (paid, else created)
+      const shown = new Date(p.paidAt || p.createdAt || 0).getTime();
+      if (!isNaN(from) && shown < from) return false;
+      if (!isNaN(to) && shown > to) return false;
       if (q && ![p.id, p.bookingId, p.bookingNumber, p.clientName, p.clientEmail, p.consultantName].some((v) => q.test(String(v || '')))) return false;
       return true;
     });
@@ -566,17 +629,26 @@ export async function listPayments(filters: { status?: string; provider?: string
   );
 
   const query: any = {};
+  const and: any[] = [];
   if (filters.status) query.status = String(filters.status).toUpperCase();
   if (filters.provider) query.provider = String(filters.provider).toLowerCase();
-  if (filters.from || filters.to) {
-    query.createdAt = {};
-    if (filters.from) query.createdAt.$gte = new Date(filters.from);
-    if (filters.to) query.createdAt.$lte = new Date(`${filters.to}T23:59:59.999Z`);
+  const { from, to } = istDayRange(filters);
+  if (from || to) {
+    // Whole India-time days, on the date the list shows (paid, else created)
+    const range: any = {};
+    if (from) range.$gte = from;
+    if (to) range.$lte = to;
+    and.push({ $or: [{ paidAt: range }, { paidAt: { $in: [null, ''] }, createdAt: range }] });
   }
   if (filters.q) {
     const rx = { $regex: String(filters.q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-    query.$or = [{ id: rx }, { paymentNumber: rx }, { bookingId: rx }, { clientName: rx }, { clientEmail: rx }, { consultantName: rx }, { providerOrderId: rx }, { providerPaymentId: rx }];
+    // Payments don't store the booking number (BK-00012): find it on the bookings
+    const numbered = await db.collection('Booking').find({ bookingNumber: rx }, { projection: { id: 1 } }).limit(200).toArray().catch(() => []);
+    const bookingIds = numbered.map((b: any) => String(b.id || b._id));
+    and.push({ $or: [{ id: rx }, { paymentNumber: rx }, { bookingId: rx }, { clientName: rx }, { clientEmail: rx }, { consultantName: rx }, { providerOrderId: rx }, { providerPaymentId: rx },
+      ...(bookingIds.length ? [{ bookingId: { $in: bookingIds } }] : [])] });
   }
+  if (and.length) query.$and = and;
 
   const [payments, manual] = await Promise.all([
     db.collection(PAYMENTS).find(query).sort({ createdAt: -1 }).limit(500).toArray(),

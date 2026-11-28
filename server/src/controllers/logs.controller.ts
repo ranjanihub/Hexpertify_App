@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
-import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
+import { escapeRegex, serverError } from '../services/clinical-access';
+import { adminActor, AuditSeverity, recordAudit } from '../services/admin-audit';
 
 export interface AuditLogDocument {
   id: string;
   user: string;
+  userId?: string;
   role: string;
   action: string;
   module: string;
-  severity: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'CRITICAL';
+  severity: AuditSeverity;
   timestamp: string;
   createdAt: Date;
   ipAddress: string;
@@ -17,9 +19,17 @@ export interface AuditLogDocument {
   status?: string;
 }
 
+const SEVERITIES = new Set<AuditSeverity>(['INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL']);
+
+/**
+ * The admin audit trail (all routes behind requireAdmin, see routes/logs.routes.ts). Entries are written by the
+ * server: automatically for every admin change (services/admin-audit.ts) and through POST for a description the
+ * panel adds. Nothing can edit or delete them through the API.
+ */
 export class LogsController {
   /**
-   * GET /api/admin/logs or /api/logs
+   * GET /api/admin/logs?page=&limit=&module=&severity=&search=
+   * Newest first, paged on the server so the whole history is reachable.
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
@@ -28,98 +38,94 @@ export class LogsController {
 
       const query: any = {};
       if (module && module !== 'All') {
-        query.module = { $regex: new RegExp(String(module), 'i') };
+        query.module = { $regex: `^${escapeRegex(module)}$`, $options: 'i' };
       }
-      if (severity && severity !== 'ALL') {
-        query.severity = String(severity).toUpperCase();
-      }
-      if (search) {
-        const s = String(search);
-        query.$or = [
-          { action: { $regex: s, $options: 'i' } },
-          { user: { $regex: s, $options: 'i' } },
-          { role: { $regex: s, $options: 'i' } },
-          { module: { $regex: s, $options: 'i' } },
-          { id: { $regex: s, $options: 'i' } },
-          { ipAddress: { $regex: s, $options: 'i' } }
-        ];
+      const sev = String(severity || '').toUpperCase();
+      if (sev && sev !== 'ALL') query.severity = sev;
+      const s = String(search || '').trim().slice(0, 100);
+      if (s) {
+        const rx = { $regex: escapeRegex(s), $options: 'i' };
+        query.$or = [{ action: rx }, { user: rx }, { role: rx }, { module: rx }, { id: rx }, { ipAddress: rx }, { 'details.targetId': rx }];
       }
 
       const pageSize = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 500);
       const pageNum = Math.max(parseInt(String(page), 10) || 1, 1);
       const skip = (pageNum - 1) * pageSize;
 
-      const [logs, totalCount] = await Promise.all([
-        db.collection('AuditLog')
-          .find(query)
-          .sort({ createdAt: -1, _id: -1 })
-          .skip(skip)
-          .limit(pageSize)
-          .toArray()
-          .catch(() => []),
-        db.collection('AuditLog').countDocuments(query).catch(() => 0)
+      const collection = db.collection('AuditLog');
+      const [logs, totalCount, modules] = await Promise.all([
+        collection.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize).toArray(),
+        collection.countDocuments(query),
+        collection.distinct('module')
       ]);
 
       const formattedLogs = logs.map((log: any) => ({
         id: log.id || String(log._id),
-        user: log.user || 'System User',
-        role: log.role || 'Super Admin',
-        action: log.action || 'System operation executed',
+        user: log.user || 'Unknown',
+        userId: log.userId || null,
+        role: log.role || '',
+        action: log.action || '',
         module: log.module || 'System',
-        severity: (log.severity || 'INFO').toUpperCase(),
-        timestamp: log.timestamp || (log.createdAt ? new Date(log.createdAt).toLocaleString() : 'Just now'),
-        ipAddress: log.ipAddress || '127.0.0.1',
+        severity: String(log.severity || 'INFO').toUpperCase(),
+        timestamp: log.timestamp || (log.createdAt ? new Date(log.createdAt).toISOString() : ''),
+        ipAddress: log.ipAddress || '',
         details: log.details || null,
-        userAgent: log.userAgent || 'Mozilla/5.0 (Admin Browser)',
-        createdAt: log.createdAt || new Date()
+        userAgent: log.userAgent || '',
+        createdAt: log.createdAt || null
       }));
 
       res.json({
         success: true,
         count: formattedLogs.length,
-        total: totalCount || formattedLogs.length,
+        total: totalCount,
         page: pageNum,
-        totalPages: Math.ceil((totalCount || formattedLogs.length) / pageSize),
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+        modules: modules.filter(Boolean).map(String).sort(),
         logs: formattedLogs
       });
     } catch (error: any) {
-      console.error('Error fetching audit logs:', error);
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch logs' });
+      serverError(res, 'logs.getAll', error, 'Failed to fetch audit logs');
     }
   }
 
   /**
-   * POST /api/admin/logs or /api/logs
+   * POST /api/admin/logs { action, module, severity?, details? }
+   * Adds a description from the panel. Who did it, the IP and the time come from the signed token and the
+   * request, never from the body.
    */
   static async create(req: Request, res: Response): Promise<void> {
     try {
+      const actor = adminActor(req);
+      if (!actor) {
+        res.status(401).json({ success: false, error: 'Administrator authentication required. Please sign in again.' });
+        return;
+      }
       const body = req.body || {};
-      const db = getDatabase();
+      const action = String(body.action || '').trim();
+      if (!action) {
+        res.status(400).json({ success: false, error: 'action is required' });
+        return;
+      }
+      const requested = String(body.severity || 'INFO').toUpperCase() as AuditSeverity;
+      // Only plain short values from details (no nested objects that could carry form data)
+      const details: Record<string, unknown> = { source: 'panel' };
+      if (body.details && typeof body.details === 'object') {
+        for (const [k, v] of Object.entries(body.details).slice(0, 10)) {
+          if (/pass|secret|token|bank|account|ifsc|upi|card/i.test(k)) continue;
+          if (['string', 'number', 'boolean'].includes(typeof v)) details[k] = typeof v === 'string' ? v.slice(0, 200) : v;
+        }
+      }
 
-      const newLog: AuditLogDocument = {
-        id: body.id || `LOG-${Date.now().toString().slice(-6)}`,
-        user: body.user || 'Admin User',
-        role: body.role || 'Super Admin',
-        action: body.action || 'System action executed',
-        module: body.module || 'System',
-        severity: (body.severity || 'INFO').toUpperCase() as any,
-        timestamp: body.timestamp || new Date().toLocaleString(),
-        createdAt: new Date(),
-        ipAddress: req.ip || req.headers['x-forwarded-for']?.toString() || body.ipAddress || '127.0.0.1',
-        details: body.details || {},
-        userAgent: req.headers['user-agent'] || body.userAgent || 'Internal System'
-      };
-
-      await db.collection('AuditLog').insertOne(newLog);
-
-      res.status(201).json({
-        success: true,
-        log: newLog,
-        message: 'Audit log entry recorded successfully in MongoDB Atlas.'
+      await recordAudit(req, actor, {
+        action,
+        module: String(body.module || 'System').trim() || 'System',
+        severity: SEVERITIES.has(requested) ? requested : 'INFO',
+        details
       });
+      res.status(201).json({ success: true, message: 'Audit entry recorded.' });
     } catch (error: any) {
-      console.error('Error creating audit log:', error);
-      res.status(500).json({ success: false, error: error?.message || 'Failed to record audit log' });
+      serverError(res, 'logs.create', error, 'Failed to record audit entry');
     }
   }
 
@@ -128,44 +134,24 @@ export class LogsController {
    */
   static async getStats(_req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
+      const collection = getDatabase().collection('AuditLog');
       const [total, securityCount, paymentsCount, warningsCount] = await Promise.all([
-        db.collection('AuditLog').countDocuments().catch(() => 0),
-        db.collection('AuditLog').countDocuments({ module: /Auth|Security/i }).catch(() => 0),
-        db.collection('AuditLog').countDocuments({ module: /Payments|Revenue/i }).catch(() => 0),
-        db.collection('AuditLog').countDocuments({ severity: { $in: ['WARNING', 'ERROR', 'CRITICAL'] } }).catch(() => 0)
+        collection.countDocuments(),
+        collection.countDocuments({ module: /Auth|Security/i }),
+        collection.countDocuments({ module: /Payments|Payouts|Revenue/i }),
+        collection.countDocuments({ severity: { $in: ['WARNING', 'ERROR', 'CRITICAL'] } })
       ]);
-
       res.json({
         success: true,
-        stats: {
-          totalEvents: total,
-          securityEvents: securityCount,
-          financialEvents: paymentsCount,
-          warningEvents: warningsCount,
-          systemHealth: '99.98% Optimal',
-          activeMonitoring: true
-        }
+        stats: { totalEvents: total, securityEvents: securityCount, financialEvents: paymentsCount, warningEvents: warningsCount }
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch log stats' });
+      serverError(res, 'logs.getStats', error, 'Failed to fetch audit log stats');
     }
   }
 
-  /**
-   * DELETE /api/admin/logs/clear
-   */
-  static async clearAll(_req: Request, res: Response): Promise<void> {
-    try {
-      const db = getDatabase();
-      await db.collection('AuditLog').deleteMany({});
-
-      res.json({
-        success: true,
-        message: 'Audit logs cleared.'
-      });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to clear logs' });
-    }
+  /** Anything that would edit or delete the audit trail (e.g. the old DELETE /clear) */
+  static async refuseChange(_req: Request, res: Response): Promise<void> {
+    res.status(405).json({ success: false, error: 'Audit log entries cannot be changed or deleted.' });
   }
 }

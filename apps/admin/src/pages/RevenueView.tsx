@@ -83,6 +83,8 @@ export const RevenueView: React.FC = () => {
       return (liveRevenueData.transactions as any[]).map((t) => ({
         date: isDate(t.date) ? String(t.date) : '',
         amount: Number(t.amount) || 0,
+        // The server's platform fee for this session (the therapist's plan, the same rule as payouts)
+        platformFee: Number.isFinite(Number(t.platformFee)) ? Number(t.platformFee) : Math.round((Number(t.amount) || 0) * commissionRate),
         status: String(t.status || ''),
         therapistId: String(t.therapistId || ''),
         therapistName: String(t.therapistName || ''),
@@ -92,6 +94,7 @@ export const RevenueView: React.FC = () => {
     return bookings.map((b) => ({
       date: !b.toBeScheduled && isDate(b.date) ? b.date : '',
       amount: Number(b.amount) || 0,
+      platformFee: Math.round((Number(b.amount) || 0) * commissionRate),
       status: ['Paid', 'Partially Refunded', 'Refund Pending'].includes(b.paymentStatus)
         ? 'paid'
         : b.paymentStatus === 'Refunded' ? 'refunded' : 'pending',
@@ -99,7 +102,7 @@ export const RevenueView: React.FC = () => {
       therapistName: b.therapistName || '',
       service: b.service || ''
     }));
-  }, [liveRevenueData, bookings]);
+  }, [liveRevenueData, bookings, commissionRate]);
 
   const paidEntries = React.useMemo(() => revenueEntries.filter((e) => e.status === 'paid'), [revenueEntries]);
 
@@ -108,11 +111,10 @@ export const RevenueView: React.FC = () => {
 
   // Revenue charts grouped by each transaction's date (not by list position)
   const dynamicRevenueDatasets = React.useMemo(() => {
-    const share = (amount: number) => Math.round(amount * commissionRate);
     const bucket = (label: string, inBucket: (date: string) => boolean) => {
       const entries = paidEntries.filter((e) => e.date && inBucket(e.date));
       const rev = entries.reduce((sum, e) => sum + e.amount, 0);
-      const platFee = entries.reduce((sum, e) => sum + share(e.amount), 0);
+      const platFee = entries.reduce((sum, e) => sum + e.platformFee, 0);
       return { label, revenue: rev, platformShare: platFee, sessions: entries.length };
     };
     const isoOf = (d: Date) => d.toISOString().split('T')[0];
@@ -161,7 +163,7 @@ export const RevenueView: React.FC = () => {
       Month: summarize(monthData),
       Year: summarize(yearData)
     };
-  }, [paidEntries, commissionRate, todayIst]);
+  }, [paidEntries, todayIst]);
 
   const currentDataset = dynamicRevenueDatasets[timeRange];
   const avgRevenuePerSession = currentDataset.sessionsTotal > 0
@@ -172,8 +174,8 @@ export const RevenueView: React.FC = () => {
   const platformCommissionRetained: number = React.useMemo(() => {
     const fromApi = Number(liveRevenueData?.summary?.platformCommission);
     if (liveRevenueData?.summary?.platformCommission !== undefined && Number.isFinite(fromApi)) return fromApi;
-    return paidEntries.reduce((sum, e) => sum + Math.round(e.amount * commissionRate), 0);
-  }, [liveRevenueData, paidEntries, commissionRate]);
+    return paidEntries.reduce((sum, e) => sum + e.platformFee, 0);
+  }, [liveRevenueData, paidEntries]);
 
   const revenueTodayComputed = paidEntries
     .filter((e) => e.date === todayIst)
@@ -202,9 +204,20 @@ interface ServiceBreakdownItem {
 
   const totalServiceValue = serviceBreakdown.reduce((acc: number, s: ServiceBreakdownItem) => acc + s.value, 0);
 
-  // Therapist revenue from paid sessions, with the platform commission rate
+  // Therapist revenue from paid sessions. The platform fee per session comes from the server (the therapist's
+  // plans, the same rule as payouts); the label describes that rule
   const therapistRevenueData = React.useMemo(() => {
-    const feePercent = Math.round(commissionRate * 1000) / 10;
+    const defaultPercent = Math.round(commissionRate * 1000) / 10;
+    const feeLabelOf = (t: (typeof therapists)[number]) => {
+      const plans = (t.services || []).filter((s) => Number(s?.sessionFee) > 0 && Number.isFinite(Number(s?.platformFee)));
+      if (!plans.length) return `${defaultPercent}% default`;
+      if (t.platformFeeType === 'Percentage') {
+        const pcts = Array.from(new Set(plans.map((s) => Math.round((Number(s.platformFee) / Number(s.sessionFee)) * 1000) / 10)));
+        return pcts.length === 1 ? `${pcts[0]}%` : 'per plan';
+      }
+      const fees = Array.from(new Set(plans.map((s) => Number(s.platformFee))));
+      return fees.length === 1 ? `₹${fees[0].toLocaleString('en-IN')}/session` : 'per plan';
+    };
     return therapists.map((t) => {
       const tEntries = paidEntries.filter(
         (e) =>
@@ -213,15 +226,14 @@ interface ServiceBreakdownItem {
       );
       const totalSessions = tEntries.length;
       const gross = tEntries.reduce((sum, e) => sum + e.amount, 0);
-      const platformFee = Math.round(gross * commissionRate);
+      const platformFee = tEntries.reduce((sum, e) => sum + e.platformFee, 0);
       return {
         ...t,
         computedSessions: totalSessions,
         computedGross: gross,
         computedFee: platformFee,
         computedPayout: gross - platformFee,
-        feeType: 'Percentage',
-        feeValue: feePercent
+        feeLabel: feeLabelOf(t)
       };
     }).sort((a, b) => b.computedGross - a.computedGross || b.computedSessions - a.computedSessions);
   }, [therapists, paidEntries, commissionRate]);
@@ -260,28 +272,33 @@ interface ServiceBreakdownItem {
     txPage * PAGE_SIZE
   );
 
-  // Export CSV handler
+  /** Whether an India-time date (YYYY-MM-DD) is in the selected period: last 7 days, this month or this year */
+  const inSelectedPeriod = (date: string): boolean => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return false;
+    if (timeRange === 'Year') return date.slice(0, 4) === todayIst.slice(0, 4);
+    if (timeRange === 'Month') return date.slice(0, 7) === todayIst.slice(0, 7);
+    const weekStart = new Date(new Date(`${todayIst}T00:00:00Z`).getTime() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    return date >= weekStart && date <= todayIst;
+  };
+
+  // Export CSV: exactly the transactions the table shows (search + payment filter), within the selected period
   const handleExportCSV = () => {
     const headers = ['Booking ID', 'Booking Code', 'Client Name', 'Therapist Name', 'Service', 'Date', 'Amount (INR)', 'Payment Status'];
-    const rows = bookings.map((b) => [
-      b.id,
-      b.bookingCode,
-      `"${b.clientName}"`,
-      `"${b.therapistName}"`,
-      `"${b.service}"`,
-      b.date,
-      b.amount,
-      b.paymentStatus
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = filteredBookings
+      .filter((b) => !b.toBeScheduled && inSelectedPeriod(b.date))
+      .map((b) => [b.id, b.bookingCode, b.clientName, b.therapistName, b.service, b.date, b.amount, b.paymentStatus].map(cell).join(','));
+    // A Blob keeps every character (a "#" in a name no longer cuts the file short)
+    const blob = new Blob([[headers.map(cell).join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Hexpertify_Revenue_Report_${timeRange}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('href', url);
+    const filterPart = paymentFilter === 'All' ? '' : `_${paymentFilter.replace(/\s+/g, '')}`;
+    link.setAttribute('download', `Hexpertify_Revenue_Report_${timeRange}${filterPart}_${todayIst}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -714,7 +731,7 @@ interface ServiceBreakdownItem {
                       <td className="py-3.5 px-4 font-bold text-emerald-600">
                         ₹{t.computedFee.toLocaleString()}
                         <span className="text-[10px] text-slate-400 font-normal ml-1">
-                          ({t.feeType === 'Fixed' ? `₹${t.feeValue}` : `${t.feeValue}%`})
+                          ({t.feeLabel})
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-700">₹{t.computedPayout.toLocaleString()}</td>

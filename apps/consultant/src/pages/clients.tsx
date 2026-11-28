@@ -456,14 +456,14 @@ export default function Clients() {
             {paginatedClients.map((clientItem: any) => (
               <div key={clientItem.id} className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
                 <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="font-extrabold text-slate-900 text-sm leading-tight">{clientItem.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-slate-900 text-sm leading-tight break-words">{clientItem.name}</h3>
                     <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                       {clientItem.code ? <span className="font-mono">{clientItem.code} · </span> : null}
                       {clientItem.modality || 'Individual Therapy'}
                     </p>
                   </div>
-                  <div>
+                  <div className="shrink-0">
                     {getStatusBadge(clientItem.status)}
                   </div>
                 </div>

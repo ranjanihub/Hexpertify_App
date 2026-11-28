@@ -279,8 +279,10 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {/* Header on top, the rest of the screen scrolls (works whatever height the header ends up) */}
+      <div className="flex h-screen supports-[height:100dvh]:h-dvh flex-col">
       <Header />
-      <main className="h-[calc(100vh-56px)] overflow-y-scroll md:h-[calc(100vh-92px)] supports-[height:100dvh]:h-[calc(100dvh-56px)] md:supports-[height:100dvh]:h-[calc(100dvh-92px)]">
+      <main className="min-h-0 flex-1 overflow-y-scroll">
         <NotificationTitleBar title={metaData?.notificationTitle} />
         <div className="p-4 md:p-6 lg:p-[50px] w-full min-[2000px]:mx-auto min-[2000px]:max-w-[1900px]">
         
@@ -417,6 +419,7 @@ export default async function HomePage() {
         </div>
         <Footer />
       </main>
+      </div>
     </>
   );
 }

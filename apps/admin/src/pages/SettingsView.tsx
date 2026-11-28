@@ -21,9 +21,10 @@ import { api } from '../lib/apiClient';
 export interface AdminUser {
   id: string;
   name: string;
-  role: 'Super Admin' | 'Finance Admin' | 'Operations Admin' | 'Care Admin' | 'Support Admin';
+  /** The account's real role in the database (ADMIN or SUPER_ADMIN); both have the same full access */
+  role: 'Admin' | 'Super Admin';
   email: string;
-  status: 'Active' | 'Inactive' | 'Pending';
+  status: 'Active' | 'Inactive';
   createdAt: string;
 }
 
@@ -65,7 +66,7 @@ export const SettingsView: React.FC = () => {
   }>({
     name: '',
     email: '',
-    role: 'Super Admin',
+    role: 'Admin',
     status: 'Active'
   });
 
@@ -84,9 +85,16 @@ export const SettingsView: React.FC = () => {
 
   const [errors, setErrors] = useState<{ name?: string; email?: string; profession?: string }>({});
 
-  const showToast = (msg: string) => {
+  const [toastIsError, setToastIsError] = useState(false);
+  // One change at a time per form (a double click never sends a second request)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // One timer for the current message: an older message's timer never hides a newer one
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (msg: string, isError = false) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setToastIsError(isError);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), isError ? 8000 : 3000);
   };
 
   // ── FETCH LIVE DATA FROM MONGODB ATLAS ───────────────────────
@@ -116,13 +124,14 @@ export const SettingsView: React.FC = () => {
       // 2. Fetch Admin Users from MongoDB Atlas
       const dataUsers: any = await api.get('/api/admin/users').catch(() => null);
       if (dataUsers && Array.isArray(dataUsers.users)) {
-        const adminOnly = dataUsers.users.filter((u: any) => String(u.role).toUpperCase() === 'ADMIN');
+        // Every administrator account (ADMIN and SUPER_ADMIN), each with its real role
+        const adminOnly = dataUsers.users.filter((u: any) => ['ADMIN', 'SUPER_ADMIN'].includes(String(u.role || '').toUpperCase()));
         const liveAdmins: AdminUser[] = adminOnly.map((a: any) => ({
           id: a.id || String(a._id || ''),
           name: a.name || a.email || '',
-          role: 'Super Admin',
+          role: String(a.role || '').toUpperCase() === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin',
           email: a.email || '',
-          status: (a.status || 'Active') as any,
+          status: /^(inactive|suspended|blocked|disabled|deleted)$/i.test(String(a.status || a.accountStatus || '')) ? 'Inactive' : 'Active',
           createdAt: a.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : ''
         }));
         setAdminUsers(liveAdmins);
@@ -136,6 +145,16 @@ export const SettingsView: React.FC = () => {
 
   useEffect(() => {
     fetchLiveDatabaseData();
+  }, []);
+
+  const [professionNames, setProfessionNames] = useState<string[]>([]);
+  useEffect(() => {
+    api.get('/api/admin/professions')
+      .then((data: any) => {
+        const list = Array.isArray(data?.professions) ? data.professions : [];
+        setProfessionNames(list.map((p: any) => String(p.name || p.serviceName || '')).filter(Boolean));
+      })
+      .catch(() => setProfessionNames([]));
   }, []);
 
   // Drop the browser copies older versions of this page kept (they could show sample users)
@@ -152,7 +171,7 @@ export const SettingsView: React.FC = () => {
     setAdminFormData({
       name: '',
       email: '',
-      role: 'Super Admin',
+      role: 'Admin',
       status: 'Active'
     });
     setErrors({});
@@ -171,46 +190,41 @@ export const SettingsView: React.FC = () => {
     setIsAdminModalOpen(true);
   };
 
+  /** Removed from the list only after the server confirms (it refuses your own account and the last admin) */
   const handleDeleteAdmin = async (id: string, name: string, email?: string) => {
-    if (window.confirm(`Are you sure you want to remove admin access for "${name}"?`)) {
-      setAdminUsers((prev) => prev.filter((usr) => usr.id !== id && (email ? usr.email !== email : true)));
-      showToast(`Admin user "${name}" removed successfully.`);
-
-      try {
-        const queryParams = new URLSearchParams();
-        if (id) queryParams.set('id', id);
-        if (email) queryParams.set('email', email);
-
-        await api.delete(`/api/admin/users?${queryParams.toString()}`);
-      } catch (err: any) {
-        showToast(`Not removed on the server: ${err?.message || 'request failed'}`);
-        fetchLiveDatabaseData();
-      }
+    if (!window.confirm(`Are you sure you want to remove admin access for "${name}"?`)) return;
+    try {
+      const queryParams = new URLSearchParams();
+      if (id) queryParams.set('id', id);
+      if (email) queryParams.set('email', email);
+      await api.delete(`/api/admin/users?${queryParams.toString()}`);
+    } catch (err: any) {
+      showToast(`"${name}" was not removed. ${err?.message || 'Please try again.'}`, true);
+      return;
     }
+    setAdminUsers((prev) => prev.filter((usr) => usr.id !== id && (email ? usr.email !== email : true)));
+    showToast(`Admin user "${name}" removed.`);
   };
 
   const handleToggleAdminStatus = async (id: string, email?: string) => {
     const usr = adminUsers.find((u) => u.id === id || (email && u.email === email));
     if (!usr) return;
     const nextStatus: AdminUser['status'] = usr.status === 'Active' ? 'Inactive' : 'Active';
-
+    try {
+      await api.put('/api/admin/users', { id, email: email || usr.email, status: nextStatus });
+    } catch (err: any) {
+      showToast(`Status not changed for ${usr.name}. ${err?.message || 'Please try again.'}`, true);
+      return;
+    }
     setAdminUsers((prev) =>
       prev.map((u) => (u.id === id || (email && u.email === email) ? { ...u, status: nextStatus } : u))
     );
     showToast(`Status updated to ${nextStatus} for ${usr.name}.`);
-
-    try {
-      await api.put('/api/admin/users', { id, email: email || usr.email, status: nextStatus });
-    } catch (err: any) {
-      showToast(`Status not saved: ${err?.message || 'request failed'}`);
-      setAdminUsers((prev) =>
-        prev.map((u) => (u.id === id || (email && u.email === email) ? { ...u, status: usr.status } : u))
-      );
-    }
   };
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const newErrors: { name?: string; email?: string } = {};
 
     if (!adminFormData.name.trim()) {
@@ -230,67 +244,56 @@ export const SettingsView: React.FC = () => {
     const cleanName = adminFormData.name.trim();
     const cleanEmail = adminFormData.email.trim().toLowerCase();
 
-    if (editingAdmin) {
-      try {
-        await api.put('/api/admin/users', {
-          id: editingAdmin.id,
-          name: cleanName,
-          email: cleanEmail,
-          role: 'ADMIN'
-        });
-      } catch (err: any) {
-        setErrors({ email: `Not saved: ${err?.message || 'the server could not save this admin'}` });
-        return;
-      }
-      setAdminUsers((prev) =>
-        prev.map((usr) =>
-          usr.id === editingAdmin.id
-            ? {
-                ...usr,
-                name: cleanName,
-                email: cleanEmail,
-                role: adminFormData.role,
-                status: adminFormData.status
-              }
-            : usr
-        )
-      );
-      showToast(`Admin user "${cleanName}" updated successfully.`);
-    } else {
-      // Sent with the admin's token; the Backend generates a temporary password and returns it once
-      let data: any;
-      try {
-        data = await api.post('/api/admin/users', {
-          name: cleanName,
-          email: cleanEmail,
-          role: 'ADMIN',
-          status: adminFormData.status
-        });
-      } catch (err: any) {
-        setErrors({ email: `Not saved: ${err?.message || 'the server could not create this admin'}` });
-        return;
-      }
-      if (data?.user?.role && data.user.role !== 'admin') {
-        setErrors({ email: 'The account was created without administrator rights. Please sign in again as a Super Admin and retry.' });
+    setIsSubmitting(true);
+    try {
+      if (editingAdmin) {
+        // Name, email and status are saved; the role stays as stored (every admin has the same access)
+        try {
+          await api.put('/api/admin/users', {
+            id: editingAdmin.id,
+            name: cleanName,
+            email: cleanEmail,
+            status: adminFormData.status
+          });
+        } catch (err: any) {
+          setErrors({ email: `Not saved: ${err?.message || 'the server could not save this admin'}` });
+          return;
+        }
+        setAdminUsers((prev) =>
+          prev.map((usr) =>
+            usr.id === editingAdmin.id ? { ...usr, name: cleanName, email: cleanEmail, status: adminFormData.status } : usr
+          )
+        );
+        showToast(`Admin user "${cleanName}" updated.`);
+      } else {
+        // Sent with the admin's token; the Backend generates a temporary password and returns it once
+        let data: any;
+        try {
+          data = await api.post('/api/admin/users', {
+            name: cleanName,
+            email: cleanEmail,
+            role: 'ADMIN',
+            status: adminFormData.status
+          });
+        } catch (err: any) {
+          setErrors({ email: `Not saved: ${err?.message || 'the server could not create this admin'}` });
+          return;
+        }
+        if (data?.user?.role && data.user.role !== 'admin') {
+          setErrors({ email: 'The account was created without administrator rights. Please sign in again as a Super Admin and retry.' });
+          fetchLiveDatabaseData();
+          return;
+        }
+        if (data?.temporaryPassword) {
+          setNewAdminCredentials({ email: cleanEmail, password: String(data.temporaryPassword) });
+        }
+        showToast(`New admin user "${cleanName}" added.`);
         fetchLiveDatabaseData();
-        return;
       }
-      const newAdmin: AdminUser = {
-        id: data?.user?.id || `ADM-${Date.now().toString().slice(-4)}`,
-        name: cleanName,
-        email: cleanEmail,
-        role: adminFormData.role,
-        status: adminFormData.status,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setAdminUsers((prev) => [newAdmin, ...prev.filter((u) => u.email !== cleanEmail)]);
-      if (data?.temporaryPassword) {
-        setNewAdminCredentials({ email: cleanEmail, password: String(data.temporaryPassword) });
-      }
-      showToast(`New admin user "${newAdmin.name}" added successfully.`);
+      setIsAdminModalOpen(false);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsAdminModalOpen(false);
   };
 
   // ── CONSULTANT USER HANDLERS (LIVE DB SYNC) ─────────────────
@@ -299,7 +302,7 @@ export const SettingsView: React.FC = () => {
     setConsultantFormData({
       name: '',
       email: '',
-      profession: 'Licensed Psychologist',
+      profession: '',
       status: 'Active'
     });
     setErrors({});
@@ -318,40 +321,36 @@ export const SettingsView: React.FC = () => {
     setIsConsultantModalOpen(true);
   };
 
+  /** Removed only after the server confirms (it refuses therapists with bookings or assigned clients) */
   const handleDeleteConsultant = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to remove consultant user "${name}"?`)) {
-      setConsultantUsers((prev) => prev.filter((usr) => usr.id !== id));
-      showToast(`Consultant user "${name}" removed successfully.`);
-
-      try {
-        await api.delete(`/api/admin/consultants?id=${encodeURIComponent(id)}`);
-      } catch (err: any) {
-        showToast(`Not removed on the server: ${err?.message || 'request failed'}`);
-        fetchLiveDatabaseData();
-      }
+    if (!window.confirm(`Are you sure you want to remove consultant user "${name}"?`)) return;
+    try {
+      await api.delete(`/api/admin/consultants?id=${encodeURIComponent(id)}`);
+    } catch (err: any) {
+      showToast(`"${name}" was not removed. ${err?.message || 'Please try again.'}`, true);
+      return;
     }
+    setConsultantUsers((prev) => prev.filter((usr) => usr.id !== id));
+    showToast(`Consultant user "${name}" removed.`);
   };
 
   const handleToggleConsultantStatus = async (id: string) => {
     const usr = consultantUsers.find((c) => c.id === id);
     if (!usr) return;
     const nextStatus: ConsultantUser['status'] = usr.status === 'Active' ? 'Inactive' : 'Active';
-
-    setConsultantUsers((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: nextStatus } : c))
-    );
-    showToast(`Status updated to ${nextStatus} for ${usr.name}.`);
-
     try {
       await api.put('/api/admin/consultants', { id, accountStatus: nextStatus });
     } catch (err: any) {
-      showToast(`Not updated on the server: ${err?.message || 'request failed'}`);
-      fetchLiveDatabaseData();
+      showToast(`Status not changed for ${usr.name}. ${err?.message || 'Please try again.'}`, true);
+      return;
     }
+    setConsultantUsers((prev) => prev.map((c) => (c.id === id ? { ...c, status: nextStatus } : c)));
+    showToast(`Status updated to ${nextStatus} for ${usr.name}.`);
   };
 
   const handleConsultantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const newErrors: { name?: string; email?: string; profession?: string } = {};
 
     if (!consultantFormData.name.trim()) {
@@ -371,75 +370,48 @@ export const SettingsView: React.FC = () => {
       return;
     }
 
-    if (editingConsultant) {
-      setConsultantUsers((prev) =>
-        prev.map((usr) =>
-          usr.id === editingConsultant.id
-            ? {
-                ...usr,
-                name: consultantFormData.name.trim(),
-                email: consultantFormData.email.trim(),
-                profession: consultantFormData.profession.trim(),
-                status: consultantFormData.status
-              }
-            : usr
-        )
-      );
-      showToast(`Consultant "${consultantFormData.name.trim()}" updated successfully in Database.`);
+    const name = consultantFormData.name.trim();
+    const email = consultantFormData.email.trim().toLowerCase();
+    const profession = consultantFormData.profession.trim();
 
-      try {
+    setIsSubmitting(true);
+    try {
+      if (editingConsultant) {
         await api.put('/api/admin/consultants', {
           id: editingConsultant.id,
-          name: consultantFormData.name.trim(),
-          email: consultantFormData.email.trim(),
-          profession: consultantFormData.profession.trim(),
+          name,
+          email,
+          profession,
           accountStatus: consultantFormData.status
         });
-      } catch (err: any) {
-        showToast(`Not updated on the server: ${err?.message || 'request failed'}`);
-        fetchLiveDatabaseData();
-      }
-    } else {
-      const newConsultant: ConsultantUser = {
-        id: `CON-${Date.now().toString().slice(-4)}`,
-        name: consultantFormData.name.trim(),
-        email: consultantFormData.email.trim(),
-        profession: consultantFormData.profession.trim(),
-        status: consultantFormData.status,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setConsultantUsers((prev) => [newConsultant, ...prev]);
-      showToast(`New consultant user "${newConsultant.name}" saved.`);
-
-      try {
-        // Sent with the admin's token; the Backend assigns the consultant's id
-        const data: any = await api.post('/api/admin/consultants', {
-          name: newConsultant.name,
-          email: newConsultant.email,
-          profession: newConsultant.profession,
-          accountStatus: newConsultant.status,
-          isCertified: true,
-          platformFeePerSession: 500
+        showToast(`Consultant "${name}" updated.`);
+      } else {
+        // Creating never changes another therapist: the server refuses an email that is already used
+        await api.post('/api/admin/consultants', {
+          name,
+          email,
+          profession,
+          accountStatus: consultantFormData.status
         });
-        const savedId = data?.consultant?.id;
-        if (savedId) {
-          setConsultantUsers((prev) => prev.map((usr) => (usr.id === newConsultant.id ? { ...usr, id: savedId } : usr)));
-        }
-      } catch (err: any) {
-        showToast(`Not saved on the server: ${err?.message || 'request failed'}`);
-        fetchLiveDatabaseData();
+        showToast(`New consultant user "${name}" saved.`);
       }
+    } catch (err: any) {
+      setErrors({ email: `Not saved: ${err?.message || 'the server could not save this consultant'}` });
+      return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     setIsConsultantModalOpen(false);
+    fetchLiveDatabaseData();
   };
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+        <div role={toastIsError ? 'alert' : 'status'} className={`fixed bottom-6 right-6 z-50 max-w-md ${toastIsError ? 'bg-rose-600 border-rose-500' : 'bg-slate-900 border-slate-700'} text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border`}>
+          {toastIsError ? <AlertCircle className="w-5 h-5 text-white shrink-0" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
           <span className="text-xs font-bold">{toastMessage}</span>
         </div>
       )}
@@ -589,8 +561,6 @@ export const SettingsView: React.FC = () => {
                       className={`px-3 py-2 sm:py-1 font-bold text-xs rounded-full transition-all cursor-pointer ${
                         usr.status === 'Active'
                           ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
-                          : usr.status === 'Pending'
-                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
                           : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
                       }`}
                     >
@@ -799,17 +769,10 @@ export const SettingsView: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Admin Role
                   </label>
-                  <select
-                    value={adminFormData.role}
-                    onChange={(e) => setAdminFormData((prev) => ({ ...prev, role: e.target.value as AdminUser['role'] }))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
-                  >
-                    <option value="Super Admin">Super Admin</option>
-                    <option value="Finance Admin">Finance Admin</option>
-                    <option value="Operations Admin">Operations Admin</option>
-                    <option value="Care Admin">Care Admin</option>
-                    <option value="Support Admin">Support Admin</option>
-                  </select>
+                  <p className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-700">
+                    {editingAdmin ? editingAdmin.role : 'Admin'}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">Every administrator has full access to this panel.</p>
                 </div>
 
                 <div>
@@ -822,8 +785,7 @@ export const SettingsView: React.FC = () => {
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                   >
                     <option value="Active">Active</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Inactive">Inactive (cannot sign in)</option>
                   </select>
                 </div>
               </div>
@@ -839,9 +801,10 @@ export const SettingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 transition-all cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 transition-all cursor-pointer disabled:opacity-60"
                 >
-                  {editingAdmin ? 'Save Changes' : 'Create Admin User'}
+                  {isSubmitting ? 'Saving…' : editingAdmin ? 'Save Changes' : 'Create Admin User'}
                 </button>
               </div>
             </form>
@@ -952,13 +915,10 @@ export const SettingsView: React.FC = () => {
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                     />
                     <datalist id="profession-options">
-                      <option value="Licensed Psychologist" />
-                      <option value="Marriage & Family Therapist" />
-                      <option value="Adolescent & Teen Counselor" />
-                      <option value="Psychiatrist" />
-                      <option value="CBT Specialist" />
-                      <option value="Child Psychologist" />
-                      <option value="Couples Counselor" />
+                      {/* The professions that exist on the website (the server accepts only these) */}
+                      {professionNames.map((p) => (
+                        <option key={p} value={p} />
+                      ))}
                     </datalist>
                   </div>
                   {errors.profession && (
@@ -979,8 +939,7 @@ export const SettingsView: React.FC = () => {
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                   >
                     <option value="Active">Active</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Inactive">Inactive (cannot sign in)</option>
                   </select>
                 </div>
               </div>
@@ -996,9 +955,10 @@ export const SettingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 transition-all cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 transition-all cursor-pointer disabled:opacity-60"
                 >
-                  {editingConsultant ? 'Save Changes' : 'Create in Database'}
+                  {isSubmitting ? 'Saving…' : editingConsultant ? 'Save Changes' : 'Create in Database'}
                 </button>
               </div>
             </form>

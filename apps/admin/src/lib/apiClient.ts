@@ -1,15 +1,11 @@
 /**
  * Centralized API client for Hexpertify Admin Panel.
  *
- * - In dev mode (Vite), requests are proxied via vite.config.ts → localhost:5000.
- * - In production (served from Express), requests go to the same origin.
- * - If the primary request fails, falls back to http://localhost:5000.
+ * - Requests always go to the same origin (the web app serves /api/*); nothing is retried elsewhere.
  * - Validates response.ok and throws meaningful errors instead of silently swallowing them.
  */
 
 import { getApiAuthHeaders } from './auth';
-
-const FALLBACK_BASE = 'http://localhost:5000';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -18,12 +14,12 @@ export interface ApiResponse<T = any> {
 }
 
 /**
- * Make an API request with automatic fallback and proper error handling.
+ * Make an API request with proper error handling.
  *
  * @param endpoint  The API path, e.g. "/api/admin/consultants"
  * @param options   Standard fetch RequestInit (method, headers, body, etc.)
  * @returns         The parsed JSON response
- * @throws          Error with a descriptive message if both primary and fallback fail
+ * @throws          Error carrying the server's message (or a network error)
  */
 export async function apiRequest<T = any>(
   endpoint: string,
@@ -36,38 +32,19 @@ export async function apiRequest<T = any>(
   // Attach the admin API token (required by protected endpoints such as payments/refunds)
   options.headers = { ...getApiAuthHeaders(), ...(options.headers as Record<string, string> || {}) };
 
-  // 1. Try primary URL (proxied in dev, same-origin in prod)
-  let primaryRes: Response | null = null;
+  // Same-origin only: an error answer from the server is reported with its own message,
+  // and nothing is ever retried against another host (that would also leak the token).
+  let res: Response;
   try {
-    primaryRes = await fetch(endpoint, options);
-  } catch (primaryErr) {
-    console.warn(`[API] Primary request error for ${options.method || 'GET'} ${endpoint}:`, primaryErr);
+    res = await fetch(endpoint, options);
+  } catch (err: any) {
+    throw new Error(`Could not reach the server (${err?.message || 'network error'}). Check your connection and try again.`);
   }
-  if (primaryRes?.ok) {
-    return await primaryRes.json();
+  if (res.ok) {
+    return await res.json();
   }
-  // The server answered with an error: report its message instead of retrying elsewhere
-  if (primaryRes && primaryRes.status !== 404 && primaryRes.status !== 405) {
-    const data = await primaryRes.json().catch(() => null);
-    throw new Error(data?.error || `API ${options.method || 'GET'} ${endpoint} failed: ${primaryRes.status}`);
-  }
-
-  // 2. Fallback to explicit localhost:5000
-  try {
-    const fallbackUrl = `${FALLBACK_BASE}${endpoint}`;
-    const res = await fetch(fallbackUrl, options);
-    if (res.ok) {
-      return await res.json();
-    }
-    const errorText = await res.text().catch(() => res.statusText);
-    throw new Error(`API ${options.method || 'GET'} ${endpoint} failed: ${res.status} — ${errorText}`);
-  } catch (fallbackErr: any) {
-    // If this is our own thrown error, re-throw it
-    if (fallbackErr?.message?.startsWith('API ')) {
-      throw fallbackErr;
-    }
-    throw new Error(`API ${options.method || 'GET'} ${endpoint} failed: Network error — ${fallbackErr?.message || 'Unable to reach backend'}`);
-  }
+  const data = await res.json().catch(() => null);
+  throw new Error(data?.error || data?.message || `API ${options.method || 'GET'} ${endpoint} failed: ${res.status}`);
 }
 
 /**

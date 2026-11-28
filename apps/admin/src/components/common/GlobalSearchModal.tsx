@@ -1,27 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, ArrowRight } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { api } from '../../lib/apiClient';
-import type { ResourceItem } from '../../types';
-import type { PageId } from '../../types';
+import { searchRecords, type SearchHit } from '../../lib/global-search';
+import type { ResourceItem, PageId } from '../../types';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectPage: (page: PageId) => void;
+  /** Opens a result: its page, filtered to that record (path carries ?q=) */
+  onNavigate: (page: PageId, path: string) => void;
 }
 
-export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
-  isOpen,
-  onClose,
-  onSelectPage
-}) => {
+/** The spotlight search, opened with Ctrl+K / Cmd+K (App.tsx) and closed with Esc */
+export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose, onNavigate }) => {
   const [query, setQuery] = useState('');
   // Search covers the live records loaded by the app
   const { therapists, clients, bookings } = useAppContext();
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [resourcesLoaded, setResourcesLoaded] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isOpen || resourcesLoaded) return;
@@ -33,197 +32,135 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       .catch(() => {});
   }, [isOpen, resourcesLoaded]);
 
+  // A fresh, focused search box each time it opens
   useEffect(() => {
+    if (!isOpen) return;
+    setQuery('');
+    const t = window.setTimeout(() => inputRef.current?.focus(), 0);
+    return () => window.clearTimeout(t);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        isOpen ? onClose() : null;
-      }
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  const results = useMemo(
+    () => searchRecords(query, { therapists, clients, bookings, resources }),
+    [query, therapists, clients, bookings, resources]
+  );
+
   if (!isOpen) return null;
 
-  const filteredTherapists = therapists.filter((t) =>
-    (t.name || '').toLowerCase().includes(query.toLowerCase()) ||
-    (t.profession || '').toLowerCase().includes(query.toLowerCase())
-  );
+  const open = (hit: SearchHit) => {
+    onNavigate(hit.page, hit.path);
+    onClose();
+  };
 
-  const filteredClients = clients.filter((c) =>
-    (c.name || '').toLowerCase().includes(query.toLowerCase()) ||
-    (c.email || '').toLowerCase().includes(query.toLowerCase())
-  );
-
-  const filteredBookings = bookings.filter((b) =>
-    (b.clientName || '').toLowerCase().includes(query.toLowerCase()) ||
-    (b.therapistName || '').toLowerCase().includes(query.toLowerCase()) ||
-    (b.bookingCode || '').toLowerCase().includes(query.toLowerCase())
-  );
-
-  const filteredResources = resources.filter((r) =>
-    (r.title || '').toLowerCase().includes(query.toLowerCase()) ||
-    (r.description || '').toLowerCase().includes(query.toLowerCase()) ||
-    (r.tags || []).some((t) => (t || '').toLowerCase().includes(query.toLowerCase()))
-  );
+  const groups: { label: string; hits: SearchHit[] }[] = [
+    { label: 'Therapists', hits: results.therapists },
+    { label: 'Clients', hits: results.clients },
+    { label: 'Bookings', hits: results.bookings },
+    { label: 'Resources', hits: results.resources }
+  ];
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-6 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-6 bg-slate-950/40 backdrop-blur-sm animate-fade-in"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search"
+    >
       <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden mt-2 sm:mt-8 max-h-[88vh] flex flex-col">
         {/* Search Header */}
         <div className="p-4 border-b border-slate-100 flex items-center gap-3">
           <Search className="w-5 h-5 text-[#450bc8]" />
           <input
+            ref={inputRef}
             type="text"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search therapists, clients, bookings, payouts..."
-            className="flex-1 text-slate-800 placeholder-slate-400 outline-none text-base font-medium"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const first = groups.find((g) => g.hits.length)?.hits[0];
+                if (first) open(first);
+              }
+            }}
+            placeholder="Search therapists, clients (name, email, CL- number), bookings, resources..."
+            className="flex-1 text-slate-800 placeholder-slate-400 outline-none text-base font-medium min-w-0"
           />
           {query && (
-            <button onClick={() => setQuery('')} className="p-1 text-slate-400 hover:text-slate-600">
+            <button type="button" onClick={() => setQuery('')} className="p-1 text-slate-400 hover:text-slate-600" aria-label="Clear search">
               <X className="w-4 h-4" />
             </button>
           )}
-          <kbd className="px-2 py-1 bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-500">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-2 py-1 bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-500"
+          >
             ESC
-          </kbd>
+          </button>
         </div>
 
         {/* Results Body */}
         <div className="max-h-[60vh] overflow-y-auto p-4 space-y-6">
-          {!query && (
+          {!query.trim() && (
             <div className="text-center py-8 text-slate-400 text-sm font-medium">
-              Type a name, booking code, or service to search across Hexpertify Admin platform.
+              Type a name, email, client number (CL-…), booking number (BK-…) or resource title.
             </div>
           )}
 
-          {query && (
-            <>
-              {/* Therapist Results */}
-              {filteredTherapists.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block font-mono">
-                    Therapists ({filteredTherapists.length})
-                  </span>
-                  <div className="space-y-1">
-                    {filteredTherapists.map((t) => (
-                      <div
-                        key={t.id}
-                        onClick={() => {
-                          onSelectPage('therapists');
-                          onClose();
-                        }}
-                        className="p-3 bg-slate-50 hover:bg-purple-50/60 rounded-2xl border border-slate-100 flex items-center justify-between cursor-pointer group transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <img src={t.photo} alt={t.name} className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-100" />
-                          <div>
-                            <p className="text-sm font-bold text-slate-900 group-hover:text-[#450bc8]">{t.name}</p>
-                            <p className="text-xs text-slate-500">{t.profession}</p>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#450bc8] transition-colors" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Client Results */}
-              {filteredClients.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block font-mono">
-                    Clients ({filteredClients.length})
-                  </span>
-                  <div className="space-y-1">
-                    {filteredClients.map((c) => (
-                      <div
-                        key={c.id}
-                        onClick={() => {
-                          onSelectPage('clients');
-                          onClose();
-                        }}
-                        className="p-3 bg-slate-50 hover:bg-purple-50/60 rounded-2xl border border-slate-100 flex items-center justify-between cursor-pointer group transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-100" />
-                          <div>
-                            <p className="text-sm font-bold text-slate-900 group-hover:text-[#450bc8]">{c.name}</p>
-                            <p className="text-xs text-slate-500">{c.email}</p>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#450bc8] transition-colors" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Booking Results */}
-              {filteredBookings.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block font-mono">
-                    Bookings ({filteredBookings.length})
-                  </span>
-                  <div className="space-y-1">
-                    {filteredBookings.map((b) => (
-                      <div
-                        key={b.id}
-                        onClick={() => {
-                          onSelectPage('bookings');
-                          onClose();
-                        }}
-                        className="p-3 bg-slate-50 hover:bg-purple-50/60 rounded-2xl border border-slate-100 flex items-center justify-between cursor-pointer group transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">{b.bookingCode} - {b.clientName}</p>
-                          <p className="text-xs text-slate-500">{b.service} with {b.therapistName} ({b.time})</p>
-                        </div>
-                        <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700">
-                          {b.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Resource Results */}
-              {filteredResources.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block font-mono">
-                    Resources ({filteredResources.length})
-                  </span>
-                  <div className="space-y-1">
-                    {filteredResources.map((r) => (
-                      <div
-                        key={r.id}
-                        onClick={() => {
-                          onSelectPage('resources');
-                          onClose();
-                        }}
-                        className="p-3 bg-slate-50 hover:bg-purple-50/60 rounded-2xl border border-slate-100 flex items-center justify-between cursor-pointer group transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#450bc8]">{r.title}</p>
-                          <p className="text-xs text-slate-500 line-clamp-1">{r.description}</p>
-                        </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-100 text-[#450bc8]">
-                          {r.typeLabel}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+          {query.trim() && results.total === 0 && (
+            <div className="text-center py-8 text-slate-400 text-sm font-medium">
+              No results match "<span className="font-bold">{query}</span>"
+            </div>
           )}
+
+          {query.trim() &&
+            groups.map(
+              (g) =>
+                g.hits.length > 0 && (
+                  <div key={g.label} className="space-y-2">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block font-mono">
+                      {g.label} ({g.hits.length})
+                    </span>
+                    <div className="space-y-1">
+                      {g.hits.slice(0, 20).map((hit) => (
+                        <button
+                          type="button"
+                          key={hit.key}
+                          onClick={() => open(hit)}
+                          className="w-full text-left p-3 bg-slate-50 hover:bg-purple-50/60 focus:bg-purple-50/60 rounded-2xl border border-slate-100 flex items-center justify-between gap-3 cursor-pointer group transition-colors outline-none"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {hit.image && (
+                              <img src={hit.image} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-100 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-slate-900 group-hover:text-[#450bc8] truncate">{hit.title}</p>
+                              <p className="text-xs text-slate-500 truncate">{hit.subtitle}</p>
+                            </div>
+                          </div>
+                          {hit.badge ? (
+                            <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 shrink-0">{hit.badge}</span>
+                          ) : (
+                            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#450bc8] transition-colors shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+            )}
         </div>
       </div>
     </div>,

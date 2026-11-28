@@ -35,6 +35,7 @@ import {
 import { KeywordsTagInput } from '../components/common/KeywordsTagInput';
 import { ImageUploadButton } from '../components/common/ImageUploadButton';
 import { api } from '../lib/apiClient';
+import { sanitizeRichHtml } from '../lib/rich-text';
 import type { ProfessionService } from '../types';
 
 interface RichCodeEditorProps {
@@ -196,7 +197,7 @@ const RichCodeEditor: React.FC<RichCodeEditorProps> = ({
         {isPreview ? (
           <div className="p-3 min-h-[140px] text-slate-800 bg-white text-xs border-none font-medium overflow-y-auto leading-relaxed">
             {value.trim() ? (
-              <div dangerouslySetInnerHTML={{ __html: value }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(value) }} />
             ) : (
               <span className="text-slate-400 italic">No output to preview. Write custom code tags to see them rendered here.</span>
             )}
@@ -366,9 +367,13 @@ export const ProfessionsView: React.FC = () => {
   // Required (*) fields left empty on the last save attempt
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
+  // Edits are saved only by Save Changes (no local-only "auto-save"); this marks edits not yet saved
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = React.useRef(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastIsError, setToastIsError] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Fetch live professions from MongoDB Atlas on mount
@@ -376,18 +381,12 @@ export const ProfessionsView: React.FC = () => {
     setIsLoading(true);
     const fetchProfessions = async () => {
       try {
-        let res = await fetch('/api/admin/professions').catch(() => null);
-        if (!res && window.location.hostname === 'localhost') {
-          res = await fetch('http://localhost:5000/api/admin/professions').catch(() => null);
-        }
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data?.professions && Array.isArray(data.professions)) {
-            setProfessions(data.professions);
-          }
-        }
-      } catch (err) {
+        const data: any = await api.get('/api/admin/professions');
+        setProfessions(Array.isArray(data?.professions) ? data.professions : []);
+        setLoadError(null);
+      } catch (err: any) {
         console.error('Error fetching live professions:', err);
+        setLoadError(err?.message || 'Professions could not be loaded.');
       } finally {
         setIsLoading(false);
       }
@@ -395,9 +394,13 @@ export const ProfessionsView: React.FC = () => {
     fetchProfessions();
   }, []);
 
-  const showToast = (msg: string) => {
+  // One timer for the current message: an older message's timer never hides a newer one
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (msg: string, isError = false) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setToastIsError(isError);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), isError ? 8000 : 3000);
   };
 
   const createBlankProfession = (): ProfessionService => ({
@@ -442,7 +445,7 @@ export const ProfessionsView: React.FC = () => {
     setIsNewModalOpen(false);
     setMissingFields([]);
     setActiveTab('Basic Info');
-    setAutoSaveStatus('saved');
+    setIsDirty(false);
   };
 
   const handleAddNewTrigger = () => {
@@ -450,7 +453,7 @@ export const ProfessionsView: React.FC = () => {
     setIsNewModalOpen(true);
     setMissingFields([]);
     setActiveTab('Basic Info');
-    setAutoSaveStatus('idle');
+    setIsDirty(false);
   };
 
   // Changes some fields of the profession being edited (used after an upload, so typing meanwhile is kept)
@@ -459,14 +462,15 @@ export const ProfessionsView: React.FC = () => {
 
   const handleModalFieldChange = (updated: ProfessionService) => {
     setEditingProf(updated);
+    setIsDirty(true);
+  };
 
-    if (autoSaveEnabled && !isNewModalOpen) {
-      setAutoSaveStatus('saving');
-      setTimeout(() => {
-        setProfessions((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-        setAutoSaveStatus('saved');
-      }, 500);
-    }
+  /** Closing with unsaved edits asks first, so a change is never silently lost */
+  const handleCloseModal = () => {
+    if (isDirty && !window.confirm('You have unsaved changes. Close without saving?')) return;
+    setEditingProf(null);
+    setIsNewModalOpen(false);
+    setIsDirty(false);
   };
 
   /** Every field marked * in the form; FAQs are optional, but an added FAQ needs both its question and answer */
@@ -494,7 +498,7 @@ export const ProfessionsView: React.FC = () => {
   };
 
   const handleSaveModal = () => {
-    if (!editingProf) return;
+    if (!editingProf || savingRef.current) return;
     const missing = missingRequiredFields(editingProf);
     if (missing.length) {
       setMissingFields(missing.map((m) => m.label));
@@ -505,6 +509,8 @@ export const ProfessionsView: React.FC = () => {
 
     const draft = editingProf;
     const isNew = isNewModalOpen;
+    savingRef.current = true;
+    setIsSaving(true);
     // Wait for the server: it returns the saved profession (with its real id) or a clear error
     (isNew
       ? api.post<any>('/api/admin/professions', draft)
@@ -516,10 +522,15 @@ export const ProfessionsView: React.FC = () => {
         showToast(isNew ? `Added "${saved.serviceName}". It's now on the website.` : `Saved "${saved.serviceName}". Changes are live on the website.`);
         setEditingProf(null);
         setIsNewModalOpen(false);
+        setIsDirty(false);
       })
       .catch((err) => {
         console.error('Error saving profession:', err);
-        showToast(`Could not save "${draft.serviceName}": ${err?.message || 'please try again'}`);
+        showToast(`Could not save "${draft.serviceName}": ${err?.message || 'please try again'}`, true);
+      })
+      .finally(() => {
+        savingRef.current = false;
+        setIsSaving(false);
       });
   };
 
@@ -534,9 +545,10 @@ export const ProfessionsView: React.FC = () => {
       }
       setDeletingId(null);
       showToast(`Deleted "${target?.serviceName || id}"`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting profession from DB:', err);
-      showToast(`Error deleting "${target?.serviceName || id}" from database.`);
+      // The server's reason (e.g. therapists still belong to this profession); nothing was deleted
+      showToast(`Could not delete "${target?.serviceName || id}". ${err?.message || 'Please try again.'}`, true);
       setDeletingId(null);
     }
   };
@@ -547,8 +559,8 @@ export const ProfessionsView: React.FC = () => {
     <div className="space-y-8 pb-12 animate-fade-in font-['Open_Sans']">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-24 right-8 z-[100] bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 font-extrabold text-xs animate-in slide-in-from-top duration-300">
-          <CheckCircle2 className="w-4 h-4" />
+        <div role={toastIsError ? 'alert' : 'status'} className={`fixed top-24 right-8 z-[100] max-w-md ${toastIsError ? 'bg-rose-600' : 'bg-emerald-600'} text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 font-extrabold text-xs animate-in slide-in-from-top duration-300`}>
+          {toastIsError ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
           {toastMessage}
         </div>
       )}
@@ -610,6 +622,12 @@ export const ProfessionsView: React.FC = () => {
           <Loader2 className="w-10 h-10 text-[#450bc8] animate-spin mx-auto" />
           <p className="text-sm font-extrabold text-slate-800">Loading Live Professions & Categories...</p>
           <p className="text-xs text-slate-400">Fetching verified services and SEO metadata</p>
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="text-center py-16 bg-white border border-rose-200 rounded-3xl space-y-2">
+          <AlertCircle className="w-10 h-10 text-rose-400 mx-auto" />
+          <p className="text-sm font-extrabold text-slate-800">Professions could not be loaded</p>
+          <p className="text-xs text-rose-600">{loadError}</p>
         </div>
       ) : filteredProfessions.length === 0 ? (
         <div className="text-center py-16 bg-white border border-dashed border-slate-200 rounded-3xl space-y-3">
@@ -720,10 +738,9 @@ export const ProfessionsView: React.FC = () => {
                     <span className="text-[9px] font-extrabold px-2.5 py-0.5 bg-white/20 rounded-full text-purple-100 uppercase tracking-widest font-mono border border-white/20">
                       {isNewModalOpen ? 'NEW PROFESSION' : editingProf.id}
                     </span>
-                    {autoSaveEnabled && !isNewModalOpen && (
-                      <span className="text-[10px] font-extrabold text-emerald-300 flex items-center gap-1 bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-400/30">
-                        <Sparkles className="w-3 h-3 text-emerald-300" />
-                        {autoSaveStatus === 'saving' ? 'Auto-saving…' : 'Auto-Saved'}
+                    {isDirty && (
+                      <span className="text-[10px] font-extrabold text-amber-200 flex items-center gap-1 bg-amber-950/40 px-2.5 py-0.5 rounded-full border border-amber-400/30">
+                        Unsaved changes
                       </span>
                     )}
                   </div>
@@ -737,32 +754,17 @@ export const ProfessionsView: React.FC = () => {
 
               {/* Modal Top Actions */}
               <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 sm:gap-3">
-                {!isNewModalOpen && (
-                  <button
-                    type="button"
-                    onClick={() => setAutoSaveEnabled(!autoSaveEnabled)}
-                    className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold border transition-colors ${
-                      autoSaveEnabled
-                        ? 'bg-emerald-500/25 text-emerald-200 border-emerald-400/30'
-                        : 'bg-white/10 text-purple-200 border-white/20 hover:text-white'
-                    }`}
-                    title="Toggle auto-save changes"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Auto-Save: {autoSaveEnabled ? 'ON' : 'OFF'}</span>
-                  </button>
-                )}
-
                 <button
                   onClick={handleSaveModal}
-                  className="px-5 py-2.5 bg-white text-[#3a0aa8] hover:bg-purple-50 rounded-2xl font-extrabold text-xs flex items-center gap-1.5 shadow-lg transition-all active:scale-95"
+                  disabled={isSaving}
+                  className="px-5 py-2.5 bg-white text-[#3a0aa8] hover:bg-purple-50 rounded-2xl font-extrabold text-xs flex items-center gap-1.5 shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save Changes</span>
+                  <span>{isSaving ? 'Saving…' : 'Save Changes'}</span>
                 </button>
 
                 <button
-                  onClick={() => setEditingProf(null)}
+                  onClick={handleCloseModal}
                   className="p-2 text-purple-200 hover:text-white hover:bg-white/15 rounded-xl transition-colors"
                   title="Close popup"
                 >
@@ -1347,7 +1349,7 @@ export const ProfessionsView: React.FC = () => {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setEditingProf(null)}
+                  onClick={handleCloseModal}
                   className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs rounded-xl transition-colors"
                 >
                   Cancel
@@ -1355,10 +1357,11 @@ export const ProfessionsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSaveModal}
-                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2"
+                  disabled={isSaving}
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{isNewModalOpen ? 'Create Profession' : 'Save Changes'}</span>
+                  <span>{isSaving ? 'Saving…' : isNewModalOpen ? 'Create Profession' : 'Save Changes'}</span>
                 </button>
               </div>
             </div>

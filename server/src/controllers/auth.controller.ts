@@ -20,6 +20,13 @@ import {
 // In-memory single-use ticket registry
 const activeTickets = new Map<string, { payload: any; expiresAt: number; used: boolean }>();
 
+/** An account switched off in Settings (Inactive) or suspended can't sign in, and its tokens stop working */
+const INACTIVE_ACCOUNT_STATUSES = new Set(['inactive', 'suspended', 'blocked', 'disabled', 'deleted']);
+function isInactiveAccount(doc: any): boolean {
+  return [doc?.status, doc?.accountStatus].some((v) => INACTIVE_ACCOUNT_STATUSES.has(String(v || '').trim().toLowerCase()));
+}
+const MASTER_ADMIN_EMAILS = new Set(['admin@hexpertify.com', 'admin@example.com', 'superadmin@hexpertify.com']);
+
 /** Thrown by handleVerifiedGoogleProfile when a client has no completed session yet */
 class ClientPanelLockedError extends Error {}
 
@@ -95,6 +102,15 @@ export class AuthController {
 
         if (!adminPasswordMatches) {
           res.status(401).json({ success: false, error: 'Invalid email or password.' });
+          return;
+        }
+
+        if (isInactiveAccount(adminDoc)) {
+          res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_INACTIVE',
+            error: 'This administrator account is inactive. Ask another administrator to reactivate it in Settings.'
+          });
           return;
         }
 
@@ -1008,6 +1024,32 @@ export class AuthController {
       return;
     }
     const { sub, email, role, exp } = req.user;
+    // An admin token is only good while the account is still an active administrator (switched off in
+    // Settings, demoted or deleted → signed out). One indexed lookup per check.
+    if (role === 'super_admin' || role === 'admin') {
+      let account: any = null;
+      try {
+        const db = getDatabase();
+        const filter = { $or: [{ _id: sub as any }, { id: sub }, { email: String(email || '').toLowerCase() }] };
+        account = (await db.collection('User').findOne(filter)) || (await db.collection('users').findOne(filter));
+      } catch (err: any) {
+        console.error('[Auth] whoami account lookup failed:', err?.message || err);
+        res.status(503).json({ success: false, error: 'The sign-in could not be checked right now. Please try again.' });
+        return;
+      }
+      const stillAdmin =
+        account &&
+        (['ADMIN', 'SUPER_ADMIN'].includes(String(account.role || '').toUpperCase()) ||
+          MASTER_ADMIN_EMAILS.has(String(account.email || '').toLowerCase()));
+      if (!stillAdmin || isInactiveAccount(account)) {
+        res.status(401).json({
+          success: false,
+          code: account && stillAdmin ? 'ACCOUNT_INACTIVE' : 'ACCOUNT_NOT_ADMIN',
+          error: 'This administrator account is no longer active. Please sign in again.'
+        });
+        return;
+      }
+    }
     res.json({ success: true, user: { id: sub, email, role }, expiresAt: exp ? new Date(exp * 1000).toISOString() : null });
   }
 

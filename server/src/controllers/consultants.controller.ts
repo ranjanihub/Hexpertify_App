@@ -58,6 +58,15 @@ async function identifierTaken(identifier: string | undefined, exceptId?: unknow
 
 const inputErrorStatus = (error: any) => (error instanceof ContentInputError ? error.status : 500);
 
+const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Case-insensitive exact email match */
+const emailMatch = (email: string) => ({ email: { $regex: `^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } });
+
+/** Every id a consultant can be referenced by (Prisma _id, the older custom id, therapistId) */
+function consultantIds(c: any): string[] {
+  return [...new Set([c?._id, c?.id, c?.therapistId].filter((v) => v !== undefined && v !== null && v !== '').map(String))];
+}
+
 const WEEK_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 /** "Mon, Wed, Fri" from the stored weekly availability (either { Monday: [...] } or { monday: { enabled, slots } }) */
@@ -296,13 +305,17 @@ export class ConsultantsController {
 
       const db = getDatabase();
       const identifier = slugify(String(body.identifier || body.slug || '')) || `${slugify(name.replace(/^dr\.?\s*/i, ''))}-${Date.now().toString().slice(-4)}`;
-      const email = String(body.email || `${identifier}@hexpertify.com`).toLowerCase().trim();
+      // The therapist's real address is required: invoices and notifications go there (never an invented one)
+      const email = String(body.email || '').toLowerCase().trim();
+      if (!VALID_EMAIL.test(email)) {
+        res.status(400).json({ success: false, error: "Please enter the therapist's real email address." });
+        return;
+      }
 
-      // Same email: update that consultant instead of creating a duplicate
-      const duplicate: any = await db.collection('Consultant').findOne({ email });
+      // Creating never changes another record: an email already in use is refused
+      const duplicate: any = await db.collection('Consultant').findOne(emailMatch(email), { projection: { _id: 1, name: 1 } });
       if (duplicate) {
-        req.params.id = String(duplicate._id);
-        await ConsultantsController.update(req, res);
+        res.status(409).json({ success: false, error: `A therapist with the email ${email} already exists${duplicate.name ? ` (${duplicate.name})` : ''}. Edit that therapist instead.` });
         return;
       }
 
@@ -313,17 +326,20 @@ export class ConsultantsController {
 
       const id = newId();
       const fields = await consultantFieldsFromAdmin({ ...body, name, email, identifier });
+      // seoMetaId is unique: a profile is never stored without its own SEO record (a second "null" would be refused)
+      const seoMetaId = await upsertSeoMeta(null, body.seo, name);
       const doc: any = {
         _id: id,
         ...passthrough(body),
         ...consultantDefaults(name, email, identifier),
         ...fields,
+        seoMetaId,
         accountStatus: fields.accountStatus || 'Active',
         createdAt: new Date(),
         updatedAt: new Date()
       };
       await db.collection('Consultant').insertOne(doc);
-      const related = await writeRelatedContent(id, body, null, name);
+      const related = await writeRelatedContent(id, { ...body, seo: undefined }, seoMetaId, name);
       if (Object.keys(related).length) await db.collection('Consultant').updateOne({ _id: id as any }, { $set: related });
 
       cacheService.invalidateTags(['consultants', 'stats', 'users']);
@@ -373,8 +389,12 @@ export class ConsultantsController {
       }
 
       const fields = await consultantFieldsFromAdmin(body);
+      if (fields.email !== undefined && !VALID_EMAIL.test(fields.email)) {
+        res.status(400).json({ success: false, error: "Please enter the therapist's real email address." });
+        return;
+      }
       if (fields.email) {
-        const clash = await db.collection('Consultant').findOne({ email: fields.email, _id: { $ne: existing._id } });
+        const clash = await db.collection('Consultant').findOne({ ...emailMatch(fields.email), _id: { $ne: existing._id } });
         if (clash) {
           res.status(409).json({ success: false, error: `Another therapist already uses ${fields.email}` });
           return;
@@ -392,7 +412,8 @@ export class ConsultantsController {
       const repairs: Record<string, any> = {};
       if (typeof existing.clientCount !== 'number' && fields.clientCount === undefined) repairs.clientCount = 0;
       if (typeof existing.experience !== 'number' && fields.experience === undefined) repairs.experience = 0;
-      if (!existing.email && !fields.email) repairs.email = `${existing.identifier || consultantId}@hexpertify.com`;
+      // Email is a required string for the website: an empty one, never an invented address
+      if (typeof existing.email !== 'string' && !fields.email) repairs.email = '';
 
       await db.collection('Consultant').updateOne(
         { _id: existing._id },
@@ -429,9 +450,27 @@ export class ConsultantsController {
         return;
       }
       const consultantId = String(existing._id);
-      const bookings = await db.collection('Booking').countDocuments({ consultantId });
-      if (bookings) {
-        res.status(409).json({ success: false, error: `This therapist has ${bookings} booking(s). Archive or hide them from the website instead of deleting, so booking history stays intact.` });
+      // Bookings and assigned clients may name the therapist by any of their ids
+      const ids = consultantIds(existing);
+      const byConsultant = { $or: [{ consultantId: { $in: ids } }, { therapistId: { $in: ids } }] };
+      const byAssignment = { assignedTherapistId: { $in: ids } };
+      const [bookings, legacyBookings, clients, legacyClients] = await Promise.all([
+        db.collection('Booking').countDocuments(byConsultant),
+        db.collection('bookings').countDocuments(byConsultant).catch(() => 0),
+        db.collection('User').countDocuments(byAssignment),
+        db.collection('users').countDocuments(byAssignment).catch(() => 0)
+      ]);
+      const bookingCount = Math.max(bookings, legacyBookings);
+      const clientCount = Math.max(clients, legacyClients);
+      if (bookingCount || clientCount) {
+        const reasons = [
+          bookingCount ? `${bookingCount} booking(s)` : '',
+          clientCount ? `${clientCount} assigned client(s)` : ''
+        ].filter(Boolean).join(' and ');
+        res.status(409).json({
+          success: false,
+          error: `This therapist has ${reasons}. Reassign the clients, or archive or hide the therapist from the website instead of deleting, so booking history stays intact.`
+        });
         return;
       }
 

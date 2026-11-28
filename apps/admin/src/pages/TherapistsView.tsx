@@ -49,6 +49,8 @@ import { useAppContext } from '../context/AppContext';
 import { launchConsultantPanel } from '../lib/auth';
 import { api } from '../lib/apiClient';
 import { ImageUploadButton } from '../components/common/ImageUploadButton';
+import { sanitizeRichHtml } from '../lib/rich-text';
+import { useUrlSearch } from '../lib/global-search';
 import type {
   Therapist,
   Client,
@@ -257,7 +259,7 @@ const RichCodeEditor: React.FC<RichCodeEditorProps> = ({
         {isPreview ? (
           <div className="p-4 min-h-[180px] text-slate-800 bg-white text-xs border-none font-medium overflow-y-auto leading-relaxed">
             {value.trim() ? (
-              <div dangerouslySetInnerHTML={{ __html: value }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(value) }} />
             ) : (
               <span className="text-slate-400 italic">No output to preview. Write custom code tags to see them rendered here.</span>
             )}
@@ -285,6 +287,58 @@ const RichCodeEditor: React.FC<RichCodeEditorProps> = ({
   );
 };
 
+/** A blank Create Consultant form: nothing is pre-filled that could be published by mistake */
+const emptyTherapistForm = () => ({
+  name: '',
+  email: '',
+  identifier: '',
+  sequence: '1',
+  notificationTitle: '',
+  profession: '',
+  professionId: '',
+  photo: '',
+  photoAltText: '',
+  about: '',
+  experienceYears: '0',
+  clientsServed: '0',
+  isCertified: false,
+  youtubeUrl: '',
+  languages: ['English'],
+  specialties: [] as string[],
+  qualifications: [] as string[],
+  certificates: [] as { name: string; url: string }[],
+  platformFeePerSession: '500',
+  platformFeeType: 'Fixed' as 'Fixed' | 'Percentage',
+  services: [] as TherapistServiceItem[],
+  reviews: [] as TherapistReviewItem[],
+  faqs: [] as TherapistFAQItem[],
+  bankName: '',
+  bankAccountNumber: '',
+  bankIfsc: '',
+  accountHolderName: '',
+  upiId: '',
+  seo: {
+    metaTitle: '',
+    metaDescription: '',
+    keywords: '',
+    canonicalUrl: '',
+    ogTitle: '',
+    ogDescription: '',
+    ogImageUrl: '',
+    ogImageAltText: '',
+    structuredData: '',
+    htmlChunk: ''
+  }
+});
+
+const VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The default title saved when the admin leaves the meta title empty (the preview shows exactly this) */
+const defaultSeoTitle = (name: string, profession: string) => `${name.trim()} | ${profession || 'Therapist'}`;
+/** The default description saved when the admin leaves it empty (the preview shows exactly this) */
+const defaultSeoDescription = (name: string, about: string) =>
+  about.trim() ? `${about.trim().slice(0, 150)}${about.trim().length > 150 ? '...' : ''}` : (name.trim() ? `Book sessions with ${name.trim()} on Hexpertify.` : '');
+
 interface TherapistsViewProps {
   isAddModalOpen?: boolean;
   onCloseAddModal?: () => void;
@@ -296,9 +350,14 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   isAddModalOpen: isAddModalProp = false,
   onCloseAddModal
 }) => {
-  const { therapists, clients, deleteTherapist, refreshAllData } = useAppContext();
+  const { therapists, deleteTherapist, refreshAllData, addAuditLog } = useAppContext();
+  // Create / edit save in progress (the ref blocks a second submit before React re-renders)
+  const savingRef = React.useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [therapistsList, setTherapistsList] = useState<Therapist[]>(therapists);
   const [searchTerm, setSearchTerm] = useState('');
+  // Opened from the admin search (e.g. ?q=CL-00001): filter to that record
+  useUrlSearch(setSearchTerm);
   const [selectedProfession, setSelectedProfession] = useState<string>('All');
   const [selectedTherapist, setSelectedTherapist] = useState<Therapist | null>(null);
 
@@ -373,93 +432,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   const [editingFAQId, setEditingFAQId] = useState<string | null>(null);
 
   // Form State for Create / Add Consultant
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    identifier: '',
-    sequence: '1',
-    notificationTitle: '',
-    profession: '',
-    professionId: '',
-    photo: '',
-    photoAltText: '',
-    about: '',
-    experienceYears: '0',
-    clientsServed: '0',
-    isCertified: false,
-    youtubeUrl: '',
-    languages: ['English'],
-    specialties: ['Mental Health'],
-    qualifications: ["Bachelor's in Psychology"],
-    certificates: [] as { name: string; url: string }[],
-    platformFeePerSession: '500',
-    platformFeeType: 'Fixed' as 'Fixed' | 'Percentage',
-    services: [] as TherapistServiceItem[],
-    reviews: [] as TherapistReviewItem[],
-    faqs: [] as TherapistFAQItem[],
-    bankName: '',
-    bankAccountNumber: '',
-    bankIfsc: '',
-    accountHolderName: '',
-    upiId: '',
-    seo: {
-      metaTitle: '',
-      metaDescription: '',
-      keywords: '',
-      canonicalUrl: '',
-      ogTitle: '',
-      ogDescription: '',
-      ogImageUrl: '',
-      ogImageAltText: '',
-      structuredData: '',
-      htmlChunk: ''
-    }
-  });
+  const [formData, setFormData] = useState(emptyTherapistForm);
 
   const handleOpenCreateModal = () => {
     setEditingTherapistId(null);
-    setFormData({
-      name: '',
-      email: '',
-      identifier: '',
-      sequence: '1',
-      notificationTitle: '',
-      profession: '',
-      professionId: '',
-      photo: '',
-      photoAltText: '',
-      about: '',
-      experienceYears: '0',
-      clientsServed: '0',
-      isCertified: false,
-      youtubeUrl: '',
-      languages: ['English'],
-      specialties: ['Mental Health'],
-      qualifications: ["Bachelor's in Psychology"],
-      certificates: [],
-      platformFeePerSession: '500',
-      platformFeeType: 'Fixed',
-      services: [],
-      reviews: [],
-      faqs: [],
-      bankName: '',
-      bankAccountNumber: '',
-      bankIfsc: '',
-      accountHolderName: '',
-      upiId: '',
-      seo: {
-        metaTitle: '',
-        metaDescription: '',
-        keywords: '',
-        canonicalUrl: '',
-        ogTitle: '',
-        ogDescription: '',
-        ogImageUrl: '',
-        ogImageAltText: '',
-        structuredData: '',
-        htmlChunk: ''
-      }
-    });
+    setFormData(emptyTherapistForm());
     setActiveSection('basic');
     setIsAddModalInternalOpen(true);
   };
@@ -532,6 +509,15 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   // Sync external add modal prop
   const isAddModalOpen = isAddModalProp || isAddModalInternalOpen;
 
+  // "Add Therapist" from the header opens a blank Create form, never one still holding an edited therapist
+  React.useEffect(() => {
+    if (!isAddModalProp) return;
+    setEditingTherapistId(null);
+    setFormData(emptyTherapistForm());
+    setValidationError(null);
+    setActiveSection('basic');
+  }, [isAddModalProp]);
+
   const handleCloseAddModal = () => {
     setIsAddModalInternalOpen(false);
     setValidationError(null);
@@ -560,12 +546,14 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
   const [showAddFAQForm, setShowAddFAQForm] = useState(false);
 
   const handleNameChange = (val: string) => {
-    const slug = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const slugOf = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const slug = slugOf(val);
     setFormData((prev) => ({
       ...prev,
       name: val,
-      identifier: prev.identifier && prev.identifier !== slug ? prev.identifier : slug,
-      email: prev.email ? prev.email : (val ? `${slug}@hexpertify.com` : '')
+      // A new profile's identifier follows the name until the admin types their own; an existing one never changes here
+      identifier: !editingTherapistId && (!prev.identifier || prev.identifier === slugOf(prev.name)) ? slug : prev.identifier
+      // The email is never derived from the name: the admin enters the therapist's real address
     }));
   };
 
@@ -589,8 +577,13 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
         setValidationError('Please select or enter a Profession.');
         return;
       }
+      if (!VALID_EMAIL.test(formData.email.trim())) {
+        scrollToSection('basic');
+        setValidationError("Please enter the therapist's real email address.");
+        return;
+      }
     }
-    
+
     setValidationError(null);
     if (currentIndex < steps.length - 1) {
       setActiveSection(steps[currentIndex + 1]);
@@ -861,6 +854,8 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
   const handleAddTherapistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // One save at a time: a double click never sends a second request
+    if (savingRef.current) return;
     if (!formData.name.trim()) {
       scrollToSection('basic', 'sec-basic');
       setValidationError('Please enter the Consultant Name.');
@@ -869,6 +864,11 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
     if (!formData.profession.trim()) {
       scrollToSection('basic', 'sec-basic');
       setValidationError('Please select or enter a Profession.');
+      return;
+    }
+    if (!VALID_EMAIL.test(formData.email.trim())) {
+      scrollToSection('basic', 'sec-basic');
+      setValidationError("Please enter the therapist's real email address.");
       return;
     }
 
@@ -883,7 +883,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
     const payload: Record<string, any> = {
       name: displayName,
-      email: formData.email.trim().toLowerCase() || `${slug}@hexpertify.com`,
+      email: formData.email.trim().toLowerCase(),
       identifier: slug,
       sequence: formData.sequence.trim() === '' ? null : Number(formData.sequence),
       // No stock photo: without a photo the website shows a profile icon
@@ -910,12 +910,12 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       reviews: formData.reviews.filter((r) => !r.isVerifiedClient && !r.verified && !r.clientId),
       faqs: formData.faqs,
       seo: {
-        metaTitle: formData.seo.metaTitle || `${displayName} | ${professionName}`,
-        metaDescription: formData.seo.metaDescription || `Book sessions with ${displayName}...`,
+        metaTitle: formData.seo.metaTitle || defaultSeoTitle(displayName, professionName),
+        metaDescription: formData.seo.metaDescription || defaultSeoDescription(displayName, formData.about),
         keywords: formData.seo.keywords || `${professionName}, therapy`,
         canonicalUrl: formData.seo.canonicalUrl.trim(),
-        ogTitle: formData.seo.ogTitle || formData.seo.metaTitle || `${displayName} | ${professionName}`,
-        ogDescription: formData.seo.ogDescription || formData.seo.metaDescription || `Book sessions with ${displayName}...`,
+        ogTitle: formData.seo.ogTitle || formData.seo.metaTitle || defaultSeoTitle(displayName, professionName),
+        ogDescription: formData.seo.ogDescription || formData.seo.metaDescription || defaultSeoDescription(displayName, formData.about),
         ogImageUrl: formData.seo.ogImageUrl || formData.photo,
         ogImageAltText: formData.seo.ogImageAltText || `Photo of ${displayName}`,
         structuredData: formData.seo.structuredData,
@@ -944,12 +944,18 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       if (!unchanged) payload[k] = bankFields[k];
     });
 
+    // Verification is the admin's explicit "Certified" choice, never automatic: a new profile is Verified only when
+    // the box is ticked, and an edit changes the status only when the admin changed the box.
+    const certificationChanged = !original || Boolean(original.isCertified) !== formData.isCertified;
+    if (certificationChanged) {
+      payload.verificationStatus = formData.isCertified ? 'Verified' : 'Pending';
+    }
     if (!editingTherapistId) {
-      // New profiles start verified and active; edits never change these (they have their own actions)
-      payload.verificationStatus = 'Verified';
       payload.accountStatus = 'Active';
     }
 
+    savingRef.current = true;
+    setIsSaving(true);
     try {
       if (editingTherapistId) {
         const data = await api.put('/api/admin/consultants', { ...payload, id: editingTherapistId });
@@ -979,53 +985,21 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       // Keep the form open so nothing the admin entered is lost
       setValidationError(`Not saved: ${err?.message || 'the server could not save'}`);
       return;
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+    if (certificationChanged && (original || formData.isCertified)) {
+      addAuditLog(
+        `${formData.isCertified ? 'Verified (certified)' : 'Removed verification for'} Consultant ${displayName}`,
+        'Therapists'
+      );
     }
     refreshAllData();
     setTimeout(() => setSuccessToast(null), 5000);
 
     // Reset form state
-    setFormData({
-      name: '',
-      email: '',
-      identifier: '',
-      sequence: '1',
-      notificationTitle: '',
-      profession: '',
-      professionId: '',
-      photo: '',
-      photoAltText: '',
-      about: '',
-      experienceYears: '0',
-      clientsServed: '0',
-      isCertified: false,
-      youtubeUrl: '',
-      languages: ['English'],
-      specialties: ['Mental Health'],
-      qualifications: ["Bachelor's in Psychology"],
-      certificates: [],
-      platformFeePerSession: '500',
-      platformFeeType: 'Fixed',
-      services: [],
-      reviews: [],
-      faqs: [],
-      bankName: '',
-      bankAccountNumber: '',
-      bankIfsc: '',
-      accountHolderName: '',
-      upiId: '',
-      seo: {
-        metaTitle: '',
-        metaDescription: '',
-        keywords: '',
-        canonicalUrl: '',
-        ogTitle: '',
-        ogDescription: '',
-        ogImageUrl: '',
-        ogImageAltText: '',
-        structuredData: '',
-        htmlChunk: ''
-      }
-    });
+    setFormData(emptyTherapistForm());
     handleCloseAddModal();
   };
 
@@ -1045,155 +1019,118 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
     return matchesSearch && matchesProfession;
   });
 
-  const handleToggleHideFromLive = (therapistId: string) => {
+  /** Saves one visibility flag; the card changes and the success message shows only after the server confirms */
+  const saveTherapistFlag = async (
+    therapistId: string,
+    key: 'isHiddenFromLive' | 'isBookingGreyedOut' | 'isArchived',
+    messages: (name: string, on: boolean) => string,
+    failure: string
+  ) => {
     const target = therapistsList.find((t) => t.id === therapistId);
-    const nextState = target ? !target.isHiddenFromLive : true;
-
-    setTherapistsList((prev) =>
-      prev.map((t) =>
-        t.id === therapistId ? { ...t, isHiddenFromLive: nextState } : t
-      )
-    );
-
-    // Persist to MongoDB Atlas
-    api.put('/api/admin/consultants', { id: therapistId, isHiddenFromLive: nextState }).catch((err) => {
-      console.error('Error persisting hide-from-live toggle:', err);
-      setSuccessToast(`Failed to save hide-from-live change. Please retry.`);
-      setTimeout(() => setSuccessToast(null), 4000);
-      // Revert optimistic update
-      setTherapistsList((prev) =>
-        prev.map((t) =>
-          t.id === therapistId ? { ...t, isHiddenFromLive: !nextState } : t
-        )
-      );
-    });
-
+    const nextState = target ? !target[key] : true;
+    try {
+      await api.put('/api/admin/consultants', { id: therapistId, [key]: nextState });
+    } catch (err: any) {
+      console.error(`Error saving ${key}:`, err);
+      setErrorToast(`${failure} ${err?.message || 'Please try again.'}`);
+      setTimeout(() => setErrorToast(null), 6000);
+      return;
+    }
+    setTherapistsList((prev) => prev.map((t) => (t.id === therapistId ? { ...t, [key]: nextState } : t)));
     if (target) {
-      setSuccessToast(
-        nextState
-          ? `${target.name}'s profile is now hidden from live.`
-          : `${target.name}'s profile is now visible on live.`
-      );
+      setSuccessToast(messages(target.name, nextState));
       setTimeout(() => setSuccessToast(null), 4000);
-      if (selectedTherapist?.id === therapistId) {
-        setSelectedTherapist({ ...target, isHiddenFromLive: nextState });
-      }
+      setSelectedTherapist((prev) => (prev?.id === therapistId ? { ...prev, [key]: nextState } : prev));
     }
   };
 
-  const handleToggleBookingGreyOut = (therapistId: string) => {
-    const target = therapistsList.find((t) => t.id === therapistId);
-    const nextState = target ? !target.isBookingGreyedOut : true;
-
-    setTherapistsList((prev) =>
-      prev.map((t) =>
-        t.id === therapistId ? { ...t, isBookingGreyedOut: nextState } : t
-      )
+  const handleToggleHideFromLive = (therapistId: string) =>
+    saveTherapistFlag(
+      therapistId,
+      'isHiddenFromLive',
+      (name, on) => (on ? `${name}'s profile is now hidden from live.` : `${name}'s profile is now visible on live.`),
+      'The hide-from-live change was not saved.'
     );
 
-    // Persist to MongoDB Atlas
-    api.put('/api/admin/consultants', { id: therapistId, isBookingGreyedOut: nextState }).catch((err) => {
-      console.error('Error persisting booking grey-out toggle:', err);
-      setSuccessToast(`Failed to save booking grey-out change. Please retry.`);
-      setTimeout(() => setSuccessToast(null), 4000);
-      // Revert optimistic update
-      setTherapistsList((prev) =>
-        prev.map((t) =>
-          t.id === therapistId ? { ...t, isBookingGreyedOut: !nextState } : t
-        )
-      );
-    });
-
-    if (target) {
-      setSuccessToast(
-        nextState
-          ? `Booking grey out enabled for ${target.name}.`
-          : `Booking grey out disabled for ${target.name}.`
-      );
-      setTimeout(() => setSuccessToast(null), 4000);
-      if (selectedTherapist?.id === therapistId) {
-        setSelectedTherapist({ ...target, isBookingGreyedOut: nextState });
-      }
-    }
-  };
-
-  const handleToggleArchive = (therapistId: string) => {
-    const target = therapistsList.find((t) => t.id === therapistId);
-    const nextState = target ? !target.isArchived : true;
-
-    setTherapistsList((prev) =>
-      prev.map((t) =>
-        t.id === therapistId ? { ...t, isArchived: nextState } : t
-      )
+  const handleToggleBookingGreyOut = (therapistId: string) =>
+    saveTherapistFlag(
+      therapistId,
+      'isBookingGreyedOut',
+      (name, on) => (on ? `Booking grey out enabled for ${name}.` : `Booking grey out disabled for ${name}.`),
+      'The booking grey-out change was not saved.'
     );
 
-    // Persist to MongoDB Atlas
-    api.put('/api/admin/consultants', { id: therapistId, isArchived: nextState }).catch((err) => {
-      console.error('Error persisting archive toggle:', err);
-      setSuccessToast(`Failed to save archive change. Please retry.`);
-      setTimeout(() => setSuccessToast(null), 4000);
-      // Revert optimistic update
-      setTherapistsList((prev) =>
-        prev.map((t) =>
-          t.id === therapistId ? { ...t, isArchived: !nextState } : t
-        )
-      );
-    });
-
-    if (target) {
-      setSuccessToast(
-        nextState
-          ? `${target.name}'s profile has been archived.`
-          : `${target.name}'s profile has been unarchived.`
-      );
-      setTimeout(() => setSuccessToast(null), 4000);
-      if (selectedTherapist?.id === therapistId) {
-        setSelectedTherapist({ ...target, isArchived: nextState });
-      }
-    }
-  };
+  const handleToggleArchive = (therapistId: string) =>
+    saveTherapistFlag(
+      therapistId,
+      'isArchived',
+      (name, on) => (on ? `${name}'s profile has been archived.` : `${name}'s profile has been unarchived.`),
+      'The archive change was not saved.'
+    );
 
   const handleDeleteTherapist = async (therapistId: string) => {
     const target = therapistsList.find((t) => t.id === therapistId) || therapists?.find((t) => t.id === therapistId);
     const targetName = target?.name || 'Therapist';
 
-    // Optimistic UI update
-    setTherapistsList((prev) => prev.filter((t) => t.id !== therapistId));
-    if (selectedTherapist?.id === therapistId) {
-      setSelectedTherapist(null);
-    }
-
+    // Removed from the list only after the server confirms the delete (it refuses therapists with bookings or clients)
     try {
-      if (deleteTherapist) {
-        await deleteTherapist(therapistId);
-      } else {
-        await api.delete(`/api/admin/consultants?id=${encodeURIComponent(therapistId)}`);
+      await deleteTherapist(therapistId);
+      setTherapistsList((prev) => prev.filter((t) => t.id !== therapistId));
+      if (selectedTherapist?.id === therapistId) {
+        setSelectedTherapist(null);
       }
       setSuccessToast(`Therapist ${targetName} deleted.`);
       setTimeout(() => setSuccessToast(null), 4000);
     } catch (err: any) {
       console.error('Error deleting consultant:', err);
-      // Not deleted: put the card back and say why (e.g. the therapist has bookings)
-      if (target) {
-        setTherapistsList((prev) => (prev.some((t) => t.id === target.id) ? prev : [target, ...prev]));
-      }
+      // Not deleted: say why (e.g. the therapist has bookings or assigned clients)
       setErrorToast(`Could not delete ${targetName}. ${err?.message || 'Please try again.'}`);
       setTimeout(() => setErrorToast(null), 9000);
     }
   };
 
-  const getTherapistAverageRating = (therapist: Therapist): number => {
+  /** Average of the therapist's reviews; null when there are none (no unearned score) */
+  const getTherapistAverageRating = (therapist: Therapist): number | null => {
     if (therapist.reviews && therapist.reviews.length > 0) {
       const total = therapist.reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0);
       const avg = total / therapist.reviews.length;
       return Math.round(avg * 10) / 10;
     }
-    return therapist.rating ?? 5.0;
+    return Number(therapist.reviewCount) > 0 && Number(therapist.rating) > 0 ? Number(therapist.rating) : null;
   };
 
-  const assignedClients: Client[] = selectedTherapist
-    ? (clients || []).slice(0, 5)
-    : [];
+  // The selected therapist's clients, as the server assigns them (by the therapist's id)
+  const [assignedClients, setAssignedClients] = useState<Client[]>([]);
+  const [assignedClientsState, setAssignedClientsState] = useState<'idle' | 'loading' | 'error'>('idle');
+  useEffect(() => {
+    setAssignedClients([]);
+    if (!selectedTherapistId) return;
+    let cancelled = false;
+    setAssignedClientsState('loading');
+    api.get(`/api/admin/users?therapistId=${encodeURIComponent(selectedTherapistId)}`)
+      .then((data: any) => {
+        if (cancelled) return;
+        const list: any[] = Array.isArray(data?.users) ? data.users : [];
+        setAssignedClients(list.map((u: any) => ({
+          id: String(u.id || u._id),
+          clientNumber: u.clientNumber || undefined,
+          name: u.name || u.email || 'Client',
+          email: u.email || '',
+          phone: u.phoneNumber || u.phone || '',
+          avatar: u.image || u.avatarUrl || undefined,
+          status: /^(inactive|suspended|blocked|deleted|disabled)$/i.test(String(u.status || '')) ? 'Inactive'
+            : /^completed$/i.test(String(u.status || '')) ? 'Completed' : 'Active',
+          service: u.service || '',
+          assignedTherapistId: u.assignedTherapistId || undefined,
+          assignedTherapistName: u.assignedTherapistName || ''
+        }) as Client));
+        setAssignedClientsState('idle');
+      })
+      .catch(() => !cancelled && setAssignedClientsState('error'));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTherapistId]);
 
   const tabLabels: { key: SectionKey; label: string; sectionId: string }[] = [
     { key: 'basic', label: 'Basic Info', sectionId: 'sec-basic' },
@@ -1339,12 +1276,26 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   <div className="min-w-0">
                     <h3 className="font-extrabold text-slate-900 text-base leading-snug flex items-start gap-1.5">
                       <span className="truncate" title={t.name}>{t.name}</span>
-                      <ShieldCheck className="w-4 h-4 mt-0.5 text-purple-600 shrink-0" />
+                      {/* Shown only for profiles the admin marked Certified (verified) */}
+                      {t.isCertified && (
+                        <span title="Certified (verified by an admin)" className="shrink-0">
+                          <ShieldCheck className="w-4 h-4 mt-0.5 text-purple-600" aria-label="Certified" />
+                        </span>
+                      )}
                     </h3>
                     <p className="text-xs text-slate-500 font-medium truncate" title={t.profession}>{t.profession}</p>
                     <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      {getTherapistAverageRating(t).toFixed(1)}
+                      {(() => {
+                        const rating = getTherapistAverageRating(t);
+                        return rating === null ? (
+                          <span className="text-slate-500">No reviews yet</span>
+                        ) : (
+                          <>
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            {rating.toFixed(1)}
+                          </>
+                        );
+                      })()}
                     </span>
                   </div>
                 </div>
@@ -1600,7 +1551,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs flex items-center gap-2 shadow-md shadow-emerald-600/20"
                 >
                   <Users className="w-4 h-4" />
-                  Therapist's Clients ({assignedClients.length})
+                  Therapist's Clients ({assignedClientsState === 'loading' ? '…' : assignedClientsState === 'error' ? '?' : assignedClients.length})
                 </button>
 
                 <button
@@ -1721,12 +1672,12 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
             {/* Bio & Qualifications */}
             <div className="space-y-3 text-xs">
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Biography & Qualifications</h4>
-              <p className="text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl">{selectedTherapist.about || selectedTherapist.bio || 'Specialist providing evidence-based healthcare and counseling.'}</p>
+              <p className="text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl">{selectedTherapist.about || selectedTherapist.bio || 'No biography added yet.'}</p>
               
               <div className="space-y-1">
                 <span className="font-bold text-slate-500 block">Qualifications:</span>
                 <div className="flex flex-wrap gap-2">
-                  {(selectedTherapist.qualifications || ["Bachelor's in Psychology", "Licensed Specialist"]).map((q, idx) => (
+                  {(selectedTherapist.qualifications || []).map((q, idx) => (
                     <span key={idx} className="px-3 py-1 bg-purple-50 text-purple-800 rounded-lg font-semibold border border-purple-100">
                       {q}
                     </span>
@@ -1782,7 +1733,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
                 <span className="font-extrabold text-slate-700 block uppercase text-[10px]">Specialties</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {(selectedTherapist.specializations || ['Mental Health', 'Anxiety', 'CBT']).map((s, idx) => (
+                  {(selectedTherapist.specializations || []).map((s, idx) => (
                     <span key={idx} className="px-2.5 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-800">
                       {s}
                     </span>
@@ -1856,6 +1807,15 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {/* Left Client Sidebar */}
               <div className="w-64 border-r border-slate-100 p-4 space-y-2 overflow-y-auto bg-slate-50/50">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block px-2">Assigned Clients</span>
+                {assignedClientsState === 'loading' && (
+                  <p className="px-2 text-xs text-slate-400">Loading clients…</p>
+                )}
+                {assignedClientsState === 'error' && (
+                  <p className="px-2 text-xs text-rose-500">This therapist's clients could not be loaded. Please try again.</p>
+                )}
+                {assignedClientsState === 'idle' && assignedClients.length === 0 && (
+                  <p className="px-2 text-xs text-slate-400">No clients are assigned to this therapist.</p>
+                )}
                 {assignedClients.map((client) => (
                   <button
                     key={client.id}
@@ -1866,10 +1826,16 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <img src={client.avatar} className="w-8 h-8 rounded-full object-cover" />
+                    {client.avatar ? (
+                      <img src={client.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <span className="w-8 h-8 rounded-full bg-purple-100 text-[#450bc8] flex items-center justify-center text-xs font-extrabold shrink-0">
+                        {(client.name || '?').charAt(0).toUpperCase()}
+                      </span>
+                    )}
                     <div className="truncate">
                       <p className="text-xs font-bold truncate">{client.name}</p>
-                      <p className="text-[10px] text-slate-400">{client.service}</p>
+                      <p className="text-[10px] text-slate-400">{client.clientNumber || client.service}</p>
                     </div>
                   </button>
                 ))}
@@ -1882,9 +1848,15 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                       <div>
                         <h3 className="text-xl font-extrabold text-slate-900">{activeClientInWorkspace.name}</h3>
-                        <p className="text-xs text-slate-500">{activeClientInWorkspace.email} · {activeClientInWorkspace.phone}</p>
+                        <p className="text-xs text-slate-500">{[activeClientInWorkspace.email, activeClientInWorkspace.phone].filter(Boolean).join(' · ') || '—'}</p>
                       </div>
-                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 font-bold text-xs rounded-full">
+                      <span className={`px-3 py-1 font-bold text-xs rounded-full ${
+                        activeClientInWorkspace.status === 'Active'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : activeClientInWorkspace.status === 'Completed'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
                         {activeClientInWorkspace.status}
                       </span>
                     </div>
@@ -2163,7 +2135,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         className="w-4 h-4 text-[#450bc8] rounded focus:ring-[#450bc8]"
                       />
                       <label htmlFor="isCertifiedCheckboxAligned" className="text-xs font-bold text-slate-800 cursor-pointer">
-                        Is Certified
+                        Is Certified (license verified by the admin team)
                       </label>
                     </div>
 
@@ -3043,8 +3015,8 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               ...formData,
                               seo: {
                                 ...formData.seo,
-                                ogTitle: formData.seo.ogTitle || formData.seo.metaTitle || (formData.name ? `${formData.name.trim().startsWith('Dr.') ? formData.name.trim() : 'Dr. ' + formData.name.trim()} | ${formData.profession || 'Therapist'}` : ''),
-                                ogDescription: formData.seo.ogDescription || formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : '')
+                                ogTitle: formData.seo.ogTitle || formData.seo.metaTitle || (formData.name.trim() ? defaultSeoTitle(formData.name, (professions.find((p) => p.id === formData.professionId)?.name || formData.profession)) : ''),
+                                ogDescription: formData.seo.ogDescription || formData.seo.metaDescription || defaultSeoDescription(formData.name, formData.about)
                               }
                             })}
                             className="flex items-center gap-1 text-[10px] font-extrabold text-[#450bc8] bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg border border-purple-100 transition-all active:scale-95"
@@ -3159,10 +3131,10 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                           </div>
                           <div className="space-y-1">
                             <h5 className="text-[15px] font-semibold text-[#1a0dab] hover:underline cursor-pointer leading-tight truncate">
-                              {formData.seo.metaTitle || (formData.name ? `${formData.name.trim().startsWith('Dr.') ? formData.name.trim() : 'Dr. ' + formData.name.trim()} | ${formData.profession || 'Therapist'}` : 'Dr. John Doe | Practitioner')}
+                              {formData.seo.metaTitle || (formData.name.trim() ? defaultSeoTitle(formData.name, (professions.find((p) => p.id === formData.professionId)?.name || formData.profession)) : 'Consultant name | Profession')}
                             </h5>
                             <p className="text-xs text-slate-655 leading-relaxed line-clamp-2">
-                              {formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : 'Book consultation sessions with our licensed therapist on Hexpertify platform. Dedicated mental health care and recovery.')}
+                              {formData.seo.metaDescription || defaultSeoDescription(formData.name, formData.about)}
                             </p>
                           </div>
                         </div>
@@ -3201,10 +3173,10 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               hexpertify.com
                             </span>
                             <h5 className="font-extrabold text-slate-800 text-sm leading-snug line-clamp-1">
-                              {formData.seo.ogTitle || formData.seo.metaTitle || (formData.name ? `${formData.name.trim().startsWith('Dr.') ? formData.name.trim() : 'Dr. ' + formData.name.trim()} | ${formData.profession || 'Therapist'}` : 'Dr. John Doe | Practitioner')}
+                              {formData.seo.ogTitle || formData.seo.metaTitle || (formData.name.trim() ? defaultSeoTitle(formData.name, (professions.find((p) => p.id === formData.professionId)?.name || formData.profession)) : 'Consultant name | Profession')}
                             </h5>
                             <p className="text-xs text-slate-500 font-medium leading-normal line-clamp-2 font-medium">
-                              {formData.seo.ogDescription || formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : 'Book consultation sessions with our licensed therapist on Hexpertify platform. Dedicated mental health care and recovery.')}
+                              {formData.seo.ogDescription || formData.seo.metaDescription || defaultSeoDescription(formData.name, formData.about)}
                             </p>
                           </div>
                         </div>
@@ -3290,6 +3262,9 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
                 {activeSection !== 'seo' ? (
                   <button
+                    // Separate keys: React must not turn this same button into the submit button while the
+                    // click is still being handled (that submitted the form when moving to the last step)
+                    key="next-step"
                     type="button"
                     onClick={handleNextStep}
                     className="px-8 py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-lg shadow-[#450bc8]/30 transition-all hover:scale-[1.02] active:scale-95"
@@ -3298,11 +3273,13 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   </button>
                 ) : (
                   <button
+                    key="submit-form"
                     type="submit"
                     form="create-consultant-form"
-                    className="px-8 py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-lg shadow-[#450bc8]/30 transition-all hover:scale-[1.02] active:scale-95"
+                    disabled={isSaving}
+                    className="px-8 py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-lg shadow-[#450bc8]/30 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
                   >
-                    {editingTherapistId ? 'Update Profile' : 'Create Consultant'}
+                    {isSaving ? 'Saving…' : editingTherapistId ? 'Update Profile' : 'Create Consultant'}
                   </button>
                 )}
               </div>

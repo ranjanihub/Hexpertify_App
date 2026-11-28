@@ -39,8 +39,9 @@ const STATUS_STYLES: Record<GatewayPaymentStatus, string> = {
 const REFUNDABLE: GatewayPaymentStatus[] = ['PAID', 'PARTIALLY_REFUNDED', 'REFUND_PENDING'];
 
 const formatINR = (value: number) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+// India time, like the date filter (whole IST days)
 const formatDateTime = (value?: string) =>
-  value ? new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+  value ? new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '—';
 
 /** Amount still refundable (successful and in-flight refunds are already committed) */
 const refundableAmount = (p: Payment) =>
@@ -59,6 +60,7 @@ const PROVIDER_LABELS: Record<string, string> = { razorpay: 'Razorpay', cashfree
 const REFUND_STYLES: Record<string, string> = {
   SUCCESS: 'bg-emerald-100 text-emerald-800',
   PENDING: 'bg-amber-100 text-amber-800',
+  RESERVED: 'bg-amber-100 text-amber-800',
   FAILED: 'bg-rose-100 text-rose-800'
 };
 
@@ -116,16 +118,19 @@ export const TransactionsView: React.FC = () => {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Only the newest request may fill the table (an older, slower answer for a previous filter is dropped)
+  const latestRequest = React.useRef(0);
   const load = useCallback(async () => {
+    const requestId = ++latestRequest.current;
     setIsLoading(true);
     setError(null);
     try {
       const res = await fetchPayments({ status: statusFilter, from: fromDate, to: toDate, q: debouncedSearch });
-      setData(res);
+      if (requestId === latestRequest.current) setData(res);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load transactions');
+      if (requestId === latestRequest.current) setError(err?.message || 'Failed to load transactions');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequest.current) setIsLoading(false);
     }
   }, [statusFilter, fromDate, toDate, debouncedSearch]);
 
@@ -239,7 +244,7 @@ export const TransactionsView: React.FC = () => {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search client, therapist, booking or payment ID"
+              placeholder="Search client, therapist, booking no. (BK-…) or payment ID"
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20"
             />
           </div>
@@ -439,7 +444,7 @@ export const TransactionsView: React.FC = () => {
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-mono font-extrabold text-slate-900">{formatINR(r.amount)}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${REFUND_STYLES[r.status] || 'bg-slate-100 text-slate-700'}`}>
-                            {r.status === 'SUCCESS' ? 'Refunded' : r.status === 'PENDING' ? 'Pending' : 'Failed'}
+                            {r.status === 'SUCCESS' ? 'Refunded' : r.status === 'PENDING' ? 'Pending' : r.status === 'RESERVED' ? 'Being sent' : 'Failed'}
                           </span>
                         </div>
                         {r.reason && <p className="text-slate-600">{r.reason}</p>}

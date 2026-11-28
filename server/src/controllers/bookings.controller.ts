@@ -464,7 +464,7 @@ export class BookingsController {
 
         // 1. Cancellation Email & Notification
         if (isNewCancellation) {
-          pending.push(MailService.sendBookingCancellation({ ...base, reason: updates.cancellationReason || updates.reason }).catch(() => {}));
+          pending.push(MailService.sendBookingCancellation({ ...base, reason: updates.cancellationReason || updates.cancelReason || updates.reason }).catch(() => {}));
 
           pending.push(sendPushToClient(client, {
             title: 'Session cancelled ❌',
@@ -625,6 +625,15 @@ export class BookingsController {
         res.status(403).json({ success: false, error: 'Sessions cannot be deleted. Cancel it, or remove a past session from your list.' });
         return;
       }
+      // Money was taken for this session: deleting it would erase the payment's booking. Cancel (and refund) instead.
+      const paymentStatus = normalizePaymentStatus(existing.paymentStatus) || '';
+      if (['PAID', 'PARTIALLY_REFUNDED', 'REFUND_PENDING'].includes(paymentStatus) || (existing.paymentId && paymentStatus !== 'REFUNDED')) {
+        res.status(409).json({
+          success: false,
+          error: 'This booking has a payment recorded, so it cannot be deleted. Cancel it instead (and refund it if needed); the booking stays in the records.'
+        });
+        return;
+      }
       const [deleted, deletedLegacy] = await Promise.all([
         db.collection('Booking').deleteMany(query),
         db.collection('bookings').deleteMany(query),
@@ -632,7 +641,27 @@ export class BookingsController {
       ]);
 
       // Invalidate cache
-      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants']);
+      cacheService.invalidateTags(['bookings', 'stats', 'users', 'consultants', 'revenue', 'payouts', 'payments']);
+
+      // Every deletion is kept in the audit log (who, what, when)
+      if (deleted.deletedCount || deletedLegacy.deletedCount) {
+        await db.collection('AuditLog').insertOne({
+          id: `LOG-${Date.now().toString().slice(-6)}`,
+          user: req.user?.email || access,
+          role: access === 'therapist' ? 'Therapist' : 'Super Admin',
+          action: `Deleted booking ${existing.bookingNumber || existing.id || existing._id} (${existing.clientName || 'client'} with ${existing.consultantName || existing.therapistName || 'therapist'})`,
+          module: 'Bookings',
+          severity: 'WARNING',
+          timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          createdAt: new Date(),
+          ipAddress: req.ip || req.headers['x-forwarded-for']?.toString() || '',
+          details: {
+            bookingId: String(existing.id || existing._id), bookingNumber: existing.bookingNumber, status: existing.status,
+            paymentStatus: existing.paymentStatus, amount: existing.amount, date: existing.date, time: existing.time
+          },
+          userAgent: req.headers['user-agent'] || ''
+        } as any).catch(() => {});
+      }
 
       // Only the request that actually removed the booking emails the client (clients fire parallel DELETEs);
       // an already-cancelled booking got its cancellation email when it was cancelled

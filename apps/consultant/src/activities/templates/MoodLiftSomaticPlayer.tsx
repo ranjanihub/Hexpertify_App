@@ -549,7 +549,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#450bc8] dark:text-purple-300 mb-0.5">
                 ✨ Somatic Integration Summary:
               </p>
-              <p className="text-xs text-purple-950 dark:text-purple-100 font-medium italic leading-relaxed text-justify">
+              <p className="text-xs text-purple-950 dark:text-purple-100 font-medium italic leading-relaxed sm:text-justify">
                 You've completed the full 7-step posture reset sequence. Your cervical spine is decompressed, trapezius tension is released, and effortless upright alignment has been re-established.
               </p>
             </div>
@@ -633,7 +633,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Posture Reset?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal sm:text-justify">
             Posture Reset is an evidence-based somatic practice designed to counteract the neurological and musculoskeletal effects of prolonged sitting, screen fatigue, and chronic stress. By guiding your attention through 7 targeted anatomical checkpoints, you decompress the cervical spine, release stored trapezius tension, and establish effortless upright postural stability.
           </p>
         </div>
@@ -645,7 +645,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:text-justify">
               Follow this 7-step somatic sequence to restore kinetic alignment from cranial axis to diaphragmatic base:
             </p>
           </div>
@@ -661,7 +661,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
                   6s
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Lengthen through the crown of your head to remove suboccipital compression and relieve neck strain.
               </p>
             </div>
@@ -676,7 +676,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
                   12s
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Roll shoulders back and open the thoracic chest wall to expand breathing volume and reduce forward hunches.
               </p>
             </div>
@@ -691,7 +691,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
                   24s
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Release jaw and hand tension, align vertebrae from head to hips, and integrate with a full calming breath.
               </p>
             </div>
@@ -705,7 +705,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:text-justify">
               Verified somatic and neuromuscular benefits of regular posture resetting:
             </p>
           </div>
@@ -717,7 +717,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Releases Musculoskeletal Tension</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Discharges accumulated tension from the upper trapezius, levator scapulae, and cervical extensors.
                 </p>
               </div>
@@ -729,7 +729,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Restores Neuromuscular Alignment</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Retrains motor pathways for effortless upright posture without stiff, artificial straining.
                 </p>
               </div>
@@ -741,7 +741,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Relieves Tension Headaches</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Eliminates forward-head slump and masseter clenching, reducing tension headaches by up to 65%.
                 </p>
               </div>
@@ -753,7 +753,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Boosts Vitality & Oxygenation</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Opening the ribcage enhances vital capacity, increases cerebral oxygenation, and fosters alert calm.
                 </p>
               </div>
@@ -766,7 +766,7 @@ function BiomechanicalPostureHUD({ activityName, onComplete }: { activityName?: 
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium sm:text-justify">
             Practicing Posture Reset 2–3 times daily establishes lasting somatic proprioception and interrupts the somatic feedback loop of stress.
           </p>
         </div>
@@ -1111,7 +1111,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is DBT Multi-Sensory Self-Soothing?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal sm:text-justify">
             Self-soothing is a core Distress Tolerance protocol within Dialectical Behavior Therapy (DBT). When experiencing emotional overwhelm, panic, or autonomic dysregulation, the brain becomes locked in sympathetic fight-or-flight overdrive. By deliberately engaging the five physical senses—vision, audition, somatosensory touch, olfaction, and gustatory savoring—you send direct, bottom-up safety cues to the brainstem and limbic circuits, gently activating the parasympathetic branch of the nervous system.
           </p>
         </div>
@@ -1123,7 +1123,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
               <Brain className="w-5 h-5 text-[#450bc8]" />
               <span>Neurological Mechanism: Bottom-Up Sensory Regulation</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:text-justify">
               How sensory gating downregulates autonomic arousal in three coordinated neural phases:
             </p>
           </div>
@@ -1138,7 +1138,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
                   Thalamic Sensory Gating
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Sensory input travels directly through the thalamus, competing for neural bandwidth with hyperactive limbic threat signals and interrupting rumination loops.
               </p>
             </div>
@@ -1152,7 +1152,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
                   Parasympathetic Vagal Activation
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Pleasant auditory tones and soothing tactile stimulation trigger acetylcholine release via the vagus nerve, reducing heart rate and respiratory tension.
               </p>
             </div>
@@ -1166,7 +1166,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
                   Olfactory-Limbic Soothing
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Olfactory receptors connect directly to the amygdala and hippocampus without neocortical filtering, providing the fastest neurochemical route to calming panic.
               </p>
             </div>
@@ -1180,7 +1180,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:text-justify">
               Evidence-based therapeutic outcomes of structured multisensory engagement:
             </p>
           </div>
@@ -1192,7 +1192,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Rapid Somatosensory Calming</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Quickly lowers acute distress during emotional crises or sensory overload without requiring complex cognitive reasoning.
                 </p>
               </div>
@@ -1204,7 +1204,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">De-escalates Emotional Overwhelm</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Supplies the autonomic nervous system with biological confirmation of environmental comfort, de-escalating fight-or-flight triggers.
                 </p>
               </div>
@@ -1216,7 +1216,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Grounds Attention in the Present</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Interrupts intrusive worries, anticipatory anxiety, and dissociation by directing awareness to immediate somatic sensory contact.
                 </p>
               </div>
@@ -1228,7 +1228,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Builds Portable Distress Tolerance</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Provides a structured sensory toolkit that can be deployed anywhere—at your desk, at home, or on the go—to foster emotional resilience.
                 </p>
               </div>
@@ -1241,7 +1241,7 @@ function DbtMultiSensoryComfortMatrix({ activityName, onComplete }: { activityNa
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium sm:text-justify">
             <strong>Rule of Thumb:</strong> When distress rises above a 6/10, your prefrontal cortex loses control to the limbic system. Trying to talk yourself out of panic rarely works. Instead, recruit your 5 senses to send somatic safety signals directly into the nervous system. Calming the body is the fastest way to quiet the mind.
           </p>
         </div>

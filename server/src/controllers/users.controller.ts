@@ -77,6 +77,37 @@ function userIdQuery(id: string): any {
   return { $or: or };
 }
 
+const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
+const isAdminRecord = (u: any) => ADMIN_ROLES.includes(String(u?.role || '').toUpperCase());
+const INACTIVE_STATUSES = new Set(['inactive', 'suspended', 'blocked', 'disabled', 'deleted']);
+const isInactiveRecord = (u: any) =>
+  [u?.status, u?.accountStatus].some((v) => INACTIVE_STATUSES.has(String(v || '').trim().toLowerCase()));
+
+/**
+ * Why removing or switching off these administrator accounts is refused, or null when allowed:
+ * an administrator cannot do it to their own account, and at least one active administrator must remain.
+ */
+async function adminChangeRefusal(req: Request, targets: any[], action: 'remove' | 'deactivate'): Promise<string | null> {
+  const admins = targets.filter(isAdminRecord);
+  if (!admins.length) return null;
+  const me = [req.user?.sub, req.user?.email].filter(Boolean).map((v) => String(v).toLowerCase().trim());
+  const isMe = admins.some((u) => [u.id, u._id, u.email].some((v) => v && me.includes(String(v).toLowerCase().trim())));
+  if (isMe) {
+    return action === 'remove'
+      ? 'You cannot remove your own administrator account. Ask another administrator to do it.'
+      : 'You cannot switch off your own administrator account. Ask another administrator to do it.';
+  }
+  const db = getDatabase();
+  const targetKeys = new Set(admins.flatMap((u) => [u._id, u.id, u.email]).filter(Boolean).map((v) => String(v).toLowerCase()));
+  const allAdmins = await db.collection('User').find({ role: { $in: [...ADMIN_ROLES, 'admin', 'super_admin'] } }).toArray();
+  const remaining = allAdmins.filter((u: any) =>
+    !isInactiveRecord(u) && ![u._id, u.id, u.email].some((v) => v && targetKeys.has(String(v).toLowerCase())));
+  if (!remaining.length) {
+    return `This is the last active administrator account, so it cannot be ${action === 'remove' ? 'removed' : 'switched off'}.`;
+  }
+  return null;
+}
+
 /** Logs the real error server-side and answers with a generic message (internals never reach the caller) */
 function serverError(res: Response, err: unknown, message: string, extra: Record<string, unknown> = {}): void {
   console.error(`[users] ${message}:`, err);
@@ -216,10 +247,11 @@ export class UsersController {
             if (userBooking && (userBooking.consultantId || userBooking.consultantName || userBooking.therapistId || userBooking.therapistName)) {
               const bCid = String(userBooking.consultantId || userBooking.therapistId || '').toLowerCase();
               const bCname = String(userBooking.consultantName || userBooking.therapistName || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+              // By the booking's consultant id; by exact name only when the booking has no id ("Ram" never matches "Ramya")
               const matched = consList.find((c: any) => {
-                const cIds = [c.id, c._id].filter(Boolean).map((v: any) => String(v).toLowerCase());
+                const cIds = [c.id, c._id, c.therapistId].filter(Boolean).map((v: any) => String(v).toLowerCase());
                 const cName = String(c.name || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
-                return (bCid && cIds.includes(bCid)) || (bCname && cName.includes(bCname));
+                return bCid ? cIds.includes(bCid) : Boolean(bCname && cName === bCname);
               });
               if (matched) Object.assign(u, consultantAssignment(matched));
             }
@@ -511,6 +543,18 @@ export class UsersController {
         delete updates.password;
       }
 
+      // Switching an administrator off (or out of the admin role): never your own account, never the last active one
+      const switchesOff = (updates.status !== undefined && INACTIVE_STATUSES.has(String(updates.status).trim().toLowerCase())) ||
+                          (updates.accountStatus !== undefined && INACTIVE_STATUSES.has(String(updates.accountStatus).trim().toLowerCase())) ||
+                          (updates.role !== undefined && !ADMIN_ROLES.includes(String(updates.role).toUpperCase()));
+      if (switchesOff && isAdminRecord(target)) {
+        const refusal = await adminChangeRefusal(req, [target], 'deactivate');
+        if (refusal) {
+          res.status(409).json({ success: false, error: refusal });
+          return;
+        }
+      }
+
       // Website (Prisma) reads phoneNumber / image, the panels read phone / avatarUrl: keep both in sync
       if (updates.phone !== undefined || updates.phoneNumber !== undefined) {
         const phone = String(updates.phone ?? updates.phoneNumber ?? '').trim();
@@ -632,6 +676,13 @@ export class UsersController {
       }
       const emails = [...new Set(targets.map((u: any) => String(u.email || '').toLowerCase().trim()).filter(Boolean))];
       const ids = [...new Set(targets.flatMap((u: any) => [u.id, u._id]).filter(Boolean).map(String))];
+
+      // Administrator accounts: never your own, and never the last active administrator
+      const adminRefusal = await adminChangeRefusal(req, targets, 'remove');
+      if (adminRefusal) {
+        res.status(409).json({ success: false, error: adminRefusal });
+        return;
+      }
       const bookingOr: any[] = [];
       if (emails.length) bookingOr.push({ clientEmail: { $in: emails } });
       if (ids.length) bookingOr.push({ clientId: { $in: ids } }, { userId: { $in: ids } });
@@ -652,6 +703,16 @@ export class UsersController {
 
       await db.collection('User').deleteMany(query);
       await db.collection('users').deleteMany(query).catch(() => {});
+      // Raw deletes do not cascade like Prisma does: drop the website's (NextAuth) sign-in links too,
+      // so the same Google account can sign up again instead of hitting an orphaned Account link.
+      if (ids.length) {
+        const byUser = { userId: { $in: ids } };
+        await Promise.all([
+          db.collection('Account').deleteMany(byUser),
+          db.collection('Session').deleteMany(byUser),
+          db.collection('Authenticator').deleteMany(byUser)
+        ]).catch((err) => console.warn('[users] sign-in link cleanup failed:', err?.message || err));
+      }
 
       // Invalidate caches
       cacheService.invalidateTags(['users', 'stats', 'bookings']);

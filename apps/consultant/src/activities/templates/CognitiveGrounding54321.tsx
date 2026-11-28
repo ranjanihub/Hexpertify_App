@@ -889,7 +889,7 @@ Completed via Hexpertify Grounding`;
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Cognitive Grounding?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal sm:text-justify">
             Cognitive Grounding is an evidence-based neuropsychological intervention designed to interrupt acute anxiety, panic escalation, and intrusive rumination loops. When emotional distress spikes, the brain's <strong>limbic system (amygdala)</strong> consumes neural bandwidth, triggering fight-or-flight reactions. By deliberately engaging in high-demand, structured sensory observation and executive tracking—cycling through sight, touch, sound, smell, and taste—the 5-4-3-2-1 technique activates the <strong>dorsolateral prefrontal cortex (dlPFC)</strong>. Through competitive neuro-metabolic recruitment, neural activation is redirected away from panic circuits back toward rational executive control.
           </p>
         </div>
@@ -901,7 +901,7 @@ Completed via Hexpertify Grounding`;
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:text-justify">
               The 5-4-3-2-1 sensory countdown systematically activates primary sensory cortices in sequence:
             </p>
           </div>
@@ -916,7 +916,7 @@ Completed via Hexpertify Grounding`;
                   Sensory Redirection (5-4-3)
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Actively scanning your physical environment for 5 visual objects, 4 tactile sensations, and 3 distinct sounds engages the occipital, somatosensory, and auditory cortices, breaking internal fear loops.
               </p>
             </div>
@@ -930,7 +930,7 @@ Completed via Hexpertify Grounding`;
                   Olfactory & Affirmation (2-1)
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Identifying 2 aromas stimulates the olfactory system directly linked to emotional regulation. Savoring 1 taste and affirming a core truth anchors your mind in unshakeable safety.
               </p>
             </div>
@@ -944,7 +944,7 @@ Completed via Hexpertify Grounding`;
                   Reality Re-Anchoring
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                 Observing concrete sensory landmarks in your room signals directly to the autonomic nervous system that you are physically secure in the present moment, dissipating catastrophic phantom alarms.
               </p>
             </div>
@@ -958,7 +958,7 @@ Completed via Hexpertify Grounding`;
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:text-justify">
               Evidence-based neurological outcomes of 5-4-3-2-1 sensory grounding:
             </p>
           </div>
@@ -970,7 +970,7 @@ Completed via Hexpertify Grounding`;
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">De-escalates Limbic Hijack</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Competitively redirects cerebral blood flow away from the hyperactive amygdala and toward the dorsolateral prefrontal cortex.
                 </p>
               </div>
@@ -982,7 +982,7 @@ Completed via Hexpertify Grounding`;
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Interrupts Rumination Cascades</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Demands instantaneous working-memory bandwidth, making it biologically impossible to maintain repetitive catastrophic narratives simultaneously.
                 </p>
               </div>
@@ -994,7 +994,7 @@ Completed via Hexpertify Grounding`;
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Restores Executive Control</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Strengthens cognitive stamina and restores sharp focus, enabling rational decision-making during high-pressure or emotional situations.
                 </p>
               </div>
@@ -1006,7 +1006,7 @@ Completed via Hexpertify Grounding`;
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Rapid Somatosensory Calming</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:text-justify">
                   Pairing concrete sensory observation with paced centering breathing swiftly down-regulates sympathetic nervous system overdrive within 60 to 90 seconds.
                 </p>
               </div>
@@ -1019,7 +1019,7 @@ Completed via Hexpertify Grounding`;
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium sm:text-justify">
             <strong>Rule of Thumb:</strong> When in severe emotional overwhelm or panic, do not attempt to reason with catastrophic thoughts. Anchor your five physical senses with 5-4-3-2-1 first. Once physiology settles, cognitive clarity follows naturally.
           </p>
         </div>

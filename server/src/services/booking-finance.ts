@@ -61,6 +61,12 @@ export function therapistShareOf(net: number, plans: any[], feeType?: string): n
   return fee === null ? splitFee(net).therapist : Math.max(0, net) - fee;
 }
 
+/** The platform's fee on one paid session, by the same rule as therapistShareOf (payouts and revenue agree) */
+export function platformFeeOf(net: number, plans: any[], feeType?: string): number {
+  const amount = Number.isFinite(net) ? Math.max(0, net) : 0;
+  return amount - therapistShareOf(amount, plans, feeType);
+}
+
 /** Splits a session fee into the platform commission and the therapist's share */
 export function splitFee(amount: number): { platform: number; therapist: number } {
   const gross = Number.isFinite(amount) ? amount : 0;

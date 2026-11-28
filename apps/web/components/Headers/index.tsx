@@ -19,7 +19,7 @@ const Header = () => {
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div className="relative flex justify-between items-center py-2 px-4 pl-0 md:py-[16px] md:px-[30px] md:pl-0 bg-white shadow-[0_4px_4px_3px_rgba(0,0,0,0.25)] z-50">
+    <div className="relative shrink-0 flex justify-between items-center py-2 px-4 pl-0 md:py-[16px] md:px-[30px] md:pl-0 md:[@media(max-height:500px)]:py-1.5 bg-white shadow-[0_4px_4px_3px_rgba(0,0,0,0.25)] z-50">
       {/* Logo */}
       <Link
         href="/"
@@ -33,7 +33,7 @@ const Header = () => {
           height={60}
           role="img"
           aria-label="Hexpertify logo"
-          className="pointer-events-none h-[40px] md:h-[60px] w-auto object-contain transform-none!"
+          className="pointer-events-none h-[40px] md:h-[60px] md:[@media(max-height:500px)]:h-[44px] w-auto object-contain transform-none!"
         >
           svg-animation
         </object>

@@ -36,7 +36,13 @@ function PageFallback() {
     </div>
   );
 }
-import { clearAdminAuth, isAdminAuthenticated, verifyAdminSession } from './lib/auth';
+import {
+  checkAdminSession,
+  clearAdminAuth,
+  isAdminAuthenticated,
+  rememberAdminReturnPath,
+  takeAdminReturnPath
+} from './lib/auth';
 import { finishLoginLoader } from './lib/login-loader';
 
 import type { PageId } from './types';
@@ -105,58 +111,154 @@ export const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddTherapistModalOpen, setIsAddTherapistModalOpen] = useState(false);
 
-  // The server must accept the stored token as an admin's before anything is shown (null = still checking)
+  // The server must accept the stored token as an active admin's before anything is shown (null = still checking)
   const [sessionOk, setSessionOk] = useState<boolean | null>(null);
+  // The first check could not be made (offline / server down): offer a retry instead of signing out
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   React.useEffect(() => {
+    let cancelled = false;
+    // Signed out, expired or switched off: forget the sign-in and cached data, then go to the login page
+    // (the open page is reopened after signing in again, except after signing out on purpose)
+    const endSession = (remember = true) => {
+      if (cancelled) return;
+      if (remember) rememberAdminReturnPath(window.location.pathname.replace(/^\/admin(?=\/|$)/, '') + window.location.search);
+      clearAdminAuth();
+      setSessionOk(false);
+    };
+    const onExpired = () => endSession(true);
+
     if (!isAdminAuthenticated()) {
       setSessionOk(false);
       return;
     }
-    let cancelled = false;
-    verifyAdminSession().then((ok) => {
+    setCheckFailed(false);
+    checkAdminSession().then((state) => {
       if (cancelled) return;
-      if (!ok) clearAdminAuth();
-      setSessionOk(ok);
+      if (state === 'invalid') return endSession();
+      if (state === 'error') return setCheckFailed(true);
+      setSessionOk(true);
     });
+
+    // Most reads still answer (with less data) when the token has expired, so a 401 alone can't be relied on:
+    // re-check the sign-in when the admin comes back to the tab and every 5 minutes while it stays open.
+    // Only a definite "invalid" signs out; a failed check (offline) is left for the next one.
+    let lastRecheck = Date.now();
+    const recheck = async (force = false) => {
+      if (!isAdminAuthenticated()) return endSession(false);
+      if (!force && Date.now() - lastRecheck < 30_000) return;
+      lastRecheck = Date.now();
+      if ((await checkAdminSession()) === 'invalid') endSession();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void recheck();
+    };
+    const onFocus = () => void recheck();
+    const onAuthChange = () => {
+      if (!isAdminAuthenticated()) endSession(false);
+    };
+    // Signing out in another tab removes the token; 'storage' only fires in the other tabs (key null = cleared)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || ((e.key === 'hexpertify_api_token' || e.key === 'hexpertify_admin_auth') && !e.newValue)) {
+        setSessionOk(false);
+      }
+    };
+    const interval = window.setInterval(() => void recheck(true), 5 * 60_000);
+    window.addEventListener('hexpertify_session_expired', onExpired);
+    window.addEventListener('auth_state_change', onAuthChange);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('hexpertify_session_expired', onExpired);
+      window.removeEventListener('auth_state_change', onAuthChange);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, []);
+  }, [attempt]);
 
-  // The sign-in loading screen (from the login page) plays out once the session is confirmed
+  // The sign-in loading screen (from the login page) plays out once there is something to show
   React.useEffect(() => {
-    if (sessionOk) finishLoginLoader();
+    if (sessionOk || checkFailed) finishLoginLoader();
+  }, [sessionOk, checkFailed]);
+
+  // After signing in again, go back to the admin page that was open when the session ended
+  React.useEffect(() => {
+    if (!sessionOk) return;
+    const back = takeAdminReturnPath();
+    if (back && back !== location.pathname + location.search) navigate(back, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionOk]);
+
+  // Ctrl+K / Cmd+K opens the search from any page (Esc closes it, in the modal)
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Unsaved Changes Navigation Guard state
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Latest value for the save-and-leave check (the page reports it after its save finishes)
+  const unsavedRef = React.useRef(false);
+  React.useEffect(() => {
+    unsavedRef.current = hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
   const [pendingPageId, setPendingPageId] = useState<PageId | null>(null);
-  const [saveHandler, setSaveHandler] = useState<(() => void) | null>(null);
+  // The exact place to open when the guard lets the admin leave (e.g. a search result: /clients?q=CL-00001)
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [saveHandler, setSaveHandler] = useState<(() => unknown) | null>(null);
   const [discardHandler, setDiscardHandler] = useState<(() => void) | null>(null);
+  const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
+  const [saveBeforeLeaveError, setSaveBeforeLeaveError] = useState<string | null>(null);
 
-  const executeNavigation = (page: PageId) => {
-    const targetPath = pageToPathMap[page] || `/${page}`;
+  const executeNavigation = (page: PageId, path?: string) => {
+    const targetPath = path || pageToPathMap[page] || `/${page}`;
     navigate(targetPath);
     setIsSidebarOpen(false);
     setPendingPageId(null);
+    setPendingPath(null);
+    setSaveBeforeLeaveError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSelectPage = (page: PageId) => {
+  /** Every in-app navigation goes through here, so unsaved homepage changes are never left without asking */
+  const handleSelectPage = (page: PageId, path?: string) => {
     if (location.pathname === '/homepage' && hasUnsavedChanges && page !== 'homepage') {
       setPendingPageId(page);
+      setPendingPath(path || null);
       return;
     }
-    executeNavigation(page);
+    executeNavigation(page, path);
   };
 
-  const handleConfirmSaveAndLeave = () => {
-    if (saveHandler) {
-      saveHandler();
-    }
-    setHasUnsavedChanges(false);
-    if (pendingPageId) {
-      executeNavigation(pendingPageId);
+  // Leaves only once the save has gone through; a failed save keeps the admin on the page with the error
+  const handleConfirmSaveAndLeave = async () => {
+    if (!pendingPageId) return;
+    setIsSavingBeforeLeave(true);
+    setSaveBeforeLeaveError(null);
+    try {
+      if (saveHandler) await Promise.resolve(saveHandler());
+      // The homepage reports its unsaved state after a save; still unsaved means the save failed (it says why)
+      for (let i = 0; i < 10 && unsavedRef.current; i++) await new Promise((r) => setTimeout(r, 100));
+      if (unsavedRef.current) {
+        setSaveBeforeLeaveError('The changes were not saved, so you are still on this page.');
+        return;
+      }
+      setHasUnsavedChanges(false);
+      executeNavigation(pendingPageId, pendingPath || undefined);
+    } catch (err: any) {
+      setSaveBeforeLeaveError(err?.message || 'The changes could not be saved.');
+    } finally {
+      setIsSavingBeforeLeave(false);
     }
   };
 
@@ -166,7 +268,7 @@ export const App: React.FC = () => {
     }
     setHasUnsavedChanges(false);
     if (pendingPageId) {
-      executeNavigation(pendingPageId);
+      executeNavigation(pendingPageId, pendingPath || undefined);
     }
   };
 
@@ -183,7 +285,29 @@ export const App: React.FC = () => {
     return match ? (match[0] as PageId) : 'dashboard';
   };
 
+  if (checkFailed && !sessionOk) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center text-white gap-4">
+        <h2 className="text-xl font-bold">We couldn&apos;t check your sign-in</h2>
+        <p className="text-sm text-slate-400 max-w-sm">
+          Hexpertify could not be reached just now. Check your connection and try again.
+        </p>
+        <button
+          type="button"
+          onClick={() => setAttempt((n) => n + 1)}
+          className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-sm font-bold"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   if (location.pathname === '/login' || sessionOk === false || !isAdminAuthenticated()) {
+    // A deep link opened while signed out (/admin/transactions) is reopened after signing in
+    if (sessionOk !== false && location.pathname !== '/login') {
+      rememberAdminReturnPath(location.pathname + location.search);
+    }
     window.location.href = '/login?role=admin';
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -285,8 +409,8 @@ export const App: React.FC = () => {
         <GlobalSearchModal
           isOpen={isSearchOpen}
           onClose={() => setIsSearchOpen(false)}
-          onSelectPage={(page) => {
-            handleSelectPage(page);
+          onNavigate={(page, path) => {
+            handleSelectPage(page, path);
             setIsSearchOpen(false);
           }}
         />
@@ -310,13 +434,19 @@ export const App: React.FC = () => {
               </p>
 
               <div className="flex flex-col gap-2.5 pt-2">
+                {saveBeforeLeaveError && (
+                  <p role="alert" className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+                    {saveBeforeLeaveError}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={handleConfirmSaveAndLeave}
-                  className="w-full py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#450bc8]/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  disabled={isSavingBeforeLeave}
+                  className="w-full py-3 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-60 text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#450bc8]/25 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save Changes & Leave</span>
+                  <span>{isSavingBeforeLeave ? 'Saving…' : 'Save Changes & Leave'}</span>
                 </button>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -331,7 +461,11 @@ export const App: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setPendingPageId(null)}
+                    onClick={() => {
+                      setPendingPageId(null);
+                      setPendingPath(null);
+                      setSaveBeforeLeaveError(null);
+                    }}
                     className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
                   >
                     Stay on Page

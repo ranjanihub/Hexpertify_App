@@ -462,6 +462,44 @@ html[data-hx-intro="done"] .hxl-intro {
     display: none;
   }
 }
+/* Short screens of any width (phones held sideways): smaller corners, no extra copy, so nothing overlaps */
+@media (max-height: 520px) {
+  .hxl {
+    --hxl-pad: 20px;
+  }
+  .hxl-top {
+    top: 16px;
+  }
+  .hxl-side,
+  .hxl-row,
+  .hxl-hello {
+    display: none;
+  }
+  .hxl-center {
+    transform: translate(-50%, -60%);
+  }
+  .hxl-logo {
+    width: min(52vw, 90vh, 420px);
+  }
+  .hxl-counter,
+  .hxl-badge {
+    width: 96px;
+    height: 96px;
+    bottom: 16px;
+  }
+  .hxl-badge {
+    --s: 36px;
+  }
+  .hxl-num {
+    font-size: 22px;
+  }
+  .hxl-num.total {
+    font-size: 13px;
+  }
+  .hxl-counter-label {
+    font-size: 7px;
+  }
+}
 
 /* ── Reduced motion: no drifting, spinning or sliding; a plain fade out ── */
 @media (prefers-reduced-motion: reduce) {

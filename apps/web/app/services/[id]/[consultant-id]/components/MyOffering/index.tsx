@@ -25,10 +25,10 @@ const MyOffering = ({
           >
             {/* Name, with the price beside it on phones/tablets (a row, so a long name wraps instead of running under the price) */}
             <div className="flex items-start justify-between gap-3 mt-[10px]">
-              <p className="min-w-0 text-[29px] font-semibold text-[#06060699] max-md:text-[22px] break-words">
+              <p className="min-w-0 text-[29px] font-semibold text-[#06060699] max-md:text-[22px] max-sm:text-[18px] break-words">
                 {item?.name}
               </p>
-              <p className="md:hidden shrink-0 whitespace-nowrap text-[22px] font-bold text-[#06060699]">
+              <p className="md:hidden shrink-0 whitespace-nowrap text-[22px] max-sm:text-[18px] font-bold text-[#06060699]">
                 ₹ {item?.price}
               </p>
             </div>

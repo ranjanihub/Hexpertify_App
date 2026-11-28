@@ -40,7 +40,8 @@ function dotColor(count: number) {
 
 function parseTimeToMinutes(t: string): number {
   if (!t) return 0;
-  const match = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  // A slot label "11:00 AM - 12:00 PM" counts from its start
+  const match = t.split(/\s+-\s+/)[0].trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
   if (!match) return 0;
   let hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
@@ -72,6 +73,38 @@ function generateHourlySlots(startStr: string, endStr: string, stepMinutes = 60)
   }
   return slots;
 }
+
+/** Sends JSON to the API and reports the server's verdict (never assumes success) */
+async function sendJson(url: string, method: string, body?: unknown): Promise<{ ok: boolean; data: any; error: string }> {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) })
+    });
+    const data = await res.json().catch(() => null);
+    const ok = res.ok && data?.success !== false;
+    return { ok, data, error: ok ? '' : data?.error || data?.message || `The server answered ${res.status}` };
+  } catch (err: any) {
+    return { ok: false, data: null, error: `Could not reach the server (${err?.message || 'network error'})` };
+  }
+}
+
+/** A booking's session day and start time in India time; null for bookings without a session time yet */
+function bookingSlotIst(b: any): { date: string; time: string } | null {
+  if (b?.toBeScheduled) return null;
+  const isDate = (v: unknown) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+  const at = b?.scheduledAt ? new Date(b.scheduledAt) : null;
+  const valid = at && !isNaN(at.getTime()) ? at : null;
+  const date = isDate(b?.date) ? String(b.date) : valid ? valid.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '';
+  if (!date) return null;
+  const label = String(b?.time || '').split(/\s+-\s+/)[0].trim();
+  const time = label || (valid ? valid.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '');
+  return { date, time };
+}
+
+/** Bookings that no longer hold their time slot */
+const RELEASED_BOOKING_STATUSES = new Set(['CANCELLED', 'EXPIRED']);
 
 export type SessionStatus = 'booked' | 'available' | 'blocked';
 
@@ -116,16 +149,20 @@ export const AvailabilityView: React.FC = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [activeMenuSlotIndex, setActiveMenuSlotIndex] = useState<number | null>(null);
 
-  // Add Event Form State
-  const [eventClientName, setEventClientName] = useState('');
+  // Add Event Form State (the client is chosen by id; nothing is picked for the admin)
+  const [eventClientId, setEventClientId] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('10:00 AM');
   const [eventDuration, setEventDuration] = useState('50 min');
-  const [eventType, setEventType] = useState('Individual Therapy');
+  const [eventServiceKey, setEventServiceKey] = useState('');
+  const [eventPaymentStatus, setEventPaymentStatus] = useState<'UNPAID' | 'PAID'>('UNPAID');
+  const [isSavingSession, setIsSavingSession] = useState(false);
 
   // Assign Target State
   const [assignTarget, setAssignTarget] = useState<{ key: string; index: number; slot: SessionSlot } | null>(null);
-  const [assignClientName, setAssignClientName] = useState('');
+  const [assignClientId, setAssignClientId] = useState('');
+  // Booked session waiting for the admin to confirm its cancellation
+  const [cancelTarget, setCancelTarget] = useState<{ bookingId: string; client: string; time: string } | null>(null);
 
   // Weekly Working Hours State
   const [workingHours, setWorkingHours] = useState<Record<string, { enabled: boolean; start: string; end: string }>>({
@@ -138,9 +175,12 @@ export const AvailabilityView: React.FC = () => {
     sunday: { enabled: false, start: '10:00 AM', end: '02:00 PM' }
   });
 
+  // A newer message restarts the timer, so an older one's timer never hides it early
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 5000);
   };
 
   // Set default selected consultant when loaded
@@ -256,21 +296,22 @@ export const AvailabilityView: React.FC = () => {
     if (!activeConsultant) return map;
 
     const aCid = String(activeConsultant.id || '').toLowerCase();
-    const aCname = String(activeConsultant.name || '').toLowerCase();
+    const aCname = String(activeConsultant.name || '').trim().toLowerCase();
+    // By id; a record without any id falls back to the exact same name (never a partial match: "Ram" is not "Ramya")
+    const isMine = (id: unknown, name: unknown) => {
+      const rid = String(id || '').toLowerCase();
+      if (rid) return rid === aCid;
+      return !!aCname && String(name || '').trim().toLowerCase() === aCname;
+    };
 
-    // 1. Consultant's real bookings from MongoDB
-    const consultantBookings = allRawBookings.filter((b) => {
-      const bCid = String(b.consultantId || b.therapistId || '').toLowerCase();
-      const bCname = String(b.consultantName || b.therapistName || '').toLowerCase();
-      return (bCid && bCid === aCid) || (bCname && aCname && (bCname === aCname || aCname.includes(bCname) || bCname.includes(aCname)));
-    });
+    // 1. Consultant's real bookings that hold a time (cancelled/expired ones free their slot)
+    const consultantBookings = allRawBookings.filter((b) =>
+      isMine(b.consultantId || b.therapistId, b.consultantName || b.therapistName) &&
+      !RELEASED_BOOKING_STATUSES.has(String(b.status || '').toUpperCase()));
 
     // 2. Consultant's custom slots / blocks from MongoDB
-    const consultantSlots = allRawSlots.filter((s) => {
-      const sCid = String(s.therapistId || s.consultantId || '').toLowerCase();
-      const sCname = String(s.therapistName || s.consultantName || '').toLowerCase();
-      return (sCid && sCid === aCid) || (sCname && aCname && (sCname === aCname || aCname.includes(sCname) || sCname.includes(aCname)));
-    });
+    // (entries the server derived from bookings are skipped: the bookings above are the source for those)
+    const consultantSlots = allRawSlots.filter((s) => !s.bookingId && isMine(s.therapistId || s.consultantId, s.therapistName || s.consultantName));
 
     const activeSchedule = (activeConsultant.availability && typeof activeConsultant.availability === 'object')
       ? { ...workingHours, ...activeConsultant.availability }
@@ -287,19 +328,18 @@ export const AvailabilityView: React.FC = () => {
 
       map[key] = [];
 
-      // Find bookings for this date
-      const dateBookings = consultantBookings.filter((b) => {
-        const dObj = new Date(b.scheduledAt || b.date || b.createdAt || Date.now());
-        if (isNaN(dObj.getTime())) return false;
-        return dObj.getFullYear() === year && dObj.getMonth() === month && dObj.getDate() === d;
-      });
+      // Bookings on this India-time day; a website booking still "to be scheduled" has no slot on any day
+      const isoDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dateBookings = consultantBookings
+        .filter((b) => bookingSlotIst(b)?.date === isoDay)
+        .map((b) => ({ ...b, time: bookingSlotIst(b)!.time }));
 
-      // Find custom slots/blocks for this date
+      // Custom slots/blocks for this date (stored as YYYY-MM-DD labels)
       const dateCustomSlots = consultantSlots.filter((s) => {
-        if (!s.date) return false;
-        const dObj = new Date(s.date);
-        if (isNaN(dObj.getTime())) return false;
-        return dObj.getFullYear() === year && dObj.getMonth() === month && dObj.getDate() === d;
+        const raw = String(s.date || '');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw === isoDay;
+        const at = raw ? new Date(raw) : null;
+        return !!at && !isNaN(at.getTime()) && at.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === isoDay;
       });
 
       // If working hours are enabled for this day, generate all standard working slots
@@ -315,7 +355,7 @@ export const AvailabilityView: React.FC = () => {
         timeSlots.forEach((timeStr) => {
           // Check if this time slot is booked
           const matchedBooking = dateBookings.find((b) => {
-            const bTime = b.time || new Date(b.scheduledAt || b.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const bTime = b.time || '';
             return parseTimeToMinutes(bTime) === parseTimeToMinutes(timeStr);
           });
 
@@ -371,7 +411,7 @@ export const AvailabilityView: React.FC = () => {
 
       // Add any additional bookings on this date that fell outside standard working hours
       dateBookings.forEach((b) => {
-        const bTime = b.time || new Date(b.scheduledAt || b.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const bTime = b.time || '';
         const exists = map[key].some((s) => parseTimeToMinutes(s.time) === parseTimeToMinutes(bTime));
         if (!exists) {
           const isBlocked = String(b.status || '').toUpperCase() === 'BLOCKED';
@@ -475,137 +515,129 @@ export const AvailabilityView: React.FC = () => {
     const nextStatus = isCurrentlyBlocked ? 'available' : 'blocked';
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
 
-    try {
-      await fetch('/api/availability/toggle-block', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slotId: slot.slotId || slot.bookingId || `SLOT-${Date.now()}`,
-          isBlocked: nextStatus === 'blocked',
-          therapistId: activeConsultant?.id,
-          therapistName: activeConsultant?.name,
-          date: dateStr,
-          time: slot.time
-        })
-      });
-    } catch {
-      await fetch('http://localhost:5000/api/availability/toggle-block', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slotId: slot.slotId || slot.bookingId || `SLOT-${Date.now()}`,
-          isBlocked: nextStatus === 'blocked',
-          therapistId: activeConsultant?.id,
-          therapistName: activeConsultant?.name,
-          date: dateStr,
-          time: slot.time
-        })
-      }).catch(() => {});
-    }
-
-    fetchLiveScheduleData();
-    showToast(nextStatus === 'blocked' ? `Slot at ${slot.time} is now Blocked` : `Slot at ${slot.time} is now Available`);
+    const result = await sendJson('/api/availability/toggle-block', 'POST', {
+      slotId: slot.slotId || slot.bookingId || undefined,
+      isBlocked: nextStatus === 'blocked',
+      therapistId: activeConsultant?.id,
+      therapistName: activeConsultant?.name,
+      date: dateStr,
+      time: slot.time
+    });
     setActiveMenuSlotIndex(null);
+    if (!result.ok) {
+      // Nothing changed on the server, so nothing changes here
+      showToast(`Slot at ${slot.time} not changed: ${result.error}`);
+      return;
+    }
+    await fetchLiveScheduleData();
+    setSlotsVersion((v) => v + 1);
+    showToast(nextStatus === 'blocked' ? `Slot at ${slot.time} is now Blocked` : `Slot at ${slot.time} is now Available`);
   };
 
-  // Submit Add Event / Session to MongoDB
+  // Submit Add Event / Session: a real chosen client, the therapist's plan (the server sets the price)
   const handleCreateSessionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeConsultant) return;
+    if (!activeConsultant || isSavingSession) return;
 
-    const chosenClient = dbClients.find((c) => c.name === eventClientName) || dbClients[0];
+    const chosenClient = dbClients.find((c) => c.id === eventClientId);
+    if (!chosenClient) {
+      showToast('Choose the client to book this session for');
+      return;
+    }
     const targetDate = eventDate || `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    const plan = (activeConsultant.services || []).find((s: any) => (s.id || s.serviceName) === eventServiceKey);
 
     const newBooking = {
-      id: `BK-${Date.now().toString().slice(-6)}`,
-      clientId: chosenClient?.id || 'client-user',
-      clientName: chosenClient?.name || eventClientName || 'Client User',
-      clientEmail: chosenClient?.email || 'client@example.com',
+      clientId: chosenClient.id,
+      clientName: chosenClient.name,
+      ...(chosenClient.email ? { clientEmail: chosenClient.email } : {}),
       consultantId: activeConsultant.id,
       consultantName: activeConsultant.name,
-      therapistId: activeConsultant.id,
-      therapistName: activeConsultant.name,
-      serviceTitle: eventType || 'Individual Therapy',
-      // No scheduledAt: the Backend computes it from date + time in India time (a fixed 10:00 UTC put
-      // every session at 3:30 PM IST in emails and calendar invites)
+      ...(plan ? { serviceTitle: plan.serviceName, ...(plan.id ? { serviceId: plan.id } : {}) } : {}),
+      // No scheduledAt: the server computes it from date + time in India time
       date: targetDate,
       time: eventTime || '10:00 AM',
       durationMinutes: parseInt(eventDuration) || 50,
-      duration: eventDuration || '50 min',
       status: 'CONFIRMED',
-      paymentStatus: 'PAID',
-      amount: 1500,
-      // No made-up meeting link: emails would show it as a real "Join" button
-      createdAt: new Date().toISOString()
+      // The admin's choice; the amount is the plan's price, set by the server
+      paymentStatus: eventPaymentStatus
     };
 
-    try {
-      // Admin token lets the backend record this manual booking's payment status
-      let res = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
-        body: JSON.stringify(newBooking)
-      }).catch(() => null);
-
-      if (!res && window.location.hostname === 'localhost') {
-        res = await fetch('http://localhost:5000/api/bookings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
-          body: JSON.stringify(newBooking)
-        }).catch(() => null);
-      }
-
-      showToast(`Session booked for ${newBooking.clientName} with ${activeConsultant.name}!`);
-      fetchLiveScheduleData();
-    } catch {
-      showToast('Error persisting booking to database');
+    setIsSavingSession(true);
+    const result = await sendJson('/api/admin/bookings', 'POST', newBooking);
+    setIsSavingSession(false);
+    if (!result.ok) {
+      showToast(`Session not booked: ${result.error}`);
+      return;
     }
-
     setIsAddEventModalOpen(false);
+    showToast(`Session booked for ${chosenClient.name} with ${activeConsultant.name}`);
+    await fetchLiveScheduleData();
+    setSlotsVersion((v) => v + 1);
   };
 
-  // Assign client to open slot in MongoDB
+  // Assign a real chosen client to an open slot
   const handleConfirmAssignClient = async () => {
-    if (!assignTarget || !activeConsultant) return;
+    if (!assignTarget || !activeConsultant || isSavingSession) return;
     const { slot } = assignTarget;
 
-    const matchedClient = dbClients.find((c) => c.name === assignClientName) || dbClients[0];
+    const matchedClient = dbClients.find((c) => c.id === assignClientId);
+    if (!matchedClient) {
+      showToast('Choose the client to assign to this slot');
+      return;
+    }
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
 
     const assignPayload = {
-      slotId: slot.slotId || `SLOT-${Date.now()}`,
-      clientName: matchedClient?.name || assignClientName || 'Client User',
-      clientEmail: matchedClient?.email || 'client@example.com',
+      ...(slot.slotId && !slot.slotId.startsWith('AVAIL-') ? { slotId: slot.slotId } : {}),
+      clientId: matchedClient.id,
+      clientName: matchedClient.name,
+      ...(matchedClient.email ? { clientEmail: matchedClient.email } : {}),
       therapistId: activeConsultant.id,
       therapistName: activeConsultant.name,
-      serviceTitle: 'Individual Therapy',
       date: dateStr,
       time: slot.time
     };
 
-    try {
-      let res = await fetch('/api/availability/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(assignPayload)
-      }).catch(() => null);
-
-      if (!res && window.location.hostname === 'localhost') {
-        res = await fetch('http://localhost:5000/api/availability/assign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(assignPayload)
-        }).catch(() => null);
-      }
-
-      showToast(`Client ${assignPayload.clientName} assigned to slot at ${slot.time}!`);
-      fetchLiveScheduleData();
-    } catch {
-      showToast('Error saving assigned client');
+    setIsSavingSession(true);
+    const result = await sendJson('/api/availability/assign', 'POST', assignPayload);
+    setIsSavingSession(false);
+    if (!result.ok) {
+      showToast(`Client not assigned: ${result.error}`);
+      return;
     }
-
+    showToast(`Client ${matchedClient.name} assigned to slot at ${slot.time}`);
     setIsAssignModalOpen(false);
     setAssignTarget(null);
+    await fetchLiveScheduleData();
+    setSlotsVersion((v) => v + 1);
+  };
+
+  /** The add-session form starts empty: no client chosen, the therapist's first plan, unpaid */
+  const openAddSession = () => {
+    const plans = (activeConsultant?.services || []).filter((s) => s?.serviceName && Number(s.sessionFee) > 0);
+    setEventClientId('');
+    setEventServiceKey(plans[0] ? plans[0].id || plans[0].serviceName : '');
+    setEventPaymentStatus('UNPAID');
+  };
+
+  // Cancel a booked session (kept as CANCELLED, with the usual cancellation emails); never deleted
+  const handleConfirmCancelBooking = async () => {
+    if (!cancelTarget || isSavingSession) return;
+    setIsSavingSession(true);
+    const result = await sendJson(`/api/admin/bookings/${encodeURIComponent(cancelTarget.bookingId)}`, 'PUT', {
+      status: 'CANCELLED',
+      cancelReason: 'Cancelled by the Hexpertify team'
+    });
+    setIsSavingSession(false);
+    if (!result.ok) {
+      showToast(`Booking not cancelled: ${result.error}`);
+      return;
+    }
+    showToast(`Booking for ${cancelTarget.client} at ${cancelTarget.time} cancelled. Refunds, if due, are made from Bookings or Transactions.`);
+    setCancelTarget(null);
+    await fetchLiveScheduleData();
+    setSlotsVersion((v) => v + 1);
   };
 
   // Save weekly working hours to MongoDB
@@ -969,7 +1001,7 @@ export const AvailabilityView: React.FC = () => {
             <button
               onClick={() => {
                 setEventDate(`${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`);
-                setEventClientName(dbClients[0]?.name || '');
+                openAddSession();
                 setIsAddEventModalOpen(true);
               }}
               className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300 bg-white text-[#450bc8] text-xs font-extrabold py-3 hover:bg-purple-50/80 transition-all cursor-pointer shadow-xs"
@@ -985,6 +1017,7 @@ export const AvailabilityView: React.FC = () => {
                 <button
                   onClick={() => {
                     setEventDate(`${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`);
+                    openAddSession();
                     setIsAddEventModalOpen(true);
                   }}
                   className="mt-4 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md shadow-[#450bc8]/20 cursor-pointer"
@@ -1062,7 +1095,7 @@ export const AvailabilityView: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 setAssignTarget({ key: sessionKey, index: i, slot: s });
-                                setAssignClientName(dbClients[0]?.name || '');
+                                setAssignClientId('');
                                 setIsAssignModalOpen(true);
                               }}
                               className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-[11px] h-7 px-2.5 rounded-lg shadow-xs cursor-pointer"
@@ -1096,15 +1129,13 @@ export const AvailabilityView: React.FC = () => {
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={async () => {
-                                    if (s.bookingId) {
-                                      await fetch(`/api/bookings/${s.bookingId}`, { method: 'DELETE' }).catch(() => 
-                                        fetch(`http://localhost:5000/api/bookings/${s.bookingId}`, { method: 'DELETE' })
-                                      );
-                                    }
-                                    fetchLiveScheduleData();
-                                    showToast('Booking cancelled');
+                                  onClick={() => {
                                     setActiveMenuSlotIndex(null);
+                                    if (!s.bookingId) {
+                                      showToast('This slot has no booking record to cancel');
+                                      return;
+                                    }
+                                    setCancelTarget({ bookingId: s.bookingId, client: s.client, time: s.time });
                                   }}
                                   className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg"
                                 >
@@ -1150,16 +1181,17 @@ export const AvailabilityView: React.FC = () => {
             <form onSubmit={handleCreateSessionSubmit} className="flex flex-col flex-1 overflow-hidden">
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs overscroll-contain">
                 <div className="space-y-1.5">
-                  <label className="font-extrabold text-slate-700">Select Client</label>
+                  <label className="font-extrabold text-slate-700">Select Client *</label>
                   <select
-                    value={eventClientName}
-                    onChange={(e) => setEventClientName(e.target.value)}
+                    value={eventClientId}
+                    onChange={(e) => setEventClientId(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
                     required
                   >
+                    <option value="" disabled>Choose a client…</option>
                     {dbClients.map((c) => (
-                      <option key={c.id} value={c.name}>
-                        {c.name} ({c.email})
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.email || c.clientNumber || 'no email'})
                       </option>
                     ))}
                   </select>
@@ -1204,18 +1236,36 @@ export const AvailabilityView: React.FC = () => {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-extrabold text-slate-700">Modality / Service</label>
-                    <select
-                      value={eventType}
-                      onChange={(e) => setEventType(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
-                    >
-                      <option value="Individual Therapy">Individual Therapy</option>
-                      <option value="Comprehensive CBT Care">Comprehensive CBT</option>
-                      <option value="Couples & Relationship Counseling">Couples Counseling</option>
-                      <option value="ADHD & Executive Functioning">ADHD Coaching</option>
-                    </select>
+                    <label className="font-extrabold text-slate-700">Service (therapist&apos;s plan)</label>
+                    {(activeConsultant?.services || []).filter((s) => s?.serviceName && Number(s.sessionFee) > 0).length > 0 ? (
+                      <select
+                        value={eventServiceKey}
+                        onChange={(e) => setEventServiceKey(e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
+                      >
+                        {(activeConsultant?.services || []).filter((s) => s?.serviceName && Number(s.sessionFee) > 0).map((s) => (
+                          <option key={s.id || s.serviceName} value={s.id || s.serviceName}>
+                            {s.serviceName} (₹{Number(s.sessionFee).toLocaleString('en-IN')})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-semibold text-slate-600">No plans set up: the server uses the therapist&apos;s base price</p>
+                    )}
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-extrabold text-slate-700">Payment Status</label>
+                  <select
+                    value={eventPaymentStatus}
+                    onChange={(e) => setEventPaymentStatus(e.target.value as 'UNPAID' | 'PAID')}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
+                  >
+                    <option value="UNPAID">Unpaid</option>
+                    <option value="PAID">Paid (payment received outside the website)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 font-medium">The session price comes from the therapist&apos;s plan, set by the server.</p>
                 </div>
               </div>
 
@@ -1229,9 +1279,10 @@ export const AvailabilityView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold shadow-md shadow-[#450bc8]/20 cursor-pointer transition-all active:scale-95"
+                  disabled={isSavingSession}
+                  className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-60 text-white font-extrabold shadow-md shadow-[#450bc8]/20 cursor-pointer transition-all active:scale-95"
                 >
-                  Confirm & Schedule
+                  {isSavingSession ? 'Booking…' : 'Confirm & Schedule'}
                 </button>
               </div>
             </form>
@@ -1348,18 +1399,20 @@ export const AvailabilityView: React.FC = () => {
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-3 text-xs overscroll-contain">
-              <label className="font-extrabold text-slate-700 block">Select Patient / Client</label>
+              <label className="font-extrabold text-slate-700 block">Select Patient / Client *</label>
               <select
-                value={assignClientName}
-                onChange={(e) => setAssignClientName(e.target.value)}
+                value={assignClientId}
+                onChange={(e) => setAssignClientId(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
               >
+                <option value="" disabled>Choose a client…</option>
                 {dbClients.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name} ({c.email})
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.email || c.clientNumber || 'no email'})
                   </option>
                 ))}
               </select>
+              <p className="text-[10px] text-slate-400 font-medium">Booked as unpaid at the therapist&apos;s plan price.</p>
             </div>
 
             <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2 shrink-0">
@@ -1373,9 +1426,42 @@ export const AvailabilityView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmAssignClient}
-                className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold shadow-md shadow-[#450bc8]/20 cursor-pointer transition-all active:scale-95"
+                disabled={!assignClientId || isSavingSession}
+                className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 text-white font-extrabold shadow-md shadow-[#450bc8]/20 cursor-pointer transition-all active:scale-95"
               >
-                Confirm Assignment
+                {isSavingSession ? 'Assigning…' : 'Confirm Assignment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Confirm cancelling a booked session ─────────────────────────── */}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-4 animate-fade-in">
+            <h3 className="font-extrabold text-slate-900 text-base">Cancel this session?</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              The session with <span className="font-bold">{cancelTarget.client}</span> at {cancelTarget.time} on {MONTHS[month]} {selectedDay} will be
+              marked <span className="font-bold">Cancelled</span> (it stays in the records) and the client and therapist are emailed.
+              No refund is made here: refund a paid session from Bookings or Transactions.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCancelTarget(null)}
+                disabled={isSavingSession}
+                className="px-4 py-2 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-200 cursor-pointer transition-colors"
+              >
+                Keep Booking
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancelBooking}
+                disabled={isSavingSession}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-extrabold text-xs shadow-md cursor-pointer"
+              >
+                {isSavingSession ? 'Cancelling…' : 'Cancel Booking'}
               </button>
             </div>
           </div>

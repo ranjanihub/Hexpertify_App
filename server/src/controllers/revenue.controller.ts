@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
-import { classifyBooking, platformCommissionRate, splitFee, therapistShareOf } from '../services/booking-finance';
+import { classifyBooking, platformCommissionRate, platformFeeOf, therapistShareOf } from '../services/booking-finance';
 import { bookingStatusOf, normalizePaymentStatus } from '../services/booking-status';
 import { bookingInstant, isDateLabel, istLabels, toValidDate } from '../services/booking-time';
 
@@ -56,6 +56,18 @@ export class RevenueController {
           if (c._id) consultantMap.set(String(c._id), c);
           if (c.id) consultantMap.set(String(c.id), c);
         });
+
+        // Each therapist's plans: the platform fee comes from them, as for payouts (default rate without plans)
+        const plansByConsultant = new Map<string, any[]>();
+        allServices.forEach((s: any) => {
+          const key = String(s.consultantId || '');
+          if (key) plansByConsultant.set(key, [...(plansByConsultant.get(key) || []), s]);
+        });
+        const platformFeeFor = (b: any, c: any, net: number) => {
+          const ids = c ? [String(c._id || ''), String(c.id || '')] : [String(b.consultantId || b.therapistId || '')];
+          const plans = Array.from(new Set(ids.filter(Boolean))).flatMap((id) => plansByConsultant.get(id) || []);
+          return platformFeeOf(net, plans, c?.platformFeeType);
+        };
 
         const serviceMap = new Map<string, any>();
         allServices.forEach((s: any) => {
@@ -172,10 +184,10 @@ export class RevenueController {
             const inPeriod = periodMonths ? periodOf(date) === 0 : true;
             if (periodMonths && periodOf(date) === -1) previousRevenue += financial.net;
             if (inPeriod) {
-              const split = splitFee(financial.net);
+              const fee = platformFeeFor(b, c, financial.net);
               totalRevenue += financial.net;
-              platformCommission += split.platform;
-              therapistEarnings += split.therapist;
+              platformCommission += fee;
+              therapistEarnings += financial.net - fee;
               completedConsultations += 1;
               therapyHours += hours;
 
@@ -207,6 +219,8 @@ export class RevenueController {
             therapistId: String(b.consultantId || b.therapistId || ''),
             serviceTitle,
             amount: isPaid ? financial.net : rawFee,
+            // The platform's fee on this session (the therapist's plan, as in payouts); 0 unless paid
+            platformFee: isPaid ? platformFeeFor(b, c, financial.net) : 0,
             status: isPaid ? 'paid' : isPending ? 'pending' : 'refunded',
             paymentStatus: normalizePaymentStatus(b.paymentStatus) || b.paymentStatus,
             paymentId: b.paymentId,

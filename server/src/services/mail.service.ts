@@ -627,7 +627,7 @@ export class MailService {
     accountNumber: string;
     transactionRef: string;
     sessions?: Array<{ id: string; clientName: string; date: string; fee: number; commission: number; net: number }>;
-  }): Promise<{ success: boolean; error?: string }> {
+  }): Promise<{ success: boolean; error?: string; adminEmailed?: boolean }> {
     try {
       const summary: Row[] = [
         ['Invoice no.', payload.invoiceNumber],
@@ -668,7 +668,7 @@ export class MailService {
 
       const text = `${textRows(summary)}\n\n${textRows(totals)}`;
       const adminTo = payload.adminEmail || adminAlertEmail();
-      await Promise.allSettled([
+      const [toTherapist, toAdmin] = await Promise.all([
         payload.therapistEmail ? this.deliver({
           to: payload.therapistEmail,
           toName: payload.therapistName,
@@ -676,7 +676,7 @@ export class MailService {
           html: build('therapist'),
           text,
           ref: payload.invoiceNumber
-        }) : Promise.resolve(),
+        }) : Promise.resolve<MailResult>({ success: false, error: 'The therapist has no email address on file' }),
         this.deliver({
           to: adminTo,
           toName: 'Super Administrator',
@@ -686,7 +686,8 @@ export class MailService {
           ref: payload.invoiceNumber
         })
       ]);
-      return { success: true };
+      // Success means the therapist's copy went out; the admin copy is reported separately
+      return { success: toTherapist.success, error: toTherapist.success ? undefined : toTherapist.error, adminEmailed: toAdmin.success };
     } catch (error: any) {
       console.error('❌ [MailService] sendPayoutInvoice failed:', error);
       return { success: false, error: error?.message || 'Mail dispatch failed' };

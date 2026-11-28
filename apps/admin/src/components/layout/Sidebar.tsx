@@ -24,7 +24,7 @@ import {
 import { HexpertifyLogo } from '../common/HexpertifyLogo';
 import type { PageId } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { logoutAdmin, getAdminAuth } from '../../lib/auth';
+import { logoutAdmin, getAdminAuth, adminAvatarUrl, adminInitials } from '../../lib/auth';
 import { api } from '../../lib/apiClient';
 
 interface SidebarProps {
@@ -57,6 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
   const { clients } = useAppContext();
   // Real counts only: a badge is shown when there is something to count (no placeholder numbers)
   const [pendingReviewCount, setPendingReviewCount] = useState<number>(0);
+  // A photo that fails to load (e.g. an expired Google picture) falls back to initials
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   useEffect(() => {
     api
@@ -140,11 +142,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
     return location.pathname.startsWith(item.path);
   };
 
+  // The app decides whether to leave (unsaved homepage changes ask first), so the route is not changed here
   const handleNavigate = (item: MenuItem) => {
-    navigate(item.path);
     if (onSelectPage) {
       onSelectPage(item.id);
+      return;
     }
+    navigate(item.path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -160,8 +164,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
         <HexpertifyLogo
           size="lg"
           onClick={() => {
-            navigate('/');
             if (onSelectPage) onSelectPage('dashboard');
+            else navigate('/');
           }}
         />
       </div>
@@ -236,16 +240,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
-              <img
-                src={getAdminAuth()?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"}
-                alt="Admin Avatar"
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-[#450bc8]/20"
-              />
+              {adminAvatarUrl() && !avatarFailed ? (
+                <img
+                  src={adminAvatarUrl()}
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarFailed(true)}
+                  alt={getAdminAuth()?.name || 'Signed-in admin'}
+                  className="w-9 h-9 rounded-full object-cover ring-2 ring-[#450bc8]/20"
+                />
+              ) : (
+                <span
+                  className="w-9 h-9 rounded-full bg-[#450bc8] text-white text-xs font-extrabold flex items-center justify-center ring-2 ring-[#450bc8]/20"
+                  aria-hidden="true"
+                >
+                  {adminInitials()}
+                </span>
+              )}
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
             </div>
             <div className="leading-tight min-w-0">
-              <p className="text-xs font-bold text-slate-900 truncate">{getAdminAuth()?.name || "Super Admin"}</p>
-              <p className="text-[11px] text-slate-500 font-medium truncate">{getAdminAuth()?.email || "Master Control"}</p>
+              <p className="text-xs font-bold text-slate-900 truncate">{getAdminAuth()?.name || getAdminAuth()?.email || "Admin"}</p>
+              <p className="text-[11px] text-slate-500 font-medium truncate">{getAdminAuth()?.email || ""}</p>
             </div>
           </div>
           <button
@@ -254,6 +269,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
               window.location.href = '/login?role=admin';
             }}
             title="Sign Out"
+            aria-label="Sign out"
             className="p-2.5 lg:p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />

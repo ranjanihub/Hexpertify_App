@@ -3,6 +3,7 @@ import { connectToDatabase } from './db/mongodb';
 import { corsMiddleware } from './middlewares/cors.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
 import router from './routes';
+import { adminAuditMiddleware } from './services/admin-audit';
 
 /**
  * The Hexpertify REST API (/api/*) as one Express app. The website (apps/web, Next.js) serves it on its
@@ -34,6 +35,9 @@ apiApp.use(async (_req, _res, next) => {
   }
   next();
 });
+
+// Records every successful admin change (who, IP, method, route, target, status) in the audit log
+apiApp.use(adminAuditMiddleware);
 
 apiApp.use('/api', router);
 

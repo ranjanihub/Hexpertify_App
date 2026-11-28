@@ -73,6 +73,8 @@ export interface Booking {
   /** The booked consultant's id (preferred over matching by name) */
   consultantId?: string;
   durationMinutes?: number;
+  /** The therapist has filed the session report for this booking */
+  hasSessionReport?: boolean;
 }
 
 export type GatewayPaymentStatus =
@@ -88,7 +90,8 @@ export interface PaymentRefund {
   id: string;
   providerRefundId?: string;
   amount: number;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  /** RESERVED: the amount is held while the refund request is with the gateway */
+  status: 'RESERVED' | 'PENDING' | 'SUCCESS' | 'FAILED';
   reason?: string;
   requestedBy?: string;
   createdAt: string;

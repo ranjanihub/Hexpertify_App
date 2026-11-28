@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DollarSign,
@@ -18,16 +18,55 @@ import {
   Printer,
   Building2,
   Smartphone,
-  Pencil
+  Pencil,
+  AlertTriangle
 } from 'lucide-react';
-import type { TherapistPayout, Therapist } from '../types';
 import { HexpertifyLogo } from '../components/common/HexpertifyLogo';
 import { api } from '../lib/apiClient';
 
-interface PayoutHistoryRecord {
+/** One completed, paid session not yet paid out (fees computed by the server from the therapist's plans) */
+interface UnpaidSession {
   id: string;
-  payoutDate: string;
+  sessionId: string;
+  bookingNumber?: string;
+  sessionDate: string | null;
+  clientName: string;
+  serviceTitle?: string;
+  sessionFee: number;
+  platformFee: number;
+  therapistShare: number;
+  status: string;
+}
+
+/** A therapist's payout position, as GET /api/admin/payouts returns it */
+interface PayoutRow {
+  id: string;
+  therapistId: string;
   therapistName: string;
+  therapistEmail: string;
+  therapistAvatar: string;
+  profession: string;
+  hasPlans: boolean;
+  commissionRate: number;
+  grossAmount: number;
+  platformFee: number;
+  pendingAmount: number;
+  bankName: string;
+  bankAccountNumber: string;
+  bankIfsc: string;
+  accountHolderName: string;
+  upiId: string;
+  unpaidSessions: UnpaidSession[];
+}
+
+/** A stored payout invoice (PayoutInvoice record) */
+interface PayoutInvoice {
+  id: string;
+  invoiceNumber: string;
+  payoutDate: string;
+  therapistId: string;
+  therapistName: string;
+  therapistEmail: string;
   profession: string;
   sessionsCount: number;
   grossAmount: number;
@@ -36,474 +75,302 @@ interface PayoutHistoryRecord {
   paymentMethod: string;
   accountNumber: string;
   transactionRef: string;
-  status: 'Completed' | 'Processing';
+  sessions: Array<{ id: string; clientName: string; date: string; fee: number; commission: number; net: number }>;
+  emailed: boolean | null;
+  status: string;
 }
 
-interface GeneratedInvoice {
-  invoiceNumber: string;
-  payoutDate: string;
-  therapistName: string;
-  therapistEmail: string;
-  profession: string;
-  adminEmail: string;
-  paymentMethod: string;
-  accountNumber: string;
-  transactionRef: string;
-  sessions: Array<{
-    id: string;
-    clientName: string;
-    date: string;
-    fee: number;
-    commission: number;
-    net: number;
-  }>;
-  grossAmount: number;
-  platformFee: number;
-  netPayout: number;
+interface PayoutSummary {
+  pendingSessionsCount: number;
+  therapistsAwaitingCount: number;
+  pendingPayoutPool: number;
+  platformCommission: number;
 }
 
-import { useAppContext } from '../context/AppContext';
+const inr = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+const csvCell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
+
+const toPayoutRow = (p: any): PayoutRow => ({
+  id: str(p.id),
+  therapistId: str(p.therapistId),
+  therapistName: str(p.therapistName) || 'Therapist',
+  therapistEmail: str(p.therapistEmail),
+  therapistAvatar: str(p.therapistAvatar),
+  profession: str(p.profession),
+  hasPlans: Boolean(p.hasPlans),
+  commissionRate: Number(p.commissionRate) || 0,
+  grossAmount: Number(p.grossAmount) || 0,
+  platformFee: Number(p.platformFee) || 0,
+  pendingAmount: Number(p.pendingAmount) || 0,
+  bankName: str(p.bankName),
+  bankAccountNumber: str(p.bankAccountNumber),
+  bankIfsc: str(p.bankIfsc),
+  accountHolderName: str(p.accountHolderName),
+  upiId: str(p.upiId),
+  unpaidSessions: (Array.isArray(p.unpaidSessions) ? p.unpaidSessions : []).map((s: any) => ({
+    id: str(s.id),
+    sessionId: str(s.sessionId),
+    bookingNumber: str(s.bookingNumber),
+    sessionDate: s.sessionDate || null,
+    clientName: str(s.clientName) || 'Client',
+    serviceTitle: str(s.serviceTitle),
+    sessionFee: Number(s.sessionFee) || 0,
+    platformFee: Number(s.platformFee) || 0,
+    therapistShare: Number(s.therapistShare) || 0,
+    status: str(s.status) || 'Pending Review'
+  }))
+});
+
+const toInvoice = (h: any): PayoutInvoice => ({
+  id: str(h.id || h.invoiceNumber),
+  invoiceNumber: str(h.invoiceNumber),
+  payoutDate: str(h.payoutDate),
+  therapistId: str(h.therapistId),
+  therapistName: str(h.therapistName),
+  therapistEmail: str(h.therapistEmail),
+  profession: str(h.profession),
+  sessionsCount: Number(h.sessionsCount) || 0,
+  grossAmount: Number(h.grossAmount) || 0,
+  platformFee: Number(h.platformFee) || 0,
+  netPayout: Number(h.netPayout) || 0,
+  paymentMethod: str(h.paymentMethod),
+  accountNumber: str(h.accountNumber),
+  transactionRef: str(h.transactionRef),
+  sessions: (Array.isArray(h.sessions) ? h.sessions : []).map((s: any) => ({
+    id: str(s.id),
+    clientName: str(s.clientName),
+    date: str(s.date),
+    fee: Number(s.fee) || 0,
+    commission: Number(s.commission) || 0,
+    net: Number(s.net) || 0
+  })),
+  emailed: typeof h.emailed === 'boolean' ? h.emailed : null,
+  status: str(h.status) || 'Completed'
+});
 
 export const PaymentsView: React.FC = () => {
-  const { therapists } = useAppContext();
-  
-
-  // What is still owed comes only from the server (sessions in a released invoice are already left out)
-  const [payouts, setPayouts] = useState<TherapistPayout[]>([]);
-  const [historyList, setHistoryList] = useState<PayoutHistoryRecord[]>([]);
-  const [liveSummary, setLiveSummary] = useState<{
-    pendingSessionsCount: number;
-    therapistsAwaitingCount: number;
-    pendingPayoutPool: number;
-    platformCommission: number;
-  } | null>(null);
-
-  React.useEffect(() => {
-    const fetchPayouts = async () => {
-      try {
-        let res = await fetch('/api/admin/payouts').catch(() => null);
-        if (!res && window.location.hostname === 'localhost') {
-          res = await fetch('http://localhost:5000/api/admin/payouts').catch(() => null);
-        }
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data?.success) {
-            if (data.summary) {
-              setLiveSummary(data.summary);
-            }
-            if (data.payouts && Array.isArray(data.payouts)) {
-              const normalized = data.payouts.map((p: any) => ({
-                id: p.id || `PO-${p.therapistId || Math.random()}`,
-                therapistId: p.therapistId || p.id,
-                therapistName: p.therapistName || 'Therapist Specialist',
-                therapistAvatar: p.therapistAvatar || p.photo || p.image || '',
-                profession: p.profession || 'Specialist',
-                pendingAmount: Number(p.pendingAmount || 0),
-                totalEarned: Number(p.totalEarned || p.pendingAmount || 0),
-                pendingReportsCount: Number(p.pendingReportsCount || (p.unpaidSessions?.length || 0)),
-                sessionsCount: Number(p.sessionsCount || (p.unpaidSessions?.length || 0)),
-                lastSessionDate: p.lastSessionDate || '2026-08-20',
-                unpaidSessions: Array.isArray(p.unpaidSessions) ? p.unpaidSessions : []
-              }));
-              setPayouts(normalized);
-            }
-            if (data.history && Array.isArray(data.history)) {
-              const cleanedHistory = data.history.map((h: any) => {
-                const method = h.paymentMethod?.toLowerCase().includes('upi')
-                  ? 'UPI'
-                  : 'Bank Transfer';
-                const ref = h.transactionRef?.startsWith('RZP_')
-                  ? h.transactionRef.replace(/^RZP_PAY_|^RZP_/, method === 'UPI' ? 'UPI-' : 'UTR-')
-                  : (h.transactionRef || (method === 'UPI' ? 'UPI-2026-10294829' : 'UTR-2026-83921048'));
-                return {
-                  ...h,
-                  paymentMethod: method,
-                  transactionRef: ref
-                };
-              });
-              setHistoryList(cleanedHistory);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching payouts data:', err);
-      }
-    };
-    fetchPayouts();
-  }, []);
+  // Everything on this page comes from the server: unpaid sessions, the summary cards and the stored invoices
+  const [payouts, setPayouts] = useState<PayoutRow[]>([]);
+  const [historyList, setHistoryList] = useState<PayoutInvoice[]>([]);
+  const [summary, setSummary] = useState<PayoutSummary | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'wizard' | 'history'>('wizard');
   const [activeStep, setActiveStep] = useState<number>(1);
-  const [selectedTherapist, setSelectedTherapist] = useState<TherapistPayout | null>(null);
+  const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [lastPaidSummary, setLastPaidSummary] = useState<{ therapist: string; netAmount: number; ref: string } | null>(null);
-  const [selectedHistoryModal, setSelectedHistoryModal] = useState<PayoutHistoryRecord | null>(null);
+  const [toast, setToast] = useState<{ text: string; tone: 'success' | 'warning' } | null>(null);
 
-  // Generated Invoice State Modal after Payout Execution
-  const [generatedInvoice, setGeneratedInvoice] = useState<GeneratedInvoice | null>(null);
+  // The invoice shown in the invoice dialog (just released, or opened from the history)
+  const [openInvoice, setOpenInvoice] = useState<PayoutInvoice | null>(null);
+  const [isResending, setIsResending] = useState(false);
+
+  // Step 3: where the money was sent and the bank/UPI reference of that transfer, as typed by the admin
   const [disbursalMethod, setDisbursalMethod] = useState<'Bank Transfer' | 'UPI'>('Bank Transfer');
-  const [bankName, setBankName] = useState('HDFC Bank');
-  const [bankAccountNumber, setBankAccountNumber] = useState('•••• •••• 5336');
-  const [bankIfsc, setBankIfsc] = useState('HDFC0001234');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIfsc, setBankIfsc] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [upiId, setUpiId] = useState('');
+  const [transactionRef, setTransactionRef] = useState('');
   const [isEditingDetailsModal, setIsEditingDetailsModal] = useState(false);
   const [isSavingDetails, setIsSavingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [payoutSaveNotice, setPayoutSaveNotice] = useState<string | null>(null);
+  const [confirmingRelease, setConfirmingRelease] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
   const [releaseError, setReleaseError] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (selectedTherapist) {
-      const matching = therapists.find(
-        (t) => t.id === selectedTherapist.therapistId || t.name.toLowerCase().trim() === selectedTherapist.therapistName.toLowerCase().trim()
-      );
+  const showToast = (text: string, tone: 'success' | 'warning' = 'success') => {
+    setToast({ text, tone });
+    setTimeout(() => setToast(null), 6000);
+  };
 
-      const emailPrefix = (selectedTherapist as any).therapistEmail || matching?.email
-        ? ((selectedTherapist as any).therapistEmail || matching?.email || '').split('@')[0]
-        : selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-      setBankName(matching?.bankName || selectedTherapist.bankName || 'HDFC Bank');
-      setBankAccountNumber(matching?.bankAccountNumber || selectedTherapist.bankAccountNumber || '•••• •••• 5336');
-      setBankIfsc(matching?.bankIfsc || selectedTherapist.bankIfsc || 'HDFC0001234');
-      setAccountHolderName(matching?.accountHolderName || selectedTherapist.accountHolderName || selectedTherapist.therapistName);
-      setUpiId(matching?.upiId || selectedTherapist.upiId || `${emailPrefix}@okaxis`);
+  const loadPayouts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data: any = await api.get('/api/admin/payouts');
+      if (data?.success === false) throw new Error(data?.error || 'The server could not load payouts');
+      setPayouts((Array.isArray(data?.payouts) ? data.payouts : []).map(toPayoutRow));
+      setHistoryList((Array.isArray(data?.history) ? data.history : []).map(toInvoice));
+      setSummary(data?.summary || null);
+      setLoadError(null);
+    } catch (err: any) {
+      setLoadError(err?.message || 'Could not load payouts');
+    } finally {
+      setIsLoading(false);
     }
-  }, [selectedTherapist, therapists]);
+  }, []);
 
-  // Resolve the matching full Therapist record for fee calculations
-  const selectedTherapistRecord = React.useMemo(() => {
-    if (!selectedTherapist) return null;
-    return therapists.find(
-      (t) => t.id === selectedTherapist.therapistId ||
-             t.name.toLowerCase().trim() === selectedTherapist.therapistName.toLowerCase().trim()
-    ) || null;
-  }, [selectedTherapist, therapists]);
+  useEffect(() => {
+    loadPayouts();
+  }, [loadPayouts]);
 
-  // The therapist's platform fee comes from their plans (each plan stores the platform fee the admin set).
-  // The therapist-level platformFeePerSession can't be trusted: older saves stored the session price there.
-  const feeRule = React.useMemo((): { type: 'Fixed' | 'Percentage'; value: number } => {
-    const feeType: 'Fixed' | 'Percentage' = selectedTherapistRecord?.platformFeeType === 'Percentage' ? 'Percentage' : 'Fixed';
-    const services = (selectedTherapistRecord?.services || []).filter((s) => Number(s?.sessionFee) > 0 && Number.isFinite(Number(s?.platformFee)));
-    const plan = services[0];
-    if (plan) {
-      const planFee = Number(plan.platformFee);
-      return feeType === 'Percentage'
-        ? { type: 'Percentage', value: Math.round((planFee / Number(plan.sessionFee)) * 100) }
-        : { type: 'Fixed', value: planFee };
-    }
-    return { type: feeType, value: Number(selectedTherapistRecord?.platformFeePerSession) || 0 };
-  }, [selectedTherapistRecord]);
+  const selectedTherapist = payouts.find((p) => p.therapistId === selectedTherapistId) || null;
 
-  // Per-session platform commission: the matching plan's fee, else the therapist's rule; never more than the session fee
-  const getSessionCommission = React.useCallback((sessionFee: number): number => {
-    const plan = (selectedTherapistRecord?.services || []).find((s) => Number(s?.sessionFee) === sessionFee && Number.isFinite(Number(s?.platformFee)));
-    const fee = plan
-      ? Number(plan.platformFee)
-      : feeRule.type === 'Fixed' ? feeRule.value : Math.round(sessionFee * (feeRule.value / 100));
-    return Math.min(Math.max(0, fee), Math.max(0, sessionFee));
-  }, [selectedTherapistRecord, feeRule]);
+  // A newly chosen therapist starts with their saved details (never made-up ones) and an empty reference
+  useEffect(() => {
+    if (!selectedTherapist) return;
+    setBankName(selectedTherapist.bankName);
+    setBankAccountNumber(selectedTherapist.bankAccountNumber);
+    setBankIfsc(selectedTherapist.bankIfsc);
+    setAccountHolderName(selectedTherapist.accountHolderName);
+    setUpiId(selectedTherapist.upiId);
+    setDisbursalMethod(!selectedTherapist.bankAccountNumber && selectedTherapist.upiId ? 'UPI' : 'Bank Transfer');
+    setTransactionRef('');
+    setReleaseError(null);
+    setConfirmingRelease(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTherapistId]);
 
-  // Human-readable label for the commission rate
-  const commissionLabel = feeRule.type === 'Fixed' ? `₹${feeRule.value} Fixed/Session` : `${feeRule.value}%`;
+  const selectedSessions = (selectedTherapist?.unpaidSessions || []).filter((s) => selectedSessionIds.includes(s.id));
+  const selectedGross = selectedSessions.reduce((sum, s) => sum + s.sessionFee, 0);
+  const selectedFee = selectedSessions.reduce((sum, s) => sum + s.platformFee, 0);
+  const selectedNet = selectedSessions.reduce((sum, s) => sum + s.therapistShare, 0);
+  const commissionLabel = selectedTherapist
+    ? selectedTherapist.hasPlans
+      ? "from the therapist's plans"
+      : `${Math.round(selectedTherapist.commissionRate * 1000) / 10}% platform default`
+    : '';
+
+  const destination = disbursalMethod === 'UPI' ? upiId.trim() : bankAccountNumber.trim();
+  const canRelease = Boolean(selectedTherapist && selectedSessions.length && destination && transactionRef.trim().length >= 4);
 
   const handleSavePayoutDetails = async () => {
     if (!selectedTherapist) return;
     setIsSavingDetails(true);
-
-    const matching = therapists.find(
-      (t) => t.id === selectedTherapist.therapistId || t.name.toLowerCase().trim() === selectedTherapist.therapistName.toLowerCase().trim()
-    );
-    const targetId = matching?.id || selectedTherapist.therapistId || selectedTherapist.id;
-
+    setDetailsError(null);
     try {
       const payload = {
-        id: targetId,
-        name: selectedTherapist.therapistName,
-        bankName,
-        bankAccountNumber,
-        bankIfsc,
-        accountHolderName: accountHolderName || selectedTherapist.therapistName,
-        upiId
+        bankName: bankName.trim(),
+        bankAccountNumber: bankAccountNumber.trim(),
+        bankIfsc: bankIfsc.trim().toUpperCase(),
+        accountHolderName: accountHolderName.trim(),
+        upiId: upiId.trim()
       };
-
-      let res = await fetch('/api/admin/consultants', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).catch(() => null);
-
-      if (!res && window.location.hostname === 'localhost') {
-        res = await fetch('http://localhost:5000/api/admin/consultants', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }).catch(() => null);
-      }
-
-      selectedTherapist.bankName = bankName;
-      selectedTherapist.bankAccountNumber = bankAccountNumber;
-      selectedTherapist.bankIfsc = bankIfsc;
-      selectedTherapist.accountHolderName = accountHolderName;
-      selectedTherapist.upiId = upiId;
-
-      if (matching) {
-        matching.bankName = bankName;
-        matching.bankAccountNumber = bankAccountNumber;
-        matching.bankIfsc = bankIfsc;
-        matching.accountHolderName = accountHolderName;
-        matching.upiId = upiId;
-      }
-
-      setPayoutSaveNotice(`Banking and UPI details permanently stored in database for ${selectedTherapist.therapistName}!`);
+      const saved: any = await api.put(`/api/admin/consultants/${encodeURIComponent(selectedTherapist.therapistId)}`, payload);
+      if (saved?.success === false) throw new Error(saved?.error || 'The server did not save the details');
+      // Only after the server confirmed: keep the saved values in this page's copy
+      setPayouts((prev) => prev.map((p) => (p.therapistId === selectedTherapist.therapistId ? { ...p, ...payload } : p)));
+      setPayoutSaveNotice(`Bank and UPI details saved for ${selectedTherapist.therapistName}.`);
       setTimeout(() => setPayoutSaveNotice(null), 5000);
       setIsEditingDetailsModal(false);
-    } catch (err) {
-      console.error('Error saving consultant payout details:', err);
+    } catch (err: any) {
+      setDetailsError(`Details not saved: ${err?.message || 'the server could not save them'}.`);
     } finally {
       setIsSavingDetails(false);
     }
   };
 
-  // Step 2: Toggle single session checkbox
-  const toggleSession = (sessionId: string) => {
-    if (selectedSessionIds.includes(sessionId)) {
-      setSelectedSessionIds(selectedSessionIds.filter((id) => id !== sessionId));
-    } else {
-      setSelectedSessionIds([...selectedSessionIds, sessionId]);
+  // Closing the details dialog without saving goes back to the saved details
+  const discardDetailEdits = () => {
+    if (selectedTherapist) {
+      setBankName(selectedTherapist.bankName);
+      setBankAccountNumber(selectedTherapist.bankAccountNumber);
+      setBankIfsc(selectedTherapist.bankIfsc);
+      setAccountHolderName(selectedTherapist.accountHolderName);
+      setUpiId(selectedTherapist.upiId);
     }
+    setDetailsError(null);
+    setIsEditingDetailsModal(false);
   };
 
-  // Step 2: Toggle Select All
+  const toggleSession = (sessionId: string) => {
+    setSelectedSessionIds((prev) => (prev.includes(sessionId) ? prev.filter((id) => id !== sessionId) : [...prev, sessionId]));
+  };
+
   const toggleSelectAll = () => {
     if (!selectedTherapist) return;
-    const currentSessions = selectedTherapist.unpaidSessions || [];
-    if (selectedSessionIds.length === currentSessions.length) {
-      setSelectedSessionIds([]);
-    } else {
-      setSelectedSessionIds(currentSessions.map((s) => s.id));
-    }
+    const all = selectedTherapist.unpaidSessions.map((s) => s.id);
+    setSelectedSessionIds(selectedSessionIds.length === all.length ? [] : all);
   };
 
-  // Step 3: Confirm Payout execution and Generate Invoice
+  // Step 3: record a payout the admin has already sent. The server numbers the invoice, works out the amounts
+  // from the sessions still unpaid and emails the therapist; nothing changes here until it confirms.
   const handleMarkAsPaid = async () => {
-    if (!selectedTherapist || isReleasing) return;
+    if (!selectedTherapist || isReleasing || !canRelease) return;
     setReleaseError(null);
-
-    const currentSessions = selectedTherapist.unpaidSessions || [];
-    const selectedSessions = currentSessions.filter((s) => selectedSessionIds.includes(s.id));
-    const grossTotal = selectedSessions.reduce((sum, s) => sum + s.sessionFee, 0);
-    const platformFee = selectedSessions.reduce((sum, s) => sum + getSessionCommission(s.sessionFee), 0);
-    const netPayout = grossTotal - platformFee;
-    const isUpi = disbursalMethod === 'UPI';
-    const txnRef = isUpi
-      ? `UPI-${Math.floor(10000000 + Math.random() * 90000000)}`
-      : `UTR-${Math.floor(10000000 + Math.random() * 90000000)}`;
-    const invNo = `INV-2026-${Math.floor(8000 + Math.random() * 1000)}`;
-
-    const matchingTherapist = therapists.find(
-      (t: Therapist) => t.id === selectedTherapist.therapistId || t.name.toLowerCase() === selectedTherapist.therapistName.toLowerCase()
-    );
-
-    const targetTherapistEmail = matchingTherapist?.email || `${selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@hexpertify.com`;
-    const targetAccountOrUpi = isUpi
-      ? (upiId || `${selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@okaxis`)
-      : (bankAccountNumber || '•••• •••• ' + Math.floor(1000 + Math.random() * 9000));
-
-    // Create new history record
-    const newRecord: PayoutHistoryRecord = {
-      id: `TXN-${Math.floor(9000 + Math.random() * 1000)}`,
-      payoutDate: new Date().toISOString().split('T')[0],
-      therapistName: selectedTherapist.therapistName,
-      profession: selectedTherapist.profession,
-      sessionsCount: selectedSessions.length,
-      grossAmount: grossTotal,
-      platformFee: platformFee,
-      netPayout: netPayout,
-      paymentMethod: disbursalMethod,
-      accountNumber: targetAccountOrUpi,
-      transactionRef: txnRef,
-      status: 'Completed'
-    };
-
-    // Persist to MongoDB Atlas Payout collection (includes sessions for email)
-    const payoutPostBody = {
-      invoiceNumber: invNo,
-      therapistName: selectedTherapist.therapistName,
-      profession: selectedTherapist.profession,
-      therapistEmail: targetTherapistEmail,
-      therapistId: matchingTherapist?.id || selectedTherapist.therapistId,
-      sessionsCount: selectedSessions.length,
-      sessionIds: selectedSessionIds,
-      grossAmount: grossTotal,
-      platformFee: platformFee,
-      netPayout: netPayout,
-      paymentMethod: disbursalMethod,
-      accountNumber: targetAccountOrUpi,
-      transactionRef: txnRef,
-      // Include session details for invoice email
-      sessions: selectedSessions.map((s) => ({
-        id: s.sessionId,
-        clientName: s.clientName,
-        date: s.sessionDate,
-        fee: s.sessionFee,
-        commission: getSessionCommission(s.sessionFee),
-        net: s.sessionFee - getSessionCommission(s.sessionFee)
-      }))
-    };
-    // Record the release on the server first: only a saved invoice keeps these sessions out of the pending list
     setIsReleasing(true);
     try {
-      const saved: any = await api.post('/api/admin/payouts', payoutPostBody);
-      if (saved?.success === false) throw new Error(saved?.error || 'the server did not save the payout');
+      const saved: any = await api.post('/api/admin/payouts', {
+        therapistId: selectedTherapist.therapistId,
+        sessionIds: selectedSessions.map((s) => s.sessionId),
+        paymentMethod: disbursalMethod,
+        accountNumber: destination,
+        transactionRef: transactionRef.trim()
+      });
+      if (saved?.success === false || !saved?.invoice) throw new Error(saved?.error || 'the server did not save the payout');
+      const invoice = toInvoice(saved.invoice);
+      setOpenInvoice(invoice);
+      setActiveStep(1);
+      setSelectedTherapistId(null);
+      setSelectedSessionIds([]);
+      setConfirmingRelease(false);
+      showToast(
+        saved.emailed
+          ? `Payout ${invoice.invoiceNumber} recorded: ${inr(invoice.netPayout)} to ${invoice.therapistName}. Invoice emailed to ${invoice.therapistEmail}.`
+          : `Payout ${invoice.invoiceNumber} recorded, but the invoice email was not sent: ${saved.emailError || 'unknown error'}.`,
+        saved.emailed ? 'success' : 'warning'
+      );
+      await loadPayouts();
     } catch (e: any) {
-      setReleaseError(`Payout not released: ${e?.message || 'the server could not save it'}. Please try again.`);
-      return;
+      setReleaseError(`Payout not recorded: ${e?.message || 'the server could not save it'}.`);
+      setConfirmingRelease(false);
     } finally {
       setIsReleasing(false);
     }
-
-    setHistoryList((prev) => [newRecord, ...prev]);
-
-    // Create full Generated Invoice object
-    const invoiceObj: GeneratedInvoice = {
-      invoiceNumber: invNo,
-      payoutDate: new Date().toISOString().split('T')[0],
-      therapistName: selectedTherapist.therapistName,
-      therapistEmail: targetTherapistEmail,
-      profession: selectedTherapist.profession,
-      // The Super Admin's copy of every payout invoice
-      adminEmail: 'admin@hexpertify.com',
-      paymentMethod: disbursalMethod,
-      accountNumber: targetAccountOrUpi,
-      transactionRef: txnRef,
-      sessions: selectedSessions.map((s) => ({
-        id: s.sessionId,
-        clientName: s.clientName,
-        date: s.sessionDate,
-        fee: s.sessionFee,
-        commission: getSessionCommission(s.sessionFee),
-        net: s.sessionFee - getSessionCommission(s.sessionFee)
-      })),
-      grossAmount: grossTotal,
-      platformFee: platformFee,
-      netPayout: netPayout
-    };
-
-    // Update state to remove paid sessions
-    setPayouts(
-      payouts.map((p) => {
-        if (p.id === selectedTherapist.id) {
-          const remainingSessions = p.unpaidSessions.filter((s) => !selectedSessionIds.includes(s.id));
-          return {
-            ...p,
-            unpaidSessions: remainingSessions,
-            pendingReportsCount: remainingSessions.length,
-            pendingAmount: remainingSessions.reduce((sum, s) => sum + s.sessionFee, 0)
-          };
-        }
-        return p;
-      })
-    );
-
-    setLastPaidSummary({
-      therapist: selectedTherapist.therapistName,
-      netAmount: netPayout,
-      ref: txnRef
-    });
-
-    // Display Invoice Modal immediately
-    setGeneratedInvoice(invoiceObj);
-
-    // Reset wizard
-    setActiveStep(1);
-    setSelectedTherapist(null);
-    setSelectedSessionIds([]);
-    setShowSuccessToast(true);
-    setTimeout(() => setShowSuccessToast(false), 5000);
   };
 
+  // Prints only the invoice (see the print styles on the invoice dialog)
   const handlePrintInvoice = () => {
     window.print();
   };
 
   const handleResendEmail = async () => {
-    if (!generatedInvoice) return;
+    if (!openInvoice || isResending) return;
+    setIsResending(true);
     try {
-      const body = {
-        action: 'resend-invoice',
-        invoiceNumber: generatedInvoice.invoiceNumber,
-        payoutDate: generatedInvoice.payoutDate,
-        therapistName: generatedInvoice.therapistName,
-        therapistEmail: generatedInvoice.therapistEmail,
-        adminEmail: generatedInvoice.adminEmail,
-        profession: generatedInvoice.profession,
-        sessionsCount: generatedInvoice.sessions.length,
-        grossAmount: generatedInvoice.grossAmount,
-        platformFee: generatedInvoice.platformFee,
-        netPayout: generatedInvoice.netPayout,
-        paymentMethod: generatedInvoice.paymentMethod,
-        accountNumber: generatedInvoice.accountNumber,
-        transactionRef: generatedInvoice.transactionRef,
-        sessions: generatedInvoice.sessions
-      };
-      let res = await fetch('/api/admin/payouts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      }).catch(() => null);
-      if (!res && window.location.hostname === 'localhost') {
-        res = await fetch('http://localhost:5000/api/admin/payouts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        }).catch(() => null);
+      const res: any = await api.post('/api/admin/payouts', { action: 'resend-invoice', invoiceNumber: openInvoice.invoiceNumber });
+      if (res?.emailed) {
+        showToast(`Invoice ${openInvoice.invoiceNumber} emailed again to ${res.to || openInvoice.therapistEmail}.`);
+        setOpenInvoice({ ...openInvoice, emailed: true });
+      } else {
+        showToast(`Invoice email not sent: ${res?.emailError || res?.error || 'unknown error'}.`, 'warning');
       }
-      showToast(`✅ Invoice emailed to ${generatedInvoice.therapistEmail} & Super Admin (${generatedInvoice.adminEmail})!`);
-    } catch {
-      showToast(`Invoice email queued for ${generatedInvoice.therapistEmail} & Super Admin.`);
+    } catch (err: any) {
+      showToast(`Invoice email not sent: ${err?.message || 'the server could not send it'}.`, 'warning');
+    } finally {
+      setIsResending(false);
     }
   };
-  // Step 1 lists only therapists with sessions still to pay; a released payout takes them off the list
+
+  // Step 1 lists only therapists with sessions still to pay
   const filteredPayouts = payouts.filter((p) => {
-    if (!(p.unpaidSessions || []).length) return false;
-    const matchesSearch =
-      p.therapistName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.profession.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    if (!p.unpaidSessions.length) return false;
+    const q = searchTerm.toLowerCase();
+    return p.therapistName.toLowerCase().includes(q) || p.profession.toLowerCase().includes(q);
   });
 
-  const totalPendingAmount = liveSummary?.pendingPayoutPool ?? payouts.reduce((sum, p) => sum + (p.pendingAmount || 0), 0);
-  const totalPendingSessions = liveSummary?.pendingSessionsCount ?? payouts.reduce((sum, p) => sum + (p.unpaidSessions?.length || 0), 0);
-  const totalPlatformCommissions = liveSummary?.platformCommission ?? Math.round((totalPendingAmount / 0.8) * 0.2);
-  const therapistsAwaitingCount = liveSummary?.therapistsAwaitingCount ?? payouts.filter((p) => (p.unpaidSessions?.length || 0) > 0).length;
+  const totalPendingSessions = summary?.pendingSessionsCount ?? 0;
+  const therapistsAwaitingCount = summary?.therapistsAwaitingCount ?? 0;
+  const totalPendingAmount = summary?.pendingPayoutPool ?? 0;
+  const totalPlatformCommissions = summary?.platformCommission ?? 0;
 
-  const showToast = (text: string) => {
-    if (text) setShowSuccessToast(true);
-    setTimeout(() => setShowSuccessToast(false), 4000);
-  };
-
-  // CSV Export for Payout History
+  // CSV of every stored payout invoice
   const handleExportCSV = () => {
-    const headers = ['Transaction ID', 'Date', 'Therapist Name', 'Profession', 'Sessions', 'Gross Amount (INR)', 'Platform Fee (INR)', 'Net Transferred (INR)', 'Method', 'Ref Number', 'Status'];
+    if (!historyList.length) {
+      showToast('There are no released payouts to export yet.', 'warning');
+      return;
+    }
+    const headers = ['Invoice No', 'Payout Date', 'Therapist Name', 'Therapist Email', 'Profession', 'Sessions', 'Gross Amount (INR)', 'Platform Fee (INR)', 'Net Paid (INR)', 'Method', 'Paid To', 'Transfer Reference', 'Status'];
     const rows = historyList.map((r) => [
-      r.id,
-      r.payoutDate,
-      `"${r.therapistName}"`,
-      `"${r.profession}"`,
-      r.sessionsCount,
-      r.grossAmount,
-      r.platformFee,
-      r.netPayout,
-      `"${r.paymentMethod}"`,
-      r.transactionRef,
-      r.status
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      r.invoiceNumber, r.payoutDate, r.therapistName, r.therapistEmail, r.profession, r.sessionsCount,
+      r.grossAmount, r.platformFee, r.netPayout, r.paymentMethod, r.accountNumber, r.transactionRef, r.status
+    ].map(csvCell).join(','));
+    const blob = new Blob([[headers.map(csvCell).join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -511,21 +378,18 @@ export const PaymentsView: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${historyList.length} payout record(s).`);
   };
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative">
       {/* Toast Notification */}
-      {showSuccessToast && lastPaidSummary && (
-        <div className="fixed top-20 right-8 z-50 bg-slate-900 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3.5 border border-slate-700 animate-fade-in">
-          <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
-          <div>
-            <h4 className="font-extrabold text-xs text-white">Payout Released & Invoice Emailed!</h4>
-            <p className="text-[11px] text-slate-300">
-              <span className="font-bold text-emerald-300">₹{lastPaidSummary.netAmount.toLocaleString()}</span> transferred to {lastPaidSummary.therapist} (Ref: {lastPaidSummary.ref}). Invoice sent to therapist & admin.
-            </p>
-          </div>
-          <button onClick={() => setShowSuccessToast(false)} className="text-slate-400 hover:text-white ml-2">
+      {toast && (
+        <div className={`fixed top-20 right-4 sm:right-8 z-[60] max-w-md text-white px-5 py-4 rounded-2xl shadow-2xl flex items-start gap-3.5 border animate-fade-in ${toast.tone === 'success' ? 'bg-slate-900 border-slate-700' : 'bg-amber-600 border-amber-500'}`}>
+          {toast.tone === 'success' ? <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-6 h-6 text-white shrink-0" />}
+          <p className="text-xs font-bold leading-relaxed">{toast.text}</p>
+          <button onClick={() => setToast(null)} className="text-slate-200 hover:text-white ml-2" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -537,7 +401,7 @@ export const PaymentsView: React.FC = () => {
         <div className="relative z-10 space-y-1">
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Therapist Payout & Commission Portal</h1>
           <p className="text-purple-100 text-xs sm:text-sm max-w-xl leading-relaxed">
-            Review completed sessions, audit platform revenue commissions, execute automated bank payouts, and issue verified billing statements.
+            Review completed sessions, record the payouts you have sent, and issue payout invoices.
           </p>
         </div>
 
@@ -552,9 +416,16 @@ export const PaymentsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Financial Analytics Summary KPI Cards */}
+      {loadError && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-semibold">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>Payouts could not be loaded: {loadError}</span>
+          <button onClick={loadPayouts} className="ml-auto underline font-bold">Retry</button>
+        </div>
+      )}
+
+      {/* Financial Analytics Summary KPI Cards (server figures) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-        {/* Card 1: Pending Sessions */}
         <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-sm hover:shadow-lg transition-all duration-300 space-y-3 sm:space-y-4 group">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-extrabold text-slate-500 uppercase tracking-wider">Pending Sessions</span>
@@ -563,7 +434,7 @@ export const PaymentsView: React.FC = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{totalPendingSessions} Unpaid</h3>
+            <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{summary ? `${totalPendingSessions} Unpaid` : '—'}</h3>
             <div className="mt-1.5 sm:mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 bg-amber-50 text-amber-800 rounded-full text-[10px] sm:text-xs font-extrabold border border-amber-200/60">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               <span>{therapistsAwaitingCount} Therapists Awaiting</span>
@@ -571,7 +442,6 @@ export const PaymentsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 2: Pending Payout Pool */}
         <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-sm hover:shadow-lg transition-all duration-300 space-y-3 sm:space-y-4 group">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-extrabold text-slate-500 uppercase tracking-wider">Pending Payout Pool</span>
@@ -580,15 +450,14 @@ export const PaymentsView: React.FC = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-xl sm:text-3xl font-black text-emerald-600 tracking-tight">₹{totalPendingAmount.toLocaleString('en-IN')}</h3>
+            <h3 className="text-xl sm:text-3xl font-black text-emerald-600 tracking-tight">{summary ? inr(totalPendingAmount) : '—'}</h3>
             <div className="mt-1.5 sm:mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 bg-emerald-50 text-emerald-800 rounded-full text-[10px] sm:text-xs font-extrabold border border-emerald-200/60">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{totalPendingAmount > 0 ? 'Ready for execution' : 'All Settled'}</span>
+              <span>{totalPendingAmount > 0 ? 'Owed to therapists' : 'All Settled'}</span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Platform Commission */}
         <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-sm hover:shadow-lg transition-all duration-300 space-y-3 sm:space-y-4 group sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-extrabold text-slate-500 uppercase tracking-wider">Platform Commission</span>
@@ -597,7 +466,8 @@ export const PaymentsView: React.FC = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-xl sm:text-3xl font-black text-blue-600 tracking-tight">₹{totalPlatformCommissions.toLocaleString('en-IN')}</h3>
+            <h3 className="text-xl sm:text-3xl font-black text-blue-600 tracking-tight">{summary ? inr(totalPlatformCommissions) : '—'}</h3>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-1">On the sessions awaiting payout (therapists&apos; plan fees)</p>
           </div>
         </div>
       </div>
@@ -608,9 +478,7 @@ export const PaymentsView: React.FC = () => {
           <button
             onClick={() => setActiveTab('wizard')}
             className={`px-3 sm:px-5 py-3 rounded-2xl font-extrabold text-xs flex items-center justify-center sm:justify-start text-center gap-2 transition-all ${
-              activeTab === 'wizard'
-                ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20'
-                : 'text-slate-600 hover:bg-slate-100'
+              activeTab === 'wizard' ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             <Send className="w-4 h-4" />
@@ -619,9 +487,7 @@ export const PaymentsView: React.FC = () => {
           <button
             onClick={() => setActiveTab('history')}
             className={`px-3 sm:px-5 py-3 rounded-2xl font-extrabold text-xs flex items-center justify-center sm:justify-start text-center gap-2 transition-all ${
-              activeTab === 'history'
-                ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20'
-                : 'text-slate-600 hover:bg-slate-100'
+              activeTab === 'history' ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             <FileText className="w-4 h-4" />
@@ -635,30 +501,25 @@ export const PaymentsView: React.FC = () => {
         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
-              <h3 className="text-lg font-extrabold text-slate-900">Interactive 3-Step Disbursal Wizard</h3>
-              <p className="text-xs text-slate-500">Audit session reports, select line items, and execute verified bank transfers</p>
+              <h3 className="text-lg font-extrabold text-slate-900">3-Step Payout Wizard</h3>
+              <p className="text-xs text-slate-500">Select the sessions, send the money from your bank or UPI app, then record the transfer here</p>
             </div>
 
-            {/* Stepper Indicator */}
             <div className="flex items-center gap-2 text-xs font-bold overflow-x-auto pb-1 lg:pb-0">
-              <span className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 transition-all ${activeStep === 1 ? 'bg-[#450bc8] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
-                1. Select Therapist
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-              <span className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 transition-all ${activeStep === 2 ? 'bg-[#450bc8] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
-                2. Audit Sessions
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-              <span className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 transition-all ${activeStep === 3 ? 'bg-[#450bc8] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
-                3. Confirm & Transfer
-              </span>
+              {['1. Select Therapist', '2. Audit Sessions', '3. Confirm & Record'].map((label, idx) => (
+                <React.Fragment key={label}>
+                  {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                  <span className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 transition-all ${activeStep === idx + 1 ? 'bg-[#450bc8] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
+                    {label}
+                  </span>
+                </React.Fragment>
+              ))}
             </div>
           </div>
 
           {/* STEP 1: Select Therapist Card Grid */}
           {activeStep === 1 && (
             <div className="space-y-6">
-              {/* Search Bar */}
               <div className="relative max-w-md">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
@@ -670,62 +531,57 @@ export const PaymentsView: React.FC = () => {
                 />
               </div>
 
-              {filteredPayouts.length === 0 ? (
+              {isLoading && !payouts.length ? (
+                <div className="text-center py-12 text-xs text-slate-400 font-semibold">Loading payouts…</div>
+              ) : filteredPayouts.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
                   <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                  <h4 className="font-extrabold text-slate-800 text-sm">All Therapist Payouts Settled!</h4>
-                  <p className="text-xs text-slate-400 mt-1">There are no pending session reports waiting for disbursal.</p>
+                  <h4 className="font-extrabold text-slate-800 text-sm">{loadError ? 'Payouts are not available' : 'All Therapist Payouts Settled!'}</h4>
+                  <p className="text-xs text-slate-400 mt-1">{loadError ? 'See the message above.' : 'There are no completed, paid sessions waiting for a payout.'}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                  {filteredPayouts.map((p) => {
-                    const currentSessions = p.unpaidSessions || [];
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => {
-                          setSelectedTherapist(p);
-                          setSelectedSessionIds(currentSessions.map((s) => s.id));
-                          setActiveStep(2);
-                        }}
-                        className="p-4 sm:p-6 bg-slate-50/70 hover:bg-purple-50/40 border border-slate-200/80 hover:border-[#450bc8] rounded-3xl cursor-pointer transition-all hover:shadow-md space-y-4 group"
-                      >
-                        <div className="flex items-center gap-3">
-                          {p.therapistAvatar ? (
-                            <img src={p.therapistAvatar} alt={p.therapistName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-purple-100 shrink-0" />
-                          ) : (
-                            <div className="w-12 h-12 rounded-2xl bg-purple-100 text-[#450bc8] font-extrabold text-lg flex items-center justify-center ring-2 ring-purple-100 shrink-0">
-                              {(p.therapistName || 'T').charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-[#450bc8] transition-colors truncate">
-                              {p.therapistName}
-                            </h4>
-                            <p className="text-xs text-slate-500 font-medium truncate">{p.profession}</p>
+                  {filteredPayouts.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => {
+                        setSelectedTherapistId(p.therapistId);
+                        setSelectedSessionIds(p.unpaidSessions.map((s) => s.id));
+                        setActiveStep(2);
+                      }}
+                      className="p-4 sm:p-6 bg-slate-50/70 hover:bg-purple-50/40 border border-slate-200/80 hover:border-[#450bc8] rounded-3xl cursor-pointer transition-all hover:shadow-md space-y-4 group"
+                    >
+                      <div className="flex items-center gap-3">
+                        {p.therapistAvatar ? (
+                          <img src={p.therapistAvatar} alt={p.therapistName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-purple-100 shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-2xl bg-purple-100 text-[#450bc8] font-extrabold text-lg flex items-center justify-center ring-2 ring-purple-100 shrink-0">
+                            {(p.therapistName || 'T').charAt(0).toUpperCase()}
                           </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-[#450bc8] transition-colors truncate">{p.therapistName}</h4>
+                          <p className="text-xs text-slate-500 font-medium truncate">{p.profession || '—'}</p>
                         </div>
-
-                        <div className="space-y-2 pt-3 border-t border-slate-200/60 text-xs">
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-500 font-medium">Unpaid Sessions:</span>
-                            <span className="font-extrabold text-slate-900 px-2 py-0.5 bg-slate-200/80 rounded-md">
-                              {currentSessions.length} Sessions
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-500 font-medium">Pending Payout:</span>
-                            <span className="font-extrabold text-emerald-600 text-sm">₹{p.pendingAmount.toLocaleString()}</span>
-                          </div>
-                        </div>
-
-                        <button className="w-full py-2.5 bg-[#450bc8] group-hover:bg-[#3a0aa8] text-white rounded-2xl font-extrabold text-xs shadow-md shadow-[#450bc8]/20 flex items-center justify-center gap-1.5 transition-all">
-                          <span>Inspect Unpaid Sessions</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
                       </div>
-                    );
-                  })}
+
+                      <div className="space-y-2 pt-3 border-t border-slate-200/60 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 font-medium">Unpaid Sessions:</span>
+                          <span className="font-extrabold text-slate-900 px-2 py-0.5 bg-slate-200/80 rounded-md">{p.unpaidSessions.length} Sessions</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 font-medium">Pending Payout:</span>
+                          <span className="font-extrabold text-emerald-600 text-sm">{inr(p.pendingAmount)}</span>
+                        </div>
+                      </div>
+
+                      <button className="w-full py-2.5 bg-[#450bc8] group-hover:bg-[#3a0aa8] text-white rounded-2xl font-extrabold text-xs shadow-md shadow-[#450bc8]/20 flex items-center justify-center gap-1.5 transition-all">
+                        <span>Inspect Unpaid Sessions</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -735,24 +591,15 @@ export const PaymentsView: React.FC = () => {
           {activeStep === 2 && selectedTherapist && (
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3 bg-purple-50/70 border border-purple-100 p-4 rounded-2xl">
-                <div className="flex items-center gap-3 min-w-0">
-                  {selectedTherapist.therapistAvatar ? (
-                    <img src={selectedTherapist.therapistAvatar} alt={selectedTherapist.therapistName} className="w-10 h-10 rounded-2xl object-cover ring-2 ring-purple-200" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#450bc8] font-extrabold flex items-center justify-center ring-2 ring-purple-200">
-                      {(selectedTherapist.therapistName || 'T').charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 text-sm">{selectedTherapist.therapistName}</h4>
-                    <p className="text-xs text-purple-700 font-semibold">{selectedTherapist.profession}</p>
-                  </div>
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">{selectedTherapist.therapistName}</h4>
+                  <p className="text-xs text-purple-700 font-semibold">{selectedTherapist.profession || '—'}</p>
                 </div>
                 <button
                   onClick={toggleSelectAll}
                   className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-2xs hover:bg-slate-100 flex items-center gap-2"
                 >
-                  {selectedSessionIds.length === (selectedTherapist.unpaidSessions || []).length ? (
+                  {selectedSessionIds.length === selectedTherapist.unpaidSessions.length ? (
                     <>
                       <CheckSquare className="w-4 h-4 text-[#450bc8]" />
                       <span>Deselect All</span>
@@ -772,8 +619,8 @@ export const PaymentsView: React.FC = () => {
                     <tr>
                       <th className="p-4 w-12">Select</th>
                       <th className="p-4">Session Date</th>
-                      <th className="p-4">Client Patient</th>
-                      <th className="p-4">Session Code</th>
+                      <th className="p-4">Client</th>
+                      <th className="p-4">Booking</th>
                       <th className="p-4">Session Fee</th>
                       <th className="p-4">Platform Fee ({commissionLabel})</th>
                       <th className="p-4">Net Payout</th>
@@ -781,30 +628,21 @@ export const PaymentsView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(selectedTherapist.unpaidSessions || []).map((s) => {
+                    {selectedTherapist.unpaidSessions.map((s) => {
                       const isSelected = selectedSessionIds.includes(s.id);
-                      const commission = getSessionCommission(s.sessionFee);
-                      const net = s.sessionFee - commission;
                       return (
                         <tr key={s.id} className={isSelected ? 'bg-purple-50/40' : 'hover:bg-slate-50/50'}>
                           <td className="p-4">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSession(s.id)}
-                              className="w-4 h-4 accent-[#450bc8] cursor-pointer rounded"
-                            />
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleSession(s.id)} className="w-4 h-4 accent-[#450bc8] cursor-pointer rounded" />
                           </td>
-                          <td className="p-4 font-bold text-slate-900 whitespace-nowrap">{s.sessionDate}</td>
+                          <td className="p-4 font-bold text-slate-900 whitespace-nowrap">{s.sessionDate || '—'}</td>
                           <td className="p-4 font-semibold text-slate-800">{s.clientName}</td>
-                          <td className="p-4 font-mono font-bold text-purple-700">{s.sessionId}</td>
-                          <td className="p-4 font-extrabold text-slate-900">₹{s.sessionFee.toLocaleString()}</td>
-                          <td className="p-4 font-semibold text-slate-400">-₹{commission.toLocaleString()}</td>
-                          <td className="p-4 font-extrabold text-emerald-600">₹{net.toLocaleString()}</td>
+                          <td className="p-4 font-mono font-bold text-purple-700">{s.bookingNumber || s.sessionId}</td>
+                          <td className="p-4 font-extrabold text-slate-900">{inr(s.sessionFee)}</td>
+                          <td className="p-4 font-semibold text-slate-400">-{inr(s.platformFee)}</td>
+                          <td className="p-4 font-extrabold text-emerald-600">{inr(s.therapistShare)}</td>
                           <td className="p-4 whitespace-nowrap">
-                            <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full font-bold text-[10px]">
-                              {s.status}
-                            </span>
+                            <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full font-bold text-[10px]">{s.status}</span>
                           </td>
                         </tr>
                       );
@@ -814,10 +652,7 @@ export const PaymentsView: React.FC = () => {
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row justify-between sm:items-center gap-3 pt-4 border-t border-slate-100">
-                <button
-                  onClick={() => setActiveStep(1)}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl transition-colors"
-                >
+                <button onClick={() => setActiveStep(1)} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl transition-colors">
                   Back to Therapists
                 </button>
                 <button
@@ -834,64 +669,57 @@ export const PaymentsView: React.FC = () => {
 
           {/* STEP 3: Payment Summary & Confirmation */}
           {activeStep === 3 && selectedTherapist && (
-            <div className="max-w-2xl mx-auto space-y-6 bg-slate-50/70 p-8 rounded-3xl border border-slate-200/80">
+            <div className="max-w-2xl mx-auto space-y-6 bg-slate-50/70 p-4 sm:p-8 rounded-3xl border border-slate-200/80">
               <div className="text-center space-y-1">
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] uppercase rounded-full tracking-wider">
-                  Final Disbursal Audit
-                </span>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] uppercase rounded-full tracking-wider">Final Disbursal Audit</span>
                 <h3 className="text-xl font-extrabold text-slate-900">Payout Statement Breakdown</h3>
-                <p className="text-xs text-slate-500">Review final transfer values before initiating instant payout and generating invoice</p>
+                <p className="text-xs text-slate-500">Send the net amount from your bank or UPI app first, then record the transfer and its reference here.</p>
               </div>
 
-              <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200/80 text-xs">
+              <div className="space-y-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 text-xs">
                 <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                   <span className="text-slate-500 font-semibold">Consultant Name:</span>
                   <span className="font-extrabold text-slate-900 text-sm">{selectedTherapist.therapistName}</span>
                 </div>
                 <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Invoice email:</span>
+                  <span className="font-bold text-slate-900 break-all text-right">{selectedTherapist.therapistEmail || '—'}</span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">Selected Sessions:</span>
-                  <span className="font-extrabold text-slate-900">{selectedSessionIds.length} Sessions</span>
+                  <span className="font-extrabold text-slate-900">{selectedSessions.length} Sessions</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">Gross Session Fees:</span>
-                  <span className="font-extrabold text-slate-900">
-                    ₹{selectedTherapist.unpaidSessions.filter((s) => selectedSessionIds.includes(s.id)).reduce((sum, s) => sum + s.sessionFee, 0).toLocaleString()}
-                  </span>
+                  <span className="font-extrabold text-slate-900">{inr(selectedGross)}</span>
                 </div>
                 <div className="flex justify-between items-center text-rose-600">
-                  <span className="font-medium">Platform Fee Commission ({commissionLabel}):</span>
-                  <span className="font-bold">
-                    -₹{selectedTherapist.unpaidSessions
-                      .filter((s) => selectedSessionIds.includes(s.id))
-                      .reduce((sum, s) => sum + getSessionCommission(s.sessionFee), 0)
-                      .toLocaleString()}
-                  </span>
+                  <span className="font-medium">Platform Fee ({commissionLabel}):</span>
+                  <span className="font-bold">-{inr(selectedFee)}</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-200 pt-4 text-sm">
-                  <span className="font-extrabold text-slate-900">Net Transferred Amount:</span>
-                  <span className="font-extrabold text-emerald-600 text-lg">
-                    ₹{(() => {
-                      const selected = selectedTherapist.unpaidSessions.filter((s) => selectedSessionIds.includes(s.id));
-                      const gross = selected.reduce((sum, s) => sum + s.sessionFee, 0);
-                      const fee = selected.reduce((sum, s) => sum + getSessionCommission(s.sessionFee), 0);
-                      return (gross - fee).toLocaleString();
-                    })()}
-                  </span>
+                  <span className="font-extrabold text-slate-900">Net Amount to Pay:</span>
+                  <span className="font-extrabold text-emerald-600 text-lg">{inr(selectedNet)}</span>
                 </div>
               </div>
 
-              {/* Disbursal Channel Selector: Bank Transfer or UPI */}
-              <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200/80">
+              {!selectedTherapist.therapistEmail && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-amber-800 text-xs font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>This therapist has no email address on file, so the invoice cannot be emailed. Add one on the Therapists page, or record the payout and share the printed invoice.</span>
+                </div>
+              )}
+
+              {/* Disbursal Channel: the therapist's saved details; nothing is filled in for them */}
+              <div className="space-y-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider block">
-                      Disbursal Channel
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-medium">Select payout transfer mode or configure bank / UPI details</span>
+                    <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider block">Disbursal Channel</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Where you sent the money</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setIsEditingDetailsModal(true)}
+                    onClick={() => { setDetailsError(null); setIsEditingDetailsModal(true); }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#450bc8] font-extrabold text-xs rounded-xl border border-purple-200 transition-colors shadow-2xs self-start sm:self-auto"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -907,134 +735,123 @@ export const PaymentsView: React.FC = () => {
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDisbursalMethod('Bank Transfer')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${
-                      disbursalMethod === 'Bank Transfer'
-                        ? 'border-[#450bc8] bg-purple-50/50 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                            disbursalMethod === 'Bank Transfer' ? 'bg-[#450bc8] text-white' : 'bg-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <Building2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-xs text-slate-900 block">Bank Transfer</span>
-                          <span className="text-[10px] text-slate-400 font-medium">NEFT / RTGS / IMPS</span>
-                        </div>
-                      </div>
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          disbursalMethod === 'Bank Transfer' ? 'border-[#450bc8]' : 'border-slate-300'
-                        }`}
+                  {(['Bank Transfer', 'UPI'] as const).map((method) => {
+                    const active = disbursalMethod === method;
+                    const isUpi = method === 'UPI';
+                    const missing = isUpi ? !upiId.trim() : !bankAccountNumber.trim();
+                    return (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => setDisbursalMethod(method)}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${active ? 'border-[#450bc8] bg-purple-50/50 shadow-sm' : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'}`}
                       >
-                        {disbursalMethod === 'Bank Transfer' && <div className="w-2 h-2 rounded-full bg-[#450bc8]" />}
-                      </div>
-                    </div>
-                    <div className="pt-2 border-t border-slate-200/60 text-[11px] text-slate-600 space-y-0.5">
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold text-slate-800">A/C: {bankAccountNumber}</p>
-                        {bankAccountNumber && bankAccountNumber !== '•••• •••• 5336' && (
-                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-md">Stored in DB</span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium">{bankName} • IFSC: {bankIfsc}</p>
-                      <p className="text-[10px] text-slate-400">Direct settlement to bank</p>
-                    </div>
-                  </button>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${active ? 'bg-[#450bc8] text-white' : 'bg-slate-200 text-slate-600'}`}>
+                              {isUpi ? <Smartphone className="w-5 h-5" /> : <Building2 className="w-5 h-5" />}
+                            </div>
+                            <div>
+                              <span className="font-extrabold text-xs text-slate-900 block">{method}</span>
+                              <span className="text-[10px] text-slate-400 font-medium">{isUpi ? 'UPI / VPA' : 'NEFT / RTGS / IMPS'}</span>
+                            </div>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${active ? 'border-[#450bc8]' : 'border-slate-300'}`}>
+                            {active && <div className="w-2 h-2 rounded-full bg-[#450bc8]" />}
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t border-slate-200/60 text-[11px] text-slate-600 space-y-0.5">
+                          {missing ? (
+                            <p className="font-bold text-amber-700">No {isUpi ? 'UPI ID' : 'bank account'} saved. Use “Configure / Edit Details” to add the real one.</p>
+                          ) : isUpi ? (
+                            <>
+                              <p className="font-semibold text-slate-800 font-mono truncate">VPA: {upiId}</p>
+                              <p className="text-[10px] text-slate-500 font-medium truncate">Beneficiary: {accountHolderName || '—'}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-semibold text-slate-800">A/C: {bankAccountNumber}</p>
+                              <p className="text-[10px] text-slate-500 font-medium">{bankName || 'Bank not set'} • IFSC: {bankIfsc || '—'}</p>
+                              <p className="text-[10px] text-slate-500 font-medium truncate">Beneficiary: {accountHolderName || '—'}</p>
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setDisbursalMethod('UPI')}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${
-                      disbursalMethod === 'UPI'
-                        ? 'border-[#450bc8] bg-purple-50/50 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                            disbursalMethod === 'UPI' ? 'bg-[#450bc8] text-white' : 'bg-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <Smartphone className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-xs text-slate-900 block">UPI</span>
-                          <span className="text-[10px] text-slate-400 font-medium">Instant VPA Transfer</span>
-                        </div>
-                      </div>
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          disbursalMethod === 'UPI' ? 'border-[#450bc8]' : 'border-slate-300'
-                        }`}
-                      >
-                        {disbursalMethod === 'UPI' && <div className="w-2 h-2 rounded-full bg-[#450bc8]" />}
-                      </div>
-                    </div>
-                    <div className="pt-2 border-t border-slate-200/60 text-[11px] text-slate-600 space-y-0.5">
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold text-slate-800 font-mono truncate max-w-[170px]">
-                          VPA: {upiId || `${selectedTherapist.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '')}@okaxis`}
-                        </p>
-                        {upiId && !upiId.endsWith('@okaxis') && (
-                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-md">Stored in DB</span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium truncate">Beneficiary: {accountHolderName || selectedTherapist.therapistName}</p>
-                      <p className="text-[10px] text-slate-400">Real-time NPCI Clearance</p>
-                    </div>
-                  </button>
+                <div className="space-y-1 pt-1">
+                  <label htmlFor="payout-transfer-ref" className="text-[11px] font-extrabold text-slate-700">
+                    {disbursalMethod === 'UPI' ? 'UPI transaction reference (UTR / RRN)' : 'Bank transfer reference (UTR)'} *
+                  </label>
+                  <input
+                    id="payout-transfer-ref"
+                    type="text"
+                    value={transactionRef}
+                    onChange={(e) => setTransactionRef(e.target.value)}
+                    placeholder="As shown by your bank or UPI app for this transfer"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
+                  />
+                  <p className="text-[10px] text-slate-400">Hexpertify does not send the money; this records the transfer you made.</p>
                 </div>
               </div>
 
               {releaseError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold">
-                  {releaseError}
-                </div>
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold">{releaseError}</div>
               )}
 
-              <div className="flex flex-col-reverse sm:flex-row gap-3">
-                <button
-                  onClick={() => { setReleaseError(null); setActiveStep(2); }}
-                  disabled={isReleasing}
-                  className="sm:w-40 shrink-0 py-3 px-5 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 font-extrabold text-xs rounded-2xl transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleMarkAsPaid}
-                  disabled={isReleasing}
-                  className="flex-1 min-w-0 py-3 px-5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-3 transition-colors"
-                >
-                  <CheckCircle2 className="w-5 h-5 shrink-0" />
-                  <span className="flex flex-col items-start text-left leading-tight">
-                    <span className="font-extrabold text-sm">{isReleasing ? 'Releasing…' : 'Release Payout & Generate Invoice'}</span>
-                    {!isReleasing && <span className="text-[11px] font-semibold text-emerald-100">via {disbursalMethod}</span>}
-                  </span>
-                </button>
-              </div>
+              {confirmingRelease ? (
+                <div className="p-4 bg-white border-2 border-emerald-300 rounded-2xl space-y-3">
+                  <p className="text-xs text-slate-800 font-bold leading-relaxed">
+                    Record a payout of <span className="text-emerald-700">{inr(selectedNet)}</span> to {selectedTherapist.therapistName} by {disbursalMethod} ({destination}), reference {transactionRef.trim()}? The {selectedSessions.length} session(s) will be marked as paid out{selectedTherapist.therapistEmail ? ' and the invoice emailed' : ''}.
+                  </p>
+                  <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end">
+                    <button onClick={() => setConfirmingRelease(false)} disabled={isReleasing} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl disabled:opacity-50">
+                      Go Back
+                    </button>
+                    <button onClick={handleMarkAsPaid} disabled={isReleasing} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-extrabold text-xs rounded-xl">
+                      {isReleasing ? 'Recording…' : 'Yes, Record Payout'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col-reverse sm:flex-row gap-3">
+                  <button
+                    onClick={() => { setReleaseError(null); setActiveStep(2); }}
+                    disabled={isReleasing}
+                    className="sm:w-40 shrink-0 py-3 px-5 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 font-extrabold text-xs rounded-2xl transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setConfirmingRelease(true)}
+                    disabled={!canRelease || isReleasing}
+                    title={canRelease ? '' : `Add the ${disbursalMethod === 'UPI' ? 'UPI ID' : 'bank account'} and the transfer reference first`}
+                    className="flex-1 min-w-0 py-3 px-5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-3 transition-colors"
+                  >
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    <span className="flex flex-col items-start text-left leading-tight">
+                      <span className="font-extrabold text-sm">Record Payout & Generate Invoice</span>
+                      <span className="text-[11px] font-semibold text-emerald-100">
+                        {canRelease ? `via ${disbursalMethod}` : `Needs the ${disbursalMethod === 'UPI' ? 'UPI ID' : 'bank account'} and transfer reference`}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 2: PAYOUT HISTORY & TRANSACTIONS */}
+      {/* TAB 2: PAYOUT HISTORY (stored invoices) */}
       {activeTab === 'history' && (
         <div className="space-y-6">
           <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 className="font-extrabold text-lg text-slate-900">Historical Disbursal Audit Log</h3>
-              <p className="text-xs text-slate-500">Complete archive of cleared therapist payouts, tax receipts, and bank transaction reference numbers</p>
+              <p className="text-xs text-slate-500">Every payout recorded, with its invoice number and the transfer reference the admin entered</p>
             </div>
             <button
               onClick={handleExportCSV}
@@ -1049,43 +866,43 @@ export const PaymentsView: React.FC = () => {
             <table className="w-full min-w-[900px] whitespace-nowrap text-left text-xs text-slate-600">
               <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="p-4">Transaction ID</th>
+                  <th className="p-4">Invoice</th>
                   <th className="p-4">Disbursal Date</th>
                   <th className="p-4">Therapist</th>
                   <th className="p-4">Sessions</th>
                   <th className="p-4">Gross Total</th>
                   <th className="p-4">Platform Fee</th>
                   <th className="p-4">Net Payout</th>
-                  <th className="p-4">Status</th>
+                  <th className="p-4">Reference</th>
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {historyList.map((rec) => (
+                {historyList.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-10 text-center text-slate-400 font-semibold">
+                      {isLoading ? 'Loading…' : loadError ? 'Payout history could not be loaded.' : 'No payouts have been recorded yet.'}
+                    </td>
+                  </tr>
+                ) : historyList.map((rec) => (
                   <tr key={rec.id} className="hover:bg-slate-50/80 transition-all">
-                    <td className="p-4 font-mono font-bold text-[#450bc8]">{rec.id}</td>
-                    <td className="p-4 font-semibold text-slate-700 whitespace-nowrap">{rec.payoutDate}</td>
+                    <td className="p-4 font-mono font-bold text-[#450bc8]">{rec.invoiceNumber || '—'}</td>
+                    <td className="p-4 font-semibold text-slate-700 whitespace-nowrap">{rec.payoutDate || '—'}</td>
                     <td className="p-4">
-                      <div>
-                        <span className="font-extrabold text-slate-900 block">{rec.therapistName}</span>
-                        <span className="text-[11px] text-slate-400">{rec.profession}</span>
-                      </div>
+                      <span className="font-extrabold text-slate-900 block">{rec.therapistName}</span>
+                      <span className="text-[11px] text-slate-400">{rec.profession}</span>
                     </td>
                     <td className="p-4 font-bold text-slate-800">{rec.sessionsCount} Sessions</td>
-                    <td className="p-4 font-bold text-slate-900">₹{rec.grossAmount.toLocaleString()}</td>
-                    <td className="p-4 text-slate-400">-₹{rec.platformFee.toLocaleString()}</td>
-                    <td className="p-4 font-extrabold text-emerald-600">₹{rec.netPayout.toLocaleString()}</td>
-                    <td className="p-4">
-                      <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full">
-                        {rec.status}
-                      </span>
-                    </td>
+                    <td className="p-4 font-bold text-slate-900">{inr(rec.grossAmount)}</td>
+                    <td className="p-4 text-slate-400">-{inr(rec.platformFee)}</td>
+                    <td className="p-4 font-extrabold text-emerald-600">{inr(rec.netPayout)}</td>
+                    <td className="p-4 font-mono text-slate-600">{rec.paymentMethod ? `${rec.paymentMethod} · ` : ''}{rec.transactionRef || '—'}</td>
                     <td className="p-4 text-right">
                       <button
-                        onClick={() => setSelectedHistoryModal(rec)}
+                        onClick={() => setOpenInvoice(rec)}
                         className="px-3 py-1.5 bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-[#450bc8] font-extrabold text-xs rounded-xl transition-all"
                       >
-                        View Receipt
+                        View Invoice
                       </button>
                     </td>
                   </tr>
@@ -1096,267 +913,132 @@ export const PaymentsView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: GENERATED TAX INVOICE & DISPATCH (AFTER PAYOUT BREAKDOWN) */}
-      {generatedInvoice && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-4 sm:p-8 space-y-4 sm:space-y-6 my-auto max-h-[94vh] sm:max-h-[92vh] overflow-y-auto">
-            {/* Invoice Header */}
+      {/* MODAL: PAYOUT INVOICE (just recorded, or from the history). Printing shows only this invoice. */}
+      {openInvoice && createPortal(
+        <div className="payout-print-root fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-md animate-fade-in">
+          <style>{`@media print {
+            body > *:not(.payout-print-root) { display: none !important; }
+            .payout-print-root { position: static !important; background: #fff !important; backdrop-filter: none !important; padding: 0 !important; display: block !important; }
+            .payout-print-root .payout-invoice { max-height: none !important; overflow: visible !important; box-shadow: none !important; border: 0 !important; max-width: none !important; }
+            .payout-print-root .no-print { display: none !important; }
+          }`}</style>
+          <div className="payout-invoice w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-4 sm:p-8 space-y-4 sm:space-y-6 my-auto max-h-[94vh] sm:max-h-[92vh] overflow-y-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4 sm:pb-5">
-              <div className="flex items-center gap-3">
-                <HexpertifyLogo size="md" />
-              </div>
-
+              <HexpertifyLogo size="md" />
               <div className="text-left sm:text-right">
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] sm:text-xs rounded-full uppercase tracking-wider">
-                  PAID / DISBURSED
-                </span>
-                <p className="text-xs font-mono font-extrabold text-slate-800 mt-1">{generatedInvoice.invoiceNumber}</p>
-                <p className="text-[11px] text-slate-400 font-medium">{generatedInvoice.payoutDate}</p>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] sm:text-xs rounded-full uppercase tracking-wider">Paid / Disbursed</span>
+                <p className="text-xs font-mono font-extrabold text-slate-800 mt-1">{openInvoice.invoiceNumber}</p>
+                <p className="text-[11px] text-slate-400 font-medium">{openInvoice.payoutDate}</p>
               </div>
             </div>
 
-            {/* Email Dispatch Notification Banner */}
-            <div className="bg-emerald-50 border border-emerald-200 p-3.5 sm:p-4 rounded-2xl flex items-start gap-3">
-              <Mail className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="text-xs text-emerald-900">
-                <span className="font-extrabold block">Invoice Emailed Successfully to Therapist & Admin!</span>
-                <p className="text-emerald-700 mt-0.5">
-                  A copy of this statement has been sent to therapist <span className="font-bold underline">{generatedInvoice.therapistEmail}</span> and Super Admin <span className="font-bold underline">{generatedInvoice.adminEmail}</span>.
-                </p>
+            {/* Email status, as the server reported it */}
+            <div className={`no-print p-3.5 sm:p-4 rounded-2xl flex items-start gap-3 border ${openInvoice.emailed ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+              <Mail className={`w-5 h-5 shrink-0 mt-0.5 ${openInvoice.emailed ? 'text-emerald-600' : 'text-amber-600'}`} />
+              <div className={`text-xs ${openInvoice.emailed ? 'text-emerald-900' : 'text-amber-900'}`}>
+                {openInvoice.emailed ? (
+                  <>
+                    <span className="font-extrabold block">Invoice emailed</span>
+                    <p className="mt-0.5">Sent to <span className="font-bold">{openInvoice.therapistEmail}</span>, with a copy to the admin inbox.</p>
+                  </>
+                ) : openInvoice.emailed === false ? (
+                  <>
+                    <span className="font-extrabold block">Invoice not emailed</span>
+                    <p className="mt-0.5">{openInvoice.therapistEmail ? `The email to ${openInvoice.therapistEmail} could not be sent. Use “Resend Email Copy” to try again.` : 'The therapist has no email address on file.'}</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-extrabold block">Email status not recorded</span>
+                    <p className="mt-0.5">This invoice was recorded before email delivery was tracked.</p>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Billed To / From Information */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-100 text-xs">
               <div>
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Billed To (Consultant)</span>
-                <p className="font-extrabold text-slate-900 text-sm mt-0.5">{generatedInvoice.therapistName}</p>
-                <p className="text-slate-500 font-medium">{generatedInvoice.profession}</p>
-                <p className="text-slate-500 font-mono text-[11px]">{generatedInvoice.therapistEmail}</p>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Paid To (Consultant)</span>
+                <p className="font-extrabold text-slate-900 text-sm mt-0.5">{openInvoice.therapistName}</p>
+                <p className="text-slate-500 font-medium">{openInvoice.profession}</p>
+                <p className="text-slate-500 font-mono text-[11px] break-all">{openInvoice.therapistEmail || 'No email on file'}</p>
               </div>
               <div>
                 <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Disbursal Channel & Ref</span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <p className="font-extrabold text-slate-900 flex items-center gap-1">
-                    {generatedInvoice.paymentMethod === 'UPI' ? (
-                      <>
-                        <Smartphone className="w-3.5 h-3.5 text-blue-600 inline" />
-                        <span>UPI</span>
-                      </>
-                    ) : (
-                      <>
-                        <Building2 className="w-3.5 h-3.5 text-[#450bc8] inline" />
-                        <span>Bank Transfer</span>
-                      </>
-                    )}
-                  </p>
-                  <span className="text-slate-300">|</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newRef = generatedInvoice.transactionRef.startsWith('UPI-')
-                          ? generatedInvoice.transactionRef.replace('UPI-', 'UTR-')
-                          : (generatedInvoice.transactionRef.startsWith('UTR-') ? generatedInvoice.transactionRef : `UTR-2026-${Math.floor(10000000 + Math.random() * 90000000)}`);
-                        setGeneratedInvoice({
-                          ...generatedInvoice,
-                          paymentMethod: 'Bank Transfer',
-                          accountNumber: '•••• •••• 5336',
-                          transactionRef: newRef
-                        });
-                      }}
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all ${
-                        generatedInvoice.paymentMethod === 'Bank Transfer'
-                          ? 'bg-[#450bc8] text-white'
-                          : 'bg-slate-200/70 text-slate-500 hover:bg-slate-300'
-                      }`}
-                    >
-                      Bank Transfer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newRef = generatedInvoice.transactionRef.startsWith('UTR-')
-                          ? generatedInvoice.transactionRef.replace('UTR-', 'UPI-')
-                          : (generatedInvoice.transactionRef.startsWith('UPI-') ? generatedInvoice.transactionRef : `UPI-2026-${Math.floor(10000000 + Math.random() * 90000000)}`);
-                        const therapistHandle = generatedInvoice.therapistEmail
-                          ? generatedInvoice.therapistEmail.split('@')[0]
-                          : generatedInvoice.therapistName.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        setGeneratedInvoice({
-                          ...generatedInvoice,
-                          paymentMethod: 'UPI',
-                          accountNumber: `${therapistHandle}@okaxis`,
-                          transactionRef: newRef
-                        });
-                      }}
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all ${
-                        generatedInvoice.paymentMethod === 'UPI'
-                          ? 'bg-[#450bc8] text-white'
-                          : 'bg-slate-200/70 text-slate-500 hover:bg-slate-300'
-                      }`}
-                    >
-                      UPI
-                    </button>
-                  </div>
-                </div>
-                <p className="text-purple-700 font-mono font-extrabold text-[11px] mt-0.5">{generatedInvoice.transactionRef}</p>
-                <p className="text-slate-500 font-mono text-[11px]">
-                  {generatedInvoice.paymentMethod === 'UPI' ? 'UPI ID: ' : 'Account: '}
-                  {generatedInvoice.accountNumber}
+                <p className="font-extrabold text-slate-900 flex items-center gap-1 mt-0.5">
+                  {openInvoice.paymentMethod === 'UPI' ? <Smartphone className="w-3.5 h-3.5 text-blue-600 inline" /> : <Building2 className="w-3.5 h-3.5 text-[#450bc8] inline" />}
+                  <span>{openInvoice.paymentMethod || '—'}</span>
+                </p>
+                <p className="text-purple-700 font-mono font-extrabold text-[11px] mt-0.5">{openInvoice.transactionRef || '—'}</p>
+                <p className="text-slate-500 font-mono text-[11px] break-all">
+                  {openInvoice.paymentMethod === 'UPI' ? 'UPI ID: ' : 'Account: '}
+                  {openInvoice.accountNumber || '—'}
                 </p>
               </div>
             </div>
 
-            {/* Line Items Table */}
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full min-w-[560px] whitespace-nowrap text-left text-xs text-slate-600">
-                <thead className="bg-slate-100 text-slate-500 font-extrabold uppercase tracking-wider border-b border-slate-200 text-[10px]">
-                  <tr>
-                    <th className="p-3">Session Code</th>
-                    <th className="p-3">Client Patient</th>
-                    <th className="p-3">Date</th>
-                    <th className="p-3 text-right">Fee</th>
-                    <th className="p-3 text-right">Platform Cut</th>
-                    <th className="p-3 text-right">Net</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {generatedInvoice.sessions.map((s, i) => (
-                    <tr key={i} className="hover:bg-slate-50/50">
-                      <td className="p-3 font-mono font-bold text-purple-700">{s.id}</td>
-                      <td className="p-3 font-semibold text-slate-800">{s.clientName}</td>
-                      <td className="p-3 font-medium text-slate-500">{s.date}</td>
-                      <td className="p-3 text-right font-bold text-slate-800">₹{s.fee.toLocaleString()}</td>
-                      <td className="p-3 text-right text-rose-600 font-medium">-₹{s.commission.toLocaleString()}</td>
-                      <td className="p-3 text-right font-extrabold text-emerald-600">₹{s.net.toLocaleString()}</td>
+            {openInvoice.sessions.length > 0 && (
+              <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                <table className="w-full min-w-[560px] whitespace-nowrap text-left text-xs text-slate-600">
+                  <thead className="bg-slate-100 text-slate-500 font-extrabold uppercase tracking-wider border-b border-slate-200 text-[10px]">
+                    <tr>
+                      <th className="p-3">Session</th>
+                      <th className="p-3">Client</th>
+                      <th className="p-3">Date</th>
+                      <th className="p-3 text-right">Fee</th>
+                      <th className="p-3 text-right">Platform Cut</th>
+                      <th className="p-3 text-right">Net</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {openInvoice.sessions.map((s, i) => (
+                      <tr key={i}>
+                        <td className="p-3 font-mono font-bold text-purple-700">{s.id}</td>
+                        <td className="p-3 font-semibold text-slate-800">{s.clientName}</td>
+                        <td className="p-3 font-medium text-slate-500">{s.date}</td>
+                        <td className="p-3 text-right font-bold text-slate-800">{inr(s.fee)}</td>
+                        <td className="p-3 text-right text-rose-600 font-medium">-{inr(s.commission)}</td>
+                        <td className="p-3 text-right font-extrabold text-emerald-600">{inr(s.net)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-            {/* Invoice Total Calculation */}
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
               <div className="flex justify-between items-center text-slate-600">
-                <span className="font-semibold">Gross Sessions Subtotal:</span>
-                <span className="font-bold text-slate-900">₹{generatedInvoice.grossAmount.toLocaleString()}</span>
+                <span className="font-semibold">Gross Sessions Subtotal ({openInvoice.sessionsCount} sessions):</span>
+                <span className="font-bold text-slate-900">{inr(openInvoice.grossAmount)}</span>
               </div>
               <div className="flex justify-between items-center text-rose-600">
                 <span className="font-semibold">Hexpertify Platform Fee:</span>
-                <span className="font-bold">-₹{generatedInvoice.platformFee.toLocaleString()}</span>
+                <span className="font-bold">-{inr(openInvoice.platformFee)}</span>
               </div>
               <div className="flex justify-between items-center border-t border-slate-300 pt-3 text-sm">
                 <span className="font-black text-slate-900">Net Amount Disbursed:</span>
-                <span className="font-black text-emerald-600 text-lg">₹{generatedInvoice.netPayout.toLocaleString()}</span>
+                <span className="font-black text-emerald-600 text-lg">{inr(openInvoice.netPayout)}</span>
               </div>
             </div>
 
-            {/* Action Controls */}
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handlePrintInvoice}
-                className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all"
-              >
+            <div className="no-print flex flex-wrap gap-3 pt-2">
+              <button type="button" onClick={handlePrintInvoice} className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all">
                 <Printer className="w-4 h-4" />
                 <span>Print / Download PDF</span>
               </button>
               <button
                 type="button"
                 onClick={handleResendEmail}
-                className="flex-1 py-3 bg-purple-50 hover:bg-purple-100 text-[#450bc8] font-extrabold text-xs rounded-2xl border border-purple-200 flex items-center justify-center gap-2 transition-all"
+                disabled={isResending || !openInvoice.therapistEmail}
+                title={openInvoice.therapistEmail ? '' : 'The therapist has no email address on file'}
+                className="flex-1 py-3 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 text-[#450bc8] font-extrabold text-xs rounded-2xl border border-purple-200 flex items-center justify-center gap-2 transition-all"
               >
                 <Mail className="w-4 h-4" />
-                <span>Resend Email Copy</span>
+                <span>{isResending ? 'Sending…' : 'Resend Email Copy'}</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setGeneratedInvoice(null)}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-lg transition-all"
-              >
+              <button type="button" onClick={() => setOpenInvoice(null)} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-lg transition-all">
                 Done
               </button>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* MODAL: HISTORICAL TRANSACTION RECEIPT DETAILS */}
-      {selectedHistoryModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-4 sm:p-6 space-y-4 sm:space-y-6 my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <HexpertifyLogo size="sm" />
-                <div>
-                  <h3 className="font-extrabold text-base text-slate-900">Disbursal Receipt Statement</h3>
-                  <p className="text-xs text-slate-400 font-mono">{selectedHistoryModal.id}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedHistoryModal(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs bg-slate-50 p-5 rounded-2xl border border-slate-100">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Disbursal Date:</span>
-                <span className="font-bold text-slate-900">{selectedHistoryModal.payoutDate}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Therapist:</span>
-                <span className="font-bold text-slate-900">{selectedHistoryModal.therapistName}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Bank / Channel:</span>
-                <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                  {selectedHistoryModal.paymentMethod === 'UPI' ? (
-                    <>
-                      <Smartphone className="w-3.5 h-3.5 text-blue-600 inline" />
-                      <span>UPI</span>
-                    </>
-                  ) : (
-                    <>
-                      <Building2 className="w-3.5 h-3.5 text-[#450bc8] inline" />
-                      <span>Bank Transfer</span>
-                    </>
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Reference Number:</span>
-                <span className="font-mono font-bold text-purple-700">{selectedHistoryModal.transactionRef}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">
-                  {selectedHistoryModal.paymentMethod === 'UPI' ? 'UPI ID:' : 'Account:'}
-                </span>
-                <span className="font-mono font-bold text-slate-800">{selectedHistoryModal.accountNumber}</span>
-              </div>
-              <div className="flex justify-between border-t border-slate-200 pt-3">
-                <span className="text-slate-400">Gross Total ({selectedHistoryModal.sessionsCount} Sessions):</span>
-                <span className="font-bold text-slate-900">₹{selectedHistoryModal.grossAmount.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-rose-600">
-                <span>Platform Commission:</span>
-                <span className="font-bold">-₹{selectedHistoryModal.platformFee.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between border-t border-slate-200 pt-3 text-sm">
-                <span className="font-extrabold text-slate-900">Net Transferred:</span>
-                <span className="font-extrabold text-emerald-600">₹{selectedHistoryModal.netPayout.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setSelectedHistoryModal(null)}
-              className="w-full py-3 bg-[#450bc8] text-white font-extrabold text-xs rounded-2xl shadow-md hover:bg-[#3a0aa8]"
-            >
-              Close Receipt Window
-            </button>
           </div>
         </div>,
         document.body
@@ -1374,104 +1056,44 @@ export const PaymentsView: React.FC = () => {
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900">Configure Payout Channels</h3>
                   <p className="text-xs text-slate-500 font-medium">
-                    Store details permanently for <span className="font-bold text-slate-700">{selectedTherapist.therapistName}</span>
+                    Saved on the profile of <span className="font-bold text-slate-700">{selectedTherapist.therapistName}</span>
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsEditingDetailsModal(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
-              >
+              <button type="button" onClick={discardDetailEdits} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 space-y-4 overflow-y-auto text-xs">
-              <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-2xl flex items-start gap-2.5 text-purple-900">
-                <CheckCircle2 className="w-4 h-4 text-[#450bc8] shrink-0 mt-0.5" />
-                <p className="leading-relaxed text-[11px]">
-                  <strong>Enter once & store:</strong> These details are saved to this consultant's database profile. Subsequent payouts will automatically fetch and use these stored values.
-                </p>
-              </div>
+              <p className="p-3 bg-purple-50/60 border border-purple-100 rounded-2xl text-purple-900 leading-relaxed text-[11px]">
+                Enter the therapist&apos;s real bank and UPI details. They are saved to the therapist&apos;s profile and used for later payouts.
+              </p>
 
-              <div className="space-y-3 pt-1">
-                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-[#450bc8]" />
-                  <span>Direct Bank Transfer Details</span>
-                </h4>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700">Bank Name</label>
+              {[
+                { label: 'Bank Name', value: bankName, set: setBankName, placeholder: 'Bank name', mono: false },
+                { label: 'Bank Account Number', value: bankAccountNumber, set: setBankAccountNumber, placeholder: 'Account number', mono: true },
+                { label: 'IFSC Code', value: bankIfsc, set: (v: string) => setBankIfsc(v.toUpperCase()), placeholder: 'IFSC', mono: true },
+                { label: 'Account Beneficiary Name', value: accountHolderName, set: setAccountHolderName, placeholder: 'Name on the account', mono: false },
+                { label: 'UPI ID / VPA', value: upiId, set: setUpiId, placeholder: 'name@bank', mono: true }
+              ].map((f) => (
+                <div key={f.label} className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">{f.label}</label>
                   <input
                     type="text"
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="e.g. HDFC Bank, ICICI Bank, State Bank of India"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
+                    value={f.value}
+                    onChange={(e) => f.set(e.target.value)}
+                    placeholder={f.placeholder}
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all ${f.mono ? 'font-mono' : ''}`}
                   />
                 </div>
+              ))}
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700">Bank Account Number</label>
-                  <input
-                    type="text"
-                    value={bankAccountNumber}
-                    onChange={(e) => setBankAccountNumber(e.target.value)}
-                    placeholder="e.g. 50100438291032"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700">IFSC Code</label>
-                    <input
-                      type="text"
-                      value={bankIfsc}
-                      onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
-                      placeholder="e.g. HDFC0001234"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:border-[#450bc8] focus:bg-white transition-all"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700">Account Beneficiary Name</label>
-                    <input
-                      type="text"
-                      value={accountHolderName}
-                      onChange={(e) => setAccountHolderName(e.target.value)}
-                      placeholder={selectedTherapist.therapistName}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-3 border-t border-slate-100">
-                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Instant UPI Transfer Details</span>
-                </h4>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700">UPI ID / Virtual Payment Address (VPA)</label>
-                  <input
-                    type="text"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    placeholder="e.g. therapist@okaxis or 9876543210@upi"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
+              {detailsError && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold">{detailsError}</div>}
             </div>
 
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setIsEditingDetailsModal(false)}
-                className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors"
-              >
+              <button type="button" onClick={discardDetailEdits} className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors">
                 Cancel
               </button>
               <button
@@ -1480,12 +1102,10 @@ export const PaymentsView: React.FC = () => {
                 onClick={handleSavePayoutDetails}
                 className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 flex items-center gap-2 transition-all"
               >
-                {isSavingDetails ? (
-                  <span>Saving to Database...</span>
-                ) : (
+                {isSavingDetails ? <span>Saving…</span> : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Save & Store Details Permanently</span>
+                    <span>Save Details</span>
                   </>
                 )}
               </button>

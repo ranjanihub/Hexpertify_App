@@ -40,216 +40,32 @@ export interface ActivityCardItem {
   templateId: string;
 }
 
-const initialActivities: ActivityCardItem[] = [
-  {
-    "id": "ACT-01",
-    "name": "Diaphragmatic Breathing",
-    "description": "Deep belly breathing technique to reduce stress and anxiety naturally.",
-    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "BREATHING",
-    "duration": "5-10 minutes",
-    "difficulty": "Easy",
-    "repeat": "Daily",
-    "assignedClientName": "Sarah Jenkins",
-    "assignedTherapistName": "Dr. Alex Harrison",
-    "assignedInfo": "Sarah Jenkins • Daily",
-    "imageUrl": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-01"
-  },
-  {
-    "id": "ACT-02",
-    "name": "Box Breathing",
-    "description": "Navy SEAL breathing technique for staying calm under pressure with 4-4-4-4 pattern.",
-    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "BREATHING",
-    "duration": "4-8 minutes",
-    "difficulty": "Easy",
-    "repeat": "2-3 Times / Week",
-    "assignedClientName": "Emily Rodriguez",
-    "assignedTherapistName": "Dr. Elena Rostova",
-    "assignedInfo": "Emily Rodriguez • 2-3 Times / Week",
-    "imageUrl": "https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-02"
-  },
-  {
-    "id": "ACT-03",
-    "name": "4-7-8 Breathing",
-    "description": "The famous 4-7-8 breathing technique popularized by Dr. Andrew Weil is a simple yet powerful method for anxiety relief and better sleep. By following the pattern of inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds, you activate your parasympathetic nervous system and experience deep relaxation.",
-    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "BREATHING",
-    "duration": "2-3 minutes",
-    "difficulty": "Easy",
-    "repeat": "As Needed",
-    "assignedClientName": "Amanda Miller",
-    "assignedTherapistName": "Marcus Vance",
-    "assignedInfo": "Amanda Miller • As Needed",
-    "imageUrl": "https://images.unsplash.com/photo-1511295742362-92c96b124e52?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-03"
-  },
-  {
-    "id": "ACT-04",
-    "name": "Alternate Nostril Breathing",
-    "description": "This ancient yogic breathing technique alternates airflow between nostrils to balance the left and right brain hemispheres. By harmonizing your nervous system, it reduces stress, improves focus, and creates a profound sense of calm and mental clarity.",
-    "filePath": "src/activities/templates/MoodLiftBreathingPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "BREATHING",
-    "duration": "5-10 minutes",
-    "difficulty": "Easy",
-    "repeat": "Daily",
-    "assignedClientName": "Robert Garcia",
-    "assignedTherapistName": "Dr. Sophia Bennett",
-    "assignedInfo": "Robert Garcia • Daily",
-    "imageUrl": "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-04"
-  },
-  {
-    "id": "ACT-05",
-    "name": "Describe Your Room",
-    "description": "Use mindfulness to anchor yourself in the present moment by describing your surroundings in detail. This grounding technique helps redirect anxious thoughts and brings you into the here-and-now through sensory awareness.",
-    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
-    "isVisible": true,
-    "categoryTag": "MINDFULNESS",
-    "duration": "1-2 minutes",
-    "difficulty": "Easy",
-    "repeat": "2-3 Times / Week",
-    "assignedClientName": "Michael Chen",
-    "assignedTherapistName": "Dr. Alex Harrison",
-    "assignedInfo": "Michael Chen • 2-3 Times / Week",
-    "imageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-05"
-  },
-  {
-    "id": "ACT-06",
-    "name": "Name the Moment",
-    "description": "This guided self-reassurance exercise helps you acknowledge difficult emotions with kindness and compassion. By speaking affirmations and reassurances to yourself, you rewire your nervous system to respond to stress with self-support instead of self-criticism, building lasting emotional resilience.",
-    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
-    "isVisible": true,
-    "categoryTag": "MINDFULNESS",
-    "duration": "2-3 minutes",
-    "difficulty": "Easy",
-    "repeat": "As Needed",
-    "assignedClientName": "David Kim",
-    "assignedTherapistName": "Dr. Evelyn Reed",
-    "assignedInfo": "David Kim • As Needed",
-    "imageUrl": "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-06"
-  },
-  {
-    "id": "ACT-07",
-    "name": "Physical Grounding",
-    "description": "Engage your five senses through tactile and physical experiences to bring you fully into the present moment. This somatic grounding technique interrupts the stress response cycle by signaling to your nervous system that you are safe, helping you move out of fight-or-flight mode into calm awareness.",
-    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
-    "isVisible": true,
-    "categoryTag": "SOMATIC",
-    "duration": "5-10 minutes",
-    "difficulty": "Easy",
-    "repeat": "Daily",
-    "assignedClientName": "Rohan Mehta",
-    "assignedTherapistName": "Dr. Aravind Swamy",
-    "assignedInfo": "Rohan Mehta • Daily",
-    "imageUrl": "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-07"
-  },
-  {
-    "id": "ACT-08",
-    "name": "Posture Reset",
-    "description": "Your body and mind are deeply connected. By intentionally adjusting your posture and releasing tension through gentle movements, you signal to your nervous system that you are safe and grounded. This practice helps you reclaim your physical presence and mental clarity.",
-    "filePath": "src/activities/templates/MoodLiftSomaticPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "SOMATIC",
-    "duration": "1-1.5 minutes",
-    "difficulty": "Easy",
-    "repeat": "2-3 Times / Week",
-    "assignedClientName": "Kavita Krishnan",
-    "assignedTherapistName": "Dr. Priya Sharma",
-    "assignedInfo": "Kavita Krishnan • 2-3 Times / Week",
-    "imageUrl": "https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-08"
-  },
-  {
-    "id": "ACT-09",
-    "name": "Self-Soothing",
-    "description": "Drawing from Dialectical Behavior Therapy (DBT), this technique teaches you to soothe yourself through multisensory engagement. By intentionally activating your senses—touch, smell, taste, sight, sound—you create a safe container for emotional pain and build your capacity to tolerate distressing moments.",
-    "filePath": "src/activities/templates/MoodLiftSomaticPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "SOMATIC",
-    "duration": "5-10 minutes",
-    "difficulty": "Easy",
-    "repeat": "As Needed",
-    "assignedClientName": "Siddharth Verma",
-    "assignedTherapistName": "Dr. David Chen",
-    "assignedInfo": "Siddharth Verma • As Needed",
-    "imageUrl": "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-09"
-  },
-  {
-    "id": "ACT-10",
-    "name": "CBT Thought-Challenger",
-    "description": "Using Cognitive Behavioral Therapy techniques, challenge automatic negative thoughts by examining the evidence for and against them. Develop balanced, realistic perspectives that reduce anxiety, low mood, and self-criticism through cognitive restructuring.",
-    "filePath": "src/activities/templates/MoodLiftCbtPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "CBT",
-    "duration": "10-15 minutes",
-    "difficulty": "Medium",
-    "repeat": "Daily",
-    "assignedClientName": "Alex Morgan",
-    "assignedTherapistName": "Dr. Elena Rostova",
-    "assignedInfo": "Alex Morgan • Daily",
-    "imageUrl": "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-10"
-  },
-  {
-    "id": "ACT-11",
-    "name": "Affirmation Mirror",
-    "description": "Transform negative self-talk into powerful, personalized affirmations that rewire your brain toward self-compassion. By mirroring empowering statements back to yourself, you create new neural pathways that support lasting confidence, resilience, and emotional wellbeing.",
-    "filePath": "src/activities/templates/MoodLiftAffirmationPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "GRATITUDE",
-    "duration": "5-10 minutes",
-    "difficulty": "Easy",
-    "repeat": "2-3 Times / Week",
-    "assignedClientName": "Sarah Jenkins",
-    "assignedTherapistName": "Marcus Vance",
-    "assignedInfo": "Sarah Jenkins • 2-3 Times / Week",
-    "imageUrl": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-11"
-  },
-  {
-    "id": "ACT-12",
-    "name": "Worry Box",
-    "description": "Externalize your worries by placing them somewhere safe—outside your mind. This CBT-based technique helps your brain interpret the worry as \"stored and contained,\" reducing its emotional intensity. When worries feel infinite in your head, simply writing them down and placing them away creates essential psychological distance.",
-    "filePath": "src/activities/templates/MoodLiftCbtPlayer.tsx",
-    "isVisible": true,
-    "categoryTag": "CBT",
-    "duration": "3-5 minutes",
-    "difficulty": "Easy",
-    "repeat": "As Needed",
-    "assignedClientName": "Emily Rodriguez",
-    "assignedTherapistName": "Dr. Sophia Bennett",
-    "assignedInfo": "Emily Rodriguez • As Needed",
-    "imageUrl": "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-12"
-  },
-  {
-    "id": "ACT-13",
-    "name": "Cognitive Grounding",
-    "description": "Engage your mind with focused mental exercises like counting, naming, and sensory grounding to shift attention away from worry and anchor you in the present.",
-    "filePath": "src/activities/templates/MoodLiftMindfulnessGrounding.tsx",
-    "isVisible": true,
-    "categoryTag": "MINDFULNESS",
-    "duration": "5-10 minutes",
-    "difficulty": "Easy",
-    "repeat": "Daily",
-    "assignedClientName": "Amanda Miller",
-    "assignedTherapistName": "Dr. Alex Harrison",
-    "assignedInfo": "Amanda Miller • Daily",
-    "imageUrl": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",
-    "templateId": "ACT-13"
-  }
-];
+/** A stored activity as a card; who it is assigned to comes from its real assignments, never sample names */
+function toCard(a: any): ActivityCardItem {
+  const assignments: any[] = Array.isArray(a?.clientAssignments) ? a.clientAssignments : [];
+  const names = [...new Set(assignments.map((x) => String(x?.clientName || '').trim()).filter(Boolean))];
+  const assignedInfo = names.length === 0
+    ? 'Not assigned to any client yet'
+    : names.length === 1
+    ? `Assigned to ${names[0]}`
+    : `Assigned to ${names.length} clients`;
+  return {
+    id: String(a?.id || a?._id || ''),
+    name: String(a?.name || a?.title || 'Activity'),
+    description: String(a?.description || ''),
+    filePath: String(a?.filePath || ''),
+    isVisible: a?.isVisible !== false,
+    categoryTag: String(a?.categoryTag || a?.category || 'MINDFULNESS').toUpperCase(),
+    duration: String(a?.duration || ''),
+    difficulty: (['Easy', 'Medium', 'Advanced'].includes(a?.difficulty) ? a.difficulty : 'Easy') as ActivityCardItem['difficulty'],
+    repeat: String(a?.repeat || a?.frequency || ''),
+    assignedClientName: names.join(', '),
+    assignedTherapistName: [...new Set(assignments.map((x) => String(x?.consultantName || '').trim()).filter(Boolean))].join(', '),
+    assignedInfo,
+    imageUrl: String(a?.imageUrl || ''),
+    templateId: String(a?.templateId || a?.id || '')
+  };
+}
 
 const presetCoverImages = [
   { name: 'Mindfulness Sunset', url: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600' },
@@ -261,23 +77,28 @@ const presetCoverImages = [
 ];
 
 export const ActivitiesView: React.FC = () => {
-  const [activitiesList, setActivitiesList] = useState<ActivityCardItem[]>(initialActivities);
+  // Only what the server stores: empty when the database has none, an error when it cannot be loaded
+  const [activitiesList, setActivitiesList] = useState<ActivityCardItem[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [loadError, setLoadError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' | 'error' } | null>(null);
 
   // Fetch live activities from MongoDB Atlas
   const fetchActivities = async () => {
     try {
       const data = await api.get('/api/admin/activities');
-      if (data?.activities && Array.isArray(data.activities) && data.activities.length > 0) {
-        setActivitiesList(data.activities);
-      }
-    } catch (err) {
+      setActivitiesList(Array.isArray(data?.activities) ? data.activities.map(toCard) : []);
+      setLoadState('ready');
+    } catch (err: any) {
       console.error('Error fetching activities:', err);
+      setLoadError(err?.message || 'Activities could not be loaded.');
+      setLoadState('error');
     }
   };
 
@@ -285,64 +106,59 @@ export const ActivitiesView: React.FC = () => {
     fetchActivities();
   }, []);
 
-  const [newActivityData, setNewActivityData] = useState({
+  const blankActivity = () => ({
     title: '',
     categoryTag: 'MINDFULNESS',
     difficulty: 'Easy' as 'Easy' | 'Medium' | 'Advanced',
     duration: '10 min',
     repeat: 'Daily',
-    clientName: 'Sarah Jenkins',
-    therapistName: 'Dr. Alex Harrison',
     description: '',
     imageUrl: presetCoverImages[0].url,
     customImageUrl: '',
     templateId: 'ACT-01'
   });
+  const [newActivityData, setNewActivityData] = useState(blankActivity);
 
-  const showToast = (text: string, type: 'success' | 'warning' = 'success') => {
+  // One timer for the current message: an older message's timer never hides a newer one
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (text: string, type: 'success' | 'warning' | 'error' = 'success') => {
     setToastMessage({ text, type });
-    setTimeout(() => setToastMessage(null), 4000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), type === 'error' ? 8000 : 4000);
   };
 
+  /** Shown or hidden only after the server saved it */
   const handleToggleVisibility = async (activityId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const item = activitiesList.find((a) => a.id === activityId);
     if (!item) return;
-
     const nextState = !item.isVisible;
-    setActivitiesList((prev) =>
-      prev.map((a) => (a.id === activityId ? { ...a, isVisible: nextState } : a))
-    );
-
+    try {
+      await api.put(`/api/admin/activities/${encodeURIComponent(activityId)}`, { isVisible: nextState });
+    } catch (err: any) {
+      showToast(`Visibility not changed for "${item.name}". ${err?.message || 'Please try again.'}`, 'error');
+      return;
+    }
+    setActivitiesList((prev) => prev.map((a) => (a.id === activityId ? { ...a, isVisible: nextState } : a)));
     showToast(
-      nextState
-        ? `Activity ${item.name} is now VISIBLE on platform!`
-        : `Activity ${item.name} is now HIDDEN from platform.`,
+      nextState ? `Activity ${item.name} is now VISIBLE on platform!` : `Activity ${item.name} is now HIDDEN from platform.`,
       nextState ? 'success' : 'warning'
     );
-
-    // Persist to MongoDB Atlas
-    try {
-      await api.put(`/api/admin/activities/${activityId}`, { isVisible: nextState });
-    } catch (err) {
-      console.error('Error toggling activity visibility in DB:', err);
-    }
   };
 
+  /** Asks first; removed from the list only after the server deleted it */
   const handleDeleteActivity = async (activityId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const target = activitiesList.find((a) => a.id === activityId);
-    setActivitiesList((prev) => prev.filter((a) => a.id !== activityId));
-    if (target) {
-      showToast(`Activity "${target.name}" permanently deleted.`, 'warning');
-    }
-
-    // Delete from MongoDB Atlas
+    if (!window.confirm(`Delete the activity "${target?.name || activityId}"? This cannot be undone.`)) return;
     try {
-      await api.delete(`/api/admin/activities/${activityId}`);
-    } catch (err) {
-      console.error('Error deleting activity from DB:', err);
+      await api.delete(`/api/admin/activities/${encodeURIComponent(activityId)}`);
+    } catch (err: any) {
+      showToast(`"${target?.name || activityId}" was not deleted. ${err?.message || 'Please try again.'}`, 'error');
+      return;
     }
+    setActivitiesList((prev) => prev.filter((a) => a.id !== activityId));
+    showToast(`Activity "${target?.name || activityId}" permanently deleted.`, 'warning');
   };
 
   const handleCopyFilePath = (filePath: string, e: React.MouseEvent) => {
@@ -351,8 +167,10 @@ export const ActivitiesView: React.FC = () => {
     showToast('Code path copied to clipboard!', 'success');
   };
 
+  /** Saved to the activity library; the card and success message appear only after the server stored it */
   const handleCreateActivitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreating) return;
     if (!newActivityData.title.trim()) {
       showToast('Please enter an activity title', 'warning');
       return;
@@ -360,11 +178,9 @@ export const ActivitiesView: React.FC = () => {
 
     const templateItem = activityCodeRegistry[newActivityData.templateId] || activityCodeRegistry['ACT-01'];
     const finalImage = newActivityData.customImageUrl.trim() || newActivityData.imageUrl;
-    const newId = `ACT-${Date.now().toString().slice(-4)}`;
-
-    const newActivityItem: ActivityCardItem = {
-      id: newId,
+    const payload = {
       name: newActivityData.title.trim(),
+      title: newActivityData.title.trim(),
       description: newActivityData.description.trim() || templateItem.description,
       filePath: templateItem.filePath,
       isVisible: true,
@@ -372,37 +188,22 @@ export const ActivitiesView: React.FC = () => {
       duration: newActivityData.duration,
       difficulty: newActivityData.difficulty,
       repeat: newActivityData.repeat,
-      assignedClientName: 'All Clients',
-      assignedTherapistName: 'Platform',
-      assignedInfo: `${newActivityData.repeat} Schedule`,
       imageUrl: finalImage,
       templateId: newActivityData.templateId
     };
 
-    setActivitiesList([newActivityItem, ...activitiesList]);
-    showToast(`Activity "${newActivityData.title}" created & saved!`, 'success');
-    setShowCreateModal(false);
-
-    // Persist to MongoDB Atlas
+    setIsCreating(true);
     try {
-      await api.post('/api/admin/activities', newActivityItem);
-    } catch (err) {
-      console.error('Error creating activity in DB:', err);
+      const data = await api.post('/api/admin/activities', payload);
+      setActivitiesList((prev) => [toCard(data?.activity || payload), ...prev]);
+      showToast(`Activity "${payload.name}" created & saved!`, 'success');
+      setShowCreateModal(false);
+      setNewActivityData(blankActivity());
+    } catch (err: any) {
+      showToast(`Activity not saved. ${err?.message || 'Please try again.'}`, 'error');
+    } finally {
+      setIsCreating(false);
     }
-
-    setNewActivityData({
-      title: '',
-      categoryTag: 'MINDFULNESS',
-      difficulty: 'Easy',
-      duration: '10 min',
-      repeat: 'Daily',
-      clientName: 'Sarah Jenkins',
-      therapistName: 'Dr. Alex Harrison',
-      description: '',
-      imageUrl: presetCoverImages[0].url,
-      customImageUrl: '',
-      templateId: 'ACT-01'
-    });
   };
 
   const filteredGames = activitiesList.filter((g) => {
@@ -430,9 +231,12 @@ export const ActivitiesView: React.FC = () => {
       {/* Toast Banner */}
       {toastMessage && (
         <div
+          role={toastMessage.type === 'error' ? 'alert' : 'status'}
           className={`fixed top-4 left-4 right-4 sm:left-auto sm:top-20 sm:right-8 sm:max-w-sm z-50 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl shadow-2xl flex items-center gap-3 border animate-in slide-in-from-top duration-300 ${
             toastMessage.type === 'success'
               ? 'bg-emerald-600 text-white border-emerald-500'
+              : toastMessage.type === 'error'
+              ? 'bg-rose-600 text-white border-rose-500'
               : 'bg-amber-600 text-white border-amber-500'
           }`}
         >
@@ -486,7 +290,7 @@ export const ActivitiesView: React.FC = () => {
                 className="w-full sm:w-auto px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#450bc8]/20 transition-all active:scale-95 whitespace-nowrap shrink-0"
               >
                 <Plus className="w-4 h-4" />
-                <span>Create & Assign Activity</span>
+                <span>Create Activity</span>
               </button>
             </div>
           </div>
@@ -515,7 +319,20 @@ export const ActivitiesView: React.FC = () => {
           {/* Activity Cards Grid */}
           {/* auto-fill adapts to the real content width (sidebar open or closed), not the viewport */}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-4 sm:gap-6">
-            {filteredGames.length === 0 ? (
+            {loadState === 'loading' ? (
+              <div className="col-span-full py-16 text-center text-slate-400 text-sm">Loading activities…</div>
+            ) : loadState === 'error' ? (
+              <div role="alert" className="col-span-full py-16 text-center bg-white rounded-3xl border border-rose-200 shadow-sm space-y-2">
+                <AlertCircle className="w-10 h-10 text-rose-400 mx-auto" />
+                <p className="font-extrabold text-slate-700 text-sm">Activities could not be loaded.</p>
+                <p className="text-xs text-rose-600">{loadError}</p>
+              </div>
+            ) : activitiesList.length === 0 ? (
+              <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+                <ActivityIcon className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="font-extrabold text-slate-700 text-sm mt-3">No activities yet. Click Create Activity to add one.</p>
+              </div>
+            ) : filteredGames.length === 0 ? (
               <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
                 <div className="max-w-xs mx-auto space-y-3">
                   <ActivityIcon className="w-10 h-10 text-slate-300 mx-auto" />
@@ -547,7 +364,7 @@ export const ActivitiesView: React.FC = () => {
                     {/* Top Image & Badges Container */}
                     <div className="relative h-40 sm:h-48 xl:h-52 w-full overflow-hidden bg-slate-100">
                       <img
-                        src={game.imageUrl}
+                        src={game.imageUrl || undefined}
                         alt={game.name}
                         className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
                           !isVisible ? 'grayscale-[40%]' : ''
@@ -796,8 +613,8 @@ export const ActivitiesView: React.FC = () => {
                   <Plus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-slate-900">Create & Assign Activity</h3>
-                  <p className="text-xs text-slate-400">Prescribe an exercise with custom details & frequency</p>
+                  <h3 className="font-extrabold text-base text-slate-900">Create Activity</h3>
+                  <p className="text-xs text-slate-400">Adds the exercise to the library; therapists assign it to their clients</p>
                 </div>
               </div>
               <button
@@ -813,7 +630,6 @@ export const ActivitiesView: React.FC = () => {
                 <label className="font-extrabold text-slate-700">Activity Title *</label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. Daily Somatic Breathing & Reflection"
                   value={newActivityData.title}
                   onChange={(e) => setNewActivityData({ ...newActivityData, title: e.target.value })}
@@ -942,9 +758,10 @@ export const ActivitiesView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md"
+                  disabled={isCreating}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md disabled:opacity-60"
                 >
-                  Create & Prescribe Activity
+                  {isCreating ? 'Saving…' : 'Create Activity'}
                 </button>
               </div>
             </form>

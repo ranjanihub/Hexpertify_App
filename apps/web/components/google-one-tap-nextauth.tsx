@@ -54,7 +54,6 @@ export function GoogleOneTapNextAuth() {
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const isPromptedRef = useRef(false);
-  const fedcmNoticeShownRef = useRef(false);
 
   // Suppress benign GSI / FedCM abort errors that trigger Next.js console error overlays
   useEffect(() => {
@@ -71,15 +70,10 @@ export function GoogleOneTapNextAuth() {
         return;
       }
       if (firstArg.includes("[GSI_LOGGER]") && firstArg.includes("FedCM")) {
-        // Google refused to issue the sign-in token (most often: this site's address is not an Authorized
-        // JavaScript origin of the Google OAuth client). Not an app crash: warn instead of the dev error overlay.
+        // Google refused to issue the sign-in token (blocked script or third-party cookies, an ad blocker, or this
+        // address is not an Authorized JavaScript origin). One Tap is an automatic prompt nobody asked for, so it
+        // fails quietly: no toast. The Google buttons on the sign-in screens report their own errors when pressed.
         console.warn(...args);
-        if (!fedcmNoticeShownRef.current) {
-          fedcmNoticeShownRef.current = true;
-          toast.error("Google sign-in is not available right now", {
-            description: "Please sign in with your email and password instead.",
-          });
-        }
         return;
       }
       if (firstArg.includes("[GSI_LOGGER]")) {

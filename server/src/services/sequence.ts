@@ -15,7 +15,9 @@ const KINDS = {
   client: {
     counter: 'clientNumber', collection: 'User', mirror: 'users', field: 'clientNumber', prefix: 'CL',
     only: { role: { $not: /^(admin|super_admin|therapist|consultant)$/i } }, tags: ['users']
-  }
+  },
+  // Therapist payout invoices (INV-00001), handed out by the server when a payout is released
+  payoutInvoice: { counter: 'payoutInvoiceNumber', collection: 'PayoutInvoice', mirror: '', field: 'invoiceNumber', prefix: 'INV', only: null, tags: ['payouts'] }
 } as const;
 
 export type SequenceKind = keyof typeof KINDS;
@@ -30,13 +32,46 @@ async function nextValue(kind: SequenceKind): Promise<number> {
   return Number((result?.value ?? result)?.seq) || 1;
 }
 
-const lastBackfill: Record<SequenceKind, number> = { booking: 0, payment: 0, client: 0 };
+/** Hands back a number nobody used, when it is still the last one given out (otherwise it stays a gap). */
+async function giveBack(kind: SequenceKind, n: number): Promise<void> {
+  await getDatabase()
+    .collection<{ _id: string; seq: number }>('Counter')
+    .updateOne({ _id: KINDS[kind].counter, seq: n }, { $inc: { seq: -1 } })
+    .catch(() => {});
+}
+
+/**
+ * The next unused number of a kind (e.g. INV-00012). The counter is atomic, so concurrent callers never
+ * get the same number; a number some older record already holds is skipped.
+ */
+export async function nextSequenceNumber(kind: SequenceKind): Promise<string> {
+  const { collection, field } = KINDS[kind];
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const value = format(kind, await nextValue(kind));
+    const taken = await getDatabase().collection(collection).findOne({ [field]: value }, { projection: { _id: 1 } });
+    if (!taken) return value;
+  }
+  throw new Error(`Could not allocate a new ${kind} number`);
+}
+
+const lastBackfill: Record<SequenceKind, number> = { booking: 0, payment: 0, client: 0, payoutInvoice: 0 };
 const running: Partial<Record<SequenceKind, Promise<void>>> = {};
+const followUp: Partial<Record<SequenceKind, Promise<void>>> = {};
 
 /** Numbers every record of this kind that has none yet, oldest first. Throttled unless `force`. */
 export async function numberMissing(kind: SequenceKind, force = false): Promise<void> {
   if (!force && Date.now() - lastBackfill[kind] < 60_000) return;
-  if (running[kind]) return running[kind];
+  if (running[kind]) {
+    if (!force) return running[kind];
+    // A record stored after the running pass looked for unnumbered ones gets one follow-up pass
+    if (!followUp[kind]) {
+      followUp[kind] = running[kind]!.catch(() => {}).then(() => {
+        delete followUp[kind];
+        return numberMissing(kind, true);
+      });
+    }
+    return followUp[kind];
+  }
   running[kind] = (async () => {
     const { collection, mirror, field, only, tags } = KINDS[kind];
     const db = getDatabase();
@@ -47,16 +82,25 @@ export async function numberMissing(kind: SequenceKind, force = false): Promise<
       .sort({ createdAt: 1, _id: 1 })
       .toArray();
     let numbered = 0;
+    // A number taken for a record that another pass numbered first is used for the next record, not dropped
+    let spare: number | null = null;
     for (const doc of missing) {
-      const value = format(kind, await nextValue(kind));
+      const n: number = spare ?? await nextValue(kind);
+      spare = null;
+      const value = format(kind, n);
       const set = await db
         .collection(collection)
         .updateOne({ _id: doc._id, ...unnumbered }, { $set: { [field]: value } });
-      if (set.modifiedCount) numbered++;
-      if (set.modifiedCount && mirror) {
+      if (!set.modifiedCount) {
+        spare = n;
+        continue;
+      }
+      numbered++;
+      if (mirror) {
         await db.collection(mirror).updateOne({ _id: doc._id }, { $set: { [field]: value } }).catch(() => {});
       }
     }
+    if (spare !== null) await giveBack(kind, spare);
     if (numbered) cacheService.invalidateTags([...tags]);
     lastBackfill[kind] = Date.now();
   })().finally(() => {

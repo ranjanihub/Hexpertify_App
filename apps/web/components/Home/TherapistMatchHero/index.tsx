@@ -216,7 +216,7 @@ export default function TherapistMatchHero({
                     </span>
                   </div>
                   {index < features.length - 1 ? (
-                    <span className="ml-3 hidden h-9 w-px bg-neutral-200 sm:ml-4 sm:block" />
+                    <span className="ml-3 hidden h-9 w-px bg-neutral-200 sm:ml-4 sm:block lg:hidden xl:block" />
                   ) : null}
                 </li>
               ))}

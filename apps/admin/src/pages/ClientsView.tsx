@@ -20,10 +20,11 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { useUrlSearch } from '../lib/global-search';
 import type { Client } from '../types';
 
 export const ClientsView: React.FC = () => {
-  const { clients, therapists, assignClientTherapist, deleteClient } = useAppContext();
+  const { clients, therapists, assignClientTherapist, deleteClient, refreshAllData } = useAppContext();
   // Client awaiting delete confirmation, and the result of the last delete
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -43,28 +44,36 @@ export const ClientsView: React.FC = () => {
     } catch (err: any) {
       // Not deleted (e.g. upcoming sessions): keep the dialog open and say why
       setDeleteError(err?.message || 'Could not delete this client. Please try again.');
+      // Already gone elsewhere ("User not found"): reload so the stale row disappears
+      refreshAllData();
     } finally {
       setIsDeleting(false);
     }
   };
   const [searchTerm, setSearchTerm] = useState('');
+  // Opened from the admin search (e.g. ?q=CL-00001): filter to that record
+  useUrlSearch(setSearchTerm);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [assigningClient, setAssigningClient] = useState<Client | null>(null);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string>('');
   const [therapistSearch, setTherapistSearch] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
 
+  // Plain substring search (no regex), ignoring spaces typed around the term
+  const term = searchTerm.trim().toLowerCase();
   const filteredClients = clients.filter((c) => {
     const matchesSearch =
-      (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.phone && c.phone.includes(searchTerm)) ||
-      (c.clientNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.assignedTherapistName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      (c.name || '').toLowerCase().includes(term) ||
+      (c.email || '').toLowerCase().includes(term) ||
+      Boolean(c.phone && c.phone.toLowerCase().includes(term)) ||
+      (c.clientNumber || '').toLowerCase().includes(term) ||
+      (c.id || '').toLowerCase().includes(term) ||
+      (c.assignedTherapistName || '').toLowerCase().includes(term);
     const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -75,6 +84,25 @@ export const ClientsView: React.FC = () => {
   }, [searchTerm, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredClients.length / itemsPerPage));
+  // After a delete empties the last page, step back to the new last page
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  /** The client's current therapist: by stored id, or by exact name only when no id is stored */
+  const isCurrentTherapist = (c: Client, t: { id: string; name: string }) => {
+    if (c.assignedTherapistId) return c.assignedTherapistId === t.id;
+    const name = (c.assignedTherapistName || '').trim().toLowerCase();
+    return Boolean(name) && t.name.trim().toLowerCase() === name;
+  };
+
+  const openAssign = (c: Client) => {
+    setAssignError(null);
+    setAssigningClient(c);
+    // Nothing is pre-selected for an unassigned client
+    setSelectedTherapistId(therapists.find((t) => isCurrentTherapist(c, t))?.id || '');
+  };
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedClients = filteredClients.slice(startIndex, startIndex + itemsPerPage);
 
@@ -99,7 +127,8 @@ export const ClientsView: React.FC = () => {
           <Users className="w-6 h-6 sm:w-8 sm:h-8 text-purple-200" />
           <div>
             <span className="text-[10px] sm:text-xs text-purple-200 block font-semibold">Total Registered Clients</span>
-            <span className="text-lg sm:text-2xl font-extrabold text-white">{clients.length} Active Records</span>
+            <span className="text-lg sm:text-2xl font-extrabold text-white">{clients.length} {clients.length === 1 ? 'Client' : 'Clients'}</span>
+            <span className="text-[10px] sm:text-xs text-purple-200 block font-semibold">{clients.filter((c) => c.status === 'Active').length} active</span>
           </div>
         </div>
       </div>
@@ -170,7 +199,7 @@ export const ClientsView: React.FC = () => {
                       <td className="py-4 px-6 space-y-0.5 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-1.5 font-semibold text-slate-800 text-xs">
                           <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{c.email || 'user@hexpertify.com'}</span>
+                          <span>{c.email || '—'}</span>
                         </div>
                         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
                           <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -208,11 +237,7 @@ export const ClientsView: React.FC = () => {
                             View Record
                           </button>
                           <button
-                            onClick={() => {
-                              setAssigningClient(c);
-                              const currentMatch = therapists.find(t => t.name.toLowerCase().includes((c.assignedTherapistName || '').toLowerCase()) || t.id === c.assignedTherapistId);
-                              setSelectedTherapistId(currentMatch?.id || therapists[0]?.id || '');
-                            }}
+                            onClick={() => openAssign(c)}
                             className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#450bc8] hover:text-[#3a0aa8] font-bold text-xs rounded-xl border border-purple-200 transition-all active:scale-95 cursor-pointer flex items-center gap-1"
                             title="Assign or Change Exclusive Consultant"
                           >
@@ -348,14 +373,20 @@ export const ClientsView: React.FC = () => {
                   <span className="px-2.5 py-0.5 bg-purple-100 text-[#450bc8] font-mono font-bold text-[11px] sm:text-xs rounded-full shrink-0">
                     {selectedClient.clientNumber || `ID: #${selectedClient.id}`}
                   </span>
-                  <span className="text-[11px] sm:text-xs px-2.5 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded-full shrink-0">
+                  <span className={`text-[11px] sm:text-xs px-2.5 py-0.5 font-bold rounded-full shrink-0 ${
+                    selectedClient.status === 'Active'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : selectedClient.status === 'Completed'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
                     {selectedClient.status}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium">
                   <span className="flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate max-w-[180px] sm:max-w-none">{selectedClient.email}</span>
+                    <span className="truncate max-w-[180px] sm:max-w-none">{selectedClient.email || '—'}</span>
                   </span>
                   <span className="flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -365,11 +396,7 @@ export const ClientsView: React.FC = () => {
                     <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Therapist: <strong className="text-slate-800">{selectedClient.assignedTherapistName || 'Not assigned'}</strong></span>
                     <button
-                      onClick={() => {
-                        setAssigningClient(selectedClient);
-                        const currentMatch = therapists.find(t => t.name.toLowerCase().includes((selectedClient.assignedTherapistName || '').toLowerCase()) || t.id === selectedClient.assignedTherapistId);
-                        setSelectedTherapistId(currentMatch?.id || therapists[0]?.id || '');
-                      }}
+                      onClick={() => openAssign(selectedClient)}
                       className="ml-2 px-2 py-0.5 text-[10px] bg-purple-100 hover:bg-purple-200 text-[#450bc8] rounded-lg font-bold border border-purple-200 cursor-pointer inline-flex items-center gap-1 transition-colors"
                       title="Reassign to another single consultant"
                     >
@@ -472,7 +499,7 @@ export const ClientsView: React.FC = () => {
                 .filter(t => !therapistSearch || t.name.toLowerCase().includes(therapistSearch.toLowerCase()) || (t.profession || '').toLowerCase().includes(therapistSearch.toLowerCase()))
                 .map((t) => {
                   const isSelected = selectedTherapistId === t.id;
-                  const isCurrent = (assigningClient.assignedTherapistId === t.id) || (t.name.toLowerCase().includes((assigningClient.assignedTherapistName || '').toLowerCase()));
+                  const isCurrent = isCurrentTherapist(assigningClient, t);
                   return (
                     <div
                       key={t.id}
@@ -512,6 +539,13 @@ export const ClientsView: React.FC = () => {
                 })}
             </div>
 
+            {assignError && (
+              <div role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{assignError}</span>
+              </div>
+            )}
+
             {/* Modal Actions */}
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
               <button
@@ -542,8 +576,9 @@ export const ClientsView: React.FC = () => {
                     }
                     setAssigningClient(null);
                     setTherapistSearch('');
-                  } catch (err) {
-                    console.error('Failed to assign consultant:', err);
+                  } catch (err: any) {
+                    // Not saved: keep the dialog open and say why
+                    setAssignError(err?.message || 'Could not save the assignment. Please try again.');
                   } finally {
                     setIsAssigning(false);
                   }

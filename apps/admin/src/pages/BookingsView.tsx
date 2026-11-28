@@ -26,8 +26,8 @@ import {
   Edit,
   Save
 } from 'lucide-react';
-import { mockTherapists } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import { useUrlSearch } from '../lib/global-search';
 import type { Booking } from '../types';
 
 /** Display labels → the canonical statuses the Backend stores */
@@ -152,6 +152,8 @@ export const BookingsView: React.FC = () => {
   const { bookings, therapists, clients, refreshAllData } = useAppContext();
   const [bookingsList, setBookingsList] = useState<Booking[]>(bookings);
   const [searchTerm, setSearchTerm] = useState('');
+  // Opened from the admin search (e.g. ?q=CL-00001): filter to that record
+  useUrlSearch(setSearchTerm);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -172,38 +174,20 @@ export const BookingsView: React.FC = () => {
     return { service: s?.serviceName || '', amount: Number(s?.sessionFee) || 0 };
   };
 
+  // The server's list is the truth, also when it becomes empty (the last booking removed elsewhere)
   React.useEffect(() => {
-    if (bookings && bookings.length > 0) {
-      setBookingsList(bookings);
-    }
+    setBookingsList(Array.isArray(bookings) ? bookings : []);
   }, [bookings]);
 
+  /** The therapist's profession from live data only: the booking itself, else the therapist with that id or exact name */
   const getTherapistProfession = (booking: Booking): string => {
     if (booking.therapistProfession) return booking.therapistProfession;
     const byId = booking.consultantId ? therapists.find((t) => t.id === booking.consultantId) : undefined;
-    if (byId?.profession) return byId.profession;
-    if (!booking.therapistName) return 'Consultant';
-
-    const cleanName = booking.therapistName.trim().toLowerCase();
-    
-    // 1. Exact match in context therapists or mockTherapists
-    const exactMatch = therapists.find((t) => t.name.trim().toLowerCase() === cleanName) ||
-                       mockTherapists.find((t) => t.name.trim().toLowerCase() === cleanName);
-    if (exactMatch?.profession) return exactMatch.profession;
-
-    // 2. Partial/normalized match (ignoring titles)
-    const normName = cleanName.replace(/^(dr\.?|therapist|psychologist)\s+/i, '');
-    const partialMatch = therapists.find((t) => {
-      const tNorm = t.name.trim().toLowerCase().replace(/^(dr\.?|therapist|psychologist)\s+/i, '');
-      return tNorm === normName || tNorm.includes(normName) || normName.includes(tNorm);
-    }) || mockTherapists.find((t) => {
-      const tNorm = t.name.trim().toLowerCase().replace(/^(dr\.?|therapist|psychologist)\s+/i, '');
-      return tNorm === normName || tNorm.includes(normName) || normName.includes(tNorm);
-    });
-
-    if (partialMatch?.profession) return partialMatch.profession;
-
-    return 'Consultant';
+    if (byId) return byId.profession || 'Consultant';
+    const cleanName = (booking.therapistName || '').trim().toLowerCase();
+    const sameName = cleanName ? therapists.filter((t) => t.name.trim().toLowerCase() === cleanName) : [];
+    // Two therapists with the same name: don't guess
+    return sameName.length === 1 && sameName[0].profession ? sameName[0].profession : 'Consultant';
   };
 
   const getBookingService = (booking: Booking): string => {
@@ -213,14 +197,13 @@ export const BookingsView: React.FC = () => {
     return '1-on-1 Consultation';
   };
 
+  /** The booking's own client email, else the client account it belongs to (by id): email or real client number */
   const getClientIdentifier = (booking: Booking): string => {
-    const match = clients.find(
-      (c) => c.name.trim().toLowerCase() === booking.clientName.trim().toLowerCase() ||
-             c.id === (booking as any).userId ||
-             c.id === (booking as any).clientId
-    );
+    if (booking.clientEmail) return booking.clientEmail;
+    const clientId = booking.clientId || (booking as any).userId;
+    const match = clientId ? clients.find((c) => c.id === clientId) : undefined;
     if (match?.email) return match.email;
-    if (match?.id) return `ID: CL-${match.id.startsWith('CL-') ? match.id.replace('CL-', '') : match.id.slice(-4).toUpperCase()}`;
+    if (match?.clientNumber) return match.clientNumber;
     return 'Client';
   };
 
@@ -233,10 +216,13 @@ export const BookingsView: React.FC = () => {
   // Cancel Modal state
   const [cancelBookingTarget, setCancelBookingTarget] = useState<Booking | null>(null);
   const [cancelReason, setCancelReason] = useState('Client Request');
-  const [refundOption, setRefundOption] = useState('Full Refund');
+  const [refundOption, setRefundOption] = useState('no-refund');
+
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Delete Modal state
   const [deletingBookingTarget, setDeletingBookingTarget] = useState<Booking | null>(null);
+  const [isCreatingBooking, setIsCreatingBooking] = useState(false);
 
   // New Manual Booking state
   const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false);
@@ -270,9 +256,12 @@ export const BookingsView: React.FC = () => {
   // Toast Notification state
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' } | null>(null);
 
+  // A newer message restarts the timer, so an older one's timer never hides it early
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (text: string, type: 'success' | 'warning' = 'success') => {
     setToastMessage({ text, type });
-    setTimeout(() => setToastMessage(null), 4000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), type === 'warning' ? 8000 : 4000);
   };
 
   const handleOpenInspect = (booking: Booking, startEditing = false) => {
@@ -359,37 +348,10 @@ export const BookingsView: React.FC = () => {
     if (!booking) return false;
     // Website bookings are paid first; scheduling them is always allowed
     if (booking.toBeScheduled) return true;
-    if (!booking.date) return false;
-    try {
-      const startTimeStr = booking.time ? booking.time.split('-')[0].trim() : '00:00 AM';
-      const dateParts = booking.date.split('-');
-      if (dateParts.length !== 3) return false;
-      const year = parseInt(dateParts[0], 10);
-      const month = parseInt(dateParts[1], 10) - 1;
-      const day = parseInt(dateParts[2], 10);
-
-      const timeMatch = startTimeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      let hours = 0;
-      let minutes = 0;
-
-      if (timeMatch) {
-        hours = parseInt(timeMatch[1], 10);
-        minutes = parseInt(timeMatch[2], 10);
-        const period = timeMatch[3].toUpperCase();
-        if (period === 'PM' && hours < 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
-      }
-
-      const appointmentDate = new Date(year, month, day, hours, minutes);
-      const now = new Date();
-
-      const diffInMs = appointmentDate.getTime() - now.getTime();
-      const diffInHours = diffInMs / (1000 * 60 * 60);
-
-      return diffInHours >= 3;
-    } catch {
-      return false;
-    }
+    // Session labels are India time, so the start is computed in IST whatever the admin's own timezone is
+    const startMs = sessionStartMs(booking.date, booking.time);
+    if (startMs === null) return false;
+    return (startMs - Date.now()) / (1000 * 60 * 60) >= 3;
   };
 
   const handleOpenReschedule = (booking: Booking, e?: React.MouseEvent) => {
@@ -423,7 +385,9 @@ export const BookingsView: React.FC = () => {
       await api.put(`/api/admin/bookings/${rescheduleBooking.id}`, {
         date: newDate,
         time: newTime,
-        ...(firstSchedule ? {} : { status: 'RESCHEDULED' })
+        ...(firstSchedule ? {} : { status: 'RESCHEDULED' }),
+        // Kept on the booking with the new time
+        ...(rescheduleReason.trim() ? { rescheduleReason: rescheduleReason.trim() } : {})
       });
 
       setBookingsList((prev) =>
@@ -438,66 +402,76 @@ export const BookingsView: React.FC = () => {
       setRescheduleBooking(null);
 
       await refreshAllData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error rescheduling booking in DB:', err);
-      showToast('Failed to reschedule booking in database', 'warning');
+      showToast(`Booking not rescheduled: ${err?.message || 'the server could not save it'}`, 'warning');
     }
   };
+
+  /** Paid online and still holding money: refunds go back through the payment gateway */
+  const isGatewayRefundable = (b: Booking) =>
+    Boolean(b.paymentId) && ['Paid', 'Partially Refunded', 'Refund Pending'].includes(b.paymentStatus);
+  /** Recorded as paid by an admin (no gateway payment): a refund is made outside Hexpertify and only recorded here */
+  const isManuallyPaid = (b: Booking) => !b.paymentId && ['Paid', 'Pending Payout', 'Partially Refunded'].includes(b.paymentStatus);
 
   const handleOpenCancel = (booking: Booking, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setCancelBookingTarget(booking);
     setCancelReason('Client Request');
-    setRefundOption(`Full Refund (₹${booking.amount})`);
+    setRefundOption(isGatewayRefundable(booking) ? 'gateway-refund' : isManuallyPaid(booking) ? 'record-refund' : 'no-refund');
   };
 
+  /**
+   * Cancels first, then refunds: a failed cancel never leaves money returned for a session that still stands,
+   * and a failed refund leaves a cancelled booking whose refund can be retried from Transactions. The toast
+   * says exactly which steps went through.
+   */
   const handleConfirmCancel = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cancelBookingTarget) return;
+    if (!cancelBookingTarget || isCancelling) return;
+    const target = cancelBookingTarget;
+    const gatewayRefund = refundOption === 'gateway-refund' && isGatewayRefundable(target);
+    const recordRefund = refundOption === 'record-refund' && isManuallyPaid(target);
 
-    const wantsFullRefund = refundOption.startsWith('Full Refund');
-    // Bookings paid online are refunded through the gateway; the backend then updates their payment status
-    const isGatewayPaid =
-      Boolean(cancelBookingTarget.paymentId) &&
-      ['Paid', 'Partially Refunded'].includes(cancelBookingTarget.paymentStatus);
-
-    const cancelledBooking: Booking = {
-      ...cancelBookingTarget,
-      status: 'Cancelled',
-      paymentStatus: wantsFullRefund
-        ? (isGatewayPaid ? 'Refund Pending' : 'Refunded')
-        : cancelBookingTarget.paymentStatus
-    };
-
+    setIsCancelling(true);
+    // 1. Cancel the booking (sends the usual cancellation emails)
     try {
-      if (wantsFullRefund && isGatewayPaid) {
-        await refundPayment(cancelBookingTarget.paymentId as string, {
-          reason: `Booking cancelled: ${cancelReason}`
-        });
-      }
-
-      await api.put(`/api/admin/bookings/${cancelBookingTarget.id}`, {
+      await api.put(`/api/admin/bookings/${target.id}`, {
         status: 'CANCELLED',
-        ...(wantsFullRefund && !isGatewayPaid ? { paymentStatus: 'REFUNDED' } : {}),
+        ...(recordRefund ? { paymentStatus: 'REFUNDED' } : {}),
         cancelReason
       });
-
-      setBookingsList((prev) =>
-        prev.map((b) => (b.id === cancelBookingTarget.id ? cancelledBooking : b))
-      );
-
-      if (selectedBooking && selectedBooking.id === cancelBookingTarget.id) {
-        setSelectedBooking(cancelledBooking);
-      }
-
-      showToast(`Booking ${cancelBookingTarget.bookingCode} cancelled in database. (${cancelReason} - ${refundOption})`, 'warning');
-      setCancelBookingTarget(null);
-
-      await refreshAllData();
     } catch (err: any) {
       console.error('Error cancelling booking in DB:', err);
-      showToast(err?.message ? `Cancellation failed: ${err.message}` : 'Failed to cancel booking in database', 'warning');
+      showToast(`Booking not cancelled: ${err?.message || 'the server could not save it'}. No refund was made.`, 'warning');
+      setIsCancelling(false);
+      return;
     }
+
+    // 2. Refund through the gateway, only once the cancellation is saved
+    let refundNote = recordRefund ? ' Marked as refunded (make the refund to the client yourself).' : '';
+    let refundFailed = false;
+    if (gatewayRefund) {
+      try {
+        await refundPayment(target.paymentId as string, { reason: `Booking cancelled: ${cancelReason}` });
+        refundNote = ' Refund of the remaining amount sent to the payment gateway (Refund Pending).';
+      } catch (err: any) {
+        refundFailed = true;
+        refundNote = ` The booking IS cancelled, but the refund FAILED: ${err?.message || 'gateway error'}. Retry it from Transactions.`;
+      }
+    }
+
+    const cancelledBooking: Booking = {
+      ...target,
+      status: 'Cancelled',
+      paymentStatus: recordRefund ? 'Refunded' : gatewayRefund && !refundFailed ? 'Refund Pending' : target.paymentStatus
+    };
+    setBookingsList((prev) => prev.map((b) => (b.id === target.id ? cancelledBooking : b)));
+    if (selectedBooking && selectedBooking.id === target.id) setSelectedBooking(cancelledBooking);
+    showToast(`Booking ${target.bookingCode} cancelled (${cancelReason}).${refundNote}`, refundFailed ? 'warning' : 'success');
+    setCancelBookingTarget(null);
+    setIsCancelling(false);
+    await refreshAllData();
   };
 
   const handleConfirmDeleteBooking = async (bookingId: string) => {
@@ -513,14 +487,16 @@ export const BookingsView: React.FC = () => {
       showToast(`Booking ${target?.bookingCode || bookingId} permanently deleted.`, 'warning');
 
       await refreshAllData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting booking from DB:', err);
-      showToast('Failed to delete booking from database', 'warning');
+      setDeletingBookingTarget(null);
+      showToast(`Booking not deleted: ${err?.message || 'the server refused'}`, 'warning');
     }
   };
 
   const handleCreateManualBooking = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreatingBooking) return;
     const selectedTherapist = therapists.find((t) => t.name === newBooking.therapistName);
     const selectedClient = clients.find((c) => c.name.toLowerCase() === newBooking.clientName.toLowerCase());
 
@@ -547,21 +523,19 @@ export const BookingsView: React.FC = () => {
     const typedAmount = Number(newBooking.amount);
     if (Number.isFinite(typedAmount) && typedAmount > 0) payload.amount = typedAmount;
 
+    // One request at a time: a second click while saving does nothing (no duplicate bookings)
+    setIsCreatingBooking(true);
     try {
-      const data = await api.post('/api/admin/bookings', payload);
-
-      if (data?.booking) {
-        setBookingsList((prev) => [data.booking, ...prev]);
-      }
-      showToast(`Booking created and saved!`, 'success');
-      setIsNewBookingModalOpen(false);
-
-      await refreshAllData();
-    } catch (err) {
+      await api.post('/api/admin/bookings', payload);
+    } catch (err: any) {
+      // The form stays open with everything the admin typed
       console.error('Error creating booking:', err);
-      showToast('Failed to create booking in database', 'warning');
+      showToast(`Booking not created: ${err?.message || 'the server could not save it'}`, 'warning');
+      setIsCreatingBooking(false);
+      return;
     }
 
+    showToast('Booking created and saved!', 'success');
     setIsNewBookingModalOpen(false);
     setNewBooking({
       clientName: '',
@@ -573,10 +547,18 @@ export const BookingsView: React.FC = () => {
       paymentStatus: 'Paid',
       status: 'Scheduled'
     });
+    setIsCreatingBooking(false);
+    // The list is reloaded from the server (the new booking appears in the server's own shape)
+    await refreshAllData();
   };
 
   const handleExportCSV = () => {
-    const dataToExport = filteredBookings.length > 0 ? filteredBookings : bookingsList;
+    // Exactly what the current search and status filter show; an empty result exports nothing
+    const dataToExport = filteredBookings;
+    if (dataToExport.length === 0) {
+      showToast('No bookings match the current filter, so there is nothing to export.', 'warning');
+      return;
+    }
 
     const headers = [
       'Booking ID',
@@ -594,18 +576,9 @@ export const BookingsView: React.FC = () => {
     const csvRows = [
       headers.join(','),
       ...dataToExport.map((b) =>
-        [
-          `"${b.id}"`,
-          `"${b.bookingCode}"`,
-          `"${b.clientName.replace(/"/g, '""')}"`,
-          `"${b.therapistName.replace(/"/g, '""')}"`,
-          `"${b.service.replace(/"/g, '""')}"`,
-          `"${b.date}"`,
-          `"${b.time}"`,
-          `"${b.amount}"`,
-          `"${b.paymentStatus}"`,
-          `"${b.status}"`
-        ].join(',')
+        [b.id, b.bookingCode, b.clientName, b.therapistName, b.service, b.toBeScheduled ? 'To be scheduled' : b.date, b.toBeScheduled ? '' : b.time, b.amount, b.paymentStatus, b.status]
+          .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+          .join(',')
       )
     ];
 
@@ -762,7 +735,7 @@ export const BookingsView: React.FC = () => {
               }}
               className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-extrabold text-slate-800 outline-none focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 appearance-none cursor-pointer transition-all"
             >
-              {['All', 'Scheduled', 'Completed', 'Rescheduled', 'Cancelled', 'No Show - Client', 'No Show - Consultant'].map((status) => {
+              {['All', 'Scheduled', 'Completed', 'Rescheduled', 'Cancelled', 'No Show - Client', 'No Show - Consultant', 'Pending', 'Pending Payment', 'Expired'].map((status) => {
                 const count = getStatusCount(status);
                 return (
                   <option key={status} value={status}>
@@ -1495,17 +1468,31 @@ export const BookingsView: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-700">Refund Processing</label>
+                {/* Only what really happens: there is no platform wallet */}
                 <select
                   value={refundOption}
                   onChange={(e) => setRefundOption(e.target.value)}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-rose-500 focus:bg-white"
                 >
-                  <option value={`Full Refund (₹${cancelBookingTarget.amount})`}>
-                    Full Refund (₹{cancelBookingTarget.amount}) - Original Payment Method
+                  {isGatewayRefundable(cancelBookingTarget) && (
+                    <option value="gateway-refund">
+                      Refund ₹{cancelBookingTarget.amount}{cancelBookingTarget.paymentStatus === 'Partially Refunded' ? ' (remaining amount)' : ''} to the original payment method
+                    </option>
+                  )}
+                  {isManuallyPaid(cancelBookingTarget) && (
+                    <option value="record-refund">Mark as refunded (I refund the client myself)</option>
+                  )}
+                  <option value="no-refund">
+                    {isGatewayRefundable(cancelBookingTarget) || isManuallyPaid(cancelBookingTarget) ? 'No refund (cancellation policy)' : 'No refund (nothing was paid)'}
                   </option>
-                  <option value="Platform Wallet Credit">Platform Wallet Credit</option>
-                  <option value="No Refund (Policy Violation)">No Refund (Less than 2 hrs notice)</option>
                 </select>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  {refundOption === 'gateway-refund'
+                    ? 'The booking is cancelled first, then the refund is sent through the payment gateway.'
+                    : refundOption === 'record-refund'
+                    ? 'This payment was recorded by an admin, not taken online: Hexpertify cannot send the money back. Refund the client yourself.'
+                    : 'The booking is cancelled and no money is returned.'}
+                </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
@@ -1518,9 +1505,10 @@ export const BookingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-extrabold text-xs shadow-md shadow-rose-600/30"
+                  disabled={isCancelling}
+                  className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white rounded-xl font-extrabold text-xs shadow-md shadow-rose-600/30"
                 >
-                  Confirm Cancellation
+                  {isCancelling ? 'Cancelling…' : 'Confirm Cancellation'}
                 </button>
               </div>
             </form>
@@ -1539,7 +1527,9 @@ export const BookingsView: React.FC = () => {
             <div className="space-y-1">
               <h4 className="text-lg font-extrabold text-slate-900">Delete Booking Record?</h4>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to delete booking <span className="font-mono font-bold text-slate-800">{deletingBookingTarget.bookingCode}</span> ({deletingBookingTarget.clientName})? This action will permanently purge it from super admin records.
+                {isGatewayRefundable(deletingBookingTarget) || isManuallyPaid(deletingBookingTarget) || deletingBookingTarget.paymentStatus === 'Refund Pending'
+                  ? <>Booking <span className="font-mono font-bold text-slate-800">{deletingBookingTarget.bookingCode}</span> ({deletingBookingTarget.clientName}) has a payment recorded, so it cannot be deleted. Cancel it instead (with a refund if needed); the booking stays in the records.</>
+                  : <>Are you sure you want to delete booking <span className="font-mono font-bold text-slate-800">{deletingBookingTarget.bookingCode}</span> ({deletingBookingTarget.clientName})? This permanently removes it; the deletion is recorded in the audit log.</>}
               </p>
             </div>
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -1548,15 +1538,17 @@ export const BookingsView: React.FC = () => {
                 onClick={() => setDeletingBookingTarget(null)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
               >
-                Cancel
+                {isGatewayRefundable(deletingBookingTarget) || isManuallyPaid(deletingBookingTarget) || deletingBookingTarget.paymentStatus === 'Refund Pending' ? 'Close' : 'Cancel'}
               </button>
-              <button
-                type="button"
-                onClick={() => handleConfirmDeleteBooking(deletingBookingTarget.id)}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md"
-              >
-                Confirm Permanent Delete
-              </button>
+              {!(isGatewayRefundable(deletingBookingTarget) || isManuallyPaid(deletingBookingTarget) || deletingBookingTarget.paymentStatus === 'Refund Pending') && (
+                <button
+                  type="button"
+                  onClick={() => handleConfirmDeleteBooking(deletingBookingTarget.id)}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md"
+                >
+                  Confirm Permanent Delete
+                </button>
+              )}
             </div>
           </div>
         </div>,
@@ -1728,10 +1720,11 @@ export const BookingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold shadow-md shadow-[#450bc8]/20 transition-all active:scale-95 flex items-center gap-1.5"
+                  disabled={isCreatingBooking}
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-60 disabled:cursor-wait text-white rounded-xl font-extrabold shadow-md shadow-[#450bc8]/20 transition-all active:scale-95 flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Create Booking</span>
+                  <span>{isCreatingBooking ? 'Creating…' : 'Create Booking'}</span>
                 </button>
               </div>
             </form>
