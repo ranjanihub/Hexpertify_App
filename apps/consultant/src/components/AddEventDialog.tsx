@@ -210,7 +210,7 @@ export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddS
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden short:overflow-y-auto rounded-2xl">
         {/* Purple header */}
         <div className="bg-primary px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 text-white shrink-0">
           <DialogHeader>
@@ -245,7 +245,7 @@ export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddS
         </div>
 
         {/* Form body */}
-        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-4 sm:space-y-5 flex-1 min-h-0 overflow-y-auto max-h-[60vh]">
+        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-4 sm:space-y-5 flex-1 min-h-0 overflow-y-auto max-h-[60vh] short:shrink-0 short:overflow-visible short:max-h-none">
           {isSession ? (
             <div className="space-y-1.5">
               <Label>Client <span className="text-destructive">*</span></Label>

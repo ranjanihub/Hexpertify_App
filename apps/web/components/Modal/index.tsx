@@ -15,7 +15,7 @@ const ModalComp = ({ open, setOpen, children, width = "700px" }: Props) => {
       transition-opacity duration-300 ease-in-out 
       ${open ? "opacity-100 visible" : "opacity-0 invisible"}`}
     >
-      <div className="flex w-[800px] justify-end items-center">
+      <div className="flex w-full max-w-[800px] px-4 justify-end items-center">
         <IoClose
           onClick={() => setOpen(false)}
           size={40}
@@ -25,7 +25,7 @@ const ModalComp = ({ open, setOpen, children, width = "700px" }: Props) => {
       </div>
       {/* Modal box */}
       <div
-        className={`bg-white rounded-[32px] p-[30px] transform transition-all duration-300 ease-in-out 
+        className={`bg-white rounded-[32px] p-5 sm:p-[30px] max-w-[calc(100%-2rem)] max-h-[85dvh] overflow-y-auto transform transition-all duration-300 ease-in-out 
         ${open ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
       >
         {children}

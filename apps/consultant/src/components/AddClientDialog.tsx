@@ -167,7 +167,7 @@ export default function AddClientDialog({ open, onOpenChange }: AddClientDialogP
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden short:overflow-y-auto rounded-2xl">
         {/* Purple header */}
         <div className="bg-primary px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 text-white shrink-0">
           <DialogHeader>
@@ -207,7 +207,7 @@ export default function AddClientDialog({ open, onOpenChange }: AddClientDialogP
         </div>
 
         {/* Step content */}
-        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-5 flex-1 min-h-0 overflow-y-auto max-h-[60vh]">
+        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-5 flex-1 min-h-0 overflow-y-auto max-h-[60vh] short:shrink-0 short:overflow-visible short:max-h-none">
           {step === 1 && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">

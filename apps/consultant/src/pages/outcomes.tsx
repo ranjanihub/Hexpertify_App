@@ -247,8 +247,8 @@ export default function Outcomes() {
           </div>
 
           {/* Outcomes: latest score compared with the one before it */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Latest changes</h3>
                 <p className="text-xs text-slate-500 font-medium">Each client's newest score on a scale, compared with their previous one</p>

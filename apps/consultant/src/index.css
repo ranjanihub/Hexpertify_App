@@ -4,6 +4,8 @@
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
+/* Short screens (phones in landscape): `short:` applies when the window is at most 500px tall */
+@custom-variant short (@media (max-height: 500px));
 
 /* The website's purple (#450bc8): Tailwind's purple-* classes use it instead of the default magenta-purple */
 @theme {

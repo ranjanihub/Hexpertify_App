@@ -490,7 +490,7 @@ export default function Resources() {
         {selectedResource && (
           <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[92vh] flex flex-col overflow-y-auto p-0 rounded-2xl gap-0">
             {/* Header Image */}
-            <div className="relative h-40 sm:h-56 [@media(max-height:500px)]:h-32 shrink-0 w-full overflow-hidden bg-slate-100">
+            <div className="relative h-40 sm:h-56 short:h-32 shrink-0 w-full overflow-hidden bg-slate-100">
               <img
                 src={selectedResource.imageUrl}
                 alt={selectedResource.title}
@@ -539,7 +539,7 @@ export default function Resources() {
               </div>
 
               {/* Action buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-border">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-border">
                 <Button
                   variant="outline"
                   size="sm"

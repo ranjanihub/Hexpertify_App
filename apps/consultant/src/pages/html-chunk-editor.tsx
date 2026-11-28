@@ -373,7 +373,7 @@ export default function HtmlChunkEditor() {
         {/* TAB 1: Builder & Chunks */}
         <TabsContent value="builder" className="space-y-6">
           {/* Page Details Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-4">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-4">
             <h3 className="text-base font-extrabold text-gray-900 border-b border-border pb-3">Basic Page Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -434,7 +434,7 @@ export default function HtmlChunkEditor() {
           </div>
 
           {/* SEO Metadata Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-gray-900 border-b border-border pb-3">SEO Metadata</h3>
               <p className="text-xs text-muted-foreground mt-1">Configure search engine titles, descriptions, and indexing parameters.</p>
@@ -488,7 +488,7 @@ export default function HtmlChunkEditor() {
           </div>
 
           {/* Open Graph (Social Media) Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-gray-900 border-b border-border pb-3">Open Graph (Social Media)</h3>
               <p className="text-xs text-muted-foreground mt-1">
@@ -556,7 +556,7 @@ export default function HtmlChunkEditor() {
           </div>
 
           {/* Structured Data Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-gray-900 border-b border-border pb-3">Structured Data</h3>
               <p className="text-xs text-muted-foreground mt-1">
@@ -586,7 +586,7 @@ export default function HtmlChunkEditor() {
           </div>
 
           {/* Preset Library Palette */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-4">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-gray-900">Preset HTML Chunk Library</h3>
@@ -713,7 +713,7 @@ export default function HtmlChunkEditor() {
         {/* TAB 2: SEO Settings */}
         <TabsContent value="seo" className="space-y-6">
           {/* Basic Page Information Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-4">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-4">
             <h3 className="text-base font-extrabold text-gray-900 border-b border-border pb-3">Basic Page Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -760,7 +760,7 @@ export default function HtmlChunkEditor() {
           </div>
 
           {/* SEO Metadata Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-gray-900">SEO Metadata</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Optimize for search engines</p>
@@ -814,7 +814,7 @@ export default function HtmlChunkEditor() {
           </div>
 
           {/* Open Graph (Social Media) Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-gray-900">Open Graph (Social Media)</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -882,7 +882,7 @@ export default function HtmlChunkEditor() {
           </div>
 
           {/* Structured Data Card */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-gray-900">Structured Data</h3>
               <p className="text-xs text-muted-foreground mt-0.5">

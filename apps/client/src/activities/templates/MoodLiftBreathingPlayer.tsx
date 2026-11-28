@@ -1143,7 +1143,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Box Breathing?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             Box breathing is a powerful breathing technique that follows a simple 4-4-4-4 pattern: breathe in for 4 seconds, hold for 4 seconds, breathe out for 4 seconds, and hold for 4 seconds. This rhythmic pattern helps regulate your nervous system and brings balance to your mind and body. It's commonly used by athletes, military personnel, and wellness practitioners to manage stress and improve focus.
           </p>
         </div>
@@ -1155,7 +1155,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
               <Square className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Follow the 4 equal sides of the square to reset your autonomic nervous system.
             </p>
           </div>
@@ -1172,7 +1172,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                   4 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Slowly inhale through your nose, expanding your diaphragm and filling your lungs with fresh oxygen.
               </p>
             </div>
@@ -1188,7 +1188,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                   4 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Hold your breath to allow oxygen to circulate through your body, activating the parasympathetic nervous system.
               </p>
             </div>
@@ -1204,7 +1204,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                   4 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Gently exhale through your mouth, releasing tension and stress from your body.
               </p>
             </div>
@@ -1220,7 +1220,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                   4 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Hold before beginning the cycle again, allowing your body to settle into a calm state.
               </p>
             </div>
@@ -1234,7 +1234,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Key physiological and psychological benefits of structured box breathing.
             </p>
           </div>
@@ -1248,7 +1248,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Reduces Anxiety</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Activates your vagus nerve, triggering a relaxation response and calming anxious thoughts.
               </p>
             </div>
@@ -1261,7 +1261,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Enhances Focus</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Calms your nervous system, allowing you to regain clarity and sharpen concentration.
               </p>
             </div>
@@ -1274,7 +1274,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Lowers Heart Rate</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Helps regulate blood pressure and heart rate during high-stress moments.
               </p>
             </div>
@@ -1287,7 +1287,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Deepens Relaxation</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Promotes emotional stability and resilience by clearing stress hormones.
               </p>
             </div>
@@ -1299,7 +1299,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             Box breathing is a fast, powerful way to regain composure under pressure. Regular practice builds autonomic control and mental resilience.
           </p>
         </div>
@@ -1778,7 +1778,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is 4-7-8 Breathing?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             4-7-8 breathing is a rhythmic mindfulness technique backed by relaxation response science. This powerful breathing pattern follows a 4-7-8 rhythm: inhale for 4 seconds, hold for 7 seconds, and exhale for 8 seconds. For best results, practice for 2 - 3 minutes. The extended exhale activates your parasympathetic nervous system, shifting your body from stress mode to calm mode.
           </p>
         </div>
@@ -1790,7 +1790,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
               <Triangle className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Follow the 3 distinct phases along each side of the triangle to calm your mind and body.
             </p>
           </div>
@@ -1807,7 +1807,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                   4 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Breathe in slowly through your nose, filling your lungs completely with fresh oxygen.
               </p>
             </div>
@@ -1823,7 +1823,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                   7 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Retain your breath gently, allowing oxygen to circulate and calm your nervous system.
               </p>
             </div>
@@ -1839,7 +1839,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                   8 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Slowly release your breath through your mouth with a sigh, letting tension flow out of your body.
               </p>
             </div>
@@ -1853,7 +1853,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Key physiological and psychological benefits of 4-7-8 breathing.
             </p>
           </div>
@@ -1867,7 +1867,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Reduces Anxiety</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 The extended exhale activates your vagus nerve, triggering immediate calming responses.
               </p>
             </div>
@@ -1880,7 +1880,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Improves Sleep</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Regular practice helps regulate your sleep-wake cycle and promotes deeper rest.
               </p>
             </div>
@@ -1893,7 +1893,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Enhances Focus</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Calming your nervous system increases mental clarity and concentration.
               </p>
             </div>
@@ -1906,7 +1906,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Deepens Mindfulness</h4>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Regular practice builds your ability to stay present and aware.
               </p>
             </div>
@@ -1918,7 +1918,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             By practicing 4-7-8 breathing regularly, you train your nervous system to shift quickly into relaxation. Just 2 to 3 minutes can ease anxiety, improve sleep quality, and bring clarity to your day.
           </p>
         </div>
@@ -2449,7 +2449,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Alternate Nostril Breathing?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             Alternate Nostril Breathing is a mindfulness breathwork practice designed to balance the sympathetic and parasympathetic branches of the nervous system. By systematically alternating airflow between the left nostril (calming channel) and right nostril (focus channel), this technique synchronizes both cerebral hemispheres, quiets mental chatter, and promotes deep autonomic harmony.
           </p>
         </div>
@@ -2461,7 +2461,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               <Wind className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Use your right hand: place your thumb to close the right nostril and ring finger for the left nostril.
             </p>
           </div>
@@ -2478,7 +2478,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
                   5 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Close your right nostril with your thumb and inhale smoothly through your left nostril, stimulating parasympathetic and calming neural networks.
               </p>
             </div>
@@ -2494,7 +2494,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
                   2 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Close both nostrils gently with your thumb and ring finger. Rest in effortless stillness, centering brain activity in the equilibrium channel.
               </p>
             </div>
@@ -2510,7 +2510,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
                   5 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Release your right nostril and exhale completely. Then inhale back through the right nostril, hold, and exhale left to complete the rhythmic cycle.
               </p>
             </div>
@@ -2524,7 +2524,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Practicing Alternate Nostril Breathing regularly offers profound psychological and physiological advantages:
             </p>
           </div>
@@ -2536,7 +2536,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Hemispheric Brain Balance</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Equalizes airflow between nostrils, synchronizing EEG brainwave activity between the logical left and intuitive right cerebral hemispheres.
                 </p>
               </div>
@@ -2548,7 +2548,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Stress & Blood Pressure Reduction</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Engages parasympathetic reflexes, lowering resting heart rate, stabilizing respiratory rhythm, and reducing circulating cortisol levels.
                 </p>
               </div>
@@ -2560,7 +2560,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Enhanced Mental Focus</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Clears respiratory passages and delivers optimal oxygen saturation to prefrontal cortex circuits for elevated concentration and mental alertness.
                 </p>
               </div>
@@ -2572,7 +2572,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Emotional Equilibrium</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Calms overactive sympathetic fight-or-flight reactivity, fostering emotional stability and grounded mental poise under pressure.
                 </p>
               </div>
@@ -2585,7 +2585,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             By practicing alternate nostril breathing regularly, you cultivate mental clarity, emotional steadiness, and profound hemispheric balance in just a few minutes each day.
           </p>
         </div>

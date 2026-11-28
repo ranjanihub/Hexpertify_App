@@ -243,12 +243,12 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
   const navContent = (
     <div className="flex flex-col h-full bg-white border-r border-[#eef1f6]">
       {/* Brand Header */}
-      <div className="h-20 md:h-24 [@media(max-height:500px)]:h-16 px-4 flex items-center justify-between border-b border-[#f1f5f9] overflow-hidden shrink-0">
+      <div className="h-20 md:h-24 short:h-16 px-4 flex items-center justify-between border-b border-[#f1f5f9] overflow-hidden shrink-0">
         <Link href="/" onClick={onCloseMobile} className="inline-flex items-center select-none cursor-pointer">
           <img
             src="/hexpertify-logo.png"
             alt="HEXPERTIFY ANYTIME,ANYWHERE"
-            className="h-14 md:h-20 [@media(max-height:500px)]:h-12 max-w-full w-auto object-contain transition-transform hover:scale-[1.02]"
+            className="h-14 md:h-20 short:h-12 max-w-full w-auto object-contain transition-transform hover:scale-[1.02]"
           />
         </Link>
         {onCloseMobile && (
@@ -263,7 +263,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 [@media(max-height:500px)]:py-3 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 short:py-3 space-y-6">
         {/* Workspace Section */}
         <div>
           <div className="px-3 mb-2 text-[11px] font-bold tracking-widest text-slate-400 uppercase">
@@ -622,7 +622,7 @@ export function Header({ onOpenMobileSidebar }: { onOpenMobileSidebar?: () => vo
   );
 
   return (
-    <header className="sticky top-0 [@media(max-height:500px)]:static z-20 bg-white/95 backdrop-blur-md border-b border-[#eef1f6] shadow-sm">
+    <header className="sticky top-0 short:static z-20 bg-white/95 backdrop-blur-md border-b border-[#eef1f6] shadow-sm">
       <div className="h-16 md:h-24 px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2">
         {/* Mobile Sidebar Toggle Button & Brand Logo */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -706,7 +706,7 @@ export function Header({ onOpenMobileSidebar }: { onOpenMobileSidebar?: () => vo
               />
               
               {/* Notifications Popover Dropdown */}
-              <div className="absolute -right-2 sm:right-0 mt-3 w-[calc(100vw-2rem)] max-w-[360px] sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-40 overflow-hidden animate-in fade-in-0 zoom-in-95">
+              <div className="absolute max-sm:fixed max-sm:left-3 max-sm:right-3 max-sm:top-16 max-sm:mt-0 max-sm:w-auto max-sm:max-w-none sm:right-0 mt-3 w-[calc(100vw-2rem)] max-w-[360px] sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-40 overflow-hidden animate-in fade-in-0 zoom-in-95">
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-slate-900 text-sm">Notifications</h3>
@@ -720,7 +720,7 @@ export function Header({ onOpenMobileSidebar }: { onOpenMobileSidebar?: () => vo
                     <button
                       type="button"
                       onClick={markAllNotificationsRead}
-                      className="text-xs font-semibold text-[#450bc8] hover:underline cursor-pointer"
+                      className="text-xs font-semibold text-[#450bc8] hover:underline cursor-pointer py-2 sm:py-0"
                     >
                       Mark all as read
                     </button>

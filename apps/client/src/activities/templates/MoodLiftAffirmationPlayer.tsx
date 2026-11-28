@@ -647,7 +647,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is the Affirmation Mirror?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             The Affirmation Mirror is an evidence-based somatic and cognitive protocol that combines mirror exposure therapy with targeted self-affirmations. By meeting your own reflection while actively vocalizing grounded truths, you engage the <strong>mirror neuron system</strong> and the <strong>medial prefrontal cortex (mPFC)</strong>. This powerful visual-auditory feedback loop interrupts negative default mode network (DMN) rumination, transforming abstract statements into deeply felt emotional safety and unshakeable self-worth.
           </p>
         </div>
@@ -659,7 +659,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Follow this 3-phase automated ritual to rewire subconscious self-beliefs and restore nervous system calm:
             </p>
           </div>
@@ -675,7 +675,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                   PHASE 1
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Look into your digital mirror or live camera reflection. Establishing compassionate eye contact with yourself softens self-critical defense mechanisms.
               </p>
             </div>
@@ -690,7 +690,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                   PHASE 2
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Hear and repeat the affirmation aloud with calm conviction. Auditory vocalization engages bilateral temporal processing and solidifies neural encoding.
               </p>
             </div>
@@ -705,7 +705,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                   10 SECONDS
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Breathe gently for 10 seconds without rushing. Allow the truth to anchor into your nervous system as somatic tension releases from your shoulders and chest.
               </p>
             </div>
@@ -719,7 +719,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Verified neurobiological and emotional benefits of regular mirror exposure rituals:
             </p>
           </div>
@@ -731,7 +731,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Activates Mirror Neuron System</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Seeing your own facial feedback while hearing affirming cues stimulates self-recognition and ventral vagal safety pathways in the brain.
                 </p>
               </div>
@@ -743,7 +743,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Interrupts Default Mode Rumination</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Breaks chronic thought loops of imposter syndrome, harsh self-criticism, and catastrophic worry by anchoring attention in real-time facts.
                 </p>
               </div>
@@ -755,7 +755,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Strengthens Parasympathetic Calm</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   The built-in 10-second absorption window encourages full exhalations, reducing sympathetic arousal, heart rate, and baseline cortisol.
                 </p>
               </div>
@@ -767,7 +767,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Solidifies Neuroplastic Core Beliefs</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Repeated mirror affirmations strengthen synaptic density in self-compassion networks, fostering resilient self-worth that persists under stress.
                 </p>
               </div>
@@ -780,7 +780,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             Practicing the Affirmation Mirror for 2–3 minutes each morning anchors your nervous system before external demands arise, establishing a compassionate, grounded mental baseline for your entire day.
           </p>
         </div>

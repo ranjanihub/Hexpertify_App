@@ -563,7 +563,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Environmental Sensory Scanning?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             Environmental Sensory Scanning (Describe Your Room) is an evidence-based somatic grounding protocol designed to rapidly interrupt acute anxiety, panic escalation, and dissociative detachment. When your nervous system registers psychological distress, cognitive attention narrows inward onto perceived threats and catastrophizing thoughts. By deliberately requiring your visual and tactile cortices to identify concrete objects in your physical room and describe their exact color, texture, and light reflection, neural bandwidth is forcibly redirected away from the amygdala. This concrete sensory observation proves to your autonomic nervous system that you are physically safe in the present space.
           </p>
         </div>
@@ -575,7 +575,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               This 3-phase visual scanning exercise anchors attention outward into physical reality:
             </p>
           </div>
@@ -590,7 +590,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                   Target Isolation
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Selecting an everyday physical object in your immediate field of vision halts internal rumination and establishes a concrete anchor in the external environment.
               </p>
             </div>
@@ -604,7 +604,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                   Granular Sensory Mapping
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Detailing specific color shades, physical textures, and light reflections recruits high-order processing in the parietal and occipital lobes, overriding threat circuits.
               </p>
             </div>
@@ -618,7 +618,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                   Neuro-Somatic Safety
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Completing 3 full environmental targets sends reassuring feedback loops to the autonomic nervous system, downregulating fight-or-flight and restoring mental clarity.
               </p>
             </div>
@@ -632,7 +632,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Regular environmental scanning builds automatic grounding reflexes when feeling overwhelmed:
             </p>
           </div>
@@ -644,7 +644,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Interrupts Panic & Dissociation</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Quickly pulls awareness out of intrusive thought spirals by shifting neuro-metabolic energy from the limbic system to sensory observation.
                 </p>
               </div>
@@ -656,7 +656,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Anchors to Objective Reality</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Provides undeniable sensory evidence that your immediate surroundings are secure, helping distinguish perceived threats from physical reality.
                 </p>
               </div>
@@ -668,7 +668,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Lowers Somatic Arousal</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Engaging slow, focused visual attention reduces rapid breathing, muscle clenching, and sympathetic heart rate elevations.
                 </p>
               </div>
@@ -680,7 +680,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Restores Mindfulness in Any Setting</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   A subtle, portable grounding technique that can be performed anywhere — at a work desk, in transit, or at home — without special equipment.
                 </p>
               </div>
@@ -693,7 +693,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             <strong>Rule of Thumb:</strong> When anxiety, depersonalization, or racing thoughts start to detach you from your body, stop analyzing your thoughts. Instead, orient your vision outward onto 3 concrete physical objects. Anchoring to objective reality stabilizes your physiology faster than mental reasoning.
           </p>
         </div>
@@ -1219,7 +1219,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Name the Moment?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             Name the Moment is a compassionate emotional check-in practice that helps you recognize and label your current emotional state in a gentle, mindful, and non-judgmental way. Rather than trying to fix or suppress your feelings, this practice creates space to observe emotions with curiosity and acceptance, activating prefrontal regulation over reactive neural circuits.
           </p>
         </div>
@@ -1231,7 +1231,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Follow this 3-step mindful check-in to identify and validate your internal emotional landscape.
             </p>
           </div>
@@ -1248,7 +1248,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                   STEP 1
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Take a slow breath and step back from daily busyness. Simply notice how your body and mind feel without judgment.
               </p>
             </div>
@@ -1264,7 +1264,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                   STEP 2
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Identify and label the feeling that resonates most accurately. Naming the feeling reduces limbic intensity immediately.
               </p>
             </div>
@@ -1280,7 +1280,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                   STEP 3
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Acknowledge the somatic intensity and receive gentle validation. All feelings are natural human experiences.
               </p>
             </div>
@@ -1294,7 +1294,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Regular emotional naming practice provides substantial psychological and physiological benefits:
             </p>
           </div>
@@ -1306,7 +1306,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Increases Emotional Awareness</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Develops fine-grained emotional granularity, helping you understand subtle triggers before they escalate.
                 </p>
               </div>
@@ -1318,7 +1318,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Reduces Emotional Overwhelm</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Affect labeling reduces amygdala hyperactivation, lowering somatic distress and mental spiraling.
                 </p>
               </div>
@@ -1330,7 +1330,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Cultivates Self-Compassion</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Replaces self-criticism with supportive acceptance, creating a healthier relationship with your inner world.
                 </p>
               </div>
@@ -1342,7 +1342,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Enhances Psychological Resilience</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Builds capacity to sit with uncomfortable emotions without reactive suppression or avoidance behaviors.
                 </p>
               </div>
@@ -1355,7 +1355,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             By naming what you feel regularly, you build deep emotional clarity, calm your nervous system, and develop unconditional self-compassion in just a few mindful minutes.
           </p>
         </div>
@@ -1736,7 +1736,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Physical Grounding?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             Physical Grounding is an evidence-based somatic practice rooted in Somatic Experiencing and trauma-informed cognitive regulation. By deliberately engaging your physical senses through touch, temperature, muscle tension, and posture, you send immediate safety signals to your central nervous system. This halts runaway fight-or-flight cascades, downregulates autonomic arousal, and anchors your attention in present reality.
           </p>
         </div>
@@ -1748,7 +1748,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Follow this 5-stage somatic sequence to discharge stress and re-establish physical equilibrium.
             </p>
           </div>
@@ -1765,7 +1765,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
                   15s
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Apply cool water or touch a cold surface. The thermal contrast activates the mammalian dive reflex to quickly lower heart rate.
               </p>
             </div>
@@ -1781,7 +1781,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
                   20s
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Clench fists and engage isometric muscle contraction, then release completely to flush out stored adrenaline.
               </p>
             </div>
@@ -1797,7 +1797,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
                   50s
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Map tactile textures, apply soothing heart pressure, and plant both feet firmly on the ground to establish grounded security.
               </p>
             </div>
@@ -1811,7 +1811,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Verified psychological and somatic benefits of physical grounding:
             </p>
           </div>
@@ -1823,7 +1823,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Interrupts Mental Spirals</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Directs prefrontal neural processing toward real-time sensory inputs, interrupting intrusive thoughts and panic.
                 </p>
               </div>
@@ -1835,7 +1835,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Discharges Fight-or-Flight</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Tension and release mechanics dissipate excess adrenaline and motor tension from the musculoskeletal system.
                 </p>
               </div>
@@ -1847,7 +1847,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Stimulates Vagal Safety</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Gentle chest pressure and thermal touch stimulate the vagus nerve, fostering feelings of security and warmth.
                 </p>
               </div>
@@ -1859,7 +1859,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Restores Bodily Agency</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Re-establishes conscious control over your physical posture, creating immediate stability and felt confidence.
                 </p>
               </div>
@@ -1872,7 +1872,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             Physical Grounding rapidly restores mind-body balance during moments of stress or dissociation. Practicing regularly builds long-term autonomic resilience.
           </p>
         </div>
@@ -2571,7 +2571,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is Cognitive Grounding?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             Cognitive Grounding is an evidence-based neuropsychological intervention designed to interrupt acute anxiety, panic escalation, and intrusive rumination loops. When emotional distress spikes, the brain's <strong>limbic system (amygdala)</strong> consumes neural bandwidth, triggering fight-or-flight reactions. By deliberately engaging in high-demand, structured mental tasks—such as category retrieval, serial calculation, and spatial observation—cognitive grounding activates the <strong>dorsolateral prefrontal cortex (dlPFC)</strong>. Through competitive neuro-metabolic recruitment, blood flow and glucose are redirected away from emotional panic centers back toward rational executive control.
           </p>
         </div>
@@ -2583,7 +2583,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Follow these structured cognitive drills to disrupt emotional looping and restore cortical executive balance:
             </p>
           </div>
@@ -2598,7 +2598,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                   Category Retrieval
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Rapidly identify and name items in targeted semantic categories. Searching long-term memory forces active prefrontal computation and breaks intrusive thought cycles.
               </p>
             </div>
@@ -2612,7 +2612,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                   Serial Working Memory
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Execute reverse arithmetic (such as subtracting 7s) or backward spelling. Multi-step calculation requires dedicated cognitive bandwidth that cannot co-exist with panic.
               </p>
             </div>
@@ -2626,7 +2626,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                   Reality Re-Anchoring
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Observe concrete sensory landmarks in your immediate environment. Grounding in physical reality signals to the nervous system that you are safe in the present moment.
               </p>
             </div>
@@ -2640,7 +2640,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Evidence-based neurological outcomes of competitive prefrontal activation:
             </p>
           </div>
@@ -2652,7 +2652,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">De-escalates Limbic Hijack</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Competitively redirects cerebral blood flow away from the hyperactive amygdala and toward the dorsolateral prefrontal cortex.
                 </p>
               </div>
@@ -2664,7 +2664,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Interrupts Rumination Cascades</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Demands instantaneous working-memory bandwidth, making it biologically impossible to maintain repetitive catastrophic narratives simultaneously.
                 </p>
               </div>
@@ -2676,7 +2676,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Restores Executive Control</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Strengthens cognitive stamina and restores sharp focus, enabling rational decision-making during high-pressure or emotional situations.
                 </p>
               </div>
@@ -2688,7 +2688,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Rapid Somatosensory Calming</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Pairing concrete mental challenges with reality re-anchoring swiftly down-regulates sympathetic nervous system overdrive within 60 to 90 seconds.
                 </p>
               </div>
@@ -2701,7 +2701,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             Cognitive drills act as an immediate neurobiological circuit breaker. You cannot panic and calculate simultaneously—your brain is biologically wired to prioritize the active cognitive computation.
           </p>
         </div>

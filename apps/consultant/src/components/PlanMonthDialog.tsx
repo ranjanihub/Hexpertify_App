@@ -180,7 +180,7 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[94dvh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[94dvh] flex flex-col p-0 gap-0 overflow-hidden short:overflow-y-auto rounded-2xl">
         {/* Header */}
         <div className="bg-primary px-4 sm:px-8 pt-6 sm:pt-7 pb-4 sm:pb-5 text-white shrink-0">
           <DialogHeader>
@@ -223,7 +223,7 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
         </div>
 
         {/* Weeks */}
-        <div className="flex-1 min-h-0 overflow-y-auto bg-secondary/20">
+        <div className="flex-1 min-h-0 overflow-y-auto short:shrink-0 short:overflow-visible short:max-h-none bg-secondary/20">
           {loading ? (
             <div className="p-10 text-center text-sm text-muted-foreground">Loading your hours…</div>
           ) : (
@@ -320,7 +320,7 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
                                           return { enabled: slots.length > 0, slots };
                                         })
                                       }
-                                      className="text-muted-foreground hover:text-destructive p-1"
+                                      className="text-muted-foreground hover:text-destructive p-2 sm:p-1"
                                       title="Remove these hours"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -332,7 +332,7 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
                                   onClick={() =>
                                     setDay(i, d.dayKey, (prev) => ({ ...prev, slots: [...prev.slots, { start: "4:00 PM", end: "7:00 PM" }] }))
                                   }
-                                  className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium w-fit"
+                                  className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium w-fit py-2 sm:py-0"
                                 >
                                   <Plus className="w-3 h-3" /> Add hours
                                 </button>
@@ -348,7 +348,7 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
                         <button
                           type="button"
                           onClick={() => copyToFollowing(i)}
-                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary font-medium"
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary font-medium py-2 sm:py-0"
                         >
                           <Copy className="w-3 h-3" /> Use these hours for all weeks after this
                         </button>

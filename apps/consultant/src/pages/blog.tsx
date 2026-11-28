@@ -1119,8 +1119,8 @@ export default function Blog() {
       {view === "submit" && (
         <div className="space-y-6 max-w-4xl mx-auto">
           {/* Tabs for Post vs Outline */}
-          <div className="flex items-center justify-between border-b border-border pb-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Tab
                 active={tab === "post"}
                 onClick={() => setTab("post")}

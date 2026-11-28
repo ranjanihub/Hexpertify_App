@@ -1002,7 +1002,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
           <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
             The Thought Record: How CBT Challenges Unhelpful Thinking
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             Cognitive Behavioural Therapy (CBT) shows that automatic negative thoughts often create an unhelpful cycle between what you think, how you feel, and how you act. By writing down difficult situations, putting the thoughts on trial against verifiable facts, and applying the "friend perspective", you develop a more balanced and realistic point of view.
           </p>
         </div>
@@ -1014,7 +1014,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               <Gavel className="w-4 h-4 text-[#450bc8]" />
               <span>The 6-Step Thought Record Protocol</span>
             </h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               The systematic framework from Bupa Health to interrupt automatic negative thoughts:
             </p>
           </div>
@@ -1027,7 +1027,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   Identify Situation & Emotion
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Pinpoint what triggered your distress and rate your feeling on a 1–10 intensity scale.
               </p>
             </div>
@@ -1039,7 +1039,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   Name the Negative Thought
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Write down the exact unhelpful sentence running through your mind and rate your belief in it.
               </p>
             </div>
@@ -1051,7 +1051,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   Challenge with Facts
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Identify the thinking trap (e.g. catastrophizing) and see if there is any factual basis.
               </p>
             </div>
@@ -1063,7 +1063,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   Evidence Against & Friend View
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Recall past achievements and ask what compassionate advice you would offer to a dear friend.
               </p>
             </div>
@@ -1075,7 +1075,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   Find a Balanced Thought
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Formulate an objective, grounded replacement belief that reflects reality rather than fear.
               </p>
             </div>
@@ -1087,7 +1087,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   Check Back In
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Re-rate your emotion intensity to tangibly experience the neurological drop in distress.
               </p>
             </div>
@@ -1101,7 +1101,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               <Sparkles className="w-4 h-4 text-[#450bc8]" />
               <span>When to Use this Technique</span>
             </h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Practice this exercise whenever you notice automatic negative thoughts affecting your mood or decision-making. Over time, this rewires the brain’s default stress pathways, strengthening emotional stability and long-term resilience.
             </p>
           </div>
@@ -1226,7 +1226,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             What is the Worry Box?
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-justify">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal text-left sm:text-justify">
             The Worry Box (Cognitive Worry Vault) is an evidence-based cognitive behavioral therapy (CBT) technique grounded in <strong>stimulus control</strong> and <strong>worry postponement</strong>. When anxious thoughts loop repetitively in working memory, the brain misinterprets them as immediate crises requiring continuous vigilance. By externalizing the concern into a secure holding container and scheduling a deliberate review window, you signal to your amygdala that the worry has been acknowledged without allowing it to hijack your present focus.
           </p>
         </div>
@@ -1238,7 +1238,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Follow this 3-step containment sequence to disengage from rumination and reclaim cognitive bandwidth:
             </p>
           </div>
@@ -1253,7 +1253,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
                   Externalize the Worry
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Identify the intrusive thought consuming your energy. Writing it out shifts the worry from an infinite internal threat into finite, tangible language.
               </p>
             </div>
@@ -1267,7 +1267,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
                   Set a Review Window
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Designate a contained 15-minute window later in the day. Postponement reassures your brain that you aren't ignoring the problem—just choosing when to address it.
               </p>
             </div>
@@ -1281,7 +1281,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
                   Lock & Disengage
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                 Lock the worry in the vault and mentally return to the present. If the thought returns before review time, remind yourself: "It is secured in the vault."
               </p>
             </div>
@@ -1295,7 +1295,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-left sm:text-justify">
               Verified outcomes of worry containment and stimulus control:
             </p>
           </div>
@@ -1307,7 +1307,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Reduces Mental Clutter & Fatigue</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Frees up precious prefrontal working memory by transferring cognitive burdens out of mental loops into an external depository.
                 </p>
               </div>
@@ -1319,7 +1319,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Interrupts Rumination Cascades</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Weakens chronic overthinking pathways by creating a deliberate behavioral buffer between experiencing an anxious impulse and reacting to it.
                 </p>
               </div>
@@ -1331,7 +1331,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Establishes Stimulus Control</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Restricts catastrophic rumination to an intentional 15-minute slot, preventing background anxiety from contaminating your entire workday or evening.
                 </p>
               </div>
@@ -1343,7 +1343,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Enhances Emotional Distance</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                   Over 80% of worries postponed lose their perceived urgency with time, allowing rational problem-solving to replace panic.
                 </p>
               </div>
@@ -1356,7 +1356,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
           <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-left sm:text-justify">
             Containment is not denial—it is an intentional cognitive boundary. When review time arrives, open the vault to assess your worry with a calm, rested perspective.
           </p>
         </div>

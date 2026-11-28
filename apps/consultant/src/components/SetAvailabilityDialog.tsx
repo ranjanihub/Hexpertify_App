@@ -266,7 +266,7 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden short:overflow-y-auto rounded-2xl">
         {/* Purple header */}
         <div className="bg-primary px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 text-white shrink-0">
           <DialogHeader>
@@ -296,7 +296,7 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
         </div>
 
         {/* Day rows */}
-        <div className="divide-y divide-border flex-1 min-h-0 max-h-[55vh] overflow-y-auto">
+        <div className="divide-y divide-border flex-1 min-h-0 max-h-[55vh] overflow-y-auto short:shrink-0 short:overflow-visible short:max-h-none">
           {DAYS.map((d) => {
             const cfg = schedule[d.key];
             return (
@@ -364,7 +364,7 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
                           <button
                             type="button"
                             onClick={() => removeSlot(d.key, idx)}
-                            className="text-muted-foreground hover:text-destructive transition-colors ml-1 p-1"
+                            className="text-muted-foreground hover:text-destructive transition-colors ml-1 p-2 sm:p-1"
                             disabled={cfg.slots.length === 1}
                             title="Remove slot"
                           >
@@ -380,7 +380,7 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
                         <button
                           type="button"
                           onClick={() => addSlot(d.key)}
-                          className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium w-fit cursor-pointer"
+                          className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium w-fit cursor-pointer py-2 sm:py-0"
                         >
                           <Plus className="w-3 h-3" />
                           Add hours
