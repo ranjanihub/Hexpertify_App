@@ -6,7 +6,7 @@ import { numberMissing } from './sequence';
 import { dispatchBookingConfirmed } from './booking-confirmation.service';
 import { resolveClientUser, resolveConsultant, resolveService } from './booking-refs';
 import { consultantBookingBlockReason, isConsultantBookable } from './live-content';
-import { normalizeBookingStatus, normalizePaymentStatus, UPCOMING_STATUSES } from './booking-status';
+import { normalizeBookingStatus, normalizePaymentStatus, SLOT_HOLDING_STATUSES, UPCOMING_STATUSES } from './booking-status';
 import { isToBeScheduled, istLabels, resolveScheduledAt, ScheduleError } from './booking-time';
 
 const DEFAULT_MEETING_LINK = 'https://meet.google.com/hex-pert-ify';
@@ -38,6 +38,13 @@ export interface BuildOptions {
   price?: number;
   /** Refuse consultants who are archived, inactive/suspended or have booking switched off (non-admin callers) */
   requireBookable?: boolean;
+  /** Refuse a session in the past, or one that overlaps another active session of the same therapist (non-admin callers) */
+  requireFutureFreeTime?: boolean;
+  /**
+   * The signed-in therapist making the booking (their ids/emails). "Booking switched off" only closes public
+   * booking: the therapist may still add sessions to their own calendar. Archived/inactive accounts stay closed.
+   */
+  actorIds?: Set<string>;
 }
 
 /**
@@ -50,7 +57,12 @@ export async function buildBookingDoc(body: any, opts: BuildOptions = {}): Promi
   const consultant = await resolveConsultant({ id: body.consultantId || body.therapistId, email: body.consultantEmail || body.therapistEmail });
   if (!consultant) throw new BookingInputError('Unknown consultant. Send the consultant\'s id or email.');
   if (opts.requireBookable && !isConsultantBookable(consultant)) {
-    throw new BookingInputError(consultantBookingBlockReason(consultant) || 'This therapist cannot be booked right now.');
+    const ownCalendar = !!opts.actorIds &&
+      [consultant._id, consultant.id, consultant.email].some((v) => v && opts.actorIds!.has(String(v).toLowerCase()));
+    const onlyGreyedOut = consultantBookingBlockReason({ ...consultant, isBookingGreyedOut: false }) === null;
+    if (!(ownCalendar && onlyGreyedOut)) {
+      throw new BookingInputError(consultantBookingBlockReason(consultant) || 'This therapist cannot be booked right now.');
+    }
   }
   const consultantId = String(consultant._id);
 
@@ -85,6 +97,26 @@ export async function buildBookingDoc(body: any, opts: BuildOptions = {}): Promi
     throw err;
   }
   const labels = scheduledAt ? istLabels(scheduledAt) : null;
+
+  if (opts.requireFutureFreeTime && scheduledAt) {
+    if (scheduledAt.getTime() <= Date.now()) throw new BookingInputError('This time is in the past. Please pick a future date and time.');
+    const minutes = Number(body.durationMinutes) || 50;
+    const start = scheduledAt.getTime();
+    const end = start + minutes * 60000;
+    const db = getDatabase();
+    const others = await db.collection('Booking').find({
+      consultantId: String(consultant._id),
+      status: { $in: Array.from(SLOT_HOLDING_STATUSES) },
+      scheduledAt: { $gte: new Date(start - 24 * 3600000), $lt: new Date(end) }
+    }).toArray().catch(() => [] as any[]);
+    const clash = others.find((b: any) => {
+      if (body.id && String(b.id || b._id) === String(body.id)) return false;
+      const s = new Date(b.scheduledAt).getTime();
+      const e = s + (Number(b.durationMinutes) || 50) * 60000;
+      return s < end && start < e;
+    });
+    if (clash) throw new BookingInputError(`This overlaps another session at ${clash.time || istLabels(new Date(clash.scheduledAt)).time}. Please pick a different time.`);
+  }
 
   const id = String(body.id || newBookingId());
   const now = new Date();

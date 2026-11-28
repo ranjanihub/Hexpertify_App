@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { ClientViewer, resolveClientViewer } from '../services/client-access';
+import { idQuery } from '../services/live-content';
+import { MessagesController } from './messages.controller';
 import {
   cleanNotificationTitle, defaultNotificationLink, DUPLICATE_WINDOW_MS, emailNotification, newNotificationId, NotificationRole
 } from '../services/notification.service';
@@ -10,8 +12,24 @@ const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exact = (s: string) => new RegExp(`^${escapeRx(s)}$`, 'i');
 const LIST_LIMIT = 100;
 
-/** Clients that predate API tokens identify themselves by email/id in the query or body */
-function legacyIdentity(req: Request): string[] {
+/** Logs the real error server-side and answers with a generic message (internals never reach the caller) */
+function serverError(res: Response, err: unknown, message: string): void {
+  console.error(`[notifications] ${message}:`, err);
+  res.status(500).json({ success: false, error: message });
+}
+
+/**
+ * The requests a signed-in client may raise through this endpoint, and who receives each. The recipient is
+ * resolved on the server (the client's own therapist, or the care team); anything else is staff-only.
+ */
+const CLIENT_REQUEST_TYPES: Record<string, NotificationRole> = {
+  CUSTOM_SLOT_REQUEST: 'CONSULTANT',
+  ACTIVITY_COMPLETED: 'CONSULTANT',
+  THERAPIST_SWITCH_REQUEST: 'ADMIN'
+};
+
+/** A person's feed named in the query or body: honoured only for the server's own (internal) calls */
+function namedIdentity(req: Request): string[] {
   const src: any = { ...(req.body || {}), ...req.query };
   return [src.recipientEmail, src.recipientId, src.email, src.clientEmail, src.clientId]
     .map((v) => String(v || '').trim())
@@ -33,15 +51,15 @@ function recipientMatch(ids: string[]): any[] {
 
 /**
  * The notifications the caller may see: admins get admin alerts; therapists and clients get only
- * their own, identified by their API token (or, for the legacy client panel, the email/id they send).
+ * their own, identified by their API token. Not signed in: none (null).
  */
 function scopeFor(viewer: ClientViewer, req: Request): { role: NotificationRole; query: any } | null {
   const requestedRole = String(req.query.role || req.body?.role || '').toUpperCase();
 
   if (viewer.kind === 'admin' || viewer.kind === 'internal') {
-    if (requestedRole === 'CLIENT' || requestedRole === 'CONSULTANT' || requestedRole === 'THERAPIST') {
-      // Internal tools may still read a specific person's feed
-      const ids = legacyIdentity(req);
+    if (viewer.kind === 'internal' && (requestedRole === 'CLIENT' || requestedRole === 'CONSULTANT' || requestedRole === 'THERAPIST')) {
+      // The server's own tools may still read a specific person's feed
+      const ids = namedIdentity(req);
       if (!ids.length) return null;
       const role: NotificationRole = requestedRole === 'CLIENT' ? 'CLIENT' : 'CONSULTANT';
       return { role, query: { $and: [roleMatch(role), { $or: recipientMatch(ids) }] } };
@@ -56,7 +74,8 @@ function scopeFor(viewer: ClientViewer, req: Request): { role: NotificationRole;
     return { role: 'CONSULTANT', query: { $and: [roleMatch('CONSULTANT'), { $or: recipientMatch([...viewer.ids]) }] } };
   }
 
-  const ids = viewer.kind === 'client' ? [...viewer.ids] : legacyIdentity(req);
+  if (viewer.kind !== 'client') return null;
+  const ids = [...viewer.ids];
   if (!ids.length) return null;
   return {
     role: 'CLIENT',
@@ -142,7 +161,12 @@ export class NotificationsController {
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const scope = scopeFor(await resolveClientViewer(req), req);
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to see your notifications.' });
+        return;
+      }
+      const scope = scopeFor(viewer, req);
       if (!scope) {
         res.json({ success: true, count: 0, unreadCount: 0, notifications: [] });
         return;
@@ -168,7 +192,7 @@ export class NotificationsController {
         notifications
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch notifications' });
+      serverError(res, error, 'Failed to fetch notifications');
     }
   }
 
@@ -178,13 +202,62 @@ export class NotificationsController {
   static async create(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const body = req.body || {};
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to send a request.' });
+        return;
+      }
+      const isStaff = viewer.kind === 'admin' || viewer.kind === 'internal';
+      const type = String(req.body?.type || '').toUpperCase();
+      const clientTarget = viewer.kind === 'client' ? CLIENT_REQUEST_TYPES[type] : undefined;
+      if (!isStaff && !clientTarget) {
+        res.status(403).json({ success: false, error: 'Only administrators can create this notification.' });
+        return;
+      }
+
+      let body: any = req.body || {};
+      if (!isStaff) {
+        // A client's request: who sends it comes from the token, who receives it is resolved here (never the body),
+        // and the link is the standard one for its type
+        const ids = [...viewer.ids];
+        const tokenEmail = ids.find((v) => v.includes('@')) || '';
+        const tokenId = ids.find((v) => !v.includes('@')) || '';
+        const self: any = (tokenId ? await db.collection('User').findOne(idQuery(tokenId)).catch(() => null) : null) ||
+          (tokenEmail ? await db.collection('User').findOne({ email: exact(tokenEmail) }).catch(() => null) : null);
+        const own: any = {
+          ...body,
+          id: undefined,
+          link: undefined,
+          type,
+          title: String(body.title || '').slice(0, 200),
+          message: String(body.message || '').slice(0, 2000),
+          clientEmail: String(self?.email || tokenEmail).toLowerCase(),
+          clientId: self ? String(self.id || self._id) : tokenId,
+          clientName: self?.name || String(body.clientName || '').slice(0, 120) || 'Client',
+          recipientRole: clientTarget,
+          recipientId: '', recipientEmail: '', userId: '', userEmail: '',
+          consultantId: '', consultantEmail: '', consultantName: '', recipientName: '',
+          submissionData: type === 'ACTIVITY_COMPLETED' && !body.isPrivate ? body.submissionData || null : null
+        };
+        if (clientTarget === 'CONSULTANT') {
+          const therapist = await MessagesController.getClientAssignedConsultant(own.clientEmail, own.clientId);
+          if (!therapist) {
+            res.status(409).json({ success: false, code: 'NO_THERAPIST', error: 'You do not have an assigned therapist yet.' });
+            return;
+          }
+          Object.assign(own, {
+            recipientId: therapist.id, recipientEmail: therapist.email,
+            consultantId: therapist.id, consultantEmail: therapist.email, consultantName: therapist.name
+          });
+        }
+        body = own;
+      }
 
       const recipientRole = (body.recipientRole || body.role || (body.consultantEmail || body.consultantId ? 'CONSULTANT' : 'ADMIN')).toUpperCase();
       const newNotification = {
         id: body.id || newNotificationId(),
-        recipientId: body.recipientId || body.userId || body.clientId || body.consultantId || '',
-        recipientEmail: (body.recipientEmail || body.userEmail || body.consultantEmail || body.clientEmail || '').toLowerCase(),
+        recipientId: body.recipientId || body.userId || (isStaff ? body.clientId : '') || body.consultantId || '',
+        recipientEmail: (body.recipientEmail || body.userEmail || body.consultantEmail || (isStaff ? body.clientEmail : '') || '').toLowerCase(),
         consultantEmail: (body.consultantEmail || body.recipientEmail || '').toLowerCase(),
         consultantId: body.consultantId || body.recipientId || '',
         consultantName: body.consultantName || body.recipientName || '',
@@ -226,7 +299,7 @@ export class NotificationsController {
         message: 'Notification created in MongoDB Atlas'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to create notification' });
+      serverError(res, error, 'Failed to create notification');
     }
   }
 
@@ -236,7 +309,17 @@ export class NotificationsController {
   static async markRead(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id || '');
-      const scope = scopeFor(await resolveClientViewer(req), req);
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to update your notifications.' });
+        return;
+      }
+      const scope = scopeFor(viewer, req);
+      // Only within the caller's own feed (the server itself may mark any one)
+      if (!scope && viewer.kind !== 'internal') {
+        res.json({ success: true, message: 'Nothing to mark' });
+        return;
+      }
       const idMatch: any = ObjectId.isValid(id) ? { $or: [{ _id: new ObjectId(id) }, { id }] } : { id };
       const query = scope ? { $and: [idMatch, scope.query] } : idMatch;
 
@@ -248,7 +331,7 @@ export class NotificationsController {
 
       res.json({ success: true, message: 'Notification marked as read' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to mark notification as read' });
+      serverError(res, error, 'Failed to mark notification as read');
     }
   }
 
@@ -257,7 +340,12 @@ export class NotificationsController {
    */
   static async markAllRead(req: Request, res: Response): Promise<void> {
     try {
-      const scope = scopeFor(await resolveClientViewer(req), req);
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to update your notifications.' });
+        return;
+      }
+      const scope = scopeFor(viewer, req);
       if (!scope) {
         res.json({ success: true, message: 'Nothing to mark' });
         return;
@@ -272,7 +360,7 @@ export class NotificationsController {
 
       res.json({ success: true, message: 'All notifications marked as read' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to mark all as read' });
+      serverError(res, error, 'Failed to mark all as read');
     }
   }
 }

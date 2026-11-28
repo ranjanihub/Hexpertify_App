@@ -57,7 +57,7 @@ export function PushNotificationsBanner() {
   return (
     <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-purple-200 bg-purple-50/70 dark:bg-purple-950/30 dark:border-purple-800/60 px-4 py-3">
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        <div className="w-9 h-9 rounded-xl bg-[#5e2be2]/10 text-[#5e2be2] flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-[#450bc8]/10 text-[#450bc8] flex items-center justify-center shrink-0">
           <BellRing className="w-4.5 h-4.5" />
         </div>
         <div className="min-w-0">

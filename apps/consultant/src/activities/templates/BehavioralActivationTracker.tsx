@@ -25,7 +25,7 @@ export const BehavioralActivationTracker: React.FC<BaseActivityComponentProps> =
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Plus_Jakarta_Sans']">
+    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Open_Sans']">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div>
           <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-extrabold text-[10px] rounded-full border border-emerald-200 uppercase tracking-wider">

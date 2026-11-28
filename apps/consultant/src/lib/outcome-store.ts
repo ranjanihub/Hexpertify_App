@@ -227,8 +227,8 @@ export async function loadOutcomes(force = false): Promise<void> {
   if (!consultantId || (!force && loadedFor === consultantId)) return;
   loadedFor = consultantId;
   try {
+    // By id only: a name would also match other therapists with a similar name
     const q = new URLSearchParams({ consultantId });
-    if (user?.name) q.set("consultantName", user.name);
     const res = await fetch(`/api/assessments/scores?${q.toString()}`);
     const data = res.ok ? await res.json() : null;
     const scores = Array.isArray(data?.scores) ? data.scores : Array.isArray(data?.submissions) ? data.submissions : [];

@@ -16,7 +16,7 @@ export function portalUrl(path: string): string {
 /** Images live in apps/web/public/email so mail apps can always load them */
 export const emailAsset = (file: string) => portalUrl(`/email/${file}`);
 
-export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'hexpertifyapp@gmail.com';
+export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'contact@hexpertify.com';
 export const WEBSITE_URL = (process.env.WEBSITE_URL || 'https://hexpertify.com').replace(/\/$/, '');
 
 /** Escapes user-supplied text (names, notes, titles) before it goes into HTML */

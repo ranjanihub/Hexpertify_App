@@ -37,6 +37,7 @@ function PageFallback() {
   );
 }
 import { clearAdminAuth, isAdminAuthenticated, verifyAdminSession } from './lib/auth';
+import { finishLoginLoader } from './lib/login-loader';
 
 import type { PageId } from './types';
 
@@ -122,6 +123,11 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // The sign-in loading screen (from the login page) plays out once the session is confirmed
+  React.useEffect(() => {
+    if (sessionOk) finishLoginLoader();
+  }, [sessionOk]);
+
   // Unsaved Changes Navigation Guard state
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingPageId, setPendingPageId] = useState<PageId | null>(null);
@@ -195,7 +201,7 @@ export const App: React.FC = () => {
 
   return (
     <AppProvider>
-      <div className="min-h-screen bg-[#f8f9fd] flex font-['Plus_Jakarta_Sans'] text-slate-800 antialiased">
+      <div className="min-h-screen bg-[#fcfbff] flex font-['Open_Sans'] text-slate-800 antialiased">
         {/* Sidebar */}
         <Sidebar
           currentPage={getCurrentPageId()}
@@ -288,13 +294,13 @@ export const App: React.FC = () => {
         {/* ── UNSAVED CHANGES NAVIGATION INTERCEPT MODAL ──────────────── */}
         {pendingPageId && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden my-auto p-6 space-y-5 animate-in fade-in zoom-in-95">
+            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 max-h-[90dvh] overflow-y-auto my-auto p-5 sm:p-6 space-y-5 animate-in fade-in zoom-in-95">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#5e2be2] border border-purple-200/80 flex items-center justify-center shrink-0 shadow-xs">
-                  <Sparkles className="w-6 h-6 animate-pulse text-[#5e2be2]" />
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#450bc8] border border-purple-200/80 flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-6 h-6 animate-pulse text-[#450bc8]" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase tracking-wider block">Unsaved CMS Changes</span>
+                  <span className="text-[10px] font-extrabold text-[#450bc8] uppercase tracking-wider block">Unsaved CMS Changes</span>
                   <h4 className="text-lg font-extrabold text-slate-900 leading-tight">Save before leaving?</h4>
                 </div>
               </div>
@@ -307,7 +313,7 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleConfirmSaveAndLeave}
-                  className="w-full py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#5e2be2]/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#450bc8]/25 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <Save className="w-4 h-4" />
                   <span>Save Changes & Leave</span>

@@ -4,12 +4,16 @@ import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { getDatabase } from '../db/mongodb';
 import { config } from '../config';
-import { tryIssueAuthToken } from '../utils/jwt';
+import { getSsoSecret, tryIssueAuthToken } from '../utils/jwt';
+import { MailService } from '../services/mail.service';
+import { portalUrl } from '../services/email-layout';
 import { Db } from 'mongodb';
 import {
   CLIENT_PANEL_LOCKED_MESSAGE,
   consultantAssignment,
+  findConsultantById,
   hasCompletedSession,
+  isClientRecord,
   resolveClientConsultant
 } from '../services/client-access';
 
@@ -136,10 +140,8 @@ export class AuthController {
       const isTherapistIntent = role === 'therapist' || role === 'consultant' || Boolean(consultant);
       if (isTherapistIntent) {
         if (!consultant) {
-          res.status(403).json({
-            success: false,
-            error: `Therapist email "${cleanEmail}" was not found in the practitioner directory. Only therapists registered in the Super Admin panel can access the Consultant Suite.`
-          });
+          // Same answer as a wrong password, so the form never tells which emails are registered
+          res.status(401).json({ success: false, error: 'Invalid email or password.' });
           return;
         }
 
@@ -216,7 +218,8 @@ export class AuthController {
       if (!user) {
         res.status(401).json({
           success: false,
-          error: 'No account found with this email or client ID. Please check your credentials or register as a new client.'
+          // Same answer as a wrong password, so the form never tells which emails are registered
+          error: 'Invalid email or password.'
         });
         return;
       }
@@ -239,7 +242,7 @@ export class AuthController {
       if (!clientPasswordMatches) {
         res.status(401).json({
           success: false,
-          error: 'Invalid password. Please try again.'
+          error: 'Invalid email or password.'
         });
         return;
       }
@@ -303,50 +306,44 @@ export class AuthController {
   }
 
   /**
-   * POST /api/auth/sso-ticket
-   * Generates a cryptographically signed HMAC-SHA256 single-use ticket (60s validity)
+   * POST /api/auth/sso-ticket (administrators only; the route requires an admin token)
+   * Lets an admin open the therapist or client panel as one of those accounts ("Launch Consultant Suite",
+   * "Launch Client Portal"). Only therapist and client tickets are issued, and the account is read from the
+   * database: the request only names it, so a caller can never choose the name, email or role in the ticket.
    */
   static async createSsoTicket(req: Request, res: Response): Promise<void> {
     try {
       const { user, targetRole } = req.body || {};
-
-      if (!user || !user.id || !user.email) {
-        res.status(400).json({ success: false, error: 'Valid user object with ID and email is required' });
+      const role = targetRole === 'client' ? 'client' : targetRole === 'therapist' || targetRole === 'consultant' ? 'therapist' : '';
+      if (!role) {
+        res.status(400).json({ success: false, error: 'targetRole must be "therapist" or "client"' });
+        return;
+      }
+      const ref = String(user?.id || user?._id || '').trim();
+      const email = String(user?.email || '').toLowerCase().trim();
+      if (!ref && !email) {
+        res.status(400).json({ success: false, error: 'The account id or email is required' });
         return;
       }
 
-      const payload = {
-        id: String(user.id),
-        name: user.name || 'Hexpertify User',
-        email: user.email,
-        role: targetRole || user.role || 'therapist',
-        title: user.profession || user.title || undefined,
-        avatarUrl: user.photo || user.avatarUrl || user.photoUrl || undefined,
-        timestamp: Date.now(),
-        nonce: crypto.randomBytes(16).toString('hex')
-      };
-
-      const payloadString = JSON.stringify(payload);
-      const signature = crypto
-        .createHmac('sha256', config.ssoSecret)
-        .update(payloadString)
-        .digest('hex');
-
-      const ticket = Buffer.from(JSON.stringify({ payload, signature })).toString('base64url');
-
-      activeTickets.set(ticket, {
-        payload,
-        expiresAt: Date.now() + 60 * 1000,
-        used: false
-      });
-
-      // Purge expired tickets
-      const now = Date.now();
-      for (const [key, val] of activeTickets.entries()) {
-        if (val.expiresAt < now) {
-          activeTickets.delete(key);
-        }
+      const db = getDatabase();
+      let account: any = null;
+      if (role === 'therapist') {
+        account = (ref && await findConsultantById(db, ref)) ||
+          (email && (await db.collection('Consultant').findOne({ email }) || await db.collection('consultants').findOne({ email })));
+      } else {
+        const or: any[] = [];
+        if (ref) or.push({ id: ref }, { _id: ref });
+        if (email) or.push({ email });
+        const found = await db.collection('User').findOne({ $or: or }) || await db.collection('users').findOne({ $or: or });
+        account = found && isClientRecord(found) ? found : null;
       }
+      if (!account || !account.email) {
+        res.status(404).json({ success: false, error: `No ${role === 'therapist' ? 'therapist' : 'client'} account matches that id or email` });
+        return;
+      }
+
+      const ticket = AuthController.issueSsoTicket(account, role);
 
       res.json({
         success: true,
@@ -390,11 +387,13 @@ export class AuthController {
 
       // 1. Verify HMAC-SHA256 signature
       const expectedSignature = crypto
-        .createHmac('sha256', config.ssoSecret)
+        .createHmac('sha256', getSsoSecret())
         .update(JSON.stringify(payload))
         .digest('hex');
 
-      if (signature !== expectedSignature) {
+      const given = Buffer.from(String(signature));
+      const wanted = Buffer.from(expectedSignature);
+      if (given.length !== wanted.length || !crypto.timingSafeEqual(given, wanted)) {
         res.status(401).json({ success: false, error: 'Invalid cryptographic signature. Ticket was tampered with.' });
         return;
       }
@@ -479,7 +478,7 @@ export class AuthController {
 
     const payloadString = JSON.stringify(payload);
     const signature = crypto
-      .createHmac('sha256', config.ssoSecret)
+      .createHmac('sha256', getSsoSecret())
       .update(payloadString)
       .digest('hex');
 
@@ -490,6 +489,12 @@ export class AuthController {
       expiresAt: Date.now() + 60 * 1000,
       used: false
     });
+
+    // Drop expired tickets so the registry does not grow
+    const now = Date.now();
+    for (const [key, val] of activeTickets.entries()) {
+      if (val.expiresAt < now) activeTickets.delete(key);
+    }
 
     return ticket;
   }
@@ -907,8 +912,92 @@ export class AuthController {
   }
 
   /**
-   * GET /api/auth/me
+   * POST /api/auth/forgot-password { email }
+   * Emails a client a single-use link (30 minutes) to set a new password. The answer is the same whether or
+   * not the email has an account, so the form cannot be used to find out who is registered.
    */
+  static async forgotPassword(req: Request, res: Response): Promise<void> {
+    const answer = { success: true, message: 'If an account uses this email, we have sent it a link to set a new password. The link works for 30 minutes.' };
+    try {
+      const email = String(req.body?.email || '').toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+        return;
+      }
+      const db = getDatabase();
+      const user: any = await db.collection('User').findOne({ email }) || await db.collection('users').findOne({ email });
+      // Client accounts only: staff passwords are managed by an administrator
+      if (!user || !isClientRecord(user)) {
+        res.json(answer);
+        return;
+      }
+      const resets = db.collection<any>('PasswordReset');
+      // One email a minute per account, so the form cannot be used to flood someone's inbox
+      const recent = await resets.findOne({ email, createdAt: { $gt: new Date(Date.now() - 60 * 1000) } });
+      if (recent) {
+        res.json(answer);
+        return;
+      }
+      const token = crypto.randomBytes(32).toString('hex');
+      await resets.insertOne({
+        _id: crypto.createHash('sha256').update(token).digest('hex'),
+        userId: String(user._id),
+        email,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        usedAt: null
+      });
+      await MailService.sendNotificationEmail({
+        to: email,
+        toName: user.name || email,
+        audience: 'CLIENT',
+        title: 'Set a new Hexpertify password',
+        message: 'We received a request to set a new password for your Hexpertify account. The button below works once, for the next 30 minutes. If you did not ask for this, ignore this email and your password stays the same.',
+        url: portalUrl(`/login?reset=${token}`),
+        ctaLabel: 'Set a new password'
+      }).catch((err) => console.error('[auth] password reset email failed:', err?.message || err));
+      res.json(answer);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: 'Could not send the link right now. Please try again.' });
+    }
+  }
+
+  /**
+   * POST /api/auth/reset-password { token, password }
+   * Sets a new password with a link from forgot-password (single use, 30 minutes).
+   */
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const token = String(req.body?.token || '').trim();
+      const password = String(req.body?.password || '');
+      if (password.length < 8) {
+        res.status(400).json({ success: false, error: 'The new password must be at least 8 characters long.' });
+        return;
+      }
+      const db = getDatabase();
+      const resets = db.collection<any>('PasswordReset');
+      const id = crypto.createHash('sha256').update(token).digest('hex');
+      // Claimed in one step, so the same link can never be used twice
+      const claimed: any = token
+        ? await resets.findOneAndUpdate({ _id: id, usedAt: null, expiresAt: { $gt: new Date() } }, { $set: { usedAt: new Date() } })
+        : null;
+      const record = claimed?.value !== undefined ? claimed.value : claimed;
+      if (!record) {
+        res.status(400).json({ success: false, error: 'This link has expired or was already used. Please ask for a new one.' });
+        return;
+      }
+      const hash = await bcrypt.hash(password, 10);
+      const filter = { $or: [{ _id: record.userId as any }, { id: record.userId }, { email: record.email }] };
+      await Promise.all([
+        db.collection('User').updateOne(filter, { $set: { password: hash, updatedAt: new Date() } }),
+        db.collection('users').updateOne(filter, { $set: { password: hash, updatedAt: new Date() } }).catch(() => {})
+      ]);
+      res.json({ success: true, message: 'Your password has been changed. You can sign in with it now.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: 'Could not change the password right now. Please try again.' });
+    }
+  }
+
   /**
    * GET /api/auth/whoami — the signed-in user from the Bearer token (id, email, role), or 401.
    * The admin panel only opens for a valid admin token (localStorage alone proves nothing).

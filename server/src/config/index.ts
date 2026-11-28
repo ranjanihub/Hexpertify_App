@@ -19,8 +19,9 @@ export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
   mongodbUri,
   dbName,
-  ssoSecret: process.env.SSO_SECRET || 'hexpertify_enterprise_sso_secret_key_2026_secure',
-  jwtSecret: process.env.JWT_SECRET || 'hexpertify_jwt_super_secret_key_2026',
+  // Signing keys come only from the environment (see utils/jwt.ts requireSecret): never a value in the code
+  ssoSecret: process.env.SSO_SECRET || '',
+  jwtSecret: process.env.JWT_SECRET || '',
   // Inside the website the same Google OAuth client is configured under the website's variable names
   googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || process.env.NEXT_GOOGLE_CLIENT_SECRET || '',

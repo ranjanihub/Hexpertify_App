@@ -17,12 +17,7 @@ import {
   MoreVertical,
   Users,
   Repeat,
-  Sparkles,
-  Heart,
-  Brain,
-  Wind,
   Activity as ActivityIcon,
-  Flame,
   FileText,
   Trash2
 } from 'lucide-react';
@@ -431,7 +426,7 @@ export const ActivitiesView: React.FC = () => {
   const categoriesList = ['All', 'MINDFULNESS', 'CBT', 'GRATITUDE', 'BREATHING', 'SOMATIC', 'EXPOSURE', 'BEHAVIORAL'];
 
   return (
-    <div className="space-y-8 pb-12 animate-fade-in font-['Plus_Jakarta_Sans'] relative">
+    <div className="space-y-8 pb-12 animate-fade-in font-['Open_Sans'] relative">
       {/* Toast Banner */}
       {toastMessage && (
         <div
@@ -454,7 +449,7 @@ export const ActivitiesView: React.FC = () => {
       {!selectedGameId ? (
         <div className="space-y-6 sm:space-y-8">
           {/* Header Section */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:gap-6">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 xl:gap-6">
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Activities</h1>
               <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1">
@@ -462,16 +457,16 @@ export const ActivitiesView: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full xl:w-auto">
               {/* Search Bar */}
-              <div className="relative w-full sm:flex-1 lg:flex-none lg:w-72 min-w-0">
+              <div className="relative w-full sm:flex-1 xl:flex-none xl:w-72 min-w-0">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search activities or clients..."
-                  className="w-full pl-10 pr-8 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 outline-none focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all placeholder:text-slate-400 shadow-xs"
+                  className="w-full pl-10 pr-8 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 outline-none focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all placeholder:text-slate-400 shadow-xs"
                 />
                 {searchTerm && (
                   <button
@@ -488,7 +483,7 @@ export const ActivitiesView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowCreateModal(true)}
-                className="w-full sm:w-auto px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#5e2be2]/20 transition-all active:scale-95 whitespace-nowrap shrink-0"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#450bc8]/20 transition-all active:scale-95 whitespace-nowrap shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create & Assign Activity</span>
@@ -507,7 +502,7 @@ export const ActivitiesView: React.FC = () => {
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-4 py-2 rounded-2xl text-xs font-extrabold tracking-wide uppercase transition-all whitespace-nowrap ${
                     isActive
-                      ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/25'
+                      ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/25'
                       : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
                   }`}
                 >
@@ -531,7 +526,7 @@ export const ActivitiesView: React.FC = () => {
                       setSearchTerm('');
                       setSelectedCategory('All');
                     }}
-                    className="text-[#5e2be2] font-bold text-xs hover:underline"
+                    className="text-[#450bc8] font-bold text-xs hover:underline"
                   >
                     Reset search filters
                   </button>
@@ -563,12 +558,6 @@ export const ActivitiesView: React.FC = () => {
                       {/* Top-Left Category Badge */}
                       <div className="absolute top-3 left-3 right-28 z-10 flex items-center gap-2 min-w-0">
                         <span className="max-w-full truncate px-3 py-1 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-extrabold text-slate-900 shadow-md flex items-center gap-1.5 uppercase tracking-wider border border-white/50">
-                          {game.categoryTag === 'MINDFULNESS' && <Wind className="w-3 h-3 text-[#5e2be2]" />}
-                          {game.categoryTag === 'CBT' && <Brain className="w-3 h-3 text-purple-600" />}
-                          {game.categoryTag === 'SOMATIC' && <Sparkles className="w-3 h-3 text-emerald-500" />}
-                          {game.categoryTag === 'GRATITUDE' && <Heart className="w-3 h-3 text-rose-500" />}
-                          {game.categoryTag === 'EXPOSURE' && <Flame className="w-3 h-3 text-amber-500" />}
-                          {game.categoryTag === 'BEHAVIORAL' && <Sparkles className="w-3 h-3 text-emerald-500" />}
                           <span>{game.categoryTag}</span>
                         </span>
                       </div>
@@ -608,7 +597,7 @@ export const ActivitiesView: React.FC = () => {
                                     handleToggleVisibility(game.id, e);
                                     setActiveDropdownId(null);
                                   }}
-                                  className="w-full px-4 py-2 text-left text-slate-700 hover:bg-purple-50 hover:text-[#5e2be2] flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-left text-slate-700 hover:bg-purple-50 hover:text-[#450bc8] flex items-center gap-2"
                                 >
                                   {isVisible ? (
                                     <>
@@ -628,7 +617,7 @@ export const ActivitiesView: React.FC = () => {
                                     handleCopyFilePath(game.filePath, e);
                                     setActiveDropdownId(null);
                                   }}
-                                  className="w-full px-4 py-2 text-left text-slate-700 hover:bg-purple-50 hover:text-[#5e2be2] flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-left text-slate-700 hover:bg-purple-50 hover:text-[#450bc8] flex items-center gap-2"
                                 >
                                   <Copy className="w-3.5 h-3.5 text-slate-400" />
                                   <span>Copy Code Path</span>
@@ -654,7 +643,7 @@ export const ActivitiesView: React.FC = () => {
                     {/* Card Content Body */}
                     <div className="p-4 sm:p-6 space-y-4 flex-1 flex flex-col justify-between min-w-0">
                       <div className="space-y-2 min-w-0">
-                        <h3 className="font-extrabold text-slate-900 text-base sm:text-lg group-hover:text-[#5e2be2] transition-colors leading-tight">
+                        <h3 className="font-extrabold text-slate-900 text-base sm:text-lg group-hover:text-[#450bc8] transition-colors leading-tight">
                           {game.name}
                         </h3>
                         <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
@@ -663,8 +652,8 @@ export const ActivitiesView: React.FC = () => {
                       </div>
 
                       {/* Client Assignment Line */}
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#5e2be2] bg-purple-50/80 px-3.5 py-2 rounded-2xl border border-purple-100/80">
-                        <Users className="w-3.5 h-3.5 shrink-0 text-[#5e2be2]" />
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#450bc8] bg-purple-50/80 px-3.5 py-2 rounded-2xl border border-purple-100/80">
+                        <Users className="w-3.5 h-3.5 shrink-0 text-[#450bc8]" />
                         <span className="truncate">{game.assignedInfo}</span>
                       </div>
 
@@ -696,7 +685,7 @@ export const ActivitiesView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedGameId(game.id)}
-                        className="w-full py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#5e2be2]/20 hover:shadow-lg transition-all active:scale-[0.98] mt-2"
+                        className="w-full py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#450bc8]/20 hover:shadow-lg transition-all active:scale-[0.98] mt-2"
                       >
                         <Play className="w-4 h-4 fill-white shrink-0" />
                         <span className="truncate">Play / Open Interactive Exercise</span>
@@ -725,11 +714,11 @@ export const ActivitiesView: React.FC = () => {
               </button>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase font-mono">
+                  <span className="text-[10px] font-extrabold text-[#450bc8] uppercase font-mono">
                     Playing · {activeGameObj?.id}
                   </span>
                   {activeGameObj && (
-                    <span className="px-2 py-0.5 bg-purple-50 text-[#5e2be2] font-bold text-[10px] rounded-md uppercase">
+                    <span className="px-2 py-0.5 bg-purple-50 text-[#450bc8] font-bold text-[10px] rounded-md uppercase">
                       {activeGameObj.categoryTag}
                     </span>
                   )}
@@ -788,7 +777,7 @@ export const ActivitiesView: React.FC = () => {
                 <FileText className="w-10 h-10 text-purple-600 mx-auto mb-2" />
                 <h3 className="font-extrabold text-slate-900 text-base">{activeGameObj?.name}</h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">{activeGameObj?.description}</p>
-                <div className="mt-4 p-4 bg-purple-50 text-[#5e2be2] font-semibold text-xs rounded-2xl border border-purple-100 max-w-sm mx-auto">
+                <div className="mt-4 p-4 bg-purple-50 text-[#450bc8] font-semibold text-xs rounded-2xl border border-purple-100 max-w-sm mx-auto">
                   Assigned To: {activeGameObj?.assignedInfo}
                 </div>
               </div>
@@ -803,7 +792,7 @@ export const ActivitiesView: React.FC = () => {
           <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-5 max-h-[92dvh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-[#5e2be2] flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-[#450bc8] flex items-center justify-center font-bold">
                   <Plus className="w-5 h-5" />
                 </div>
                 <div>
@@ -828,7 +817,7 @@ export const ActivitiesView: React.FC = () => {
                   placeholder="e.g. Daily Somatic Breathing & Reflection"
                   value={newActivityData.title}
                   onChange={(e) => setNewActivityData({ ...newActivityData, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                 />
               </div>
 
@@ -838,7 +827,7 @@ export const ActivitiesView: React.FC = () => {
                   <select
                     value={newActivityData.categoryTag}
                     onChange={(e) => setNewActivityData({ ...newActivityData, categoryTag: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   >
                     <option value="MINDFULNESS">MINDFULNESS</option>
                     <option value="CBT">CBT</option>
@@ -855,7 +844,7 @@ export const ActivitiesView: React.FC = () => {
                   <select
                     value={newActivityData.difficulty}
                     onChange={(e) => setNewActivityData({ ...newActivityData, difficulty: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   >
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
@@ -870,7 +859,7 @@ export const ActivitiesView: React.FC = () => {
                   <select
                     value={newActivityData.duration}
                     onChange={(e) => setNewActivityData({ ...newActivityData, duration: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   >
                     <option value="5 min">5 min</option>
                     <option value="8 min">8 min</option>
@@ -887,7 +876,7 @@ export const ActivitiesView: React.FC = () => {
                   <select
                     value={newActivityData.repeat}
                     onChange={(e) => setNewActivityData({ ...newActivityData, repeat: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   >
                     <option value="Daily">Daily</option>
                     <option value="2-3 Times / Week">2-3 Times / Week</option>
@@ -905,7 +894,7 @@ export const ActivitiesView: React.FC = () => {
                 <select
                   value={newActivityData.templateId}
                   onChange={(e) => setNewActivityData({ ...newActivityData, templateId: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-xs font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-xs font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                 >
                   {Object.values(activityCodeRegistry).map((item) => (
                     <option key={item.id} value={item.id}>
@@ -920,7 +909,7 @@ export const ActivitiesView: React.FC = () => {
                 <select
                   value={newActivityData.imageUrl}
                   onChange={(e) => setNewActivityData({ ...newActivityData, imageUrl: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                 >
                   {presetCoverImages.map((img, i) => (
                     <option key={i} value={img.url}>
@@ -937,7 +926,7 @@ export const ActivitiesView: React.FC = () => {
                   placeholder="https://images.unsplash.com/..."
                   value={newActivityData.customImageUrl}
                   onChange={(e) => setNewActivityData({ ...newActivityData, customImageUrl: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                 />
               </div>
 
@@ -953,7 +942,7 @@ export const ActivitiesView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md"
                 >
                   Create & Prescribe Activity
                 </button>

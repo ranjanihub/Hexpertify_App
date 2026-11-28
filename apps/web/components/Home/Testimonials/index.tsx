@@ -41,7 +41,7 @@ const Testimonial = ({ data }: props) => {
           const validSrc = getValidImageSrc(item?.profile);
           return (
             // VISUAL CARD: Background, rounded corners, and padding go here
-            <div className="flex flex-col justify-between items-center h-full max-h-[300px] bg-[#F3EDF7] rounded-[16px] p-6 md:p-8 text-center min-h-[300px]">
+            <div className="flex flex-col justify-between items-center h-full bg-[#F3EDF7] rounded-[16px] p-6 md:p-8 text-center min-h-[300px]">
               {/* Feedback Text Area - Grows to fill space */}
               <div className="flex-1 flex items-center justify-center mb-6">
                 <p className="text-lg md:text-[20px] font-normal italic leading-relaxed text-gray-800">

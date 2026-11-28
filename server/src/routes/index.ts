@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import authRoutes from './auth.routes';
 import consultantsRoutes from './consultants.routes';
 import usersRoutes from './users.routes';
+import clientNotesRoutes from './client-notes.routes';
 import bookingsRoutes from './bookings.routes';
 import goalsRoutes from './goals.routes';
 import notificationsRoutes from './notifications.routes';
@@ -75,6 +76,7 @@ router.get('/client-data', UsersController.getClientData);
 router.get('/getClientData', UsersController.getClientData);
 
 router.use('/users', usersRoutes);
+router.use('/client-notes', clientNotesRoutes);
 router.use('/admin/users', usersRoutes);
 
 router.use('/bookings', bookingsRoutes);

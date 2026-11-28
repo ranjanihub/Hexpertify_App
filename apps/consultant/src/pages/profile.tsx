@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ShieldCheck, Mail, Save, Camera, MapPin,
+  ShieldCheck, Mail, Save, MapPin,
   Briefcase, Users, IndianRupee, Star, Globe, Award,
 } from "lucide-react";
 import { getAuthUser, setAuthUser } from "@/lib/auth";
@@ -22,7 +22,8 @@ const formSchema = z.object({
   professionId:    z.string().min(1, "Choose your profession"),
   bio:             z.string().min(10, "Bio must be at least 10 characters"),
   experience:      z.coerce.number().min(0),
-  email:           z.string().email("Valid email required"),
+  // Shown read-only: the sign-in email is changed by the admin team, not from here
+  email:           z.string().optional(),
   location:        z.string().optional(),
 });
 
@@ -39,8 +40,8 @@ function lowestPlanPrice(c: any): number {
 
 function StatPill({ icon: Icon, value, label }: { icon: React.ElementType; value: string; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 px-5 py-3 shrink-0 min-w-[110px]">
-      <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center mb-0.5 text-[#5e2be2]">
+    <div className="flex flex-col items-center text-center gap-1 px-3 sm:px-5 py-3 shrink-0 min-w-0 md:min-w-[110px]">
+      <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center mb-0.5 text-[#450bc8]">
         <Icon className="w-4 h-4" />
       </div>
       <span className="text-base font-extrabold text-slate-900 leading-none">{value}</span>
@@ -52,7 +53,7 @@ function StatPill({ icon: Icon, value, label }: { icon: React.ElementType; value
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-      <span className="text-xs font-extrabold uppercase tracking-widest text-[#5e2be2]">{children}</span>
+      <span className="text-xs font-extrabold uppercase tracking-widest text-[#450bc8]">{children}</span>
       <div className="flex-1 h-px bg-slate-100" />
     </div>
   );
@@ -63,7 +64,7 @@ export default function Profile() {
   const [authUser, setLocalAuthUser] = useState(() => getAuthUser());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [activeClientsCount, setActiveClientsCount] = useState<number>(0);
+  const [activeClientsCount, setActiveClientsCount] = useState<number | null>(null);
   const [dbConsultant, setDbConsultant] = useState<any>(null);
   const [professions, setProfessions] = useState<ProfessionOption[]>([]);
 
@@ -84,10 +85,13 @@ export default function Profile() {
     async function loadData() {
       try {
         setIsLoading(true);
-        const [consultantsRes, bookingsRes, usersRes, professionsRes] = await Promise.all([
+        const myIdRaw = String(authUser?.id || '').trim();
+        const [consultantsRes, myClientsRes, professionsRes] = await Promise.all([
           fetch('/api/consultants').then(r => r.ok ? r.json() : { consultants: [] }).catch(() => ({ consultants: [] })),
-          fetch('/api/bookings').then(r => r.ok ? r.json() : { bookings: [] }).catch(() => ({ bookings: [] })),
-          fetch('/api/users').then(r => r.ok ? r.json() : { users: [] }).catch(() => ({ users: [] })),
+          // Active clients = the clients the server lists for this therapist's id (no name matching)
+          myIdRaw
+            ? fetch(`/api/users?therapistId=${encodeURIComponent(myIdRaw)}`).then(r => r.ok ? r.json() : null).catch(() => null)
+            : Promise.resolve(null),
           fetch('/api/professions').then(r => r.ok ? r.json() : { professions: [] }).catch(() => ({ professions: [] })),
         ]);
 
@@ -97,45 +101,21 @@ export default function Profile() {
         setProfessions(professionList);
 
         const consultantsList = Array.isArray(consultantsRes?.consultants) ? consultantsRes.consultants : [];
-        const bookingsList = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
-        const usersList = Array.isArray(usersRes?.users) ? usersRes.users : [];
 
         const myEmail = (authUser?.email || '').toLowerCase().trim();
-        const myName = (authUser?.name || '').toLowerCase().trim();
-        const myId = String(authUser?.id || '').toLowerCase().trim();
+        const myId = myIdRaw.toLowerCase();
 
-        // Match this therapist's own consultant record (never another therapist's)
-        const found = consultantsList.find((c: any) => {
-          const cEmail = String(c.email || '').toLowerCase().trim();
-          const cId = String(c.id || c._id || '').toLowerCase().trim();
-          return (myEmail && cEmail === myEmail) || (myId && cId === myId);
-        }) || consultantsList.find((c: any) => myName && String(c.name || '').toLowerCase().trim() === myName);
+        // Match this therapist's own consultant record by id or sign-in email (never by name,
+        // which could pick another therapist's record)
+        const found = consultantsList.find((c: any) => myId && [c.id, c._id].filter(Boolean).some((v: any) => String(v).toLowerCase().trim() === myId))
+          || consultantsList.find((c: any) => myEmail && String(c.email || '').toLowerCase().trim() === myEmail);
 
         if (found) {
           setDbConsultant(found);
         }
 
-        // Calculate real active clients for this therapist
-        const clientSet = new Set<string>();
-        bookingsList.forEach((b: any) => {
-          const bCid = String(b.consultantId || b.therapistId || '').toLowerCase().trim();
-          const bCname = String(b.consultantName || b.therapistName || '').toLowerCase().trim();
-          if ((myId && bCid === myId) || (myName && bCname === myName) || (myName && bCname.includes(myName))) {
-            if (b.clientEmail) clientSet.add(b.clientEmail.toLowerCase());
-            else if (b.clientId) clientSet.add(String(b.clientId));
-          }
-        });
-
-        usersList.forEach((u: any) => {
-          const uAssigned = String(u.assignedTherapistName || u.therapist || '').toLowerCase().trim();
-          const uAssignedId = String(u.assignedTherapistId || '').toLowerCase().trim();
-          if ((myId && uAssignedId === myId) || (myName && uAssigned === myName) || (myName && uAssigned.includes(myName))) {
-            if (u.email) clientSet.add(u.email.toLowerCase());
-            else if (u._id || u.id) clientSet.add(String(u._id || u.id));
-          }
-        });
-
-        setActiveClientsCount(clientSet.size);
+        const myClients = Array.isArray(myClientsRes?.users) ? myClientsRes.users : null;
+        setActiveClientsCount(myClients ? myClients.length : null);
 
         // Populate form with real DB values (`about` is the website's profile text)
         const finalName = found?.name || authUser?.name || "";
@@ -180,7 +160,6 @@ export default function Profile() {
         body: JSON.stringify({
           id: targetId,
           name: values.name,
-          email: values.email,
           professionId: values.professionId,
           about: values.bio,
           experience: values.experience,
@@ -198,7 +177,6 @@ export default function Profile() {
       const updatedAuth = {
         ...(authUser || {}),
         name: values.name,
-        email: values.email,
         title: professionName,
         profession: professionName
       };
@@ -234,11 +212,11 @@ export default function Profile() {
   const photoUrl = dbConsultant?.photoUrl || dbConsultant?.photo || dbConsultant?.image || authUser?.photoUrl || authUser?.image || authUser?.avatarUrl || "";
 
   return (
-    <div className="max-w-5xl mx-auto pb-12 space-y-6 font-['Plus_Jakarta_Sans']">
+    <div className="max-w-5xl mx-auto pb-12 space-y-6 font-['Open_Sans']">
 
       {/* ── Hero Banner ────────────────────────────────────────── */}
       <Card className="overflow-hidden shadow-sm border-border rounded-3xl bg-white">
-        <div className="h-40 bg-gradient-to-r from-[#431bb5] via-[#5e2be2] to-[#361394] relative overflow-hidden">
+        <div className="h-40 bg-gradient-to-r from-[#431bb5] via-[#450bc8] to-[#361394] relative overflow-hidden">
           <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
         </div>
 
@@ -248,15 +226,8 @@ export default function Profile() {
             <div className="relative shrink-0 -mt-14">
               <Avatar className="w-28 h-28 border-4 border-white shadow-lg bg-white">
                 <AvatarImage src={photoUrl} alt={nameVal} className="object-cover" />
-                <AvatarFallback className="text-3xl font-extrabold text-[#5e2be2] bg-purple-100">{initials}</AvatarFallback>
+                <AvatarFallback className="text-3xl font-extrabold text-[#450bc8] bg-purple-100">{initials}</AvatarFallback>
               </Avatar>
-              <button 
-                type="button"
-                className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-white shadow border border-border flex items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer"
-                title="Change Avatar"
-              >
-                <Camera className="w-4 h-4 text-slate-500" />
-              </button>
             </div>
 
             <div className="flex-1 pb-4 space-y-1">
@@ -284,9 +255,9 @@ export default function Profile() {
           </div>
 
           {/* Real Statistics Strip */}
-          <div className="flex items-stretch border-t border-border divide-x divide-border -mx-6 sm:-mx-8 overflow-x-auto scrollbar-none">
+          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 max-md:[&>*]:border-b max-md:[&>*]:border-r max-md:[&>*]:border-border md:flex md:items-stretch border-t border-border md:divide-x md:divide-border -mx-6 sm:-mx-8 md:overflow-x-auto scrollbar-none">
             <StatPill icon={Briefcase} value={`${expVal}y`} label="Experience" />
-            <StatPill icon={Users} value={`${activeClientsCount}`} label="Active Clients" />
+            <StatPill icon={Users} value={activeClientsCount === null ? "—" : `${activeClientsCount}`} label="Active Clients" />
             <StatPill icon={IndianRupee} value={feeVal ? `₹${feeVal}` : "—"} label="Per Session" />
             <StatPill icon={Star} value={dbConsultant?.reviewCount ? `${dbConsultant.rating}` : "—"} label={`Rating (${dbConsultant?.reviewCount || 0} reviews)`} />
             <StatPill icon={Globe} value={`${languages.length}`} label="Languages" />
@@ -295,7 +266,7 @@ export default function Profile() {
       </Card>
 
       {/* ── Main Grid ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
         {/* Left Column — Identity Cards */}
         <div className="space-y-5">
@@ -308,7 +279,7 @@ export default function Profile() {
                   <span className="text-xs text-slate-400">No specializations added yet.</span>
                 )}
                 {specializations.map((spec, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 text-[#5e2be2] text-xs font-extrabold border border-purple-100">
+                  <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 text-[#450bc8] text-xs font-extrabold border border-purple-100">
                     <Award className="w-3 h-3" />{spec}
                   </span>
                 ))}
@@ -338,13 +309,13 @@ export default function Profile() {
             <CardContent className="p-6 space-y-3">
               <SectionHeading>Contact & Location</SectionHeading>
               <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 text-[#5e2be2]">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 text-[#450bc8]">
                   <Mail className="w-4 h-4" />
                 </div>
                 <span className="truncate">{emailVal}</span>
               </div>
               <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 text-[#5e2be2]">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 text-[#450bc8]">
                   <MapPin className="w-4 h-4" />
                 </div>
                 <span>{locationVal}</span>
@@ -354,7 +325,7 @@ export default function Profile() {
         </div>
 
         {/* Right Column — Live Edit Form */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-2 min-w-0">
           <Card className="shadow-sm border-border rounded-3xl bg-white">
             <CardContent className="p-4 sm:p-8">
               <SectionHeading>Edit Profile Details</SectionHeading>
@@ -395,8 +366,8 @@ export default function Profile() {
                     <FormField control={form.control} name="email" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs font-extrabold text-slate-700">Official Email</FormLabel>
-                        <FormControl><Input {...field} className="rounded-xl text-xs h-10" /></FormControl>
-                        <FormMessage />
+                        <FormControl><Input {...field} readOnly disabled className="rounded-xl text-xs h-10" /></FormControl>
+                        <p className="text-[11px] text-slate-500 font-medium">To change your sign-in email, contact the admin team.</p>
                       </FormItem>
                     )} />
 
@@ -438,7 +409,7 @@ export default function Profile() {
                     <Button 
                       type="submit" 
                       disabled={isSaving}
-                      className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white gap-2 px-6 h-11 rounded-xl font-bold text-xs shadow-md shadow-[#5e2be2]/20 cursor-pointer"
+                      className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white gap-2 px-6 h-11 rounded-xl font-bold text-xs shadow-md shadow-[#450bc8]/20 cursor-pointer"
                     >
                       <Save className="w-4 h-4" />
                       {isSaving ? "Saving to Database..." : "Save Profile"}

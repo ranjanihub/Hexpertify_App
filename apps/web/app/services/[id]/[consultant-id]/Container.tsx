@@ -1,6 +1,7 @@
 "use client";
 
-import { IoArrowBack } from "react-icons/io5";
+import BackButton from "@/components/BackButton";
+import WebsiteSignIn from "@/components/WebsiteSignIn";
 import { FaWhatsapp } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -69,7 +70,7 @@ export default function Container({
   const [open, setOpen] = useState(false);
   // Admin switch: profile visible, booking paused
   const bookingDisabled = Boolean(consultant?.bookingDisabled);
-  const { data } = useSession();
+  const { data, update: updateSession } = useSession();
   const [bookingPayload, setBookingPayload] = useState({
     serviceId: "",
   });
@@ -165,22 +166,12 @@ export default function Container({
 
   return (
     <>
-      <div className="py-4 pb-24 md:p-6 lg:p-[50px]">
+      <div className="py-4 pb-8 md:p-6 lg:p-[50px] min-[2000px]:mx-auto min-[2000px]:max-w-[1900px]">
         <div className="w-full px-4 md:px-0">
           {" "}
           {/* Added padding for mobile edge safety */}
           {/* --- Header Section --- */}
-          <div className="flex gap-[10px] md:gap-[20px] items-center my-[15px] md:my-[20px]">
-            {/* Adjusted icon size logic or wrapper if needed, keeping simple here */}
-            <IoArrowBack
-              size={32}
-              className="cursor-pointer md:w-[46px] md:h-[46px]" // Responsive sizing via class if supported, or fallback to size prop
-              onClick={() => router.back()}
-            />
-            <p className="text-[20px] sm:text-[24px] md:text-[32px] font-semibold text-black leading-tight">
-              Back
-            </p>
-          </div>
+          <BackButton fallbackHref={serviceId ? `/services/${serviceId}` : "/services"} className="my-[15px] md:my-[20px]" />
           <ProfileSec ConsultantProfileDetails={consultant} />
           {/* --- About Section --- */}
           <div className="mt-6 md:mt-0">
@@ -192,7 +183,7 @@ export default function Container({
             <div className="flex flex-col lg:flex-row justify-between gap-[20px] lg:gap-[40px]">
               {/* Description Text */}
               <div className="w-full lg:w-1/2">
-                <p className="whitespace-pre-line text-base md:text-lg leading-relaxed text-justify">
+                <p className="whitespace-pre-line text-base md:text-lg leading-relaxed text-left sm:text-justify">
                   {consultant.description}
                 </p>
               </div>
@@ -242,12 +233,17 @@ export default function Container({
           handleBooking={handleBooking}
           isLoading={isLoading}
           price={selectedService?.price}
+          signedIn={Boolean(data?.user?.id)}
+          onSignedIn={async () => {
+            await updateSession();
+            toast.success("Signed in. You can book now.");
+          }}
         />
       </div>
 
       {formattedFaqs.length > 0 && <FaqCompo data={formattedFaqs} />}
       {services?.length > 0 && !bookingDisabled && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/20 bg-white/95 px-4 py-3 shadow-[0_-4px_18px_rgba(0,0,0,0.18)] backdrop-blur md:hidden">
+        <div data-sticky-book className="fixed inset-x-0 bottom-0 z-50 border-t border-white/20 bg-white/95 px-4 py-3 shadow-[0_-4px_18px_rgba(0,0,0,0.18)] backdrop-blur md:hidden">
           <Button
             type="button"
             onClick={scrollToBookingSection}
@@ -279,6 +275,8 @@ interface BookingModalProps {
   handleBooking: () => Promise<void>;
   isLoading: boolean;
   price?: number;
+  signedIn: boolean;
+  onSignedIn: () => Promise<void>;
 }
 
 function BookingModal({
@@ -287,6 +285,8 @@ function BookingModal({
   handleBooking,
   isLoading,
   price,
+  signedIn,
+  onSignedIn,
 }: BookingModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -306,16 +306,20 @@ function BookingModal({
         <div className="flex flex-col w-full">
           {/* Buttons Section */}
           <div className="p-4 pt-0 flex gap-3 flex-col justify-center items-center">
-            <Button
-              className="bg-[#450BC8] hover:bg-[#3708a0]  rounded-[16px] text-white w-full h-[50px] text-[18px] md:text-[20px] cursor-pointer font-semibold"
-              onClick={() => {
-                // Handle booking confirmation logic here
-                handleBooking();
-              }}
-              disabled={isLoading}
-            >
-              {isLoading ? "Processing..." : price ? `Pay ₹${price} & Book` : "Yes, Book"}
-            </Button>
+            {signedIn ? (
+              <Button
+                className="bg-[#450BC8] hover:bg-[#3708a0]  rounded-[16px] text-white w-full h-[50px] text-[18px] md:text-[20px] cursor-pointer font-semibold"
+                onClick={() => {
+                  handleBooking();
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? "Processing..." : price ? `Pay ₹${price} & Book` : "Yes, Book"}
+              </Button>
+            ) : (
+              // Booking needs a website account: sign in here, then the Pay button appears
+              <WebsiteSignIn onSignedIn={onSignedIn} />
+            )}
             <Button
               onClick={() => setOpen(false)}
               variant="outline" // Using shadcn variant for borders, overridden by className
@@ -406,7 +410,7 @@ function ConfirmationModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[500px] bg-white p-6 md:p-10 rounded-[24px] flex flex-col items-center justify-center border-none shadow-lg outline-none">
+      <DialogContent className="sm:max-w-[500px] bg-white p-6 md:p-10 rounded-[24px] flex flex-col items-center justify-center-safe border-none shadow-lg outline-none">
         {/* Green Check Icon Circle */}
         <div className="bg-[#00C300] w-[80px] h-[80px] md:w-[100px] md:h-[100px] rounded-full flex items-center justify-center mb-6 shadow-sm">
           <Check className="text-white w-[50px] h-[50px] md:w-[60px] md:h-[60px] stroke-[4]" />

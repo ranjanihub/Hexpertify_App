@@ -18,10 +18,10 @@ export const ProgressiveMuscleRelaxation: React.FC<BaseActivityComponentProps> =
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Plus_Jakarta_Sans']">
+    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Open_Sans']">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div>
-          <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
+          <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
             Coded Component · ACT-03
           </span>
           <h3 className="text-xl font-extrabold text-slate-900 mt-1">{activityName}</h3>
@@ -41,7 +41,7 @@ export const ProgressiveMuscleRelaxation: React.FC<BaseActivityComponentProps> =
           <button
             type="button"
             onClick={togglePlay}
-            className="w-16 h-16 rounded-full bg-white text-[#4f28d9] mx-auto flex items-center justify-center shadow-lg hover:scale-105 transition-all"
+            className="w-16 h-16 rounded-full bg-white text-[#3a0aa8] mx-auto flex items-center justify-center shadow-lg hover:scale-105 transition-all"
           >
             {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
           </button>

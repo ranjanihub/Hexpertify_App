@@ -3,13 +3,8 @@ import {
   Activity, 
   Clock, 
   Calendar as CalendarIcon, 
-  Plus, 
-  Sparkles, 
-  Search, 
-  Brain, 
-  Heart, 
-  Wind, 
-  Smile, 
+  Plus,
+  Search,
   Check,
   MoreVertical,
   UserPlus,
@@ -188,7 +183,6 @@ export default function ActivitiesPage() {
 
   // Preview Activity Modal State
   const [activeActivity, setActiveActivity] = useState<ActivityItem | null>(null);
-  const [previewTab, setPreviewTab] = useState<"game" | "instructions">("game");
 
   // Assign Modal Multi-Step State
   const [assignModalActivity, setAssignModalActivity] = useState<ActivityItem | null>(null);
@@ -211,36 +205,17 @@ export default function ActivitiesPage() {
     const fetchConsultantClients = async () => {
       try {
         setIsLoadingClients(true);
-        const myName = authUser?.name || '';
         const myId = String(authUser?.id || '');
+        if (!myId) return;
 
-        const queryParams = `?consultantId=${encodeURIComponent(myId)}&consultantName=${encodeURIComponent(myName)}&role=client`;
-        const [usersRes, bookingsRes] = await Promise.all([
-          fetch(`/api/users${queryParams}`).then(r => r.ok ? r.json() : { users: [] }).catch(() => ({ users: [] })),
-          fetch(`/api/bookings${queryParams}`).then(r => r.ok ? r.json() : { bookings: [] }).catch(() => ({ bookings: [] }))
-        ]);
+        // By id only: the server returns just this therapist's clients (no name matching)
+        const usersRes = await fetch(`/api/users?therapistId=${encodeURIComponent(myId)}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null);
+        if (!Array.isArray(usersRes?.users)) return;
 
-        const rawUsers = Array.isArray(usersRes?.users) ? usersRes.users : [];
-        const rawBookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
-
-        const myBookings = rawBookings.filter((b: any) => {
-          const bCid = String(b.consultantId || b.therapistId || '').toLowerCase().trim();
-          const bCname = String(b.consultantName || b.therapistName || '').toLowerCase().trim();
-          return (myId && bCid === myId) || (myName && bCname.includes(myName.toLowerCase())) || (myName && myName.toLowerCase().includes(bCname) && bCname.length > 3);
-        });
-
-        const myUsers = rawUsers.filter((u: any) => {
+        const myUsers = usersRes.users.filter((u: any) => {
           const role = String(u.role || '').toUpperCase();
-          if (role === 'ADMIN' || role === 'THERAPIST' || role === 'CONSULTANT') return false;
-          const uAssignedName = String(u.assignedTherapistName || u.therapist || '').toLowerCase().trim();
-          const uAssignedId = String(u.assignedTherapistId || '').toLowerCase().trim();
-          const isAssigned = (myId && uAssignedId === myId) || (myName && uAssignedName.includes(myName.toLowerCase())) || (myName && myName.toLowerCase().includes(uAssignedName) && uAssignedName.length > 3);
-          const hasBooking = myBookings.some((b: any) =>
-            (b.clientEmail && u.email && b.clientEmail.toLowerCase() === u.email.toLowerCase()) ||
-            (b.clientId && String(u._id || u.id) === String(b.clientId)) ||
-            (b.clientName && u.name && b.clientName.toLowerCase() === u.name.toLowerCase())
-          );
-          return isAssigned || hasBooking;
+          return role !== 'ADMIN' && role !== 'THERAPIST' && role !== 'CONSULTANT';
         });
 
         const cObjs = myUsers.map((u: any) => ({
@@ -337,19 +312,38 @@ export default function ActivitiesPage() {
     };
   });
 
+  // Opens the activity as a full page (like the client panel), from the top
   const handlePreviewActivity = (act: ActivityItem) => {
     setActiveActivity(act);
-    setPreviewTab("game");
+    try { document.querySelector("main")?.scrollTo({ top: 0 }); window.scrollTo({ top: 0 }); } catch {}
   };
 
-  const handleDelete = async (act: ActivityItem) => {
-    // Templates are shared by every therapist and managed by the admin: only hide it from this view
-    setActivities((prev) => prev.filter((item) => item.id !== act.id));
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
-    toast({
-      title: "Activity Hidden",
-      description: `"${act.title}" was removed from this view. Activity templates are managed by the admin.`,
-    });
+  const handleDelete = async (act: ActivityItem) => {
+    if (deletingId !== null) return;
+    // Templates live in the shared library, so deleting one removes it for everyone: ask first
+    const ok = window.confirm(`Delete "${act.title}" from the activity library?\n\nThis removes it for all therapists and clients and can't be undone.`);
+    if (!ok) return;
+
+    setDeletingId(act.id);
+    try {
+      const res = await fetch(`/api/activities/${encodeURIComponent(String(act.id))}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.success === false) throw new Error(data?.error || data?.message || `The server answered ${res.status}`);
+
+      // Removed from the list only once the server has confirmed the delete
+      setActivities((prev) => prev.filter((item) => item.id !== act.id));
+      toast({ title: "Activity deleted", description: `"${act.title}" was removed from the library.` });
+    } catch (err: any) {
+      toast({
+        title: "Couldn't delete the activity",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const openAssignModal = (act: ActivityItem, targetClient?: string) => {
@@ -359,7 +353,7 @@ export default function ActivitiesPage() {
       ? [targetClient] 
       : (act.assignedTo && act.assignedTo.length > 0
           ? act.assignedTo.filter((c: string) => clientList.includes(c))
-          : (clientList.length > 0 ? [clientList[0]] : []));
+          : []); // nobody preselected: each client is picked on purpose
     setSelectedClientsToAssign(clients);
 
     const initialFreqs: Record<string, { frequency: string; timeOfDay: string }> = {};
@@ -490,33 +484,68 @@ export default function ActivitiesPage() {
     setEditInstructions(act.instructions || "");
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editModalActivity) return;
+    if (!editModalActivity || isSavingEdit) return;
 
-    setActivities((prev) =>
-      prev.map((item) =>
-        item.id === editModalActivity.id
-          ? {
-              ...item,
-              title: editTitle.trim(),
-              category: editCategory,
-              difficulty: editDifficulty,
-              duration: editDuration.trim(),
-              dueDate: editDueDate.trim(),
-              description: editDescription.trim(),
-              instructions: editInstructions.trim(),
-            }
-          : item
-      )
-    );
+    const title = editTitle.trim();
+    if (!title) {
+      toast({ title: "Title is required", description: "Give the activity a name before saving.", variant: "destructive" });
+      return;
+    }
 
-    toast({
-      title: "Activity Updated",
-      description: `"${editTitle}" has been updated successfully.`,
-    });
+    const changes = {
+      title,
+      name: title,
+      category: editCategory,
+      categoryTag: editCategory,
+      difficulty: editDifficulty,
+      duration: editDuration.trim(),
+      dueDate: editDueDate.trim(),
+      description: editDescription.trim(),
+      instructions: editInstructions.trim(),
+    };
 
-    setEditModalActivity(null);
+    // Saved to the library first; the card changes only after the server confirms
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch(`/api/activities/${encodeURIComponent(String(editModalActivity.id))}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.success === false) throw new Error(data?.error || data?.message || `The server answered ${res.status}`);
+
+      setActivities((prev) =>
+        prev.map((item) =>
+          item.id === editModalActivity.id
+            ? {
+                ...item,
+                title,
+                category: editCategory,
+                difficulty: editDifficulty,
+                duration: changes.duration,
+                dueDate: changes.dueDate,
+                description: changes.description,
+                instructions: changes.instructions,
+              }
+            : item
+        )
+      );
+      toast({ title: "Activity saved", description: `"${title}" was updated.` });
+      setEditModalActivity(null);
+    } catch (err: any) {
+      toast({
+        title: "Couldn't save the activity",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
 
@@ -536,27 +565,12 @@ export default function ActivitiesPage() {
     return matchesCategory && matchesSearch;
   });
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "MINDFULNESS":
-        return <Brain className="w-3.5 h-3.5" />;
-      case "CBT":
-        return <Sparkles className="w-3.5 h-3.5" />;
-      case "GRATITUDE":
-        return <Heart className="w-3.5 h-3.5" />;
-      case "BREATHING":
-        return <Wind className="w-3.5 h-3.5" />;
-      case "SOMATIC":
-        return <Smile className="w-3.5 h-3.5" />;
-      default:
-        return <Activity className="w-3.5 h-3.5" />;
-    }
-  };
-
 
 
   return (
     <div className="space-y-8 pb-16">
+      {!activeActivity && (
+      <>
       <PageHeader
         title="Activities Library"
         description="Browse, assign, and manage therapeutic exercises and worksheets with custom frequency schedules for your clients."
@@ -574,7 +588,7 @@ export default function ActivitiesPage() {
               onClick={() => setSelectedCategory(cat)}
               className={
                 isActive
-                  ? "bg-[#5e2be2] text-white shadow-md shadow-purple-500/20 rounded-full px-5 py-2 text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+                  ? "bg-[#450bc8] text-white shadow-md shadow-purple-500/20 rounded-full px-5 py-2 text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
                   : "bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
               }
             >
@@ -586,7 +600,7 @@ export default function ActivitiesPage() {
 
       {/* Activities Cards Grid */}
       {filteredActivities.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredActivities.map((act) => {
             return (
               <div
@@ -604,7 +618,6 @@ export default function ActivitiesPage() {
 
                   {/* Category Tag (Top Left) */}
                   <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] font-bold tracking-wider text-slate-900 flex items-center gap-1.5 shadow-sm border border-white/40">
-                    {getCategoryIcon(act.category)}
                     <span>{act.category}</span>
                   </div>
 
@@ -626,9 +639,9 @@ export default function ActivitiesPage() {
                         {/* Direct Option to Assign Activity to Client */}
                         <DropdownMenuItem
                           onClick={() => openAssignModal(act)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-sm font-bold rounded-xl cursor-pointer text-[#5e2be2] bg-purple-50/50 hover:bg-purple-100/70 mb-1"
+                          className="flex items-center gap-2.5 px-3 py-2 text-sm font-bold rounded-xl cursor-pointer text-[#450bc8] bg-purple-50/50 hover:bg-purple-100/70 mb-1"
                         >
-                          <UserPlus className="w-4 h-4 text-[#5e2be2]" />
+                          <UserPlus className="w-4 h-4 text-[#450bc8]" />
                           <span>Assign to Clients & Set Frequency</span>
                         </DropdownMenuItem>
 
@@ -679,10 +692,11 @@ export default function ActivitiesPage() {
 
                         <DropdownMenuItem
                           onClick={() => handleDelete(act)}
+                          disabled={deletingId !== null}
                           className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
-                          <span>Delete</span>
+                          <span>{deletingId === act.id ? "Deleting…" : "Delete"}</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -692,14 +706,27 @@ export default function ActivitiesPage() {
                 {/* Body Content */}
                 <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#5e2be2] transition-colors leading-snug mb-2">
+                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#450bc8] transition-colors leading-snug mb-2">
                       {act.title}
                     </h3>
                     <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 mb-3">
                       {act.description}
                     </p>
 
-
+                    {/* Who this therapist has assigned it to */}
+                    {act.assignedTo && act.assignedTo.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] font-semibold text-slate-500">Assigned to:</span>
+                        {act.assignedTo.slice(0, 3).map((name) => (
+                          <span key={name} className="px-2 py-0.5 rounded-full bg-purple-50 text-[#450bc8] text-[11px] font-bold">
+                            {name}
+                          </span>
+                        ))}
+                        {act.assignedTo.length > 3 && (
+                          <span className="text-[11px] font-semibold text-slate-500">+{act.assignedTo.length - 3} more</span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Meta info & Action */}
@@ -718,7 +745,7 @@ export default function ActivitiesPage() {
                     <div className="flex items-center gap-2">
                       <Button
                         onClick={() => openAssignModal(act)}
-                        className="flex-1 h-11 rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-sm transition-all duration-200 cursor-pointer shadow-md shadow-purple-500/20 gap-2"
+                        className="flex-1 h-11 rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-sm transition-all duration-200 cursor-pointer shadow-md shadow-purple-500/20 gap-2"
                       >
                         <UserPlus className="w-4 h-4 stroke-[2.2]" />
                         <span>Assign to Client</span>
@@ -743,102 +770,45 @@ export default function ActivitiesPage() {
           <p className="text-slate-500 font-medium text-sm">No activities found matching your criteria.</p>
         </div>
       )}
+      </>
+      )}
 
-      {/* Preview Activity Modal with Interactive Game Player */}
-      <Dialog open={!!activeActivity} onOpenChange={() => setActiveActivity(null)}>
-        {activeActivity && (
-          <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-2xl p-0 rounded-3xl overflow-hidden border-none shadow-2xl bg-slate-950 text-white max-h-[92vh] overflow-y-auto">
-            {/* Header Banner */}
-            <div className="relative h-40 w-full overflow-hidden bg-slate-900 shrink-0">
-              <img
-                src={activeActivity.imageUrl}
-                alt={activeActivity.title}
-                className="w-full h-full object-cover opacity-60"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
-              <div className="absolute bottom-4 left-6 right-6 text-white flex items-end justify-between">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-purple-300 uppercase tracking-wider mb-1">
-                    {getCategoryIcon(activeActivity.category)}
-                    <span>{activeActivity.category} • {activeActivity.duration}</span>
-                  </div>
-                  <h2 className="text-2xl font-bold leading-tight text-white">
-                    {activeActivity.title}
-                  </h2>
-                </div>
+      {/* Activity opened: the same full-page player as the client panel (Back, centred title, player), plus the
+          therapist's own action, Assign to Client, where the client panel has an empty spacer */}
+      {activeActivity && (
+        <div id="activity-page-container" className="space-y-2 pb-2 w-full max-w-5xl mx-auto animate-in fade-in duration-300">
+          <div className="flex items-center justify-between gap-3 py-0.5">
+            <Button
+              variant="outline"
+              onClick={() => setActiveActivity(null)}
+              className="w-fit rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold text-xs h-10 sm:h-8 px-3 gap-1.5 cursor-pointer shadow-xs shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
+            </Button>
 
-                {/* Tab Switcher: Game vs Guidelines */}
-                <div className="flex items-center gap-1 bg-slate-900/90 border border-white/20 rounded-full p-1 backdrop-blur-md">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewTab("game")}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                      previewTab === "game"
-                        ? "bg-[#5e2be2] text-white shadow-md"
-                        : "text-slate-400 hover:text-white"
-                    )}
-                  >
-                    <span>🎮 Play Game</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewTab("instructions")}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                      previewTab === "instructions"
-                        ? "bg-[#5e2be2] text-white shadow-md"
-                        : "text-slate-400 hover:text-white"
-                    )}
-                  >
-                    <span>📋 Guidelines</span>
-                  </button>
-                </div>
-              </div>
+            <div className="flex-1 text-center min-w-0">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">
+                {activeActivity.title}
+              </h1>
             </div>
 
-            {/* Modal Body: Render Interactive Game or Instructions */}
-            <div className="p-6 sm:p-7 space-y-6 bg-slate-950">
-              {previewTab === "game" ? (
-                <ActivityGamePlayer activity={activeActivity} />
-              ) : (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Guidelines & Exercise Protocol
-                  </h3>
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-sm text-slate-300 leading-relaxed whitespace-pre-line font-medium">
-                    {activeActivity.instructions || activeActivity.description}
-                  </div>
-                </div>
-              )}
+            <Button
+              type="button"
+              onClick={() => openAssignModal(activeActivity)}
+              className="rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs h-10 sm:h-8 min-w-10 px-3 gap-1.5 cursor-pointer shadow-xs shrink-0"
+              title="Assign to Client & Set Frequency"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Assign to Client</span>
+            </Button>
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-900">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveActivity(null)}
-                  className="rounded-2xl border-slate-800 text-slate-300 hover:bg-slate-900 font-semibold text-xs h-11 px-5 cursor-pointer"
-                >
-                  Close Preview
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    const actToAssign = activeActivity;
-                    setActiveActivity(null);
-                    openAssignModal(actToAssign);
-                  }}
-                  className="rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs h-11 px-6 shadow-md shadow-purple-500/20 gap-2 cursor-pointer"
-                >
-                  <UserPlus className="w-4 h-4 stroke-[2.5]" />
-                  <span>Assign to Client & Set Frequency</span>
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        )}
-      </Dialog>
+          <div className="w-full">
+            <ActivityGamePlayer activity={activeActivity} />
+          </div>
+        </div>
+      )}
 
       {/* PER-CLIENT FREQUENCY ASSIGNMENT MODAL */}
       <Dialog open={!!assignModalActivity} onOpenChange={() => { setAssignModalActivity(null); setAssignStep(1); }}>
@@ -846,11 +816,11 @@ export default function ActivitiesPage() {
           <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg p-4 sm:p-7 rounded-3xl bg-white border-none shadow-2xl max-h-[92vh] overflow-y-auto">
             {/* Header with Step indicator */}
             <DialogHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-2xl font-bold text-slate-900 tracking-tight">
+              <div className="flex flex-wrap items-center justify-between gap-2 pr-6 sm:pr-0">
+                <DialogTitle className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                   {assignStep === 1 ? "1. Select Client(s)" : "2. Select Activity Frequency"}
                 </DialogTitle>
-                <span className="text-xs font-bold text-[#5e2be2] bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
+                <span className="text-xs font-bold text-[#450bc8] bg-purple-50 px-3 py-1 rounded-full border border-purple-100 shrink-0">
                   Step {assignStep} of 2
                 </span>
               </div>
@@ -872,7 +842,7 @@ export default function ActivitiesPage() {
                     <button
                       type="button"
                       onClick={toggleSelectAllClients}
-                      className="text-xs font-bold text-[#5e2be2] hover:underline cursor-pointer"
+                      className="text-xs font-bold text-[#450bc8] hover:underline cursor-pointer"
                     >
                       {selectedClientsToAssign.length === clientList.length ? "Deselect All" : "Select All"}
                     </button>
@@ -898,7 +868,7 @@ export default function ActivitiesPage() {
                           onClick={() => toggleClientSelection(client)}
                           className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none ${
                             isChecked
-                              ? "bg-purple-50/80 border-[#5e2be2]/40 text-[#5e2be2] font-semibold"
+                              ? "bg-purple-50/80 border-[#450bc8]/40 text-[#450bc8] font-semibold"
                               : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                           }`}
                         >
@@ -906,7 +876,7 @@ export default function ActivitiesPage() {
                             <div
                               className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
                                 isChecked
-                                  ? "bg-[#5e2be2] border-[#5e2be2] text-white"
+                                  ? "bg-[#450bc8] border-[#450bc8] text-white"
                                   : "border-slate-300 bg-white"
                               }`}
                             >
@@ -937,7 +907,7 @@ export default function ActivitiesPage() {
                         key={f}
                         type="button"
                         onClick={() => applyFrequencyToAll(f)}
-                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-slate-700 hover:text-[#5e2be2] border border-slate-200 hover:border-[#5e2be2]/30 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-slate-700 hover:text-[#450bc8] border border-slate-200 hover:border-[#450bc8]/30 transition-colors cursor-pointer"
                       >
                         {f}
                       </button>
@@ -964,7 +934,7 @@ export default function ActivitiesPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-purple-100 text-[#5e2be2] font-bold flex items-center justify-center text-xs shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-purple-100 text-[#450bc8] font-bold flex items-center justify-center text-xs shrink-0">
                               {initials}
                             </div>
                             <div>
@@ -972,7 +942,7 @@ export default function ActivitiesPage() {
                               <p className="text-[11px] text-slate-500 font-medium mt-0.5">Individual Schedule</p>
                             </div>
                           </div>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#5e2be2] border border-purple-100">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#450bc8] border border-purple-100">
                             {currentConfig.frequency}
                           </span>
                         </div>
@@ -985,7 +955,7 @@ export default function ActivitiesPage() {
                             <select
                               value={currentConfig.frequency}
                               onChange={(e) => updateClientFrequency(clientName, e.target.value)}
-                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#5e2be2] focus:outline-none"
+                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#450bc8] focus:outline-none"
                             >
                               {FREQUENCY_OPTIONS.map((opt) => (
                                 <option key={opt.id} value={opt.id}>
@@ -1002,7 +972,7 @@ export default function ActivitiesPage() {
                             <select
                               value={currentConfig.timeOfDay}
                               onChange={(e) => updateClientTimeOfDay(clientName, e.target.value)}
-                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#5e2be2] focus:outline-none"
+                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#450bc8] focus:outline-none"
                             >
                               {TIME_SLOTS.map((slot) => (
                                 <option key={slot} value={slot}>
@@ -1047,7 +1017,7 @@ export default function ActivitiesPage() {
                   type="button"
                   onClick={() => setAssignStep(2)}
                   disabled={selectedClientsToAssign.length === 0}
-                  className="rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold h-11 px-6 shadow-md shadow-purple-500/20 cursor-pointer disabled:opacity-50 gap-1.5"
+                  className="rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold h-11 px-6 shadow-md shadow-purple-500/20 cursor-pointer disabled:opacity-50 gap-1.5"
                 >
                   <span>Select Frequency</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1056,7 +1026,7 @@ export default function ActivitiesPage() {
                 <Button
                   type="button"
                   onClick={handleConfirmAssign}
-                  className="rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold h-11 px-6 shadow-md shadow-purple-500/20 cursor-pointer gap-2"
+                  className="rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold h-11 px-6 shadow-md shadow-purple-500/20 cursor-pointer gap-2"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
                   <span>Confirm Assignment</span>
@@ -1072,11 +1042,11 @@ export default function ActivitiesPage() {
         {editModalActivity && (
           <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg p-4 sm:p-7 rounded-3xl bg-white border-none shadow-2xl max-h-[92vh] overflow-y-auto">
             <DialogHeader className="pb-2">
-              <DialogTitle className="text-2xl font-bold text-slate-900 tracking-tight">
+              <DialogTitle className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 Edit Activity
               </DialogTitle>
               <DialogDescription className="text-slate-500 text-sm font-medium">
-                Update activity title, category, difficulty, duration or instructions.
+                Update activity title, category, difficulty, duration or instructions. Changes are saved to the shared activity library.
               </DialogDescription>
             </DialogHeader>
 
@@ -1102,7 +1072,7 @@ export default function ActivitiesPage() {
                   <select
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
-                    className="w-full h-11 rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                    className="w-full h-11 rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                   >
                     <option value="MINDFULNESS">MINDFULNESS</option>
                     <option value="CBT">CBT</option>
@@ -1119,7 +1089,7 @@ export default function ActivitiesPage() {
                   <select
                     value={editDifficulty}
                     onChange={(e) => setEditDifficulty(e.target.value)}
-                    className="w-full h-11 rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                    className="w-full h-11 rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                   >
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
@@ -1162,7 +1132,7 @@ export default function ActivitiesPage() {
                   rows={2}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white p-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                  className="w-full rounded-2xl border border-slate-200 bg-white p-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                 />
               </div>
 
@@ -1174,7 +1144,7 @@ export default function ActivitiesPage() {
                   rows={3}
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white p-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                  className="w-full rounded-2xl border border-slate-200 bg-white p-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                 />
               </div>
 
@@ -1189,9 +1159,10 @@ export default function ActivitiesPage() {
                 </Button>
                 <Button
                   type="submit"
-                  className="rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold h-11 px-6 shadow-md shadow-purple-500/20 cursor-pointer"
+                  disabled={isSavingEdit || !editTitle.trim()}
+                  className="rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold h-11 px-6 shadow-md shadow-purple-500/20 cursor-pointer"
                 >
-                  Save Changes
+                  {isSavingEdit ? "Saving…" : "Save Changes"}
                 </Button>
               </DialogFooter>
             </form>

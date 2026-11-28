@@ -2,6 +2,7 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import loginLoader from '../../shared/login-loader/vite-plugin.mjs';
 
 /**
  * Therapist panel (/consultant). The build goes into the website's public folder (apps/web/public/consultant).
@@ -15,6 +16,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    loginLoader(),
     {
       name: 'dev-redirect-base',
       configureServer(server) {
@@ -42,6 +44,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, '../web/public/consultant'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // React, the router and React Query in their own file: it only changes when they are upgraded, so
+        // browsers keep it across deploys instead of downloading it again inside the app's main file
+        manualChunks: (id: string) =>
+          /[\\/]node_modules[\\/](react|react-dom|scheduler|wouter|@tanstack[\\/]react-query|@tanstack[\\/]query-core)[\\/]/.test(id)
+            ? 'react-vendor'
+            : undefined,
+      },
+    },
   },
   server: {
     port,

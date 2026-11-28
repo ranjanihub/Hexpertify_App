@@ -37,6 +37,7 @@ export interface AppContextType {
   releasePayout: (payoutId: string) => void;
   verifyTherapist: (therapistId: string) => void;
   deleteTherapist: (therapistId: string) => Promise<void>;
+  deleteClient: (clientId: string) => Promise<void>;
   assignClientTherapist: (clientId: string, therapistId: string, therapistName: string, therapistEmail?: string, therapistPhoto?: string) => Promise<void>;
   addAuditLog: (action: string, moduleName: string, role?: string) => void;
   refreshAllData: () => Promise<void>;
@@ -198,6 +199,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .filter((u: any) => !["ADMIN", "SUPER_ADMIN", "CONSULTANT", "THERAPIST"].includes(String(u.role || "").toUpperCase()))
           .map((u: any) => ({
           id: u.id || String(u._id),
+          clientNumber: u.clientNumber || undefined,
           name: u.name || u.email?.split("@")[0] || "Client",
           email: u.email || "",
           avatar: u.image || u.avatarUrl || undefined,
@@ -553,6 +555,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  /**
+   * Deletes a client account on the server first; only a real delete removes them here and is audit-logged.
+   * The server refuses clients with upcoming sessions and that error is passed on.
+   */
+  const deleteClient = async (clientId: string) => {
+    const target = clients.find((c) => c.id === clientId);
+    const params = new URLSearchParams({ id: clientId });
+    if (target?.email) params.set('email', target.email);
+    await api.delete(`/api/admin/users?${params.toString()}`);
+
+    setClients((prev) => prev.filter((c) => c.id !== clientId));
+    if (target) {
+      addAuditLog(`Deleted Client ${target.name} (${target.clientNumber || target.id})`, 'Clients');
+    }
+    refreshAllData();
+  };
+
   const assignClientTherapist = async (
     clientId: string,
     therapistId: string,
@@ -633,6 +652,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         releasePayout,
         verifyTherapist,
         deleteTherapist,
+        deleteClient,
         assignClientTherapist,
         addAuditLog,
         refreshAllData

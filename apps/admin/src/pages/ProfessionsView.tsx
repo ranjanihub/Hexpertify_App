@@ -74,7 +74,7 @@ const RichCodeEditor: React.FC<RichCodeEditorProps> = ({
   };
 
   return (
-    <div className="w-full border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs focus-within:border-[#5e2be2] focus-within:ring-1 focus-within:ring-[#5e2be2]/10 transition-all text-xs">
+    <div className="w-full border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs focus-within:border-[#450bc8] focus-within:ring-1 focus-within:ring-[#450bc8]/10 transition-all text-xs">
       <div className="bg-slate-50 border-b border-slate-150 px-4 py-2 flex items-center justify-between gap-2 overflow-x-auto">
         <div className="flex items-center gap-1">
           <button
@@ -183,7 +183,7 @@ const RichCodeEditor: React.FC<RichCodeEditorProps> = ({
           onClick={() => setIsPreview(!isPreview)}
           className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-extrabold transition-all ${
             isPreview
-              ? 'bg-[#5e2be2] text-white'
+              ? 'bg-[#450bc8] text-white'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
           }`}
         >
@@ -346,7 +346,7 @@ const BannerPreview: React.FC<BannerPreviewProps> = ({ src, alt, title }) => {
               </p>
             </div>
             <div className="shrink-0 hidden sm:block">
-              <span className="px-3.5 py-1.5 bg-gradient-to-r from-[#4f28d9] to-[#5e2be2] text-white text-xs font-bold rounded-xl shadow-md border border-white/20 block">
+              <span className="px-3.5 py-1.5 bg-gradient-to-r from-[#3a0aa8] to-[#450bc8] text-white text-xs font-bold rounded-xl shadow-md border border-white/20 block">
                 Book Consultation
               </span>
             </div>
@@ -544,7 +544,7 @@ export const ProfessionsView: React.FC = () => {
   const totalProfessionsCount = professions.length;
 
   return (
-    <div className="space-y-8 pb-12 animate-fade-in font-['Plus_Jakarta_Sans']">
+    <div className="space-y-8 pb-12 animate-fade-in font-['Open_Sans']">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-24 right-8 z-[100] bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 font-extrabold text-xs animate-in slide-in-from-top duration-300">
@@ -554,7 +554,7 @@ export const ProfessionsView: React.FC = () => {
       )}
 
       {/* Hero Header */}
-      <div className="relative rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
@@ -562,8 +562,8 @@ export const ProfessionsView: React.FC = () => {
               Service Catalog & SEO CMS
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-1">Services & Professions Catalog</h1>
-          <p className="text-purple-100 text-sm mt-1 max-w-xl">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">Services & Professions Catalog</h1>
+          <p className="text-purple-100 text-xs sm:text-sm mt-1 max-w-xl">
             Configure profession names, identifiers, icon/banner assets, and full SEO metadata.
           </p>
         </div>
@@ -571,7 +571,7 @@ export const ProfessionsView: React.FC = () => {
         {/* TOP RIGHT PRIMARY ACTION: Add New Profession Popup Trigger */}
         <button
           onClick={handleAddNewTrigger}
-          className="relative z-10 px-6 py-3 bg-white text-[#4f28d9] hover:bg-purple-50 rounded-2xl font-extrabold text-sm flex items-center gap-2 shadow-lg transition-all active:scale-95 shrink-0"
+          className="relative z-10 self-start md:self-auto px-6 py-3 bg-white text-[#3a0aa8] hover:bg-purple-50 rounded-2xl font-extrabold text-sm flex items-center gap-2 shadow-lg transition-all active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Add New Profession</span>
@@ -587,7 +587,7 @@ export const ProfessionsView: React.FC = () => {
             placeholder="Search professions by name, identifier..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
           />
           {searchQuery && (
             <button
@@ -607,7 +607,7 @@ export const ProfessionsView: React.FC = () => {
       {/* Professions Cards Grid */}
       {isLoading ? (
         <div className="text-center py-24 bg-white border border-slate-100 rounded-3xl space-y-3">
-          <Loader2 className="w-10 h-10 text-[#5e2be2] animate-spin mx-auto" />
+          <Loader2 className="w-10 h-10 text-[#450bc8] animate-spin mx-auto" />
           <p className="text-sm font-extrabold text-slate-800">Loading Live Professions & Categories...</p>
           <p className="text-xs text-slate-400">Fetching verified services and SEO metadata</p>
         </div>
@@ -618,7 +618,7 @@ export const ProfessionsView: React.FC = () => {
           <p className="text-xs text-slate-400">Try adjusting your search query or add a new profession.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {filteredProfessions.map((prof) => (
           <div
             key={prof.id}
@@ -692,7 +692,7 @@ export const ProfessionsView: React.FC = () => {
 
                 <button
                   onClick={() => handleInspect(prof)}
-                  className="flex-1 py-2.5 px-4 bg-slate-900 hover:bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 group/btn"
+                  className="flex-1 py-2.5 px-4 bg-slate-900 hover:bg-[#450bc8] text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 group/btn"
                 >
                   <Eye className="w-3.5 h-3.5 text-purple-300 group-hover/btn:text-white" />
                   <span>Inspect & Edit</span>
@@ -710,7 +710,7 @@ export const ProfessionsView: React.FC = () => {
           <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[88vh] my-auto animate-in fade-in zoom-in-95 duration-200">
 
             {/* Hexpertify Vibe Modal Header */}
-            <div className="bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] text-white p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 shrink-0">
+            <div className="bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] text-white p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white font-extrabold border border-white/20 shrink-0">
                   <Edit className="w-5 h-5" />
@@ -755,7 +755,7 @@ export const ProfessionsView: React.FC = () => {
 
                 <button
                   onClick={handleSaveModal}
-                  className="px-5 py-2.5 bg-white text-[#4f28d9] hover:bg-purple-50 rounded-2xl font-extrabold text-xs flex items-center gap-1.5 shadow-lg transition-all active:scale-95"
+                  className="px-5 py-2.5 bg-white text-[#3a0aa8] hover:bg-purple-50 rounded-2xl font-extrabold text-xs flex items-center gap-1.5 shadow-lg transition-all active:scale-95"
                 >
                   <Save className="w-4 h-4" />
                   <span>Save Changes</span>
@@ -788,7 +788,7 @@ export const ProfessionsView: React.FC = () => {
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-[#5e2be2] text-white shadow-md'
+                        ? 'bg-[#450bc8] text-white shadow-md'
                         : 'bg-white text-slate-600 hover:bg-slate-200/70 border border-slate-200/60'
                     }`}
                   >
@@ -815,7 +815,7 @@ export const ProfessionsView: React.FC = () => {
                   {/* General Info Card */}
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <div className="w-1 h-4 bg-[#5e2be2] rounded-full" />
+                      <div className="w-1 h-4 bg-[#450bc8] rounded-full" />
                       <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-xs">General Profession Identity</h4>
                     </div>
 
@@ -837,7 +837,7 @@ export const ProfessionsView: React.FC = () => {
                               slug: editingProf.slug || autoId
                             });
                           }}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                         />
                       </div>
 
@@ -855,7 +855,7 @@ export const ProfessionsView: React.FC = () => {
                                 identifier: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
                               })
                             }
-                            className="w-full p-3 pl-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                            className="w-full p-3 pl-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded-md">ID</span>
                         </div>
@@ -881,7 +881,7 @@ export const ProfessionsView: React.FC = () => {
                             placeholder="Upload an icon, or paste its link"
                             value={editingProf.imageUrl || ''}
                             onChange={(e) => handleModalFieldChange({ ...editingProf, imageUrl: e.target.value })}
-                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8]"
                           />
                           <ImageUploadButton
                             assetType="Icon"
@@ -899,7 +899,7 @@ export const ProfessionsView: React.FC = () => {
                           placeholder="Describe the icon or image for accessibility & SEO..."
                           value={editingProf.imageAltText || ''}
                           onChange={(e) => handleModalFieldChange({ ...editingProf, imageAltText: e.target.value })}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#450bc8]"
                         />
                       </div>
                     </div>
@@ -923,7 +923,7 @@ export const ProfessionsView: React.FC = () => {
                             placeholder="Upload a banner, or paste its link"
                             value={editingProf.heroBannerUrl || editingProf.bannerUrl || ''}
                             onChange={(e) => handleModalFieldChange({ ...editingProf, heroBannerUrl: e.target.value, bannerUrl: e.target.value })}
-                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8]"
                           />
                           <ImageUploadButton
                             assetType="Banner"
@@ -941,7 +941,7 @@ export const ProfessionsView: React.FC = () => {
                           placeholder="e.g. Rebuild Connection — Expert Couple Therapy"
                           value={editingProf.heroBannerTitle || editingProf.bannerTitle || ''}
                           onChange={(e) => handleModalFieldChange({ ...editingProf, heroBannerTitle: e.target.value, bannerTitle: e.target.value })}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-extrabold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-extrabold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                         />
                       </div>
                     </div>
@@ -964,7 +964,7 @@ export const ProfessionsView: React.FC = () => {
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-1 h-4 bg-[#5e2be2] rounded-full" />
+                        <div className="w-1 h-4 bg-[#450bc8] rounded-full" />
                         <div>
                           <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-xs">Profession FAQs</h4>
                           <p className="text-[10px] text-slate-400 font-medium mt-0.5">
@@ -980,7 +980,7 @@ export const ProfessionsView: React.FC = () => {
                             faqs: [...(editingProf.faqs || []), { question: '', answer: '' }]
                           })
                         }
-                        className="flex items-center gap-1.5 px-4 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 shrink-0"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 shrink-0"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Add FAQ</span>
@@ -1003,7 +1003,7 @@ export const ProfessionsView: React.FC = () => {
                           >
                             {/* FAQ Card Header */}
                             <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-slate-100">
-                              <span className="w-5 h-5 rounded-full bg-[#5e2be2]/10 text-[#5e2be2] flex items-center justify-center text-[10px] font-extrabold shrink-0">
+                              <span className="w-5 h-5 rounded-full bg-[#450bc8]/10 text-[#450bc8] flex items-center justify-center text-[10px] font-extrabold shrink-0">
                                 {idx + 1}
                               </span>
                               <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex-1">
@@ -1065,7 +1065,7 @@ export const ProfessionsView: React.FC = () => {
                                     );
                                     handleModalFieldChange({ ...editingProf, faqs: updated });
                                   }}
-                                  className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                                  className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                                 />
                               </div>
 
@@ -1082,7 +1082,7 @@ export const ProfessionsView: React.FC = () => {
                                     );
                                     handleModalFieldChange({ ...editingProf, faqs: updated });
                                   }}
-                                  className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all leading-relaxed resize-none"
+                                  className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all leading-relaxed resize-none"
                                 />
                               </div>
                             </div>
@@ -1098,7 +1098,7 @@ export const ProfessionsView: React.FC = () => {
                               faqs: [...(editingProf.faqs || []), { question: '', answer: '' }]
                             })
                           }
-                          className="w-full py-3 border-2 border-dashed border-[#5e2be2]/30 hover:border-[#5e2be2]/60 text-[#5e2be2] hover:bg-purple-50/40 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all"
+                          className="w-full py-3 border-2 border-dashed border-[#450bc8]/30 hover:border-[#450bc8]/60 text-[#450bc8] hover:bg-purple-50/40 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all"
                         >
                           <Plus className="w-4 h-4" />
                           <span>Add Another FAQ</span>
@@ -1125,7 +1125,7 @@ export const ProfessionsView: React.FC = () => {
                   {/* SECTION 1: Session SEO Meta */}
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <div className="w-1 h-4 bg-[#5e2be2] rounded-full" />
+                      <div className="w-1 h-4 bg-[#450bc8] rounded-full" />
                       <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-xs">Session SEO Meta</h4>
                     </div>
 
@@ -1141,7 +1141,7 @@ export const ProfessionsView: React.FC = () => {
                             seo: { ...editingProf.seo, metaTitle: e.target.value }
                           })
                         }
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#450bc8]"
                       />
                       <div className="flex justify-between text-[9px] text-slate-400 font-medium px-0.5">
                         <span>Recommended: 50–60 characters</span>
@@ -1171,7 +1171,7 @@ export const ProfessionsView: React.FC = () => {
                             seo: { ...editingProf.seo, metaDescription: e.target.value }
                           })
                         }
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#5e2be2] leading-relaxed resize-none text-slate-800"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#450bc8] leading-relaxed resize-none text-slate-800"
                       />
                       <div className="flex justify-between text-[9px] text-slate-400 font-medium px-0.5">
                         <span>Recommended: 150–160 characters</span>
@@ -1240,7 +1240,7 @@ export const ProfessionsView: React.FC = () => {
                               seo: { ...editingProf.seo, openGraphTitle: e.target.value }
                             })
                           }
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#450bc8]"
                         />
                       </div>
 
@@ -1257,7 +1257,7 @@ export const ProfessionsView: React.FC = () => {
                                 seo: { ...editingProf.seo, openGraphImageUrl: e.target.value }
                               })
                             }
-                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                            className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#450bc8]"
                           />
                           <ImageUploadButton
                             assetType="Banner"
@@ -1282,7 +1282,7 @@ export const ProfessionsView: React.FC = () => {
                             seo: { ...editingProf.seo, openGraphDescription: e.target.value }
                           })
                         }
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#5e2be2] resize-none text-slate-800"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-[#450bc8] resize-none text-slate-800"
                       />
                     </div>
 
@@ -1298,7 +1298,7 @@ export const ProfessionsView: React.FC = () => {
                             seo: { ...editingProf.seo, openGraphImageAltText: e.target.value }
                           })
                         }
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#450bc8]"
                       />
                     </div>
                   </div>
@@ -1355,7 +1355,7 @@ export const ProfessionsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSaveModal}
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2"
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
                   <span>{isNewModalOpen ? 'Create Profession' : 'Save Changes'}</span>
@@ -1371,7 +1371,7 @@ export const ProfessionsView: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deletingId && createPortal(
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[110] flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 my-auto animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 my-auto max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <AlertCircle className="w-6 h-6" />
             </div>

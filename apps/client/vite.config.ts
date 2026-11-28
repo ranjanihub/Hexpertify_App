@@ -3,6 +3,7 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import loginLoader from '../../shared/login-loader/vite-plugin.mjs';
 
 /**
  * Client portal (/client and the client deep links). The build goes into the website's public folder
@@ -18,6 +19,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    loginLoader(),
     {
       // Only this app writes public/assets; clear the previous build's hashed files first
       name: 'clean-assets-dir',
@@ -49,6 +51,16 @@ export default defineConfig({
     outDir: webPublicDir,
     // The website's own files live in the same folder
     emptyOutDir: false,
+    rollupOptions: {
+      output: {
+        // React, the router and React Query in their own file: it only changes when they are upgraded, so
+        // browsers keep it across deploys instead of downloading it again inside the app's main file
+        manualChunks: (id: string) =>
+          /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom|wouter|@tanstack[\\/]react-query|@tanstack[\\/]query-core)[\\/]/.test(id)
+            ? 'react-vendor'
+            : undefined,
+      },
+    },
   },
   server: {
     port,

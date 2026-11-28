@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-[400px] flex items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
+        <div className="min-h-[400px] flex items-center justify-center p-6 font-['Open_Sans']">
           <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-4">
             <div className="w-14 h-14 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
               <AlertTriangle className="w-7 h-7" />
@@ -57,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={this.handleReset}
-              className="w-full py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#5e2be2]/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+              className="w-full py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#450bc8]/20 flex items-center justify-center gap-2 transition-all active:scale-95"
             >
               <RotateCcw className="w-4 h-4" />
               <span>Reload Page & Refresh Cache</span>

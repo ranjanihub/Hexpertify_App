@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -9,6 +9,21 @@
 
 
 @custom-variant dark (&:is(.dark *));
+
+/* The website's purple (#450bc8): Tailwind's purple-* classes use it instead of the default magenta-purple */
+@theme {
+  --color-purple-50: #f5f1fe;
+  --color-purple-100: #ebe4fc;
+  --color-purple-200: #d4c6f8;
+  --color-purple-300: #b49cf3;
+  --color-purple-400: #8460ea;
+  --color-purple-500: #5b2bd6;
+  --color-purple-600: #450bc8;
+  --color-purple-700: #3a0aa8;
+  --color-purple-800: #300990;
+  --color-purple-900: #26086f;
+  --color-purple-950: #170447;
+}
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -82,7 +97,7 @@
 
 /* LIGHT MODE */
 :root {
-  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Primary Theme Palette - Matched to Super Admin & Consultant Panel */
   --primary-50: #f4f0ff;
@@ -91,13 +106,13 @@
   --primary-300: #b99bf6;
   --primary-400: #986af0;
   --primary-500: #783be6;
-  --primary-600: #5e2be2;
-  --primary-700: #4f28d9;
+  --primary-600: #450bc8;
+  --primary-700: #3a0aa8;
   --primary-800: #3b1799;
   --primary-900: #290e6e;
 
   /* Backgrounds */
-  --bg-main: #f8f9fd;
+  --bg-main: #fcfbff;
   --bg-card: #ffffff;
   --bg-sidebar: #ffffff;
   --bg-header: #ffffff;
@@ -135,7 +150,7 @@
   --elevate-1: rgba(0, 0, 0, 0.03);
   --elevate-2: rgba(0, 0, 0, 0.08);
 
-  --background: 228 60% 98%;
+  --background: 260 40% 99%;
   --foreground: 215 28% 17%;
   --border: 218 31% 95%;
   --card: 0 0% 100%;
@@ -145,34 +160,34 @@
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 215 28% 17%;
   --sidebar-border: 218 31% 95%;
-  --sidebar-primary: 257 77% 53%;
+  --sidebar-primary: 258 90% 41%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 257 100% 97%;
-  --sidebar-accent-foreground: 257 77% 53%;
-  --sidebar-ring: 257 77% 53%;
+  --sidebar-accent: 258 90% 97%;
+  --sidebar-accent-foreground: 258 90% 41%;
+  --sidebar-ring: 258 90% 41%;
 
   --popover: 0 0% 100%;
   --popover-foreground: 215 28% 17%;
   --popover-border: 218 31% 95%;
-  --primary: 257 77% 53%;
+  --primary: 258 90% 41%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 215 28% 17%;
   --muted: 210 40% 96.1%;
   --muted-foreground: 215 16% 47%;
-  --accent: 257 100% 97%;
-  --accent-foreground: 257 77% 53%;
+  --accent: 258 90% 97%;
+  --accent-foreground: 258 90% 41%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   --input: 218 31% 95%;
-  --ring: 257 77% 53%;
-  --chart-1: 257 77% 53%;
+  --ring: 258 90% 41%;
+  --chart-1: 258 90% 41%;
   --chart-2: 200 80% 50%;
   --chart-3: 150 60% 50%;
   --chart-4: 40 80% 60%;
   --chart-5: 0 70% 60%;
 
-  --app-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --app-font-sans: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
 
@@ -215,16 +230,16 @@
   --sidebar: 260 15% 13%;
   --sidebar-foreground: 0 0% 98%;
   --sidebar-border: 260 10% 20%;
-  --sidebar-primary: 257 77% 53%;
+  --sidebar-primary: 258 90% 41%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 257 40% 25%;
   --sidebar-accent-foreground: 257 77% 80%;
-  --sidebar-ring: 257 77% 53%;
+  --sidebar-ring: 258 90% 41%;
 
   --popover: 260 15% 13%;
   --popover-foreground: 0 0% 98%;
   --popover-border: 260 10% 20%;
-  --primary: 257 77% 53%;
+  --primary: 258 90% 41%;
   --primary-foreground: 0 0% 100%;
   --secondary: 260 10% 20%;
   --secondary-foreground: 0 0% 98%;
@@ -235,8 +250,8 @@
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
   --input: 260 10% 20%;
-  --ring: 257 77% 53%;
-  --chart-1: 257 77% 53%;
+  --ring: 258 90% 41%;
+  --chart-1: 258 90% 41%;
   --chart-2: 200 80% 50%;
   --chart-3: 150 60% 50%;
   --chart-4: 40 80% 60%;
@@ -456,7 +471,7 @@
 .rich-content li { margin: 0.2em 0; }
 .rich-content li > p { margin: 0; }
 .rich-content blockquote { border-left: 3px solid #d5c2fa; padding-left: 1em; margin: 0 0 0.75em; color: #64748b; font-style: italic; }
-.rich-content a { color: #5e2be2; text-decoration: underline; text-underline-offset: 2px; }
+.rich-content a { color: #450bc8; text-decoration: underline; text-underline-offset: 2px; }
 .rich-content strong, .rich-content b { font-weight: 700; }
 .rich-content u { text-decoration: underline; }
 .rich-content s, .rich-content strike { text-decoration: line-through; }
@@ -464,3 +479,26 @@
 .rich-editor[data-empty="true"]::before { content: attr(data-placeholder); color: #94a3b8; pointer-events: none; float: left; height: 0; }
 .rich-editor img { cursor: default; }
 .rich-editor img:hover { outline: 2px solid #d5c2fa; outline-offset: 2px; }
+
+/* The login page keeps its original colours (#5e2be2): Tailwind's default purples and the old ring here.
+   Its font is the same Open Sans as the website and every panel. */
+.login-classic {
+  --color-purple-50: oklch(97.7% 0.014 308.299);
+  --color-purple-100: oklch(94.6% 0.033 307.174);
+  --color-purple-200: oklch(90.2% 0.063 306.703);
+  --color-purple-400: oklch(71.4% 0.203 305.504);
+  --color-purple-900: oklch(38.1% 0.176 304.987);
+  --primary: 257 77% 53%;
+  --ring: 257 77% 53%;
+}
+
+/* One typeface across the website and every panel: Open Sans. Labels styled font-mono (IDs, codes, small
+   captions) use it too, with even-width digits so numbers still line up; only boxes where people type or read
+   code (textarea, input, pre, code) keep a code font. */
+.font-mono {
+  font-family: var(--font-family) !important;
+  font-variant-numeric: tabular-nums;
+}
+textarea.font-mono, input.font-mono, pre.font-mono, code.font-mono, .font-mono textarea, .font-mono pre, .font-mono code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+}

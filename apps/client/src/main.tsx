@@ -1,6 +1,5 @@
 import { createRoot } from 'react-dom/client';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
-import { getClientAuth } from './lib/auth';
 import { installApiAuthFetch } from './lib/api-auth';
 import './lib/install-prompt'; // must run before the browser's one-time install event fires
 import App from './App';
@@ -15,9 +14,13 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// The signed API token from sign-in (never the email, which anyone could send)
 setAuthTokenGetter(() => {
-  const auth = getClientAuth();
-  return auth?.email || null;
+  try {
+    return localStorage.getItem('hexpertify_api_token');
+  } catch {
+    return null;
+  }
 });
 
 createRoot(document.getElementById('root')!).render(<App />);

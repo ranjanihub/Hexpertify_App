@@ -11,7 +11,7 @@ import { verifyAuthToken } from '../utils/jwt';
  */
 
 export const BASIC_CLIENT_FIELDS = [
-  '_id', 'id', 'name', 'email', 'phone', 'phoneNumber', 'role', 'status', 'isActive', 'inactive',
+  '_id', 'id', 'clientNumber', 'name', 'email', 'phone', 'phoneNumber', 'role', 'status', 'isActive', 'inactive',
   'image', 'avatarUrl', 'createdAt', 'updatedAt', 'joinedDate', 'lastActive', 'service',
   'assignedTherapistId', 'assignedTherapistName', 'assignedTherapistEmail', 'assignedTherapistPhoto',
   'totalSessionsCount', 'completedSessionsCount'

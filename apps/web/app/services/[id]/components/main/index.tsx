@@ -2,10 +2,9 @@
 import React from "react";
 import FeatureConsultant from "@/app/services/[id]/components/FeatureConsultant";
 import { Details, Expert, Plan, Service, Support } from "@/asset/images";
-import { IoArrowBack } from "react-icons/io5";
+import BackButton from "@/components/BackButton";
 import Image from "next/image";
 import FaqCompo from "@/components/Home/FAQ";
-import Link from "next/link";
 import HtmlContent from "../HtmlContent";
 
 const consultantProcess = [
@@ -44,17 +43,9 @@ const ServicesMain = ({ FeatureConsultantData, faqs, serviceId, profession: prof
   const profession = professionProp || FeatureConsultantData?.[0]?.profession;
   return (
     <div>
-      <div className="p-4 md:p-6 lg:p-[50px]">
+      <div className="p-4 md:p-6 lg:p-[50px] min-[2000px]:mx-auto min-[2000px]:max-w-[1900px]">
         {/* Adjusted icon size logic or wrapper if needed, keeping simple here */}
-        <Link href="/" className="flex items-center gap-2 mt-[10px] mb-[15px]">
-          <IoArrowBack
-            size={32}
-            className="cursor-pointer md:w-[46px] md:h-[46px]"
-          />
-          <p className="text-[20px] sm:text-[24px] md:text-[32px] font-semibold text-black leading-tight">
-            Back
-          </p>
-        </Link>
+        <BackButton fallbackHref="/services" className="mt-[10px] mb-[15px]" />
 
         <div
           className="w-full flex justify-center items-center h-[200px] rounded-[16px] shadow-xl overflow-hidden bg-gray-100" // Added bg-gray-100 as fallback color for empty spaces
@@ -101,11 +92,11 @@ const ServicesMain = ({ FeatureConsultantData, faqs, serviceId, profession: prof
               few clicks.
             </p>
           </div>
-          <div className="flex flex-wrap basis-3 gap-x-[90px] gap-y-[60px] justify-center mt-[20px] mb-[50px]">
+          <div className="flex flex-wrap basis-3 gap-x-6 gap-y-8 sm:gap-y-12 md:gap-y-[60px] lg:gap-x-[90px] justify-center mt-[20px] mb-[50px]">
             {consultantProcess?.map((item: any, index: any) => (
               <div
                 key={index}
-                className="rounded-[35px] p-[30px] w-[340px] h-[196px] shadow-[0_0_15px_0_rgba(0,0,0,0.5)] flex flex-col justify-center items-center"
+                className="rounded-[35px] p-6 sm:p-[30px] w-full max-w-[340px] min-h-[196px] shadow-[0_0_15px_0_rgba(0,0,0,0.5)] flex flex-col justify-center items-center"
               >
                 <Image
                   src={item?.icon}
@@ -114,7 +105,7 @@ const ServicesMain = ({ FeatureConsultantData, faqs, serviceId, profession: prof
                   className="rounded-[30px]"
                   alt={"Image"}
                 />
-                <p className="text-[20px] text-[700] text-[rgba(8, 26, 61, 1)] font-semibold">
+                <p className="text-center text-lg sm:text-[20px] text-[700] text-[rgba(8, 26, 61, 1)] font-semibold">
                   {item?.title}
                 </p>
                 <p className="text-[16px] text-[400] text-center">

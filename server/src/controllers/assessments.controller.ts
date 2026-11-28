@@ -1,17 +1,17 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
-import { canViewFullClient, resolveClientViewer } from '../services/client-access';
+import { canViewFullClient, ClientViewer, resolveClientViewer } from '../services/client-access';
 import { idQuery } from '../services/live-content';
 import { emailNotification } from '../services/notification.service';
+import {
+  clientAccessRefusal, escapeRegex, findClientUser, namesOtherClient, ownClientUser, ownConsultant, refuse, serverError
+} from '../services/clinical-access';
 
 /** Results (scores, severity, answers, notes) are clinical details: only the assigned therapist and the client see them */
 const SUBMISSION_RESULT_FIELDS = ['score', 'totalScore', 'maxScore', 'severity', 'severityLabel', 'severityColor', 'flaggedRisk', 'answers', 'responses', 'notes', 'interpretation'];
 
-async function protectSubmissions(req: Request, submissions: any[], isClientSelfQuery: boolean): Promise<any[]> {
-  const viewer = await resolveClientViewer(req);
+async function protectSubmissions(viewer: ClientViewer, submissions: any[]): Promise<any[]> {
   if (viewer.kind === 'internal') return submissions;
-  // The client panel still reads its own results by email without a token
-  if (viewer.kind === 'anonymous' && isClientSelfQuery) return submissions;
 
   const db = getDatabase();
   const emails = [...new Set(submissions.map((s) => String(s.clientEmail || s.email || '').toLowerCase()).filter(Boolean))];
@@ -141,7 +141,60 @@ export class AssessmentsController {
   static async getAll(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const { consultantId, consultantName, clientEmail, clientId } = req.query;
+      let clientEmail = String(req.query.clientEmail || '').toLowerCase().trim();
+      let clientId = String(req.query.clientId || '').trim();
+      let consultantName = String(req.query.consultantName || '');
+      // A therapist is matched by every id their Consultant record is known by
+      let consultantIds = [String(req.query.consultantId || '').trim()].filter(Boolean);
+      // Every id a resolved client account is known by (records store its custom id or its _id)
+      let resolvedClientIds: string[] = [];
+
+      // Who may read: the client (own results), their assigned therapist, an admin, the website (internal)
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        refuse(res, { status: 401, error: 'Please sign in to see assessment results.' });
+        return;
+      }
+      if (viewer.kind === 'client') {
+        const me = await ownClientUser(db, viewer);
+        if (!me || namesOtherClient(me, { email: clientEmail, id: clientId })) {
+          refuse(res, { status: 403, error: 'You can only view your own assessments.' });
+          return;
+        }
+        // A client always gets exactly their own results
+        clientEmail = String(me.email || '').toLowerCase().trim();
+        clientId = String(me.id || me._id);
+        resolvedClientIds = [me.id, me._id].filter(Boolean).map(String);
+        consultantIds = [];
+        consultantName = '';
+      } else if (viewer.kind === 'therapist') {
+        const me = await ownConsultant(db, viewer);
+        if (!me || consultantIds.some((id) => !viewer.ids.has(id.toLowerCase()))) {
+          refuse(res, { status: 403, error: 'You can only view your own clients\' assessments.' });
+          return;
+        }
+        if (clientEmail || clientId) {
+          // One client: only an assigned therapist sees their record
+          const client = await findClientUser(db, { email: clientEmail, id: clientId });
+          if (!client) {
+            refuse(res, { status: 404, error: 'Client not found' });
+            return;
+          }
+          if (namesOtherClient(client, { email: clientEmail, id: clientId }) || clientAccessRefusal(viewer, client)) {
+            refuse(res, { status: 403, error: 'This client is not assigned to you.' });
+            return;
+          }
+          clientEmail = String(client.email || '').toLowerCase().trim();
+          clientId = String(client.id || client._id);
+          resolvedClientIds = [client.id, client._id].filter(Boolean).map(String);
+          consultantIds = [];
+          consultantName = '';
+        } else {
+          // The therapist's own clients, by id only (no name matching)
+          consultantIds = [...new Set([me.id, me._id].filter(Boolean).map(String))];
+          consultantName = '';
+        }
+      }
 
       const scoreQuery: any = {};
       const assignQuery: any = {};
@@ -149,10 +202,10 @@ export class AssessmentsController {
       // A client is matched by email OR id (older records carry only one of them)
       if (clientEmail || clientId) {
         const email = String(clientEmail || '').toLowerCase().trim();
-        const id = String(clientId || '').trim();
+        const ids = [...new Set([clientId, ...resolvedClientIds].filter(Boolean))];
         const clientOr = [
           ...(email ? [{ clientEmail: email }, { email }] : []),
-          ...(id ? [{ clientId: id }, { userId: id }] : [])
+          ...(ids.length ? [{ clientId: { $in: ids } }, { userId: { $in: ids } }] : [])
         ];
         scoreQuery.$or = clientOr;
         assignQuery.$or = clientOr;
@@ -160,9 +213,9 @@ export class AssessmentsController {
 
       let assignedUsers: any[] = [];
 
-      if (consultantId || consultantName) {
-        const cleanName = String(consultantName || '').replace(/^dr\.?\s*/i, '').trim();
-        const cid = String(consultantId || '').trim();
+      if (consultantIds.length || consultantName) {
+        const cleanName = escapeRegex(String(consultantName || '').replace(/^dr\.?\s*/i, '').trim());
+        const cid = consultantIds.length ? { $in: consultantIds } : null;
 
         // 1. Discover all clients assigned to this consultant in User & Booking collections
         const userConditions: any[] = [];
@@ -207,8 +260,8 @@ export class AssessmentsController {
           cConditions.push({ consultantId: cid });
         }
         if (cleanName) {
-          cConditions.push({ consultantName: { $regex: new RegExp(cleanName, 'i') } });
-          cConditions.push({ therapistName: { $regex: new RegExp(cleanName, 'i') } });
+          cConditions.push({ consultantName: { $regex: cleanName, $options: 'i' } });
+          cConditions.push({ therapistName: { $regex: cleanName, $options: 'i' } });
         }
         if (assignedEmails.size > 0) {
           cConditions.push({ clientEmail: { $in: Array.from(assignedEmails) } });
@@ -218,6 +271,9 @@ export class AssessmentsController {
           cConditions.push({ clientId: { $in: Array.from(assignedIds) } });
           cConditions.push({ userId: { $in: Array.from(assignedIds) } });
         }
+
+        // A consultant filter that names no one matches nothing (never everything)
+        if (cConditions.length === 0) cConditions.push({ _id: '__no-consultant-match__' });
 
         // Combined with a client filter, both must hold
         for (const q of [scoreQuery, assignQuery]) {
@@ -284,7 +340,7 @@ export class AssessmentsController {
         submissions.push(...profileOnlySubmissions(u, submissions));
       }
 
-      const visibleSubmissions = await protectSubmissions(req, submissions, Boolean(clientEmail || clientId));
+      const visibleSubmissions = await protectSubmissions(viewer, submissions);
 
       res.json({
         success: true,
@@ -296,7 +352,7 @@ export class AssessmentsController {
         assignments
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch assessment scores' });
+      serverError(res, 'AssessmentsController.getAll', error, 'Failed to fetch assessment scores');
     }
   }
 
@@ -313,20 +369,46 @@ export class AssessmentsController {
       const maxScore = Number(body.maxScore ?? (body.type === 'PHQ-9' ? 27 : body.type === 'GAD-7' ? 21 : 25));
       const type = body.assessmentAcronym || body.type || 'GAD-7';
       const title = body.assessmentTitle || body.title || 'Assessment';
-      const clientName = body.clientName || 'Client';
-      const clientEmail = (body.clientEmail || '').toLowerCase().trim();
+      const askedEmail = String(body.clientEmail || '').toLowerCase().trim();
       const bodyClientId = String(body.clientId || body.userId || '').trim();
+
+      // A score is the signed-in client's own result; admins and the website (internal) may record one
+      // for a named, existing client. Therapists and anonymous callers cannot.
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        refuse(res, { status: 401, error: 'Please sign in to submit an assessment.' });
+        return;
+      }
+      if (viewer.kind === 'therapist') {
+        refuse(res, { status: 403, error: 'Only the client can submit their own assessment.' });
+        return;
+      }
+      let u: any;
+      if (viewer.kind === 'client') {
+        u = await ownClientUser(db, viewer);
+        if (!u || namesOtherClient(u, { email: askedEmail, id: bodyClientId })) {
+          refuse(res, { status: 403, error: 'You can only submit your own assessment.' });
+          return;
+        }
+      } else {
+        u = await findClientUser(db, { email: askedEmail, id: bodyClientId });
+        if (!u || namesOtherClient(u, { email: askedEmail, id: bodyClientId })) {
+          refuse(res, { status: 404, error: 'Client not found' });
+          return;
+        }
+      }
+      const clientEmail = String(u.email || '').toLowerCase().trim();
+      const clientId = String(u.id || u._id);
+      const clientName = u.name || body.clientName || 'Client';
+
+      // The client's account, by every key it is known by
+      const userOr: any[] = [
+        ...(clientEmail ? [{ email: clientEmail }] : []),
+        ...idQuery(clientId).$or
+      ];
 
       // The therapist always comes from the client's own assignment; a client-sent consultant id is
       // used only when no assignment exists and it names a real Consultant
-      const userOr: any[] = [
-        ...(clientEmail ? [{ email: clientEmail }] : []),
-        ...(bodyClientId ? idQuery(bodyClientId).$or : [])
-      ];
-      const u: any = userOr.length
-        ? await db.collection('User').findOne({ $or: userOr }) || await db.collection('users').findOne({ $or: userOr })
-        : null;
-      const clientId = u ? String(u.id || u._id) : bodyClientId;
 
       const findConsultant = async (ref: string) =>
         ref ? await db.collection('Consultant').findOne(idQuery(ref)).catch(() => null) : null;
@@ -357,8 +439,14 @@ export class AssessmentsController {
       }
       if (!severityColor) severityColor = flaggedRisk ? 'bg-rose-600 text-white' : 'bg-emerald-500 text-white';
 
+      // The client panel sends its own submission id; it is kept only when it is a plain, unused id
+      const sentId = /^[A-Za-z0-9_.:-]{1,80}$/.test(String(body.id ?? '')) ? String(body.id) : '';
+      const idTaken = sentId
+        ? await db.collection('AssessmentScore').findOne({ id: { $in: [sentId, Number(sentId)] } }, { projection: { _id: 1 } }).catch(() => null)
+        : null;
+
       const newScoreDoc = {
-        id: body.id || `ASC-${Date.now().toString().slice(-6)}`,
+        id: sentId && !idTaken ? body.id : `ASC-${Date.now().toString().slice(-6)}`,
         assessmentId: body.assessmentId || `ASS-${type}`,
         assessmentAcronym: type,
         assessmentTitle: title,
@@ -389,7 +477,7 @@ export class AssessmentsController {
       let completedAssignment: any = null;
       const assignmentClientOr: any[] = [
         ...(clientEmail ? [{ clientEmail }] : []),
-        ...[...new Set([clientId, bodyClientId].filter(Boolean))].map((id) => ({ clientId: id }))
+        ...[...new Set([clientId, u.id, u._id].filter(Boolean).map(String))].map((id) => ({ clientId: id }))
       ];
       if (assignmentClientOr.length) {
         const assessmentOr: any[] = [{ assessmentAcronym: type }];
@@ -448,7 +536,7 @@ export class AssessmentsController {
         message: 'Assessment score saved in AssessmentScore collection.'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to save assessment score' });
+      serverError(res, 'AssessmentsController.saveScore', error, 'Failed to save assessment score');
     }
   }
 
@@ -460,23 +548,43 @@ export class AssessmentsController {
       const db = getDatabase();
       const body = req.body || {};
 
-      // Store the client's real User id/email (panels may send only one of them)
+      // Who may assign: a therapist to their own (assigned) clients, an admin, the website (internal)
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        refuse(res, { status: 401, error: 'Please sign in to assign an assessment.' });
+        return;
+      }
+      if (viewer.kind === 'client') {
+        refuse(res, { status: 403, error: 'Only therapists and the admin team can assign assessments.' });
+        return;
+      }
+
+      // Store the client's real User id/email (panels may send only one of them); the client must exist
       const rawClientEmail = String(body.clientEmail || '').toLowerCase().trim();
       const rawClientId = String(body.clientId || '').trim();
-      const clientOr: any[] = [...(rawClientEmail ? [{ email: rawClientEmail }] : []), ...(rawClientId ? idQuery(rawClientId).$or : [])];
-      const client: any = clientOr.length ? await db.collection('User').findOne({ $or: clientOr }).catch(() => null) : null;
+      const client: any = await findClientUser(db, { email: rawClientEmail, id: rawClientId });
+      if (!client || namesOtherClient(client, { email: rawClientEmail, id: rawClientId })) {
+        refuse(res, { status: 404, error: 'Client not found' });
+        return;
+      }
+      if (refuse(res, clientAccessRefusal(viewer, client))) return;
+
+      // A therapist assigns as themself; admins may name the therapist
+      const consultant: any = viewer.kind === 'therapist' ? await ownConsultant(db, viewer) : null;
+      const consultantId = consultant ? String(consultant.id || consultant._id) : String(body.consultantId || '');
+      const consultantName = consultant?.name || body.consultantName || 'Therapist';
 
       const newAssignment = {
         id: `ASN-${Date.now().toString().slice(-6)}`,
         assessmentId: body.assessmentId || 'ASS-01',
         assessmentAcronym: body.assessmentAcronym || 'GAD-7',
         assessmentTitle: body.assessmentTitle || 'Screener',
-        clientId: client ? String(client.id || client._id) : rawClientId,
-        clientName: client?.name || body.clientName || 'Client',
-        clientEmail: String(client?.email || rawClientEmail).toLowerCase(),
-        consultantId: body.consultantId || '',
-        consultantName: body.consultantName || 'Therapist',
-        therapistName: body.consultantName || 'Therapist',
+        clientId: String(client.id || client._id),
+        clientName: client.name || body.clientName || 'Client',
+        clientEmail: String(client.email || '').toLowerCase(),
+        consultantId,
+        consultantName,
+        therapistName: consultantName,
         assignedDate: new Date().toISOString().split('T')[0],
         dueDate: body.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
         frequency: body.frequency || 'Weekly Check-in',
@@ -521,7 +629,7 @@ export class AssessmentsController {
         message: 'Assessment assigned and client notified successfully.'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to assign assessment' });
+      serverError(res, 'AssessmentsController.assign', error, 'Failed to assign assessment');
     }
   }
 }

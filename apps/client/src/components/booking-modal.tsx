@@ -14,12 +14,13 @@ import {
   Send,
   CalendarPlus,
   Sparkles,
-  Video
+  Video,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { getGetSessionsQueryKey } from '@workspace/api-client-react';
-import { addUserSession } from '@/lib/client-store';
+import { addUserSession, releaseUnpaidSession, rescheduleUserSession } from '@/lib/client-store';
 import { getClientAuth, getApiAuthHeaders } from '@/lib/auth';
 import { openPaymentCheckout } from '@/lib/payment-checkout';
 
@@ -44,6 +45,8 @@ export interface BookingModalProps {
   therapistAvatar?: string;
   therapistTitle?: string;
   onBookingSuccess?: (newSession: any) => void;
+  /** Reschedule this existing session instead of booking (and paying for) a new one */
+  reschedule?: { id: string | number; currentAt?: string };
 }
 
 export function BookingModal({
@@ -54,7 +57,8 @@ export function BookingModal({
   therapistName = "Your Assigned Consultant",
   therapistAvatar = "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
   therapistTitle = "Licensed Psychologist",
-  onBookingSuccess
+  onBookingSuccess,
+  reschedule
 }: BookingModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -84,6 +88,41 @@ export function BookingModal({
 
   // The real consultant id: never a placeholder
   const consultantId = therapistId || authUser?.assignedTherapistId || '';
+
+  // Every opening starts fresh (never on the previous booking's "confirmed" or "request sent" screen)
+  React.useEffect(() => {
+    if (!isOpen) return;
+    setViewState('slot-selection');
+    setRequestCustomTime('');
+    setRequestNotes('');
+    setPaidAmount(null);
+    const today = new Date();
+    setSelectedDate(today);
+    setCurrentCalendarMonth(today);
+    setIsCalendarOpen(false);
+  }, [isOpen]);
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  /** Moves the existing session to the chosen slot (no payment: it is the same session) */
+  const handleReschedule = async () => {
+    if (!reschedule || !selectedTimeSlot) return;
+    setIsSubmitting(true);
+    const result = await rescheduleUserSession(reschedule.id, { date: toDateKey(selectedDate), time: selectedTimeSlot });
+    setIsSubmitting(false);
+    if (!result.ok) {
+      toast({ title: 'Session not moved', description: result.error, variant: 'destructive' });
+      setSlotsRefresh((n) => n + 1);
+      return;
+    }
+    toast({
+      title: 'Session rescheduled',
+      description: `Your session is now on ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${selectedTimeSlot}. Your therapist has been told.`,
+    });
+    onBookingSuccess?.(null);
+    onClose();
+  };
 
   // The consultant's slots for the selected day: weekly availability minus blocked times and booked sessions
   React.useEffect(() => {
@@ -262,6 +301,9 @@ export function BookingModal({
       // 2. Collect payment in the gateway popup
       const checkoutResult = await openPaymentCheckout(order.checkout, { businessName: 'Hexpertify' });
       if (checkoutResult.status === 'dismissed') {
+        // Free the slot that was held for this payment, so it can be booked again straight away
+        if (order.bookingId) await releaseUnpaidSession(order.bookingId).catch(() => null);
+        setSlotsRefresh((n) => n + 1);
         toast({ title: 'Payment cancelled', description: 'Your session was not booked. You can try again any time.' });
         return;
       }
@@ -348,31 +390,40 @@ export function BookingModal({
       const clientName = authUser?.name || 'Client';
       const clientEmail = (authUser?.email || '').toLowerCase();
 
-      // 1. Post notification for consultant and super admin
-      await fetch('/api/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipientRole: 'CONSULTANT',
-          recipientEmail: (therapistEmail || authUser?.assignedTherapistEmail || '').toLowerCase(),
-          type: 'CUSTOM_SLOT_REQUEST',
-          title: 'Custom Session Request 🗓️',
-          message: `${clientName} (${clientEmail}) requested a custom appointment on ${dateStr} for "${requestCustomTime}". ${requestNotes ? `Notes: ${requestNotes}` : ''}`,
-        }),
-      }).catch(() => {});
+      if (!consultantId) throw new Error('No therapist is assigned to your account yet.');
+      const consultantEmail = (therapistEmail || authUser?.assignedTherapistEmail || '').toLowerCase();
 
-      // 2. Post direct message
-      await fetch('/api/messages', {
+      // 1. The request reaches the therapist as a message (the record they work from)
+      const messageRes = await fetch('/api/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
         body: JSON.stringify({
           senderRole: 'client',
           senderName: clientName,
           senderEmail: clientEmail,
           clientName: clientName,
           clientEmail: clientEmail,
+          consultantId,
+          consultantEmail,
           consultantName: therapistName,
           content: `Hi ${therapistName}, I would like to request a session on ${dateStr} at ${requestCustomTime}.${requestNotes ? ` Notes: ${requestNotes}` : ''}`,
+        }),
+      }).catch(() => null);
+      if (!messageRes || !messageRes.ok) {
+        const data = messageRes ? await messageRes.json().catch(() => null) : null;
+        throw new Error(data?.error || 'Your request could not be sent. Please check your connection and try again.');
+      }
+
+      // 2. A notification for the therapist (best effort, not waited for: the message above already carries the request)
+      void fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
+        body: JSON.stringify({
+          recipientRole: 'CONSULTANT',
+          recipientEmail: consultantEmail,
+          type: 'CUSTOM_SLOT_REQUEST',
+          title: 'Custom Session Request 🗓️',
+          message: `${clientName} (${clientEmail}) requested a custom appointment on ${dateStr} for "${requestCustomTime}". ${requestNotes ? `Notes: ${requestNotes}` : ''}`,
         }),
       }).catch(() => {});
 
@@ -422,11 +473,11 @@ export function BookingModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ type: 'spring', duration: 0.4, bounce: 0.15 }}
-          className="relative w-full max-w-lg bg-background text-foreground rounded-3xl shadow-2xl border border-border overflow-hidden z-10 max-h-[92vh] flex flex-col font-sans"
+          className="relative w-full max-w-lg bg-background text-foreground rounded-3xl shadow-2xl border border-border overflow-hidden z-10 max-h-[92dvh] flex flex-col font-sans"
         >
           {/* MODAL HEADER */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card sticky top-0 z-20">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-card sticky top-0 z-20">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-muted border border-primary/20 shrink-0">
                 <img 
                   src={therapistAvatar} 
@@ -438,13 +489,15 @@ export function BookingModal({
                 />
               </div>
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-foreground leading-tight">
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight">
                   {viewState === 'confirmed'
                     ? 'Booking Confirmed'
                     : viewState === 'request-slot'
                     ? 'Request Custom Time'
                     : viewState === 'request-submitted'
                     ? 'Request Submitted'
+                    : reschedule
+                    ? 'Reschedule Session'
                     : 'Book Session'}
                 </h2>
                 <p className="text-xs text-primary font-medium">{therapistName} • Availability</p>
@@ -460,13 +513,13 @@ export function BookingModal({
           </div>
 
           {/* MODAL BODY */}
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-background">
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 bg-background">
             {/* SLOT SELECTION VIEW */}
             {viewState === 'slot-selection' && (
               <div className="space-y-6">
                 {/* DATE SELECTOR & EXPANDABLE CALENDAR */}
                 <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-primary block">
                         Selected Date
@@ -481,7 +534,7 @@ export function BookingModal({
 
                     <button
                       onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                      className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 border shadow-2xs ${
+                      className={`whitespace-nowrap px-3.5 py-2.5 sm:py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 border shadow-2xs ${
                         isCalendarOpen
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'bg-card text-primary border-primary/20 hover:bg-primary/10'
@@ -502,11 +555,11 @@ export function BookingModal({
                         transition={{ duration: 0.25 }}
                         className="overflow-hidden pt-3 border-t border-primary/10"
                       >
-                        <div className="bg-card rounded-2xl p-4 border border-border shadow-sm space-y-3">
+                        <div className="bg-card rounded-2xl p-2.5 sm:p-4 border border-border shadow-sm space-y-3">
                           <div className="flex items-center justify-between px-2">
                             <button
                               onClick={prevMonth}
-                              className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center text-foreground"
+                              className="w-9 h-9 sm:w-8 sm:h-8 rounded-full hover:bg-muted flex items-center justify-center text-foreground"
                             >
                               <ChevronLeft className="w-5 h-5" />
                             </button>
@@ -515,7 +568,7 @@ export function BookingModal({
                             </span>
                             <button
                               onClick={nextMonth}
-                              className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center text-foreground"
+                              className="w-9 h-9 sm:w-8 sm:h-8 rounded-full hover:bg-muted flex items-center justify-center text-foreground"
                             >
                               <ChevronRight className="w-5 h-5" />
                             </button>
@@ -527,7 +580,7 @@ export function BookingModal({
                             ))}
                           </div>
 
-                          <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
+                          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-xs">
                             {renderCalendarDays().map((d, index) => {
                               const isSelectedDay =
                                 d.isCurrentMonth &&
@@ -541,10 +594,12 @@ export function BookingModal({
                                 d.date.getMonth() === new Date().getMonth() &&
                                 d.date.getFullYear() === new Date().getFullYear();
 
+                              const isPastDay = d.date.getTime() < startOfToday.getTime();
                               return (
                                 <button
                                   key={index}
-                                  disabled={!d.isCurrentMonth}
+                                  disabled={!d.isCurrentMonth || isPastDay}
+                                  aria-label={d.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                                   onClick={() => {
                                     setSelectedDate(d.date);
                                     setIsCalendarOpen(false);
@@ -553,8 +608,8 @@ export function BookingModal({
                                       description: `Showing slots for ${d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
                                     });
                                   }}
-                                  className={`h-9 w-9 rounded-full flex items-center justify-center mx-auto transition-all font-semibold ${
-                                    !d.isCurrentMonth
+                                  className={`h-9 w-full max-w-9 rounded-full flex items-center justify-center mx-auto transition-all font-semibold ${
+                                    !d.isCurrentMonth || isPastDay
                                       ? 'text-muted-foreground/40 cursor-not-allowed'
                                       : isSelectedDay
                                       ? 'bg-primary text-primary-foreground font-bold shadow-md scale-105'
@@ -576,9 +631,9 @@ export function BookingModal({
 
                 {/* TIME SLOTS */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="font-extrabold text-foreground text-base tracking-tight">Available Time Slots</h3>
-                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
+                    <span className="whitespace-nowrap text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
                       ● {availableSlots.filter(s => s.available).length} Slots Available
                     </span>
                   </div>
@@ -614,7 +669,8 @@ export function BookingModal({
                   </div>
                 </div>
 
-                {/* CUSTOM TIME REQUEST INVITATION */}
+                {/* CUSTOM TIME REQUEST INVITATION (new bookings only) */}
+                {!reschedule && (
                 <div className="bg-muted/40 rounded-2xl p-3.5 sm:p-4 border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-start gap-2.5">
                     <MessageSquarePlus className="w-5 h-5 text-primary mt-0.5 shrink-0" />
@@ -626,21 +682,32 @@ export function BookingModal({
                   <button
                     type="button"
                     onClick={() => setViewState('request-slot')}
-                    className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-extrabold shadow-xs transition-all whitespace-nowrap"
+                    className="px-3.5 py-2.5 sm:py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-extrabold shadow-xs transition-all whitespace-nowrap"
                   >
                     Request Slot
                   </button>
                 </div>
+                )}
 
-                {/* CONFIRM BOOKING BUTTON */}
+                {/* CONFIRM BUTTON: pay for a new session, or move the existing one (no payment) */}
                 <div className="pt-2">
+                  {reschedule && reschedule.currentAt && (
+                    <p className="text-xs text-muted-foreground mb-2 text-center">
+                      Currently {new Date(reschedule.currentAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. No extra payment is needed.
+                    </p>
+                  )}
                   <button
-                    onClick={handleConfirmBooking}
+                    onClick={reschedule ? handleReschedule : handleConfirmBooking}
                     disabled={isSubmitting || !selectedTimeSlot}
                     className="w-full hex-button-primary py-3.5 px-6 rounded-2xl shadow-lg transition-all text-base flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSubmitting ? (
-                      <span>Processing Payment...</span>
+                      <span>{reschedule ? 'Moving your session...' : 'Processing Payment...'}</span>
+                    ) : reschedule ? (
+                      <>
+                        <RefreshCw className="w-5 h-5" />
+                        <span>Move Session to {selectedTimeSlot || 'this slot'}</span>
+                      </>
                     ) : (
                       <>
                         <ShieldCheck className="w-5 h-5" />
@@ -654,7 +721,7 @@ export function BookingModal({
 
             {/* BOOKING CONFIRMED */}
             {viewState === 'confirmed' && (
-              <div className="space-y-6 text-center py-4 bg-card p-6 rounded-3xl border border-border">
+              <div className="space-y-6 text-center py-4 bg-card p-4 sm:p-6 rounded-3xl border border-border">
                 <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
                   <CheckCircle2 className="w-10 h-10" />
                 </div>
@@ -741,7 +808,7 @@ export function BookingModal({
                         setViewState('slot-selection');
                         setIsCalendarOpen(true);
                       }}
-                      className="text-xs font-bold text-primary hover:underline"
+                      className="text-xs font-bold text-primary hover:underline py-2 sm:py-0 shrink-0"
                     >
                       Change Date
                     </button>
@@ -809,7 +876,7 @@ export function BookingModal({
 
             {/* REQUEST SUBMITTED */}
             {viewState === 'request-submitted' && (
-              <div className="space-y-6 text-center py-4 bg-card p-6 rounded-3xl border border-border">
+              <div className="space-y-6 text-center py-4 bg-card p-4 sm:p-6 rounded-3xl border border-border">
                 <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto shadow-inner">
                   <CalendarPlus className="w-9 h-9" />
                 </div>

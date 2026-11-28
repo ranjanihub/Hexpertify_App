@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { pageTransition, safeFormatDate } from '@/components/shared';
-import { 
-  Send, Search, ArrowLeft, 
-  Calendar, CheckCircle2, ShieldCheck, Sparkles,
+import {
+  Send, Search, ArrowLeft,
+  Calendar, AlertCircle, RotateCcw, Loader2,
   MessageSquare, CheckCheck, Bell, X
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { isSameDay, formatRelative } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 
@@ -47,8 +48,25 @@ function playNotificationChime() {
   } catch {}
 }
 
+/** How often the conversation is re-checked while the tab is visible (live updates also arrive over the stream) */
+const POLL_INTERVAL_MS = 8000;
+
+/** A message the server has not confirmed yet: still sending, or failed and waiting for Retry */
+interface OutgoingMessage {
+  localId: string;
+  content: string;
+  sentAt: string;
+  state: 'sending' | 'failed';
+  error?: string;
+}
+
 export default function MessagesPage() {
+  const { toast } = useToast();
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [outbox, setOutbox] = useState<OutgoingMessage[]>([]);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(() =>
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  );
   const [storeMessages, setStoreMessages] = useState<MessageItem[]>(() => getUserMessages());
   const [searchQuery, setSearchQuery] = useState('');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -105,16 +123,33 @@ export default function MessagesPage() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [storeMessages, isTherapistTyping]);
+  }, [storeMessages, isTherapistTyping, outbox.length]);
 
-  // Request browser notification permission once
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {});
-    }
-  }, []);
+  // Browsers only allow asking for notification permission after the user chose to (button below)
+  const handleEnableNotifications = () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    Notification.requestPermission()
+      .then((result) => {
+        setNotifPermission(result);
+        if (result === 'denied') {
+          toast({
+            title: 'Notifications are blocked',
+            description: 'Your browser blocked notifications for this site. You can allow them in the browser\'s site settings.',
+            variant: 'destructive'
+          });
+        }
+      })
+      .catch(() => {});
+  };
 
-  // Fetch client's exclusively assigned consultant from backend
+  /** Online only when the server lists this client's own therapist by exact email; never a guess */
+  const isMyTherapistIn = (onlineEmails: unknown, therapistEmail: string): boolean => {
+    const target = therapistEmail.toLowerCase().trim();
+    if (!target || !Array.isArray(onlineEmails)) return false;
+    return onlineEmails.some((e) => String(e).toLowerCase().trim() === target);
+  };
+
+  // Fetch the client's assigned therapist once per signed-in client (an object dependency here re-ran it on every render)
   useEffect(() => {
     const emailParam = authUser?.email ? `?email=${encodeURIComponent(authUser.email)}` : '';
     fetch(`/api/messages/consultant${emailParam}`)
@@ -154,7 +189,7 @@ export default function MessagesPage() {
         }
       })
       .catch(() => {});
-  }, [authUser]);
+  }, [authUser?.email]);
 
   // Ref to track known message IDs for notification chime
   const knownMsgIdsRef = useRef<Set<string>>(new Set());
@@ -257,53 +292,62 @@ export default function MessagesPage() {
         }
 
         setStoreMessages(mapped);
-        saveUserMessages(mapped);
+        // Saving announces "client_data_updated"; only do it when something changed
+        if (JSON.stringify(mapped) !== JSON.stringify(getUserMessages())) {
+          saveUserMessages(mapped);
+        }
       }
     } catch {}
   };
 
-  // Initial load & high-frequency 2-second background polling
+  const fetchPresence = useRef<() => void>(() => {});
+  fetchPresence.current = () => {
+    if (!therapistInfo.email) {
+      setIsTherapistOnline(false);
+      return;
+    }
+    fetch('/api/messages/presence')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data?.onlineEmails)) {
+          setIsTherapistOnline(isMyTherapistIn(data.onlineEmails, therapistInfo.email));
+        }
+      })
+      .catch(() => {});
+  };
+
+  // One modest poll for messages and presence, paused while the tab is hidden
   useEffect(() => {
-    // Initial fetch
-    fetchLiveMessages.current();
-
-    // Active real-time poller (every 2.5s)
-    const poller = setInterval(() => {
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       fetchLiveMessages.current();
-    }, 2500);
+      fetchPresence.current();
+    };
+    tick();
+    const poller = setInterval(tick, POLL_INTERVAL_MS);
 
-    // Immediate refetch when user refocuses or makes tab visible
-    const handleFocus = () => fetchLiveMessages.current();
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleFocus);
-    window.addEventListener('client_data_updated', handleFocus);
+    // Catch up at once when the client comes back to the tab
+    const handleVisible = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener('visibilitychange', handleVisible);
+    window.addEventListener('focus', handleVisible);
+    // Other parts of the app changed the cached conversation: show it without another request
+    // (refetching here looped, because every fetch saves and announces this same event)
+    const handleLocalUpdate = () => setStoreMessages(getUserMessages());
+    window.addEventListener('client_data_updated', handleLocalUpdate);
 
     return () => {
       clearInterval(poller);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleFocus);
-      window.removeEventListener('client_data_updated', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisible);
+      window.removeEventListener('focus', handleVisible);
+      window.removeEventListener('client_data_updated', handleLocalUpdate);
     };
   }, [authUser?.email]);
 
-  // Fetch presence every 6s
+  // Presence again as soon as the therapist's email is known
   useEffect(() => {
-    const fetchPresence = () => {
-      fetch('/api/messages/presence')
-        .then(res => res.json())
-        .then(data => {
-          if (data?.onlineEmails && Array.isArray(data.onlineEmails)) {
-            const list = data.onlineEmails.map((e: string) => e.toLowerCase());
-            const target = therapistInfo.email.toLowerCase();
-            setIsTherapistOnline(list.includes(target) || list.some((e: string) => e.includes('therapist') || e.includes('consultant')));
-          }
-        })
-        .catch(() => {});
-    };
-
-    fetchPresence();
-    const interval = setInterval(fetchPresence, 6000);
-    return () => clearInterval(interval);
+    fetchPresence.current();
   }, [therapistInfo.email]);
 
   // ⚡ INSTANT 0ms REAL-TIME SERVER-SENT EVENTS (SSE) STREAM WITH AUTO-RECONNECT
@@ -315,25 +359,28 @@ export default function MessagesPage() {
     let reconnectTimer: NodeJS.Timeout | null = null;
     let isSubscribed = true;
 
-    const connectSSE = () => {
+    const connectSSE = async () => {
       if (!isSubscribed) return;
       try {
-        sse = new EventSource(`/api/messages/stream?email=${encodeURIComponent(clientEmail)}&role=client`);
+        // The stream only opens for a signed-in client: trade the API token for a one-minute stream ticket
+        // (a browser EventSource cannot send the sign-in header). The server then sends only this client's events.
+        const ticketRes = await fetch('/api/messages/stream-ticket', { method: 'POST' });
+        if (!isSubscribed) return;
+        if (ticketRes.status === 401) return; // signed out: the panel's session check takes over
+        const { ticket } = await ticketRes.json().catch(() => ({}));
+        if (!ticketRes.ok || !ticket) throw new Error('No stream ticket');
+        sse = new EventSource(`/api/messages/stream?ticket=${encodeURIComponent(ticket)}`);
 
         sse.onmessage = (event) => {
           try {
             const parsed = JSON.parse(event.data);
 
             if (parsed.type === 'CONNECTED' && parsed.onlineEmails) {
-              const list = parsed.onlineEmails.map((e: string) => e.toLowerCase());
-              const target = therapistInfo.email.toLowerCase();
-              setIsTherapistOnline(list.includes(target) || list.some((e: string) => e.includes('therapist') || e.includes('consultant')));
+              setIsTherapistOnline(isMyTherapistIn(parsed.onlineEmails, therapistInfo.email));
             }
 
             if (parsed.type === 'PRESENCE_CHANGE' && parsed.data?.onlineEmails) {
-              const list = parsed.data.onlineEmails.map((e: string) => e.toLowerCase());
-              const target = therapistInfo.email.toLowerCase();
-              setIsTherapistOnline(list.includes(target) || list.some((e: string) => e.includes('therapist') || e.includes('consultant')));
+              setIsTherapistOnline(isMyTherapistIn(parsed.data.onlineEmails, therapistInfo.email));
             }
 
             if (parsed.type === 'NEW_MESSAGE' && parsed.data) {
@@ -373,48 +420,8 @@ export default function MessagesPage() {
     };
   }, [authUser?.email, therapistInfo.email]);
 
-  const handleSendText = (textToSend: string) => {
-    const text = textToSend.trim();
-    if (!text || noTherapist) return;
-
-    if (incomingNotification) setIncomingNotification(null);
-
-    sendUserMessage(text, {
-      consultantId: therapistInfo.id,
-      consultantName: therapistInfo.name,
-      consultantEmail: therapistInfo.email
-    });
-    setNewMessage('');
-    setTimeout(scrollToBottom, 50);
-    setTimeout(() => {
-      fetchLiveMessages.current();
-    }, 400);
-
-    // Cancel typing
-    fetch('/api/messages/typing', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        senderRole: 'client', 
-        senderName: authUser?.name || 'Client',
-        recipientEmail: therapistInfo.email,
-        recipientId: therapistInfo.id,
-        isTyping: false 
-      })
-    }).catch(() => {});
-  };
-
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSendText(newMessage);
-  };
-
-  const handleInputChange = (text: string) => {
-    setNewMessage(text);
-    if (incomingNotification) setIncomingNotification(null);
-
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
+  const sendTyping = (isTyping: boolean) => {
+    if (!therapistInfo.email && !therapistInfo.id) return;
     fetch('/api/messages/typing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -423,23 +430,84 @@ export default function MessagesPage() {
         senderName: authUser?.name || 'Client',
         recipientEmail: therapistInfo.email,
         recipientId: therapistInfo.id,
-        isTyping: true
+        isTyping
       })
     }).catch(() => {});
+  };
 
+  /** Sends one queued message; it leaves the outbox only once the server stored it */
+  const deliver = async (localId: string, text: string) => {
+    setOutbox((prev) => prev.map((m) => (m.localId === localId ? { ...m, state: 'sending', error: undefined } : m)));
+    const result = await sendUserMessage(text, {
+      consultantId: therapistInfo.id,
+      consultantName: therapistInfo.name,
+      consultantEmail: therapistInfo.email
+    });
+    if (result.ok) {
+      setOutbox((prev) => prev.filter((m) => m.localId !== localId));
+      setStoreMessages(getUserMessages());
+      setTimeout(scrollToBottom, 50);
+      return;
+    }
+    setOutbox((prev) => prev.map((m) => (m.localId === localId ? { ...m, state: 'failed', error: result.error } : m)));
+    toast({
+      title: 'Message not sent',
+      description: result.error || 'Your message could not be sent. Please press Retry.',
+      variant: 'destructive'
+    });
+  };
+
+  const handleSendText = (textToSend: string) => {
+    const text = textToSend.trim();
+    if (!text || noTherapist) return;
+
+    if (incomingNotification) setIncomingNotification(null);
+
+    const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setOutbox((prev) => [...prev, { localId, content: text, sentAt: new Date().toISOString(), state: 'sending' }]);
+    setNewMessage('');
+    setTimeout(scrollToBottom, 50);
+    void deliver(localId, text);
+
+    // Stop the typing indicator
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = null;
+    lastTypingSentRef.current = 0;
+    sendTyping(false);
+  };
+
+  const handleRetry = (msg: OutgoingMessage) => {
+    if (msg.state === 'sending') return;
+    void deliver(msg.localId, msg.content);
+  };
+
+  const handleDiscard = (localId: string) => {
+    setOutbox((prev) => prev.filter((m) => m.localId !== localId));
+  };
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSendText(newMessage);
+  };
+
+  // "Typing" is sent at most once every few seconds while the client types, and "stopped" once after a pause
+  const lastTypingSentRef = useRef<number>(0);
+  const handleInputChange = (text: string) => {
+    setNewMessage(text);
+    if (incomingNotification) setIncomingNotification(null);
+
+    const now = Date.now();
+    if (now - lastTypingSentRef.current > 3000) {
+      lastTypingSentRef.current = now;
+      sendTyping(true);
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      fetch('/api/messages/typing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderRole: 'client',
-          senderName: authUser?.name || 'Client',
-          recipientEmail: therapistInfo.email,
-          recipientId: therapistInfo.id,
-          isTyping: false
-        })
-      }).catch(() => {});
-    }, 2000);
+      typingTimeoutRef.current = null;
+      lastTypingSentRef.current = 0;
+      sendTyping(false);
+    }, 2500);
   };
 
   // Filter messages based on search query
@@ -457,7 +525,7 @@ export default function MessagesPage() {
   const lastMessage = sortedMessages.length > 0 ? sortedMessages[sortedMessages.length - 1] : null;
 
   return (
-    <motion.div {...pageTransition} className="relative w-full h-[calc(100dvh-95px)] md:h-[calc(100vh-115px)] flex flex-col md:flex-row gap-4 sm:gap-6 pb-2 font-['Plus_Jakarta_Sans']">
+    <motion.div {...pageTransition} className="relative w-full h-[calc(100dvh-140px)] sm:h-[calc(100dvh-156px)] lg:h-[calc(100vh-115px)] min-h-[360px] flex flex-col md:flex-row gap-4 sm:gap-6 pb-2 font-['Open_Sans']">
       
       {/* Floating In-App Toast Notification Banner */}
       {incomingNotification && (
@@ -468,7 +536,7 @@ export default function MessagesPage() {
           }}
           className="absolute top-4 right-4 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-purple-500/30 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300 cursor-pointer hover:bg-slate-800 transition-colors"
         >
-          <div className="w-8 h-8 rounded-full bg-[#5e2be2] flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-full bg-[#450bc8] flex items-center justify-center shrink-0">
             <Bell className="w-4 h-4 text-white animate-bounce" />
           </div>
           <div className="text-xs flex-1 min-w-0 pr-1">
@@ -530,7 +598,7 @@ export default function MessagesPage() {
                   }}
                 />
               </div>
-              <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white dark:border-card rounded-full ${isTherapistOnline ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+              {isTherapistOnline && <span className="absolute bottom-0 right-0 w-3 h-3 border-2 border-white dark:border-card rounded-full bg-emerald-500" />}
             </div>
 
             <div className="flex-1 min-w-0">
@@ -556,28 +624,34 @@ export default function MessagesPage() {
           </button>
         </div>
 
-        {/* Security & Support Note */}
-        <div className="p-3.5 bg-muted/30 border-t border-border mt-auto flex items-center gap-2.5">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span className="text-[11px] text-muted-foreground font-medium leading-tight">
-            End-to-End HIPAA Encrypted Care Channel
-          </span>
-        </div>
+        {/* Browser notifications: asked for only when the client chooses to turn them on */}
+        {notifPermission === 'default' && (
+          <div className="p-3.5 bg-muted/30 border-t border-border mt-auto">
+            <button
+              type="button"
+              onClick={handleEnableNotifications}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-border bg-white dark:bg-card text-[11px] font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Bell className="w-3.5 h-3.5 text-primary" />
+              Turn on notifications for new messages
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Chat Canvas ────────────────────────────────────────────── */}
       <div className={`flex-1 hex-card !p-0 flex flex-col overflow-hidden h-full ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
         {/* Chat Header */}
         <div className="p-3.5 sm:p-4 border-b border-border bg-white dark:bg-card flex items-center justify-between shrink-0 shadow-2xs z-10">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button 
               onClick={() => setMobileView('list')}
-              className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="md:hidden p-2.5 sm:p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             
-            <div className="relative">
+            <div className="relative shrink-0">
               <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden bg-muted border border-border shadow-xs">
                 <img 
                   src={therapistInfo.avatarUrl} 
@@ -588,28 +662,22 @@ export default function MessagesPage() {
                   }}
                 />
               </div>
-              <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-white dark:border-card rounded-full ${isTherapistOnline ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+              {isTherapistOnline && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-white dark:border-card rounded-full bg-emerald-500" />}
             </div>
 
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-sm sm:text-base text-foreground leading-snug">
                   {therapistInfo.name}
                 </h3>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary/10 text-primary border border-primary/20">
-                  Verified Specialist
-                </span>
               </div>
+              {/* "Online" only when the server lists this therapist; otherwise no status rather than a guess */}
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 font-medium">
-                <span>{therapistInfo.title}</span>
-                <span>&bull;</span>
-                {isTherapistOnline ? (
+                {therapistInfo.title && <span>{therapistInfo.title}</span>}
+                {therapistInfo.title && isTherapistOnline && <span>&bull;</span>}
+                {isTherapistOnline && (
                   <span className="text-emerald-600 font-bold flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
-                  </span>
-                ) : (
-                  <span className="text-slate-400 font-medium flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Offline
                   </span>
                 )}
               </p>
@@ -619,7 +687,7 @@ export default function MessagesPage() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setIsBookingOpen(true)}
-              className="px-3 sm:px-4 py-2 rounded-xl bg-purple-50 text-[#5e2be2] hover:bg-purple-100 font-extrabold text-xs transition-all flex items-center gap-1.5 border border-purple-200 cursor-pointer shadow-2xs"
+              className="px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl bg-purple-50 text-[#450bc8] hover:bg-purple-100 font-extrabold text-xs transition-all flex items-center gap-1.5 border border-purple-200 cursor-pointer shadow-2xs"
               title="Schedule next session"
             >
               <Calendar className="w-4 h-4" />
@@ -630,10 +698,10 @@ export default function MessagesPage() {
 
         {/* Chat Messages Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#F6F7FB] dark:bg-muted/20 space-y-4">
-          {sortedMessages.length === 0 ? (
-            <div className="h-full flex items-center justify-center p-8 text-center min-h-[320px]">
+          {sortedMessages.length === 0 && outbox.length === 0 ? (
+            <div className="h-full flex items-center justify-center p-8 text-center min-h-[200px] sm:min-h-[320px]">
               <div className="space-y-3 max-w-sm">
-                <div className="w-12 h-12 rounded-full bg-purple-100 text-[#5e2be2] flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-full bg-purple-100 text-[#450bc8] flex items-center justify-center mx-auto">
                   <MessageSquare className="w-6 h-6 stroke-[2]" />
                 </div>
                 <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">No Messages Yet</h3>
@@ -684,7 +752,7 @@ export default function MessagesPage() {
                       
                       <div className={`p-4 rounded-3xl shadow-sm space-y-1 ${
                         isMe 
-                          ? 'bg-[#5e2be2] text-white rounded-br-xs shadow-md shadow-[#5e2be2]/15' 
+                          ? 'bg-[#450bc8] text-white rounded-br-xs shadow-md shadow-[#450bc8]/15' 
                           : 'bg-white dark:bg-card text-slate-800 dark:text-slate-100 rounded-bl-xs border border-slate-200/90 dark:border-border'
                       }`}>
                         <p className="text-xs sm:text-sm leading-relaxed font-medium whitespace-pre-wrap">
@@ -702,15 +770,57 @@ export default function MessagesPage() {
             })
           )}
 
+          {/* Messages the server has not confirmed: never shown as delivered */}
+          {outbox.map((msg) => (
+            <div key={msg.localId} className="flex justify-end animate-fade-in">
+              <div className="flex flex-col items-end gap-1 max-w-[88%] sm:max-w-[75%]">
+                <div className={`p-4 rounded-3xl rounded-br-xs shadow-sm space-y-1 ${
+                  msg.state === 'failed'
+                    ? 'bg-white dark:bg-card text-slate-800 dark:text-slate-100 border-2 border-rose-300'
+                    : 'bg-[#450bc8]/70 text-white'
+                }`}>
+                  <p className="text-xs sm:text-sm leading-relaxed font-medium whitespace-pre-wrap">{msg.content}</p>
+                  {msg.state === 'sending' && (
+                    <div className="flex items-center gap-1 text-[10px] font-medium pt-1 text-white/80 justify-end">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Sending…</span>
+                    </div>
+                  )}
+                </div>
+                {msg.state === 'failed' && (
+                  <div className="flex flex-wrap items-center justify-end gap-2 text-[11px] font-semibold text-rose-600">
+                    <span className="flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> Not sent{msg.error ? `: ${msg.error}` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRetry(msg)}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Retry
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDiscard(msg.localId)}
+                      className="px-2 py-0.5 rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
           {/* Real-time Typing Bubble */}
           {isTherapistTyping && (
             <div className="flex justify-start">
               <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-2.5 flex items-center gap-1.5 shadow-xs">
                 <span className="text-xs text-slate-500 font-medium">{therapistInfo.name} is typing</span>
                 <span className="flex gap-1 items-center pt-1">
-                  <span className="w-1.5 h-1.5 bg-[#5e2be2] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-[#5e2be2] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-[#5e2be2] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="w-1.5 h-1.5 bg-[#450bc8] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-[#450bc8] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-[#450bc8] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </span>
               </div>
             </div>
@@ -733,7 +843,7 @@ export default function MessagesPage() {
             <button 
               type="submit" 
               disabled={!newMessage.trim()}
-              className="w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white flex items-center justify-center disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shadow-md shadow-[#5e2be2]/25 cursor-pointer"
+              className="w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white flex items-center justify-center disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shadow-md shadow-[#450bc8]/25 cursor-pointer"
               title="Send Message"
             >
               <Send className="w-4.5 sm:w-5 h-4.5 sm:h-5 ml-0.5" />

@@ -25,14 +25,23 @@ const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
 const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const bookingKey = (b: any) => String(b.id || b._id);
 
-/** The client a request speaks for: their API token, or (legacy client panel) their email/id */
+/** Logs the real error server-side and answers with a generic message (internals never reach the caller) */
+function serverError(res: Response, err: unknown, message: string): void {
+  console.error(`[session-feedback] ${message}:`, err);
+  res.status(500).json({ success: false, error: message });
+}
+
+/**
+ * The client a request speaks for: the signed-in client (from their API token, never the body), or the client
+ * an administrator / the server names. Therapists and callers who are not signed in speak for no client.
+ */
 async function resolveClientIdentity(req: Request): Promise<{ email: string; ids: string[] } | null> {
   const viewer = await resolveClientViewer(req);
   if (viewer.kind === 'client') {
     const ids = [...viewer.ids];
     return { email: ids.find((v) => v.includes('@')) || '', ids };
   }
-  if (viewer.kind !== 'anonymous') return null;
+  if (viewer.kind !== 'admin' && viewer.kind !== 'internal') return null;
 
   const email = norm(req.query.clientEmail || req.body?.clientEmail);
   const id = String(req.query.clientId || req.body?.clientId || '').trim();
@@ -119,7 +128,7 @@ export class SessionFeedbackController {
       const pending = await Promise.all(bookings.filter((b) => !answeredIds.has(bookingKey(b))).map(describeBooking));
       res.json({ success: true, pending });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to load pending feedback' });
+      serverError(res, error, 'Failed to load pending feedback');
     }
   }
 
@@ -142,7 +151,12 @@ export class SessionFeedbackController {
 
       const identity = await resolveClientIdentity(req);
       if (!identity) {
-        res.status(401).json({ success: false, error: 'Please sign in to share feedback.' });
+        // Not signed in, or signed in as someone who is not a client (a therapist cannot rate a session)
+        const signedIn = (await resolveClientViewer(req)).kind !== 'anonymous';
+        res.status(signedIn ? 403 : 401).json({
+          success: false,
+          error: signedIn ? 'Only the client of this session can rate it.' : 'Please sign in to share feedback.'
+        });
         return;
       }
 
@@ -214,7 +228,7 @@ export class SessionFeedbackController {
       cacheService.invalidateTags(['notifications', 'session-feedback']);
       res.status(201).json({ success: true, totalScore, maxScore: MAX_SCORE, level });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to save feedback' });
+      serverError(res, error, 'Failed to save feedback');
     }
   }
 
@@ -252,7 +266,7 @@ export class SessionFeedbackController {
       };
       res.json({ success: true, maxScore: MAX_SCORE, summary, feedback });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to load session feedback' });
+      serverError(res, error, 'Failed to load session feedback');
     }
   }
 }

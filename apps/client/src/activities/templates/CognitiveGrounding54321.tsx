@@ -418,11 +418,11 @@ Completed via Hexpertify Grounding`;
   const currentStepCfg = step >= 1 && step <= 5 ? STEPS[step - 1] : null;
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-5 font-['Plus_Jakarta_Sans',sans-serif] text-slate-800 dark:text-slate-100 select-none">
+    <div className="w-full max-w-4xl mx-auto space-y-5 font-['Open_Sans',sans-serif] text-slate-800 dark:text-slate-100 select-none">
       {/* ── CARD CONTAINER (CONSTANT HEIGHT ACROSS ALL STEPS) ── */}
       <div className="w-full min-h-[380px] sm:h-[395px] flex flex-col justify-between bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-purple-500/5 p-3.5 sm:py-4 sm:px-6 relative overflow-hidden transition-all">
         {/* Ambient Floating Glows */}
-        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-teal-500/5 dark:bg-teal-500/10 blur-3xl pointer-events-none" />
 
         {/* ─────────────────────────────────────────────────────────────
@@ -443,12 +443,12 @@ Completed via Hexpertify Grounding`;
                 }}
                 className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   voiceEnabled
-                    ? 'bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                    ? 'bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
                 }`}
                 title={voiceEnabled ? 'Voice Guidance Enabled' : 'Voice Guidance Muted'}
               >
-                {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+                {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
                 <span>{voiceEnabled ? 'Voice On' : 'Muted'}</span>
               </button>
             </div>
@@ -471,7 +471,7 @@ Completed via Hexpertify Grounding`;
                   return (
                     <div
                       key={s.number}
-                      className="flex flex-col items-center justify-center p-3 sm:p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 transition-all hover:border-[#5e2be2]/30 group"
+                      className="flex flex-col items-center justify-center p-3 sm:p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 transition-all hover:border-[#450bc8]/30 group"
                     >
                       <div className={`w-9 h-9 rounded-xl ${s.badgeBg} flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs`}>
                         <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${s.color}`} />
@@ -490,7 +490,7 @@ Completed via Hexpertify Grounding`;
                 <button
                   type="button"
                   onClick={handleStartActivity}
-                  className="px-8 py-2.5 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
+                  className="px-8 py-2.5 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
                 >
                   <Play className="w-3.5 h-3.5 fill-white" />
                   <span>Start Grounding</span>
@@ -518,19 +518,19 @@ Completed via Hexpertify Grounding`;
                   }}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     voiceEnabled
-                      ? 'bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                      ? 'bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
                   }`}
                   title={voiceEnabled ? 'Voice Guidance Active' : 'Voice Muted'}
                 >
-                  {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+                  {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
                   <span className="hidden sm:inline">{voiceEnabled ? 'Voice On' : 'Muted'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="p-1.5 text-slate-400 hover:text-[#5e2be2] bg-slate-100 hover:bg-purple-50 dark:bg-slate-800 rounded-full transition-all cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-[#450bc8] bg-slate-100 hover:bg-purple-50 dark:bg-slate-800 rounded-full transition-all cursor-pointer"
                   title="Reset session"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -578,7 +578,7 @@ Completed via Hexpertify Grounding`;
                   {/* Somatic Directive Pill */}
                   <div className="text-center">
                     {autoAdvanceCountdown !== null ? (
-                      <span className="text-[11px] font-semibold text-[#5e2be2] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-3.5 py-1 rounded-full inline-flex items-center gap-1.5 border border-purple-200 dark:border-purple-800 animate-pulse">
+                      <span className="text-[11px] font-semibold text-[#450bc8] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-3.5 py-1 rounded-full inline-flex items-center gap-1.5 border border-purple-200 dark:border-purple-800 animate-pulse">
                         <Sparkles className="w-3.5 h-3.5" />
                         <span>Centering complete · Moving to next step in {autoAdvanceCountdown}s...</span>
                       </span>
@@ -602,7 +602,7 @@ Completed via Hexpertify Grounding`;
                   </button>
 
                   {autoAdvanceCountdown !== null ? (
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#5e2be2] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-3.5 py-1.5 rounded-xl border border-purple-200/80 dark:border-purple-800/80 animate-pulse">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#450bc8] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-3.5 py-1.5 rounded-xl border border-purple-200/80 dark:border-purple-800/80 animate-pulse">
                       <span>Step 1 in {autoAdvanceCountdown}s</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </div>
@@ -647,7 +647,7 @@ Completed via Hexpertify Grounding`;
                       {/* Recorded Count */}
                       <div className="text-right shrink-0">
                         <span className="text-[9.5px] font-semibold text-slate-400">Recorded:</span>
-                        <div className={`text-xs font-black ${isStepComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#5e2be2] dark:text-purple-300'}`}>
+                        <div className={`text-xs font-black ${isStepComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#450bc8] dark:text-purple-300'}`}>
                           {stepCount} / {currentStepCfg.number}
                         </div>
                       </div>
@@ -684,7 +684,7 @@ Completed via Hexpertify Grounding`;
                                 }
                               }}
                               placeholder={`Observation #${idx + 1}...`}
-                              className="w-full pl-8 pr-7 py-1 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-[#5e2be2] focus:outline-none transition-all shadow-2xs"
+                              className="w-full pl-8 pr-7 py-1 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-[#450bc8] focus:outline-none transition-all shadow-2xs"
                             />
                             {val.trim() && (
                               <span className="absolute right-2 text-emerald-500">
@@ -707,7 +707,7 @@ Completed via Hexpertify Grounding`;
                           key={sIdx}
                           type="button"
                           onClick={() => handleApplySuggestion(currentStepCfg.number, sug)}
-                          className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium bg-slate-100 hover:bg-purple-50 dark:bg-slate-800 dark:hover:bg-purple-950/60 text-slate-600 dark:text-slate-300 hover:text-[#5e2be2] border border-slate-200/70 dark:border-slate-700 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                          className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium bg-slate-100 hover:bg-purple-50 dark:bg-slate-800 dark:hover:bg-purple-950/60 text-slate-600 dark:text-slate-300 hover:text-[#450bc8] border border-slate-200/70 dark:border-slate-700 transition-all cursor-pointer whitespace-nowrap shrink-0"
                         >
                           + {sug}
                         </button>
@@ -732,7 +732,7 @@ Completed via Hexpertify Grounding`;
                       onClick={handleNext}
                       className={`px-5 py-2 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 ${
                         isStepComplete
-                          ? 'bg-[#5e2be2] hover:bg-[#4d22be] text-white shadow-purple-500/25 transform hover:scale-[1.01] cursor-pointer'
+                          ? 'bg-[#450bc8] hover:bg-[#4d22be] text-white shadow-purple-500/25 transform hover:scale-[1.01] cursor-pointer'
                           : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60 shadow-none'
                       }`}
                       title={isStepComplete ? 'Proceed to next step' : `Enter all ${currentStepCfg.number} items to proceed`}
@@ -787,7 +787,7 @@ Completed via Hexpertify Grounding`;
                     <div className="space-y-1 pt-1.5 border-t border-purple-100 dark:border-purple-900/50">
                       <div className="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
                         <span>Re-evaluate distress right now:</span>
-                        <span className="font-bold text-[#5e2be2]">{postDistress} / 10</span>
+                        <span className="font-bold text-[#450bc8]">{postDistress} / 10</span>
                       </div>
                       <input
                         type="range"
@@ -810,7 +810,7 @@ Completed via Hexpertify Grounding`;
                       <button
                         type="button"
                         onClick={handleCopySummary}
-                        className="text-xs font-semibold text-[#5e2be2] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-semibold text-[#450bc8] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Copy className="w-3.5 h-3.5" />
                         <span>{copied ? 'Copied!' : 'Copy'}</span>
@@ -883,7 +883,7 @@ Completed via Hexpertify Grounding`;
       {/* ─────────────────────────────────────────────────────────────
           2. EDUCATIONAL DESCRIPTION CARD: What is Cognitive Grounding?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -898,7 +898,7 @@ Completed via Hexpertify Grounding`;
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -907,12 +907,12 @@ Completed via Hexpertify Grounding`;
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   1
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Sensory Redirection (5-4-3)
                 </span>
               </div>
@@ -921,12 +921,12 @@ Completed via Hexpertify Grounding`;
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   2
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Olfactory & Affirmation (2-1)
                 </span>
               </div>
@@ -935,12 +935,12 @@ Completed via Hexpertify Grounding`;
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   3
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Reality Re-Anchoring
                 </span>
               </div>
@@ -955,7 +955,7 @@ Completed via Hexpertify Grounding`;
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -964,8 +964,8 @@ Completed via Hexpertify Grounding`;
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -976,8 +976,8 @@ Completed via Hexpertify Grounding`;
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -988,8 +988,8 @@ Completed via Hexpertify Grounding`;
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Zap className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1000,8 +1000,8 @@ Completed via Hexpertify Grounding`;
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1016,7 +1016,7 @@ Completed via Hexpertify Grounding`;
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "wouter";
 import {
   useGetClient,
@@ -31,6 +31,11 @@ import { cn } from "@/lib/utils";
 import { useOutcomeStore } from "@/lib/outcome-store";
 import { ClientSessionFeedback } from "@/components/client-session-feedback";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthUser } from "@/lib/auth";
+
+// Dates are India time throughout the platform (booking slots, labels)
+const todayIst = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+const addDaysIst = (days: number) => new Date(Date.now() + days * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -42,67 +47,119 @@ export default function ClientDetail() {
   const [showFullIntakeSummary, setShowFullIntakeSummary] = useState(false);
   const [personalizedScale, setPersonalizedScale] = useState<string>("GAD-7");
 
+  const authUser = useMemo(() => getAuthUser(), []);
+  const myId = String(authUser?.id || '');
+
   // Real Database Client State
   const [dbClient, setDbClient] = useState<any | null>(null);
   const [dbBookings, setDbBookings] = useState<any[]>([]);
   const [dbGoals, setDbGoals] = useState<any[]>([]);
   const [dbSubmissions, setDbSubmissions] = useState<any[]>([]);
+  const [dbAssignments, setDbAssignments] = useState<any[]>([]);
   const [isDbLoading, setIsDbLoading] = useState(true);
+  // assigned: this therapist's client; not-assigned: exists but belongs to someone else; not-found: no such client
+  const [access, setAccess] = useState<"assigned" | "not-assigned" | "not-found" | "error">("assigned");
+
+  // Bookings store the client's Mongo _id (older ones the custom id); consultant queries carry no client email
+  const bookingsForClient = (all: any[], user: any) => {
+    const userIds = [user?._id, user?.id].filter(Boolean).map(String);
+    return all.filter((b: any) => userIds.includes(String(b.clientId || '')) || userIds.includes(String(b.userId || '')));
+  };
+
+  // Only this therapist's bookings, then the ones for this client
+  const loadBookings = async (user: any) => {
+    if (!myId || !user) return [];
+    const data = await fetch(`/api/bookings?consultantId=${encodeURIComponent(myId)}`)
+      .then(r => r.ok ? r.json() : { bookings: [] })
+      .catch(() => ({ bookings: [] }));
+    return bookingsForClient(Array.isArray(data?.bookings) ? data.bookings : [], user);
+  };
+
+  // This client's activity assignments (the Activities & Homework tab)
+  const loadAssignments = async (user: any) => {
+    const q = new URLSearchParams();
+    const cid = String(user?.id || user?._id || '');
+    if (cid) q.set('clientId', cid);
+    if (user?.email) q.set('clientEmail', String(user.email).toLowerCase());
+    if (!q.toString()) return [];
+    const data = await fetch(`/api/activities/assignments?${q.toString()}`)
+      .then(r => r.ok ? r.json() : { assignments: [] })
+      .catch(() => ({ assignments: [] }));
+    return Array.isArray(data?.assignments) ? data.assignments : [];
+  };
 
   useEffect(() => {
     let isMounted = true;
     async function loadClientData() {
       try {
         setIsDbLoading(true);
-        const [usersRes, bookingsRes, goalsRes] = await Promise.all([
-          fetch('/api/users').then(r => r.ok ? r.json() : { users: [] }).catch(() => ({ users: [] })),
-          fetch('/api/bookings').then(r => r.ok ? r.json() : { bookings: [] }).catch(() => ({ bookings: [] })),
-          fetch('/api/goals').then(r => r.ok ? r.json() : { goals: [] }).catch(() => ({ goals: [] })),
+        const targetId = String(id || '');
+        // Only this therapist's clients and bookings — never the whole user / booking collections
+        const [usersRes, bookingsRes] = await Promise.all([
+          myId
+            ? fetch(`/api/users?therapistId=${encodeURIComponent(myId)}`).then(r => r.ok ? r.json() : { users: [] }).catch(() => ({ users: [] }))
+            : Promise.resolve({ users: [] }),
+          myId
+            ? fetch(`/api/bookings?consultantId=${encodeURIComponent(myId)}`).then(r => r.ok ? r.json() : { bookings: [] }).catch(() => ({ bookings: [] }))
+            : Promise.resolve({ bookings: [] }),
         ]);
 
-        const rawUsers = Array.isArray(usersRes?.users) ? usersRes.users : [];
-        const rawBookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
-        const rawGoals = Array.isArray(goalsRes?.goals) ? goalsRes.goals : [];
+        const myClients = Array.isArray(usersRes?.users) ? usersRes.users : [];
+        const myBookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
 
-        const targetId = String(id || '');
-        const found = rawUsers.find((u: any) => 
-          String(u._id || u.id) === targetId || String(u.id) === targetId || u.email === targetId
-        );
+        const found = myClients.find((u: any) => String(u._id) === targetId || String(u.id) === targetId);
 
-        if (found) {
-          const userEmail = String(found.email || '').toLowerCase();
-          const userId = String(found._id || found.id);
-          const userIds = [found._id, found.id].filter(Boolean).map(String);
-          const matchedBookings = rawBookings.filter((b: any) =>
-            b.clientEmail === userEmail || b.clientId === userId
-          );
-          const matchedGoals = rawGoals.filter((g: any) =>
-            userIds.includes(String(g.clientId || g.userId || '')) ||
-            (userEmail && String(g.clientEmail || '').toLowerCase() === userEmail)
-          );
-
-          // The client's own submitted assessments (scores + answers); the API returns full results only to their therapist
-          const scoreQuery = new URLSearchParams();
-          if (userEmail) scoreQuery.set('clientEmail', userEmail);
-          scoreQuery.set('clientId', userId);
-          const scoresRes = await fetch(`/api/assessments?${scoreQuery.toString()}`)
-            .then(r => r.ok ? r.json() : { submissions: [] })
-            .catch(() => ({ submissions: [] }));
-          const submissions = Array.isArray(scoresRes?.submissions) ? scoresRes.submissions : [];
-
-          if (isMounted) {
-            setDbClient(found);
-            setDbBookings(matchedBookings);
-            setDbGoals(matchedGoals);
-            setDbSubmissions(submissions);
+        if (!found || found.detailsRestricted) {
+          // Not on this therapist's list: tell "someone else's client" apart from "no such client"
+          let other: any = found || null;
+          let notFound = false;
+          let failed = false;
+          if (!other) {
+            const res = await fetch(`/api/users/${encodeURIComponent(targetId)}?therapistId=${encodeURIComponent(myId)}`).catch(() => null);
+            if (res && res.status === 404) notFound = true;
+            else if (res && res.ok) other = (await res.json().catch(() => null))?.user || null;
+            else failed = true;
+            if (!other && !failed) notFound = true;
           }
-        } else {
           if (isMounted) {
-            setDbClient(null);
+            setDbClient(other);
+            setDbBookings([]);
+            setDbGoals([]);
+            setDbSubmissions([]);
+            setDbAssignments([]);
+            setAccess(notFound ? "not-found" : failed ? "error" : "not-assigned");
           }
+          return;
+        }
+
+        const userEmail = String(found.email || '').toLowerCase();
+        const userId = String(found._id || found.id);
+        const matchedBookings = bookingsForClient(myBookings, found);
+
+        // Goals, assessments and activity assignments for this client only
+        const goalQuery = new URLSearchParams({ clientId: String(found.id || found._id) });
+        if (userEmail) goalQuery.set('clientEmail', userEmail);
+        // The client's own submitted assessments (scores + answers); the API returns full results only to their therapist
+        const scoreQuery = new URLSearchParams();
+        if (userEmail) scoreQuery.set('clientEmail', userEmail);
+        scoreQuery.set('clientId', userId);
+        const [goalsRes, scoresRes, assignments] = await Promise.all([
+          fetch(`/api/goals?${goalQuery.toString()}`).then(r => r.ok ? r.json() : { goals: [] }).catch(() => ({ goals: [] })),
+          fetch(`/api/assessments?${scoreQuery.toString()}`).then(r => r.ok ? r.json() : { submissions: [] }).catch(() => ({ submissions: [] })),
+          loadAssignments(found),
+        ]);
+
+        if (isMounted) {
+          setDbClient(found);
+          setDbBookings(matchedBookings);
+          setDbGoals(Array.isArray(goalsRes?.goals) ? goalsRes.goals : []);
+          setDbSubmissions(Array.isArray(scoresRes?.submissions) ? scoresRes.submissions : []);
+          setDbAssignments(assignments);
+          setAccess("assigned");
         }
       } catch (err) {
         console.error('Error fetching client record from DB:', err);
+        if (isMounted) setAccess("error");
       } finally {
         if (isMounted) setIsDbLoading(false);
       }
@@ -110,19 +167,62 @@ export default function ClientDetail() {
 
     loadClientData();
     return () => { isMounted = false; };
-  }, [id]);
+  }, [id, myId]);
 
-  // Personal Therapist Notes State
-  const [personalNotesStore, setPersonalNotesStore] = useState<Record<string, string>>({});
+  const isAssigned = access === "assigned" && !!dbClient;
+
+  // Personal therapist notes, stored on the server (only the assigned therapist can read / add them)
+  const [personalNotes, setPersonalNotes] = useState<{ id: string; text: string; createdAt: string }[]>([]);
+  const [notesLoadError, setNotesLoadError] = useState<string>("");
   const [noteInputText, setNoteInputText] = useState<string>("");
   const [isNoteSavedFeedback, setIsNoteSavedFeedback] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const noteClientId = String(dbClient?.id || dbClient?._id || '');
 
   useEffect(() => {
-    if (id && personalNotesStore[id]) {
-      setNoteInputText(personalNotesStore[id]);
+    if (!isAssigned || !noteClientId) {
+      setPersonalNotes([]);
+      return;
     }
-  }, [id, personalNotesStore]);
+    let cancelled = false;
+    setNotesLoadError("");
+    fetch(`/api/client-notes?clientId=${encodeURIComponent(noteClientId)}`)
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok || !data?.success) throw new Error(data?.error || "Could not load your notes.");
+        if (!cancelled) setPersonalNotes(Array.isArray(data.notes) ? data.notes : []);
+      })
+      .catch((err) => {
+        if (!cancelled) setNotesLoadError(err?.message || "Could not load your notes.");
+      });
+    return () => { cancelled = true; };
+  }, [isAssigned, noteClientId]);
+
+  const handleSaveNote = async () => {
+    const text = noteInputText.trim();
+    if (!text || !noteClientId) return;
+    setIsSavingNote(true);
+    try {
+      const res = await fetch('/api/client-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: noteClientId, text })
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success || !data?.note) throw new Error(data?.error || "The note was not saved. Please try again.");
+      // Shown as saved only once the server has stored it
+      setPersonalNotes((prev) => [data.note, ...prev]);
+      setNoteInputText("");
+      setIsEditingNote(false);
+      setIsNoteSavedFeedback(true);
+      toast({ title: "Note saved", description: "Your private note was added to this client's record." });
+    } catch (err: any) {
+      toast({ title: "Note not saved", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   // Dialog States for Outcomes & Assessments
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -157,7 +257,8 @@ export default function ClientDetail() {
   // Form states for Assign Assessment
   const [selectedAssignScale, setSelectedAssignScale] = useState("GAD-7");
   const [assignNote, setAssignNote] = useState("");
-  const [assignDueDate, setAssignDueDate] = useState("2026-08-15");
+  // Due a week from today by default; past dates are not offered
+  const [assignDueDate, setAssignDueDate] = useState(() => addDaysIst(7));
 
   // Form states for Calculate Outcome
   const [calcMilestone, setCalcMilestone] = useState("12");
@@ -167,13 +268,42 @@ export default function ClientDetail() {
 
   // Form states for Schedule Session
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().slice(0, 10));
-  const [scheduleTime, setScheduleTime] = useState("10:00 AM");
+  const [scheduleDate, setScheduleDate] = useState(() => todayIst());
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduleSlots, setScheduleSlots] = useState<{ time: string; available: boolean }[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState("");
   const [scheduleTitle, setScheduleTitle] = useState("Individual Therapy Consultation");
   const [scheduleDuration, setScheduleDuration] = useState("50 min");
   const [isScheduling, setIsScheduling] = useState(false);
 
-  const isRealDbUser = !!dbClient;
+  // The therapist's offered slots for the chosen day; the booking is made with one of these labels
+  useEffect(() => {
+    if (!scheduleModalOpen || !myId || !scheduleDate) return;
+    let cancelled = false;
+    setIsLoadingSlots(true);
+    setSlotsError("");
+    setScheduleSlots([]);
+    setScheduleTime("");
+    fetch(`/api/availability/slots?consultantId=${encodeURIComponent(myId)}&date=${encodeURIComponent(scheduleDate)}`)
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok || !data?.success) throw new Error(data?.error || "Could not load your free times.");
+        if (cancelled) return;
+        const slots = (Array.isArray(data.slots) ? data.slots : []).map((s: any) => ({ time: String(s.time), available: Boolean(s.available) }));
+        setScheduleSlots(slots);
+        const firstFree = slots.find((s: any) => s.available);
+        setScheduleTime(firstFree ? firstFree.time : "");
+      })
+      .catch((err) => {
+        if (!cancelled) setSlotsError(err?.message || "Could not load your free times.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSlots(false);
+      });
+    return () => { cancelled = true; };
+  }, [scheduleModalOpen, scheduleDate, myId]);
+
   const clientName = dbClient?.name || "Client";
   const clientInitials = clientName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || "CL";
   const hasBookings = dbBookings.length > 0;
@@ -181,53 +311,69 @@ export default function ClientDetail() {
 
   const handleScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAssigned || !dbClient) return;
+    if (!scheduleDate || scheduleDate < todayIst()) {
+      toast({ title: "Pick a future date", description: "Sessions can't be scheduled in the past.", variant: "destructive" });
+      return;
+    }
+    if (!scheduleTime) {
+      toast({ title: "Pick a time", description: "Choose one of your free times for that day.", variant: "destructive" });
+      return;
+    }
     setIsScheduling(true);
     try {
-      const storedUser = localStorage.getItem("hexpertify_auth_user");
-      const user = storedUser ? JSON.parse(storedUser) : null;
-      
-      const newBooking = {
-        id: `BK-${Date.now().toString().slice(-6)}`,
-        clientId: client.id || dbClient?._id || dbClient?.id || '',
-        clientName: client.name,
-        clientEmail: client.email,
-        consultantId: user?.id || '',
-        consultantName: user?.name || 'Therapist',
-        serviceTitle: scheduleTitle,
-        scheduledAt: `${scheduleDate}T10:00:00.000Z`,
-        date: scheduleDate,
-        time: scheduleTime,
-        durationMinutes: parseInt(scheduleDuration) || 50,
-        status: 'CONFIRMED',
-        paymentStatus: 'PAID',
-        createdAt: new Date().toISOString()
-      };
-
+      // Date + the offered slot label; the server works out the exact time (India time) and checks the slot is free
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBooking)
+        body: JSON.stringify({
+          consultantId: myId,
+          clientId: String(dbClient._id || dbClient.id || ''),
+          clientEmail: String(dbClient.email || '').toLowerCase(),
+          clientName: client.name,
+          serviceTitle: scheduleTitle,
+          date: scheduleDate,
+          time: scheduleTime,
+          durationMinutes: parseInt(scheduleDuration) || 50,
+        })
       });
-
-      if (res.ok) {
-        setDbBookings(prev => [newBooking, ...prev]);
-        toast({
-          title: "Session Scheduled! 📅",
-          description: `Booked session for ${client.name} on ${scheduleDate} at ${scheduleTime}. Stored in database.`,
-        });
-        setScheduleModalOpen(false);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "The session was not booked. Please try again.");
       }
-    } catch (err) {
-      console.error('Error scheduling session in DB:', err);
+      // Reload from the server so the new session shows with its real time and status
+      setDbBookings(await loadBookings(dbClient));
       toast({
-        title: "Error",
-        description: "Failed to schedule session in database.",
+        title: "Session scheduled",
+        description: `Booked ${client.name} on ${formatDate(scheduleDate)} at ${scheduleTime}.`,
+      });
+      setScheduleModalOpen(false);
+    } catch (err: any) {
+      console.error('Error scheduling session:', err);
+      toast({
+        title: "Session not booked",
+        description: err?.message || "Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsScheduling(false);
     }
   };
+
+  // Session times from the server (scheduledAt is the real instant; date / time are India-time labels)
+  const bookingTime = (b: any) => {
+    const t = b?.scheduledAt ? new Date(b.scheduledAt).getTime() : NaN;
+    return Number.isFinite(t) ? t : null;
+  };
+  const bookingStatus = (b: any) => String(b?.status || '').toUpperCase();
+  const nowMs = Date.now();
+  const pastSessions = dbBookings
+    .filter((b: any) => { const t = bookingTime(b); return t !== null && t < nowMs && !['CANCELLED', 'EXPIRED', 'PENDING_PAYMENT'].includes(bookingStatus(b)); })
+    .sort((a: any, b: any) => (bookingTime(b) as number) - (bookingTime(a) as number));
+  const upcomingSessions = dbBookings
+    .filter((b: any) => { const t = bookingTime(b); return t !== null && t >= nowMs && ['PENDING', 'CONFIRMED', 'RESCHEDULED'].includes(bookingStatus(b)); })
+    .sort((a: any, b: any) => (bookingTime(a) as number) - (bookingTime(b) as number));
+  const nextBooking = upcomingSessions[0];
 
   const client = {
     id: dbClient?._id || dbClient?.id || id,
@@ -246,12 +392,14 @@ export default function ClientDetail() {
     therapyTimeline: dbClient?.therapyTimeline || dbClient?.timeline || "—",
     aiIntakeSummary: dbClient?.aiIntakeSummary || dbClient?.intakeSummary || null,
     startDate: dbClient?.createdAt ? new Date(dbClient.createdAt).toISOString().split('T')[0] : '—',
-    lastSession: hasBookings ? (dbBookings[0]?.date?.split('T')[0] || undefined) : undefined,
-    nextSession: undefined,
+    lastSession: pastSessions[0] ? (pastSessions[0].date || pastSessions[0].scheduledAt) : undefined,
+    nextSession: nextBooking ? (nextBooking.date || nextBooking.scheduledAt) : undefined,
     sessionCount: dbBookings.length,
   };
 
-  const history = hasBookings ? dbBookings.map((b: any, i: number) => ({
+  // Newest first (the list numbers sessions from the bottom up)
+  const sortedBookings = [...dbBookings].sort((a: any, b: any) => (bookingTime(b) ?? 0) - (bookingTime(a) ?? 0));
+  const history = hasBookings ? sortedBookings.map((b: any, i: number) => ({
     id: b._id || b.id || i + 1,
     date: b.date?.split('T')[0] || b.sessionDate || b.scheduledAt || null,
     durationMinutes: Number(b.durationMinutes || b.duration) || null,
@@ -288,7 +436,8 @@ export default function ClientDetail() {
     .sort((a: any, b: any) => b.time - a.time);
   // Same assessment, previous attempt — for the "previous answer" column in the answers dialog
   const previousAttemptOf = (a: any) => assessments.find((x: any) => x.type === a.type && x.time < a.time);
-  const homework: any[] = Array.isArray(dbClient?.homework) ? dbClient.homework : [];
+  // The client's activity assignments, newest first (from /api/activities/assignments)
+  const homework: any[] = dbAssignments;
   const moodTrend: any[] = Array.isArray(dbClient?.moodTrend) ? dbClient.moodTrend : [];
 
   const SCALE_TITLES: Record<string, string> = {
@@ -326,8 +475,12 @@ export default function ClientDetail() {
       createdAt: new Date().toISOString()
     };
 
-    if (!dbClient) {
-      toast({ title: "Client record not found", description: "Assessments can only be assigned to registered clients.", variant: "destructive" });
+    if (!dbClient || !isAssigned) {
+      toast({ title: "Not available", description: "You can only assign assessments to your own clients.", variant: "destructive" });
+      return;
+    }
+    if (!assignDueDate || assignDueDate < todayIst()) {
+      toast({ title: "Pick a future due date", description: "The due date can't be in the past.", variant: "destructive" });
       return;
     }
 
@@ -356,8 +509,12 @@ export default function ClientDetail() {
   const handleAssignActivitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const template = activityTemplates.find((t) => t.id === selectedActivityId);
-    if (!template || !dbClient) {
-      toast({ title: "Choose an activity", description: !dbClient ? "This client has no registered account." : "Select an activity from the library.", variant: "destructive" });
+    if (!dbClient || !isAssigned) {
+      toast({ title: "Not available", description: "You can only assign activities to your own clients.", variant: "destructive" });
+      return;
+    }
+    if (!template) {
+      toast({ title: "Choose an activity", description: "Select an activity from the library.", variant: "destructive" });
       return;
     }
     const storedUser = localStorage.getItem("hexpertify_auth_user");
@@ -386,6 +543,8 @@ export default function ClientDetail() {
       if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
       setAssignActivityModalOpen(false);
       window.dispatchEvent(new CustomEvent('client_data_updated'));
+      // Show the new assignment in the Activities & Homework tab
+      loadAssignments(dbClient).then(setDbAssignments).catch(() => {});
       toast({
         title: data.assignedCount ? "Therapeutic Activity Assigned!" : "Already assigned",
         description: data.assignedCount
@@ -434,32 +593,88 @@ export default function ClientDetail() {
     );
   }
 
+  // Unknown id (or the record couldn't be loaded): no blank "Client" page with live actions
+  if (access === "not-found" || access === "error") {
+    return (
+      <div className="space-y-6 pb-10">
+        <div className="flex items-center gap-2 mb-2">
+          <Link href="/clients" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[#450bc8] transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Clients
+          </Link>
+        </div>
+        <div className="p-16 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <AlertCircle className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-base font-extrabold text-slate-900">
+            {access === "not-found" ? "Client not found" : "Couldn't load this client"}
+          </h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            {access === "not-found"
+              ? "There is no client with this link. They may have been removed, or the link is wrong."
+              : "Something went wrong while loading this record. Please check your connection and try again."}
+          </p>
+          <Link href="/clients">
+            <Button className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl h-10 px-5 mt-2 cursor-pointer">
+              <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Back to Clients
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-10">
       <div className="flex items-center gap-2 mb-2">
-        <Link href="/clients" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[#5e2be2] transition-colors">
+        <Link href="/clients" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[#450bc8] transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back to Clients
         </Link>
       </div>
+
+      {!isAssigned && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50 text-amber-900">
+          <Lock className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+          <div className="text-xs leading-relaxed">
+            <p className="font-extrabold text-sm">This client is not assigned to you</p>
+            <p className="mt-0.5">You can see their basic details only. Messaging, booking, assessments, activities and notes are available to their assigned therapist.</p>
+          </div>
+        </div>
+      )}
 
       <PageHeader
         title={client.name}
         description={client.primaryGoal && client.primaryGoal !== "—" ? client.primaryGoal : ""}
       >
         <div className="flex items-center gap-3">
-          <Link href="/messages">
+          {isAssigned ? (
+            // Opens Messages with this client's conversation selected
+            <Link href={`/messages?client=${encodeURIComponent(String(dbClient?.id || dbClient?._id || ''))}`}>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 bg-white text-[#450bc8] hover:bg-white/90 font-extrabold text-xs px-4 py-2.5 rounded-full shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Message</span>
+              </button>
+            </Link>
+          ) : (
             <button
               type="button"
-              className="inline-flex items-center justify-center gap-2 bg-white text-[#5e2be2] hover:bg-white/90 font-extrabold text-xs px-4 py-2.5 rounded-full shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+              disabled
+              title="This client is not assigned to you"
+              className="inline-flex items-center justify-center gap-2 bg-white text-[#450bc8] font-extrabold text-xs px-4 py-2.5 rounded-full shadow-md shrink-0 opacity-50 cursor-not-allowed"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Message</span>
             </button>
-          </Link>
+          )}
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs px-4 py-2.5 rounded-full border border-white/20 transition-all active:scale-95 cursor-pointer shrink-0"
+            disabled={!isAssigned}
+            onClick={() => setScheduleModalOpen(true)}
+            title={isAssigned ? undefined : "This client is not assigned to you"}
+            className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs px-4 py-2.5 rounded-full border border-white/20 transition-all active:scale-95 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>Book Session</span>
@@ -469,19 +684,19 @@ export default function ClientDetail() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-white border border-border w-full justify-start p-1 h-14 rounded-xl overflow-x-auto flex-nowrap shrink-0 hide-scrollbar">
-          <TabsTrigger value="overview" className="rounded-lg h-11 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
+          <TabsTrigger value="overview" className="rounded-lg h-11 px-4 sm:px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
             Overview
           </TabsTrigger>
-          <TabsTrigger value="outcomes" className="rounded-lg h-11 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
+          <TabsTrigger value="outcomes" className="rounded-lg h-11 px-4 sm:px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
             Progress
           </TabsTrigger>
-          <TabsTrigger value="assessments" className="rounded-lg h-11 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
+          <TabsTrigger value="assessments" className="rounded-lg h-11 px-4 sm:px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
             Assessments
           </TabsTrigger>
-          <TabsTrigger value="homework" className="rounded-lg h-11 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
+          <TabsTrigger value="homework" className="rounded-lg h-11 px-4 sm:px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
             Activities &amp; Homework
           </TabsTrigger>
-          <TabsTrigger value="history" className="rounded-lg h-11 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
+          <TabsTrigger value="history" className="rounded-lg h-11 px-4 sm:px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium text-muted-foreground">
             Session History
           </TabsTrigger>
         </TabsList>
@@ -489,8 +704,8 @@ export default function ClientDetail() {
         <div className="mt-6">
           {/* TAB 1: OVERVIEW */}
           <TabsContent value="overview" className="space-y-6 outline-none">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2 space-y-6 min-w-0">
                 <Card className="shadow-sm border-border">
                   <CardHeader>
                     <CardTitle className="text-lg">Profile</CardTitle>
@@ -535,11 +750,11 @@ export default function ClientDetail() {
                 <Card className="shadow-sm border-purple-200/80 bg-gradient-to-br from-purple-50/50 via-indigo-50/30 to-white rounded-3xl overflow-hidden">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-[#450bc8]" />
                         AI Intake Summary
                       </CardTitle>
-                      <Badge variant="outline" className="bg-purple-100 text-[#5e2be2] border-purple-200 text-[10px] font-extrabold">
+                      <Badge variant="outline" className="bg-purple-100 text-[#450bc8] border-purple-200 text-[10px] font-extrabold">
                         AI Insights
                       </Badge>
                     </div>
@@ -554,7 +769,7 @@ export default function ClientDetail() {
                         <button
                           type="button"
                           onClick={() => setShowFullIntakeSummary(!showFullIntakeSummary)}
-                          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#5e2be2] hover:text-[#4f28d9] transition-colors cursor-pointer pt-1"
+                          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#450bc8] hover:text-[#3a0aa8] transition-colors cursor-pointer pt-1"
                         >
                           <span>{showFullIntakeSummary ? "Read Less" : "Read More"}</span>
                           <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", showFullIntakeSummary && "rotate-180")} />
@@ -574,22 +789,24 @@ export default function ClientDetail() {
               <div className="space-y-6">
                 {/* Personal Notes Box UI (Therapist Reference) */}
                 <div className="bg-white rounded-3xl border border-purple-200/80 p-6 shadow-sm space-y-4 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between border-b border-purple-50 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="p-2 rounded-2xl bg-purple-100/80 text-[#5e2be2]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-50 pb-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="p-2 rounded-2xl bg-purple-100/80 text-[#450bc8]">
                         <Edit3 className="w-4 h-4" />
                       </span>
                       <div>
                         <h3 className="text-base font-extrabold text-slate-900 leading-tight">Personal Notes</h3>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] border border-purple-100 rounded-full text-[10px] font-extrabold flex items-center gap-1 shrink-0">
+                    <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] border border-purple-100 rounded-full text-[10px] font-extrabold flex items-center gap-1 shrink-0">
                       <Lock className="w-3 h-3 text-amber-500" />
                       Therapist Only
                     </span>
                   </div>
 
-                  {isEditingNote ? (
+                  {!isAssigned ? (
+                    <p className="text-xs text-slate-500 font-medium">Notes are only available for your own clients.</p>
+                  ) : isEditingNote ? (
                     <div className="space-y-3">
                       <textarea
                         autoFocus
@@ -599,17 +816,19 @@ export default function ClientDetail() {
                           setIsNoteSavedFeedback(false);
                         }}
                         rows={4}
+                        maxLength={5000}
                         placeholder="Type personal reference notes about this client..."
-                        className="w-full p-4 bg-white border border-[#5e2be2] rounded-2xl text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-purple-100 leading-relaxed resize-none transition-all shadow-sm"
+                        className="w-full p-4 bg-white border border-[#450bc8] rounded-2xl text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-purple-100 leading-relaxed resize-none transition-all shadow-sm"
                       />
                       <div className="flex items-center justify-between pt-0.5">
-                        <span className="text-[11px] text-slate-400 font-medium">Click Save when finished</span>
+                        <span className="text-[11px] text-slate-400 font-medium">Only you can see these notes</span>
                         <div className="flex items-center gap-2">
                           <Button
                             type="button"
                             variant="ghost"
+                            disabled={isSavingNote}
                             onClick={() => {
-                              setNoteInputText(personalNotesStore[String(id)] || "");
+                              setNoteInputText("");
                               setIsEditingNote(false);
                             }}
                             className="text-xs font-bold text-slate-500 h-8 px-3 rounded-xl hover:bg-slate-100 cursor-pointer"
@@ -618,32 +837,34 @@ export default function ClientDetail() {
                           </Button>
                           <Button
                             type="button"
-                            onClick={() => {
-                              setPersonalNotesStore((prev) => ({ ...prev, [String(id)]: noteInputText }));
-                              setIsNoteSavedFeedback(true);
-                              setIsEditingNote(false);
-                              toast({
-                                title: "Personal Note Saved",
-                                description: "Therapist reference note updated for this client.",
-                              });
-                            }}
-                            className="bg-[#5e2be2] hover:bg-[#4d22be] text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                            disabled={isSavingNote || !noteInputText.trim()}
+                            onClick={handleSaveNote}
+                            className="bg-[#450bc8] hover:bg-[#4d22be] text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                           >
                             <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            <span>Save Note</span>
+                            <span>{isSavingNote ? "Saving..." : "Save Note"}</span>
                           </Button>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="p-4 bg-slate-50/70 border border-slate-200/90 rounded-2xl min-h-[90px] flex flex-col justify-between space-y-3">
-                      <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-wrap">
-                        {noteInputText.trim() ? (
-                          noteInputText
-                        ) : (
-                          <span className="text-slate-400 italic">No personal logs added yet. Click "Edit Note" to add reference notes for this client...</span>
-                        )}
-                      </p>
+                      {notesLoadError ? (
+                        <p className="text-xs font-medium text-rose-600">{notesLoadError}</p>
+                      ) : personalNotes.length === 0 ? (
+                        <p className="text-xs font-medium text-slate-400 italic">No personal notes yet. Click "Add Note" to keep a private reference note for this client.</p>
+                      ) : (
+                        <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                          {personalNotes.map((note) => (
+                            <div key={note.id} className="space-y-0.5">
+                              <p className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-wrap">{note.text}</p>
+                              <p className="text-[10px] text-slate-400 font-medium">
+                                {note.createdAt ? new Date(note.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
                         <div className="flex items-center gap-1.5">
                           {isNoteSavedFeedback && (
@@ -654,10 +875,13 @@ export default function ClientDetail() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setIsEditingNote(true)}
-                          className="text-[11px] font-extrabold text-[#5e2be2] flex items-center gap-1 bg-purple-100/70 hover:bg-purple-100 px-2.5 py-1 rounded-lg border border-purple-200/60 transition-all cursor-pointer"
+                          onClick={() => {
+                            setIsNoteSavedFeedback(false);
+                            setIsEditingNote(true);
+                          }}
+                          className="text-[11px] font-extrabold text-[#450bc8] flex items-center gap-1 bg-purple-100/70 hover:bg-purple-100 px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg border border-purple-200/60 transition-all cursor-pointer"
                         >
-                          <Edit3 className="w-3 h-3" /> Edit Note
+                          <Edit3 className="w-3 h-3" /> Add Note
                         </button>
                       </div>
                     </div>
@@ -682,16 +906,19 @@ export default function ClientDetail() {
                             <div className="flex items-center justify-between">
                               <span className="font-semibold text-sm">{assessment.type}</span>
                               <div className="flex items-center gap-2">
-                                <span className="font-bold">{assessment.currentScore}</span>
-                                <span className="text-xs text-muted-foreground">/ {assessment.maxScore}</span>
+                                <span className="font-bold">{assessment.currentScore ?? '—'}</span>
+                                {assessment.maxScore ? (
+                                  <span className="text-xs text-muted-foreground">/ {assessment.maxScore}</span>
+                                ) : null}
                               </div>
                             </div>
                             <div className="flex items-center justify-between text-xs">
+                              {/* severityLabel is e.g. "Moderate anxiety" / "Severe depression" */}
                               <span className={cn("font-medium",
-                                assessment.severity === 'Severe' ? 'text-red-600' :
-                                  assessment.severity === 'Moderate' ? 'text-amber-600' : 'text-green-600'
+                                assessment.flaggedRisk || /severe/i.test(assessment.severityLabel) ? 'text-red-600' :
+                                  /moderate/i.test(assessment.severityLabel) ? 'text-amber-600' : 'text-green-600'
                               )}>
-                                {assessment.severity}
+                                {assessment.severityLabel}
                               </span>
                               <span className="text-muted-foreground">{formatDate(assessment.completedAt)}</span>
                             </div>
@@ -707,15 +934,17 @@ export default function ClientDetail() {
                     <CardTitle className="text-lg text-primary">Next Session</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {(client as any).nextSession ? (
+                    {nextBooking ? (
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                             <Calendar className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="font-medium">{formatDate((client as any).nextSession)}</p>
-                            <p className="text-sm text-muted-foreground">Follow-up · Video</p>
+                            <p className="font-medium">{formatDate(client.nextSession)}{nextBooking.time ? ` · ${nextBooking.time}` : ''}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {[nextBooking.serviceTitle, nextBooking.durationMinutes ? `${nextBooking.durationMinutes} min` : ''].filter(Boolean).join(' · ')}
+                            </p>
                           </div>
                         </div>
                         <Button className="w-full bg-primary hover:bg-primary/90">Prepare Session Note</Button>
@@ -725,6 +954,7 @@ export default function ClientDetail() {
                         <p className="text-muted-foreground text-sm mb-4">No upcoming sessions scheduled.</p>
                         <Button
                           type="button"
+                          disabled={!isAssigned}
                           onClick={() => setScheduleModalOpen(true)}
                           variant="outline"
                           className="w-full border-primary/20 text-primary font-bold cursor-pointer hover:bg-purple-50"
@@ -752,7 +982,7 @@ export default function ClientDetail() {
             {/* Assessment score trends, built only from the assessments this client actually submitted */}
             <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-5">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
-                <span className="p-2 rounded-xl bg-purple-100 text-[#5e2be2]">
+                <span className="p-2 rounded-xl bg-purple-100 text-[#450bc8]">
                   <Activity className="w-5 h-5" />
                 </span>
                 <div>
@@ -811,7 +1041,7 @@ export default function ClientDetail() {
                                   return p ? [p.label, p.date, p.severity].filter(Boolean).join(' · ') : '';
                                 }}
                               />
-                              <Line type="monotone" dataKey="score" stroke="#5e2be2" strokeWidth={3} dot={{ r: 4, fill: "#5e2be2" }} activeDot={{ r: 6 }} />
+                              <Line type="monotone" dataKey="score" stroke="#450bc8" strokeWidth={3} dot={{ r: 4, fill: "#450bc8" }} activeDot={{ r: 6 }} />
                             </LineChart>
                           </ResponsiveContainer>
                         </div>
@@ -832,14 +1062,14 @@ export default function ClientDetail() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                    <ClipboardCheck className="w-5 h-5 text-[#5e2be2]" />
+                    <ClipboardCheck className="w-5 h-5 text-[#450bc8]" />
                     Active Assessment Instruments &amp; Longitudinal Trends
                   </h3>
                   <p className="text-xs text-slate-500">
                     Track score trajectories across sessions and inspect question breakdowns
                   </p>
                 </div>
-                <Button onClick={() => setAssignModalOpen(true)} className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer">
+                <Button disabled={!isAssigned} onClick={() => setAssignModalOpen(true)} className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer">
                   <Send className="w-3.5 h-3.5 mr-1.5" /> Dispatch Assessment
                 </Button>
               </div>
@@ -849,7 +1079,7 @@ export default function ClientDetail() {
                   <Scale className="w-12 h-12 text-slate-300 mx-auto" />
                   <h3 className="text-base font-extrabold text-slate-900">No Assessment Records Found</h3>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">No psychometric assessments (GAD-7, PHQ-9, PCL-5) have been completed by this client in the database.</p>
-                  <Button onClick={() => setAssignModalOpen(true)} className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl h-10 px-5 mt-2">
+                  <Button disabled={!isAssigned} onClick={() => setAssignModalOpen(true)} className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl h-10 px-5 mt-2">
                     <Send className="w-3.5 h-3.5 mr-1.5" /> Dispatch First Assessment
                   </Button>
                 </div>
@@ -884,7 +1114,7 @@ export default function ClientDetail() {
                           size="sm"
                           disabled={assessment.answers.length === 0}
                           onClick={() => setItemDetailsScale(assessment)}
-                          className="text-xs font-bold border-purple-200 text-[#5e2be2] hover:bg-purple-50 cursor-pointer"
+                          className="text-xs font-bold border-purple-200 text-[#450bc8] hover:bg-purple-50 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5 mr-1.5" />
                           {assessment.answers.length ? `View ${assessment.answers.length} answers` : 'No answers recorded'}
@@ -902,8 +1132,9 @@ export default function ClientDetail() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-extrabold text-slate-900">Assigned Therapeutic Activities</h3>
               <Button
+                disabled={!isAssigned}
                 onClick={() => setAssignActivityModalOpen(true)}
-                className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer"
+                className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Assign Activity
@@ -913,20 +1144,39 @@ export default function ClientDetail() {
               <div className="p-16 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
                 <Gamepad2 className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="text-base font-extrabold text-slate-900">No Activities or Homework Assigned</h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">No mindfulness practices, CBT thought records, or exercises have been assigned to this client in the database collection.</p>
-                <Button onClick={() => setAssignActivityModalOpen(true)} className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl h-10 px-5 mt-2">
+                <p className="text-xs text-slate-500 max-w-md mx-auto">No mindfulness practices, CBT thought records, or exercises have been assigned to this client yet.</p>
+                <Button disabled={!isAssigned} onClick={() => setAssignActivityModalOpen(true)} className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl h-10 px-5 mt-2">
                   <Plus className="w-3.5 h-3.5 mr-1.5" /> Assign First Activity
                 </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {homework.map((item) => (
-                  <Card key={item.id} className="shadow-sm border-border overflow-hidden">
-                    <div className="p-6">
-                      <h3 className="font-bold text-lg">{item.activity}</h3>
-                    </div>
-                  </Card>
-                ))}
+                {homework.map((item) => {
+                  const done = String(item.status || '').toLowerCase() === 'completed';
+                  return (
+                    <Card key={item.id} className="shadow-sm border-border overflow-hidden">
+                      <div className="p-5 flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-base text-slate-900">{item.activityTitle || 'Activity'}</h3>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {[item.frequency, item.timeOfDay].filter(Boolean).join(' · ')}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Assigned {item.assignedAt ? formatDate(item.assignedAt) : '—'}
+                            {item.consultantName ? ` by ${item.consultantName}` : ''}
+                            {done && item.completedAt ? ` · Completed ${formatDate(item.completedAt)}` : ''}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn("text-[11px] font-bold shrink-0", done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200")}
+                        >
+                          {done ? "Completed" : "Pending"}
+                        </Badge>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -940,8 +1190,9 @@ export default function ClientDetail() {
               </div>
               <Button
                 type="button"
+                disabled={!isAssigned}
                 onClick={() => setScheduleModalOpen(true)}
-                className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs h-8 px-3.5 rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs h-8 px-3.5 rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Schedule Session
@@ -955,8 +1206,9 @@ export default function ClientDetail() {
                 <p className="text-xs text-slate-500 max-w-md mx-auto">There is no consultation or booking history recorded in the database collection for this client yet.</p>
                 <Button
                   type="button"
+                  disabled={!isAssigned}
                   onClick={() => setScheduleModalOpen(true)}
-                  className="mt-4 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                  className="mt-4 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Schedule First Session
@@ -1008,7 +1260,7 @@ export default function ClientDetail() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
-              <Send className="w-5 h-5 text-[#5e2be2]" />
+              <Send className="w-5 h-5 text-[#450bc8]" />
               Assign Assessment Scale
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -1047,8 +1299,10 @@ export default function ClientDetail() {
               <Input
                 type="date"
                 value={assignDueDate}
+                min={todayIst()}
                 onChange={(e) => setAssignDueDate(e.target.value)}
                 className="w-full text-xs"
+                required
               />
             </div>
 
@@ -1064,7 +1318,7 @@ export default function ClientDetail() {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setAssignModalOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold cursor-pointer">Dispatch Scale</Button>
+              <Button type="submit" className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold cursor-pointer">Dispatch Scale</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1075,7 +1329,7 @@ export default function ClientDetail() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
-              <Calculator className="w-5 h-5 text-[#5e2be2]" />
+              <Calculator className="w-5 h-5 text-[#450bc8]" />
               Calculate 3-Session Outcome Milestone
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -1083,7 +1337,7 @@ export default function ClientDetail() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCalcSubmit} className="space-y-4 pt-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-600 uppercase">Milestone Session #</label>
                 <Select value={calcMilestone} onValueChange={setCalcMilestone}>
@@ -1115,7 +1369,7 @@ export default function ClientDetail() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-600 uppercase">Previous / Baseline Score</label>
                 <Input
@@ -1138,14 +1392,14 @@ export default function ClientDetail() {
 
             <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between text-xs">
               <span className="font-bold text-slate-700">Calculated Score Difference:</span>
-              <span className="font-black text-sm text-[#5e2be2]">
+              <span className="font-black text-sm text-[#450bc8]">
                 {Number(calcCurrScore) - Number(calcPrevScore) > 0 ? `+${Number(calcCurrScore) - Number(calcPrevScore)}` : `${Number(calcCurrScore) - Number(calcPrevScore)}`} pts
               </span>
             </div>
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setCalcModalOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold cursor-pointer">Run Outcome Engine</Button>
+              <Button type="submit" className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold cursor-pointer">Run Outcome Engine</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1156,7 +1410,7 @@ export default function ClientDetail() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
-              <Eye className="w-5 h-5 text-[#5e2be2]" />
+              <Eye className="w-5 h-5 text-[#450bc8]" />
               {itemDetailsScale?.type || "Assessment"} - Line Item Responses
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -1170,7 +1424,7 @@ export default function ClientDetail() {
                 <span className="font-bold text-slate-900 block">{itemDetailsScale?.name}</span>
                 <span className="text-slate-500">Completed: {itemDetailsScale?.completedAt ? formatDate(itemDetailsScale.completedAt) : '—'}</span>
               </div>
-              <Badge className="bg-[#5e2be2] text-white font-bold">
+              <Badge className="bg-[#450bc8] text-white font-bold">
                 Score: {itemDetailsScale?.currentScore ?? '—'}{itemDetailsScale?.maxScore ? ` / ${itemDetailsScale.maxScore}` : ''}
               </Badge>
             </div>
@@ -1193,7 +1447,7 @@ export default function ClientDetail() {
                   <div key={item.questionId || idx} className="p-3 rounded-xl border text-xs space-y-1.5 bg-white border-slate-100">
                     <span className="font-bold text-slate-900 leading-snug block">{idx + 1}. {item.questionText || item.questionId}</span>
                     <div className="flex items-center justify-between gap-2 text-[11px] pt-1 border-t border-slate-100 flex-wrap">
-                      <span className="text-slate-500">Answer: <strong className="text-[#5e2be2] font-extrabold">{answerText(item)}</strong></span>
+                      <span className="text-slate-500">Answer: <strong className="text-[#450bc8] font-extrabold">{answerText(item)}</strong></span>
                       {prevAnswer && (
                         <span className="text-slate-500">Previous: <strong className="text-slate-700">{answerText(prevAnswer)}</strong></span>
                       )}
@@ -1211,7 +1465,7 @@ export default function ClientDetail() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
-              <Gamepad2 className="w-5 h-5 text-[#5e2be2]" />
+              <Gamepad2 className="w-5 h-5 text-[#450bc8]" />
               Assign Therapeutic Activity
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -1233,7 +1487,7 @@ export default function ClientDetail() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-600 uppercase">Frequency</label>
                 <Select value={activityFrequency} onValueChange={setActivityFrequency}>
@@ -1268,7 +1522,7 @@ export default function ClientDetail() {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setAssignActivityModalOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isAssigningActivity || !selectedActivityId} className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold cursor-pointer">{isAssigningActivity ? "Assigning..." : "Assign Activity"}</Button>
+              <Button type="submit" disabled={isAssigningActivity || !selectedActivityId} className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold cursor-pointer">{isAssigningActivity ? "Assigning..." : "Assign Activity"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1279,11 +1533,11 @@ export default function ClientDetail() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
-              <Calendar className="w-5 h-5 text-[#5e2be2]" />
+              <Calendar className="w-5 h-5 text-[#450bc8]" />
               Schedule Therapy Session
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Create and store a consultation session for {client.name} in the MongoDB database.
+              Book a session for {client.name} in one of your free times. They will be notified.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleScheduleSubmit} className="space-y-4 pt-2">
@@ -1298,12 +1552,13 @@ export default function ClientDetail() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-600 uppercase">Date</label>
                 <Input
                   type="date"
                   value={scheduleDate}
+                  min={todayIst()}
                   onChange={(e) => setScheduleDate(e.target.value)}
                   className="w-full text-xs"
                   required
@@ -1312,18 +1567,24 @@ export default function ClientDetail() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-600 uppercase">Start Time</label>
-                <Select value={scheduleTime} onValueChange={setScheduleTime}>
+                {/* Only the times you offer that day and that are still free */}
+                <Select value={scheduleTime} onValueChange={setScheduleTime} disabled={isLoadingSlots || !scheduleSlots.some((s) => s.available)}>
                   <SelectTrigger className="text-xs">
-                    <SelectValue />
+                    <SelectValue placeholder={isLoadingSlots ? "Loading times..." : "No free times"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {["08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM"].map((t) => (
-                      <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+                    {scheduleSlots.filter((s) => s.available).map((s) => (
+                      <SelectItem key={s.time} value={s.time} className="text-xs">{s.time}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
+            {slotsError ? (
+              <p className="text-[11px] font-semibold text-rose-600">{slotsError}</p>
+            ) : !isLoadingSlots && !scheduleSlots.some((s) => s.available) ? (
+              <p className="text-[11px] font-medium text-slate-500">You have no free times on this day. Pick another date or update your availability.</p>
+            ) : null}
 
             <div className="space-y-1.5">
               <label className="text-xs font-extrabold text-slate-600 uppercase">Duration</label>
@@ -1332,7 +1593,8 @@ export default function ClientDetail() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {["30 min", "50 min", "60 min", "80 min", "90 min"].map((d) => (
+                  {/* Slots are one hour long */}
+                  {["30 min", "50 min", "60 min"].map((d) => (
                     <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1341,8 +1603,8 @@ export default function ClientDetail() {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setScheduleModalOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isScheduling} className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold cursor-pointer">
-                {isScheduling ? "Saving to DB..." : "Confirm & Save Session"}
+              <Button type="submit" disabled={isScheduling || !scheduleTime || !isAssigned} className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold cursor-pointer">
+                {isScheduling ? "Booking..." : "Confirm & Book Session"}
               </Button>
             </DialogFooter>
           </form>

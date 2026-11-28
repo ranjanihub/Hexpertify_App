@@ -545,6 +545,28 @@ const DEFAULT_SEED_ACTIVITIES = [
 ];
 
 import { cacheService } from '../services/cache.service';
+import { resolveClientViewer } from '../services/client-access';
+import {
+  clientAccessRefusal, findClientUser, namesOtherClient, ownClientUser, ownConsultant, serverError
+} from '../services/clinical-access';
+
+/**
+ * Who may change an activity: admins (and internal calls) any of them; a therapist only one they created.
+ * The shared library templates belong to the admin team. Returns the refusal, or null when allowed.
+ */
+async function activityChangeRefusal(req: Request, activity?: any): Promise<{ status: number; error: string } | null> {
+  const viewer = await resolveClientViewer(req);
+  if (viewer.kind === 'anonymous') return { status: 401, error: 'Please sign in again.' };
+  if (viewer.kind === 'admin' || viewer.kind === 'internal') return null;
+  if (viewer.kind !== 'therapist') return { status: 403, error: 'Only therapists and the admin team can manage activities.' };
+  if (!activity) return null; // creating a new one
+  const owner = [activity.createdById, activity.createdByEmail].map((v) => String(v ?? '').trim().toLowerCase()).filter(Boolean);
+  if (owner.some((v) => viewer.ids.has(v))) return null;
+  return { status: 403, error: 'Library activities are managed by the admin team. You can only change activities you created.' };
+}
+
+/** Fields that record who owns an activity: never taken from the request body */
+const OWNER_FIELDS = ['createdById', 'createdByEmail', 'createdByRole'];
 
 export class ActivitiesController {
   /**
@@ -594,7 +616,7 @@ export class ActivitiesController {
 
       res.json(responseData);
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch activities' });
+      serverError(res, 'activities', error, 'Failed to fetch activities');
     }
   }
 
@@ -622,7 +644,7 @@ export class ActivitiesController {
         activity: { ...activity, id: activity.id || String(activity._id) }
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch activity' });
+      serverError(res, 'activities', error, 'Failed to fetch activity');
     }
   }
 
@@ -631,11 +653,21 @@ export class ActivitiesController {
    */
   static async create(req: Request, res: Response): Promise<void> {
     try {
+      const refusal = await activityChangeRefusal(req);
+      if (refusal) {
+        res.status(refusal.status).json({ success: false, error: refusal.error });
+        return;
+      }
+      const viewer = await resolveClientViewer(req);
       const db = getDatabase();
-      const body = req.body || {};
+      const body = { ...(req.body || {}) };
+      OWNER_FIELDS.forEach((f) => delete body[f]);
 
       const newActivity = {
         ...body,
+        createdByRole: viewer.kind,
+        createdById: [...viewer.ids].find((v) => !v.includes('@')) || null,
+        createdByEmail: [...viewer.ids].find((v) => v.includes('@')) || null,
         id: body.id || `ACT-${Date.now().toString().slice(-4)}`,
         isVisible: body.isVisible !== undefined ? body.isVisible : true,
         createdAt: new Date(),
@@ -651,7 +683,7 @@ export class ActivitiesController {
         message: 'Activity created successfully in MongoDB'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to create activity' });
+      serverError(res, 'activities', error, 'Failed to create activity');
     }
   }
 
@@ -664,6 +696,7 @@ export class ActivitiesController {
       const updates = { ...req.body, updatedAt: new Date() };
       delete updates.id;
       delete updates._id;
+      OWNER_FIELDS.forEach((f) => delete updates[f]);
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Activity ID is required' });
@@ -676,7 +709,19 @@ export class ActivitiesController {
         query = { $or: [{ _id: new ObjectId(id) }, { id }] };
       }
 
-      const result = await db.collection('Activity').updateOne(query, { $set: updates });
+      const existing = await db.collection('Activity').findOne(query);
+      if (!existing) {
+        const anon = await activityChangeRefusal(req);
+        res.status(anon?.status === 401 ? 401 : 404).json({ success: false, error: anon?.status === 401 ? anon.error : 'Activity not found' });
+        return;
+      }
+      const refusal = await activityChangeRefusal(req, existing);
+      if (refusal) {
+        res.status(refusal.status).json({ success: false, error: refusal.error });
+        return;
+      }
+
+      const result = await db.collection('Activity').updateOne({ _id: existing._id }, { $set: updates });
       if (!result.matchedCount) {
         res.status(404).json({ success: false, error: 'Activity not found' });
         return;
@@ -688,7 +733,7 @@ export class ActivitiesController {
         message: 'Activity updated successfully in MongoDB'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to update activity' });
+      serverError(res, 'activities', error, 'Failed to update activity');
     }
   }
 
@@ -715,6 +760,17 @@ export class ActivitiesController {
         return;
       }
 
+      // Who may assign: a therapist to their own (assigned) clients, an admin, the website (internal)
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to assign an activity.' });
+        return;
+      }
+      if (viewer.kind === 'client') {
+        res.status(403).json({ success: false, error: 'Only therapists and the admin team can assign activities.' });
+        return;
+      }
+
       const template: any = await db.collection('Activity').findOne(idQuery(activityId));
       if (!template) {
         res.status(404).json({ success: false, error: 'Activity template not found' });
@@ -723,16 +779,46 @@ export class ActivitiesController {
       const templateId = String(template.id || template._id);
       const activityTitle = template.title || template.name || String(body.activityTitle || body.title || 'Activity');
 
-      // The therapist is identified by their Consultant record (custom id, string _id or email)
-      const bodyConsultantId = String(body.consultantId || body.therapistId || '').trim();
-      const bodyConsultantEmail = String(body.consultantEmail || '').toLowerCase().trim();
-      const consultantOr: any[] = [
-        ...(bodyConsultantId ? idQuery(bodyConsultantId).$or : []),
-        ...(bodyConsultantEmail ? [{ email: bodyConsultantEmail }] : [])
-      ];
-      const consultant: any = consultantOr.length
-        ? await db.collection('Consultant').findOne({ $or: consultantOr }).catch(() => null)
-        : null;
+      // Every client is checked before anything is stored: unknown clients and (for a therapist)
+      // clients assigned to someone else refuse the whole request
+      const targets: Array<{ user: any; entry: any }> = [];
+      for (const entry of clients) {
+        const rawEmail = String(entry?.clientEmail || entry?.email || '').toLowerCase().trim();
+        const rawId = String(entry?.clientId || entry?.id || '').trim();
+        if (!rawEmail && !rawId) continue;
+        const user = await findClientUser(db, { email: rawEmail, id: rawId });
+        if (!user || namesOtherClient(user, { email: rawEmail, id: rawId })) {
+          res.status(404).json({ success: false, error: `Client not found: ${String(entry?.clientName || entry?.name || rawEmail || rawId).slice(0, 80)}` });
+          return;
+        }
+        const refusal = clientAccessRefusal(viewer, user);
+        if (refusal) {
+          res.status(refusal.status).json({ success: false, error: refusal.error });
+          return;
+        }
+        targets.push({ user, entry });
+      }
+      if (targets.length === 0) {
+        res.status(400).json({ success: false, error: 'At least one client is required' });
+        return;
+      }
+
+      // A therapist assigns as themself; for admins the therapist is the Consultant the request names
+      let consultant: any = null;
+      let bodyConsultantId = '';
+      if (viewer.kind === 'therapist') {
+        consultant = await ownConsultant(db, viewer);
+      } else {
+        bodyConsultantId = String(body.consultantId || body.therapistId || '').trim();
+        const bodyConsultantEmail = String(body.consultantEmail || '').toLowerCase().trim();
+        const consultantOr: any[] = [
+          ...(bodyConsultantId ? idQuery(bodyConsultantId).$or : []),
+          ...(bodyConsultantEmail ? [{ email: bodyConsultantEmail }] : [])
+        ];
+        consultant = consultantOr.length
+          ? await db.collection('Consultant').findOne({ $or: consultantOr }).catch(() => null)
+          : null;
+      }
       const consultantId = consultant ? String(consultant.id || consultant._id) : bodyConsultantId;
       const consultantName = consultant?.name || body.consultantName || body.therapistName || 'Your Consultant';
 
@@ -740,17 +826,10 @@ export class ActivitiesController {
       const created: any[] = [];
       const skipped: any[] = [];
 
-      for (const client of clients) {
-        const rawEmail = String(client.clientEmail || client.email || '').toLowerCase().trim();
-        const rawId = String(client.clientId || client.id || '').trim();
-        if (!rawEmail && !rawId) continue;
-
-        const user: any = await db.collection('User').findOne({
-          $or: [...(rawEmail ? [{ email: rawEmail }] : []), ...(rawId ? idQuery(rawId).$or : [])]
-        }).catch(() => null);
-        const clientId = user ? String(user.id || user._id) : rawId;
-        const clientEmail = String(user?.email || rawEmail).toLowerCase();
-        const clientName = user?.name || client.clientName || client.name || 'Client';
+      for (const { user, entry: client } of targets) {
+        const clientId = String(user.id || user._id);
+        const clientEmail = String(user.email || '').toLowerCase();
+        const clientName = user.name || client.clientName || client.name || 'Client';
 
         const existing = await db.collection(ACTIVITY_ASSIGNMENTS).findOne({
           activityId: templateId,
@@ -851,7 +930,7 @@ export class ActivitiesController {
         notifications: notificationsToInsert
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to assign activity' });
+      serverError(res, 'activities', error, 'Failed to assign activity');
     }
   }
 
@@ -862,10 +941,48 @@ export class ActivitiesController {
   static async getAssignments(req: Request, res: Response): Promise<void> {
     try {
       const db = getDatabase();
-      const clientEmail = String(req.query.clientEmail || req.query.email || '').toLowerCase().trim();
-      const clientId = String(req.query.clientId || '').trim();
-      const consultantId = String(req.query.consultantId || req.query.therapistId || '').trim();
+      let clientEmail = String(req.query.clientEmail || req.query.email || '').toLowerCase().trim();
+      let clientId = String(req.query.clientId || '').trim();
+      let consultantId = String(req.query.consultantId || req.query.therapistId || '').trim();
       const status = String(req.query.status || '').toLowerCase().trim();
+
+      // Scoped to the caller: a client sees their own, a therapist their clients' (or their own assignments)
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to see activity assignments.' });
+        return;
+      }
+      let client: any = null;
+      if (viewer.kind === 'client') {
+        client = await ownClientUser(db, viewer);
+        if (!client || namesOtherClient(client, { email: clientEmail, id: clientId })) {
+          res.status(403).json({ success: false, error: 'You can only view your own activities.' });
+          return;
+        }
+        consultantId = '';
+      } else if (clientEmail || clientId) {
+        client = await findClientUser(db, { email: clientEmail, id: clientId });
+        if (!client || namesOtherClient(client, { email: clientEmail, id: clientId })) {
+          res.status(404).json({ success: false, error: 'Client not found' });
+          return;
+        }
+        const refusal = clientAccessRefusal(viewer, client);
+        if (refusal) {
+          res.status(refusal.status).json({ success: false, error: refusal.error });
+          return;
+        }
+      } else if (viewer.kind === 'therapist') {
+        const me = await ownConsultant(db, viewer);
+        if (!me || (consultantId && !viewer.ids.has(consultantId.toLowerCase()))) {
+          res.status(403).json({ success: false, error: 'You can only view your own assignments.' });
+          return;
+        }
+        consultantId = String(me.id || me._id);
+      }
+      if (client) {
+        clientEmail = String(client.email || '').toLowerCase().trim();
+        clientId = String(client.id || client._id);
+      }
 
       if (!clientEmail && !clientId && !consultantId) {
         res.status(400).json({ success: false, error: 'clientEmail, clientId or consultantId is required' });
@@ -874,7 +991,8 @@ export class ActivitiesController {
 
       const and: any[] = [];
       if (clientEmail || clientId) {
-        and.push({ $or: [...(clientEmail ? [{ clientEmail }] : []), ...(clientId ? [{ clientId }] : [])] });
+        const ids = [...new Set([clientId, client?.id, client?._id].filter(Boolean).map(String))];
+        and.push({ $or: [...(clientEmail ? [{ clientEmail }] : []), ...(ids.length ? [{ clientId: { $in: ids } }] : [])] });
       }
       if (consultantId) {
         // A therapist may be referenced by their custom id or by their Consultant _id
@@ -895,7 +1013,7 @@ export class ActivitiesController {
         assignments: assignments.map(({ _id, ...a }: any) => ({ ...a, id: a.id || String(_id) }))
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch activity assignments' });
+      serverError(res, 'activities', error, 'Failed to fetch activity assignments');
     }
   }
 
@@ -908,21 +1026,37 @@ export class ActivitiesController {
       const db = getDatabase();
       const id = String(req.params.id || '').trim();
       const body = req.body || {};
+
+      // Only the assigned client (identified by their sign-in, never by ids in the body), an admin
+      // or the website (internal) may complete an assignment; checked before the id is looked up
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to complete this activity.' });
+        return;
+      }
+      if (viewer.kind === 'therapist') {
+        res.status(403).json({ success: false, error: 'Only the assigned client can complete this activity.' });
+        return;
+      }
+
       const assignment: any = id ? await db.collection(ACTIVITY_ASSIGNMENTS).findOne(idQuery(id)) : null;
       if (!assignment) {
         res.status(404).json({ success: false, error: 'Activity assignment not found' });
         return;
       }
 
-      // When the client identifies itself, it must be the assigned client
-      const callerEmail = String(body.clientEmail || '').toLowerCase().trim();
-      const callerId = String(body.clientId || '').trim();
-      const isOwner = (!callerEmail && !callerId) ||
-        (callerEmail && callerEmail === String(assignment.clientEmail || '').toLowerCase()) ||
-        (callerId && callerId === String(assignment.clientId || ''));
-      if (!isOwner) {
-        res.status(403).json({ success: false, error: 'This activity is assigned to another client' });
-        return;
+      if (viewer.kind === 'client') {
+        const me = await ownClientUser(db, viewer);
+        const myIds = new Set([me?.id, me?._id].filter(Boolean).map(String));
+        const myEmail = String(me?.email || '').toLowerCase();
+        const isOwner = Boolean(me) && (
+          (myEmail && myEmail === String(assignment.clientEmail || '').toLowerCase()) ||
+          myIds.has(String(assignment.clientId || ''))
+        );
+        if (!isOwner) {
+          res.status(403).json({ success: false, error: 'This activity is assigned to another client' });
+          return;
+        }
       }
 
       // A client may keep their answers private: the therapist then only learns it was completed
@@ -949,7 +1083,7 @@ export class ActivitiesController {
 
       res.json({ success: true, assignment: updated, message: 'Activity marked as completed' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to complete activity' });
+      serverError(res, 'activities', error, 'Failed to complete activity');
     }
   }
 
@@ -971,7 +1105,18 @@ export class ActivitiesController {
         query = { $or: [{ _id: new ObjectId(id) }, { id }] };
       }
 
-      await db.collection('Activity').deleteOne(query);
+      const existing = await db.collection('Activity').findOne(query);
+      const refusal = await activityChangeRefusal(req, existing || undefined);
+      if (refusal && (refusal.status === 401 || existing)) {
+        res.status(refusal.status).json({ success: false, error: refusal.error });
+        return;
+      }
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Activity not found' });
+        return;
+      }
+
+      await db.collection('Activity').deleteOne({ _id: existing._id });
       cacheService.invalidateTags(['activities', 'stats']);
 
       res.json({
@@ -979,7 +1124,7 @@ export class ActivitiesController {
         message: 'Activity deleted successfully from MongoDB'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to delete activity' });
+      serverError(res, 'activities', error, 'Failed to delete activity');
     }
   }
 }

@@ -20,6 +20,7 @@ const TopConsultant = ({ data }: props) => {
         HeroBanner={data}
         type="card"
         DotSlider={false}
+        SlideButton
         // CLEANUP: Pass "h-full" to the wrapper so items stretch evenly.
         // We do NOT pass the background styles here, so the gap between cards stays clean/transparent.
         cardClassName=""

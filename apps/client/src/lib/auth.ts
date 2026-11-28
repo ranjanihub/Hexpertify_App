@@ -82,14 +82,6 @@ export interface AdminAuthUser {
   avatarUrl?: string;
 }
 
-export const DEFAULT_CLIENT: ClientAuthUser = {
-  id: "client-1",
-  name: "Sarah Jenkins",
-  email: "sarah.jenkins@example.com",
-  role: "client",
-  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-};
-
 export const DEFAULT_CONSULTANT: ConsultantAuthUser = {
   id: "doc-1",
   name: "Dr. Evelyn Reed, PhD",
@@ -112,88 +104,86 @@ const CLIENT_STORAGE_KEY = "hexpertify_client_auth";
 const CONSULTANT_STORAGE_KEY = "hexpertify_auth_user";
 const ADMIN_STORAGE_KEY = "hexpertify_admin_auth";
 
-function checkSsoTransfer(): any | null {
+/** Removes the given parameters from the address bar */
+function stripParams(...names: string[]): void {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const ssoTicket = params.get("sso_ticket");
-    let ssoRaw = params.get("sso_user") || params.get("sso");
-
-    // 1. Verify signed cryptographic SSO ticket if present
-    if (ssoTicket) {
-      const endpoints = ["/api/auth/sso-verify", "http://localhost:5000/api/auth/sso-verify", "http://localhost:3000/api/auth/sso-verify"];
-      for (const ep of endpoints) {
-        fetch(ep, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticket: ssoTicket }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.success && data?.user) {
-              if (data.token) setApiToken(data.token);
-              const verifiedUser = data.user;
-              if (verifiedUser.role === "therapist") {
-                localStorage.setItem(CONSULTANT_STORAGE_KEY, JSON.stringify(verifiedUser));
-              } else if (verifiedUser.role === "super_admin" || verifiedUser.role === "admin") {
-                localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(verifiedUser));
-              } else {
-                localStorage.setItem(CLIENT_STORAGE_KEY, JSON.stringify(verifiedUser));
-              }
-              window.dispatchEvent(new Event("auth_state_change"));
-            }
-          })
-          .catch(() => {});
-      }
-    }
-
-    // 2. Immediate synchronous payload decode
-    if (ssoTicket && !ssoRaw) {
-      try {
-        const b64 = ssoTicket.replace(/-/g, "+").replace(/_/g, "/");
-        const jsonStr = atob(b64);
-        const parsed = JSON.parse(jsonStr);
-        if (parsed?.payload) {
-          ssoRaw = encodeURIComponent(JSON.stringify(parsed.payload));
-        }
-      } catch {}
-    }
-
-    if (ssoRaw || ssoTicket) {
-      let user: any = DEFAULT_CLIENT;
-      if (ssoRaw) {
-        try {
-          user = JSON.parse(decodeURIComponent(ssoRaw));
-        } catch {
-          user = DEFAULT_CLIENT;
-        }
-      }
-
-      if (user.role === "therapist") {
-        localStorage.setItem(CONSULTANT_STORAGE_KEY, JSON.stringify(user));
-        localStorage.removeItem(ADMIN_STORAGE_KEY);
-        localStorage.removeItem(CLIENT_STORAGE_KEY);
-      } else if (user.role === "super_admin" || user.role === "admin") {
-        localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(user));
-        localStorage.removeItem(CONSULTANT_STORAGE_KEY);
-        localStorage.removeItem(CLIENT_STORAGE_KEY);
-      } else {
-        localStorage.setItem(CLIENT_STORAGE_KEY, JSON.stringify(user));
-        localStorage.removeItem(ADMIN_STORAGE_KEY);
-        localStorage.removeItem("admin_user");
-        localStorage.removeItem("hexpertify_admin_token");
-        localStorage.removeItem(CONSULTANT_STORAGE_KEY);
-        localStorage.removeItem("consultant_token");
-      }
-
-      const url = new URL(window.location.href);
-      url.searchParams.delete("sso_ticket");
-      url.searchParams.delete("sso_user");
-      url.searchParams.delete("sso");
-      window.history.replaceState({}, document.title, url.pathname + url.search);
-      return user;
-    }
+    const url = new URL(window.location.href);
+    if (!names.some((n) => url.searchParams.has(n))) return;
+    names.forEach((n) => url.searchParams.delete(n));
+    window.history.replaceState({}, document.title, url.pathname + url.search);
   } catch (e) {}
+}
+
+/**
+ * A user in the address (?sso_user=… / ?sso=…) is never trusted: anyone can type it. It is only removed.
+ * Signing in happens through a signed ?sso_ticket=, which redeemSsoTicket() checks with the server.
+ */
+function checkSsoTransfer(): null {
+  stripParams("sso_user", "sso");
   return null;
+}
+
+let ssoRedeem: Promise<boolean> | null = null;
+
+/**
+ * Exchanges a signed single-use ?sso_ticket= (from the sign-in redirect or an admin "Launch" button) for the
+ * account and API token, using only this site's server. Stores them under the role the server confirms.
+ * Resolves true when a ticket was redeemed; runs once per page load.
+ */
+export function redeemSsoTicket(): Promise<boolean> {
+  if (ssoRedeem) return ssoRedeem;
+  ssoRedeem = (async () => {
+    const ticket = new URLSearchParams(window.location.search).get("sso_ticket");
+    checkSsoTransfer();
+    if (!ticket) return false;
+    stripParams("sso_ticket", "google_auth");
+    try {
+      const res = await fetch("/api/auth/sso-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticket }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success || !data?.user || !data?.token) return false;
+      setApiToken(data.token);
+      const user = data.user;
+      if (user.role === "therapist") {
+        localStorage.removeItem(CLIENT_STORAGE_KEY);
+        localStorage.removeItem(ADMIN_STORAGE_KEY);
+        localStorage.setItem(CONSULTANT_STORAGE_KEY, JSON.stringify(user));
+      } else if (user.role === "super_admin" || user.role === "admin") {
+        localStorage.removeItem(CLIENT_STORAGE_KEY);
+        localStorage.removeItem(CONSULTANT_STORAGE_KEY);
+        localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(CONSULTANT_STORAGE_KEY);
+        localStorage.removeItem(ADMIN_STORAGE_KEY);
+        localStorage.setItem(CLIENT_STORAGE_KEY, JSON.stringify(user));
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  })();
+  return ssoRedeem;
+}
+
+/**
+ * Checks the stored API token with the server. "ok": signed in with one of `roles`; "invalid": no token,
+ * a forged or expired one, or another role; "error": the check itself could not be made (network, server).
+ */
+export async function verifyApiSession(roles: string[]): Promise<"ok" | "invalid" | "error"> {
+  const headers = getApiAuthHeaders();
+  if (!headers.Authorization) return "invalid";
+  try {
+    const res = await fetch("/api/auth/whoami", { headers, cache: "no-store" });
+    if (res.status === 401 || res.status === 403) return "invalid";
+    if (!res.ok) return "error";
+    const data = await res.json().catch(() => null);
+    return roles.includes(String(data?.user?.role || "")) ? "ok" : "invalid";
+  } catch (e) {
+    return "error";
+  }
 }
 
 // ── Client Auth ──
@@ -228,8 +218,7 @@ export function setClientAuth(user: ClientAuthUser, emitEvent = true): void {
 
 export function isClientAuthenticated(): boolean {
   try {
-    const sso = checkSsoTransfer();
-    if (sso && sso.role === "client") return true;
+    checkSsoTransfer();
     const data = localStorage.getItem(CLIENT_STORAGE_KEY);
     return !!data;
   } catch (e) {
@@ -237,10 +226,42 @@ export function isClientAuthenticated(): boolean {
   }
 }
 
+/** Device settings that are not about the person signed in, so they survive a sign-out */
+const DEVICE_KEYS = new Set(["hexpertify_push_banner_dismissed_at"]);
+/** Older keys from earlier panel versions that also hold a client's data */
+const LEGACY_CLIENT_KEYS = ["completed_activities_log", "therapist_switch_requests", "admin_notifications", "client_token", "client_user", "consultant_token", "admin_user"];
+
+/**
+ * Signs the client out of this device: ends the server session, stops booking notifications to this
+ * device, and removes every cached copy of the client's data (sessions, messages, answers, resources), so
+ * the next person on a shared device sees nothing of theirs.
+ */
 export function logoutClient(): void {
   try {
-    localStorage.removeItem(CLIENT_STORAGE_KEY);
-    localStorage.removeItem("hexpertify_api_token");
+    const token = localStorage.getItem(API_TOKEN_KEY);
+    fetch("/api/auth/logout", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} }).catch(() => {});
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistration()
+        .then((reg) => reg?.pushManager.getSubscription())
+        .then((sub) => {
+          if (!sub) return;
+          fetch("/api/push/unsubscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          }).catch(() => {});
+          return sub.unsubscribe();
+        })
+        .catch(() => {});
+    }
+    for (const key of Object.keys(localStorage)) {
+      if ((key.startsWith("hexpertify_") && !DEVICE_KEYS.has(key)) || LEGACY_CLIENT_KEYS.includes(key)) {
+        localStorage.removeItem(key);
+      }
+    }
+    try {
+      sessionStorage.clear();
+    } catch (e) {}
     window.dispatchEvent(new Event("auth_state_change"));
   } catch (e) {}
 }
@@ -267,8 +288,7 @@ export function setAuthUser(user: ConsultantAuthUser): void {
 
 export function isAuthenticated(): boolean {
   try {
-    const sso = checkSsoTransfer();
-    if (sso && sso.role === "therapist") return true;
+    checkSsoTransfer();
     const data = localStorage.getItem(CONSULTANT_STORAGE_KEY);
     return !!data;
   } catch (e) {
@@ -281,9 +301,7 @@ export function logoutUser(): void {
     localStorage.removeItem(CONSULTANT_STORAGE_KEY);
     localStorage.removeItem(ADMIN_STORAGE_KEY);
     window.dispatchEvent(new Event("auth_state_change"));
-    fetch('http://localhost:5000/api/auth/logout', { method: 'POST' }).catch(() => {
-      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    });
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   } catch (e) {}
 }
 
@@ -310,8 +328,7 @@ export function setAdminAuth(user: AdminAuthUser): void {
 
 export function isAdminAuthenticated(): boolean {
   try {
-    const sso = checkSsoTransfer();
-    if (sso && (sso.role === "super_admin" || sso.role === "admin")) return true;
+    checkSsoTransfer();
     const data = localStorage.getItem(ADMIN_STORAGE_KEY);
     if (!data || data === 'logged_out') return false;
     const parsed = JSON.parse(data);

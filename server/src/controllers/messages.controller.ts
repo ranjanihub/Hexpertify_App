@@ -3,16 +3,78 @@ import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { cacheService } from '../services/cache.service';
 import { idQuery } from '../services/live-content';
+import { ClientViewer, findConsultantById, resolveClientViewer } from '../services/client-access';
+import { signScopedToken, verifyScopedToken } from '../utils/jwt';
 
 const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Logs the real error server-side and answers with a generic message (internals never reach the caller) */
+function serverError(res: Response, err: unknown, message: string): void {
+  console.error(`[messages] ${message}:`, err);
+  res.status(500).json({ success: false, error: message });
+}
+
+/** The email and the non-email ids a signed-in viewer is known by */
+function viewerIdentity(viewer: ClientViewer): { email: string; emails: string[]; ids: string[] } {
+  const all = [...viewer.ids];
+  const emails = all.filter((v) => v.includes('@'));
+  return { email: emails[0] || '', emails, ids: all.filter((v) => !v.includes('@')) };
+}
+
+/** Messages on the consultant's side of a conversation, by consultant id / email (name only when neither is known) */
+function consultantSide(ids: string[], emails: string[], name = ''): any[] {
+  const conditions: any[] = [];
+  if (ids.length) {
+    conditions.push({ consultantId: { $in: ids } }, { recipientId: { $in: ids } }, { receiverId: { $in: ids } }, { senderId: { $in: ids } });
+  }
+  if (emails.length) {
+    conditions.push({ consultantEmail: { $in: emails } }, { recipientEmail: { $in: emails } }, { senderEmail: { $in: emails } });
+  }
+  const cleanName = name.replace(/^dr\.?\s*/i, '').trim();
+  if (cleanName && !ids.length && !emails.length) {
+    const rx = new RegExp(escapeRx(cleanName), 'i');
+    conditions.push({ consultantName: { $regex: rx } }, { receiverName: { $regex: rx } }, { senderName: { $regex: rx } });
+  }
+  return conditions;
+}
+
+/** Messages on the client's side of a conversation, by client email / id */
+function clientSide(email: string, id: string): any[] {
+  return [
+    ...(email ? [{ clientEmail: email }, { recipientEmail: email }, { senderEmail: email }] : []),
+    ...(id ? [{ clientId: id }, { recipientId: id }, { receiverId: id }, { senderId: id }, { userId: id }] : [])
+  ];
+}
 
 interface SSEClient {
   id: string;
   email: string;
   role: string;
+  /** Who is listening, from the stream ticket: admins see every event, everyone else only their own */
+  kind: 'admin' | 'therapist' | 'client';
+  /** Every id/email this listener is known by */
+  ids: Set<string>;
+  /** Emails whose online status this listener may see (their therapist, or their clients); null = everyone (admin) */
+  contacts: Set<string> | null;
   res: Response;
   connectedAt: Date;
 }
+
+interface StreamTicket {
+  kind: 'admin' | 'therapist' | 'client';
+  ids: string[];
+  email: string;
+}
+
+const STREAM_SCOPE = 'message-stream';
+const lc = (v: unknown) => String(v ?? '').trim().toLowerCase();
+
+/** True when any of the given ids/emails belongs to this listener */
+const isParty = (client: SSEClient, values: unknown[]) =>
+  values.some((v) => {
+    const key = lc(v);
+    return !!key && client.ids.has(key);
+  });
 
 export class MessagesController {
   private static sseClients: SSEClient[] = [];
@@ -135,7 +197,7 @@ export class MessagesController {
         }
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch assigned consultant' });
+      serverError(res, error, 'Failed to fetch assigned consultant');
     }
   }
 
@@ -143,13 +205,73 @@ export class MessagesController {
    * GET /api/messages/presence
    * Returns live list of online emails
    */
-  static async getPresence(_req: Request, res: Response): Promise<void> {
-    const onlineEmails = MessagesController.getOnlineEmails();
-    res.json({
-      success: true,
-      onlineEmails,
-      count: onlineEmails.length
-    });
+  static async getPresence(req: Request, res: Response): Promise<void> {
+    try {
+      // Who is online is only shown to signed-in people, and only for their own therapist or clients
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in again.' });
+        return;
+      }
+      const contacts = viewer.kind === 'admin' || viewer.kind === 'internal'
+        ? null
+        : await MessagesController.contactEmails(viewer.kind, viewer.ids);
+      const onlineEmails = MessagesController.getOnlineEmails().filter((e) => !contacts || contacts.has(e));
+      res.json({ success: true, onlineEmails, count: onlineEmails.length });
+    } catch (error: any) {
+      serverError(res, error, 'Failed to read presence');
+    }
+  }
+
+  /**
+   * The emails whose online status a person may see: a client's assigned therapist, or a therapist's
+   * assigned and booked clients. Looked up once when the stream opens (a reconnect refreshes it).
+   */
+  private static async contactEmails(kind: 'therapist' | 'client', ids: Set<string>): Promise<Set<string>> {
+    const db = getDatabase();
+    const contacts = new Set<string>();
+    const idList = [...ids];
+    if (kind === 'client') {
+      const email = idList.find((v) => v.includes('@')) || '';
+      const id = idList.find((v) => !v.includes('@')) || '';
+      const consultant = await MessagesController.getClientAssignedConsultant(email, id).catch(() => null);
+      if (consultant?.email) contacts.add(lc(consultant.email));
+      return contacts;
+    }
+    const [assigned, booked] = await Promise.all([
+      db.collection<any>('User').distinct('email', {
+        $or: [{ assignedTherapistId: { $in: idList } }, { assignedTherapistEmail: { $in: idList } }]
+      }).catch(() => [] as any[]),
+      db.collection<any>('Booking').distinct('clientEmail', {
+        $or: [{ consultantId: { $in: idList } }, { therapistId: { $in: idList } }, { consultantEmail: { $in: idList } }]
+      }).catch(() => [] as any[])
+    ]);
+    [...assigned, ...booked].forEach((e) => e && contacts.add(lc(e)));
+    return contacts;
+  }
+
+  /**
+   * POST /api/messages/stream-ticket
+   * A browser's EventSource cannot send the sign-in header, so the panel first trades its API token for a
+   * one-minute ticket (good only for opening the stream) and opens /stream?ticket=… with it.
+   */
+  static async streamTicket(req: Request, res: Response): Promise<void> {
+    try {
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous' || viewer.kind === 'internal') {
+        res.status(401).json({ success: false, error: 'Please sign in again.' });
+        return;
+      }
+      const ids = [...viewer.ids];
+      const ticket = signScopedToken(STREAM_SCOPE, {
+        kind: viewer.kind,
+        ids,
+        email: ids.find((v) => v.includes('@')) || ''
+      }, 60);
+      res.json({ success: true, ticket });
+    } catch (error: any) {
+      serverError(res, error, 'Could not open the message stream');
+    }
   }
 
   /**
@@ -157,75 +279,101 @@ export class MessagesController {
    * Live Server-Sent Events (SSE) stream for instantaneous 0ms real-time chat & live presence
    */
   static async stream(req: Request, res: Response): Promise<void> {
+    // Only a signed-in person (holding a fresh stream ticket) may listen; who they are comes from the ticket,
+    // never from the query string
+    const ticket = verifyScopedToken<StreamTicket>(STREAM_SCOPE, String(req.query.ticket || ''));
+    if (!ticket || !['admin', 'therapist', 'client'].includes(ticket.kind) || !Array.isArray(ticket.ids)) {
+      res.status(401).json({ success: false, error: 'Please sign in again.' });
+      return;
+    }
+
+    const ids = new Set(ticket.ids.map(lc).filter(Boolean));
+    const contacts = ticket.kind === 'admin'
+      ? null
+      : await MessagesController.contactEmails(ticket.kind, ids).catch(() => new Set<string>());
+
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    // no-transform: Next's gzip compression (and proxies) would otherwise hold every event in a buffer and the
+    // browser would never receive them
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
 
-    const clientEmail = String(req.query.email || req.query.clientEmail || '').toLowerCase().trim();
-    const role = String(req.query.role || 'client').toLowerCase();
+    const clientEmail = lc(ticket.email);
     const id = `sse-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-
-    const sseClient: SSEClient = { id, email: clientEmail, role, res, connectedAt: new Date() };
+    const sseClient: SSEClient = {
+      id,
+      email: clientEmail,
+      role: ticket.kind,
+      kind: ticket.kind,
+      ids,
+      contacts,
+      res,
+      connectedAt: new Date()
+    };
     MessagesController.sseClients.push(sseClient);
 
-    const onlineEmails = MessagesController.getOnlineEmails();
-
-    // Initial handshake with full list of currently online emails
-    res.write(`data: ${JSON.stringify({ 
-      type: 'CONNECTED', 
-      id, 
+    // Initial handshake: which of this person's contacts are online right now
+    MessagesController.send(sseClient, {
+      type: 'CONNECTED',
+      id,
       time: new Date().toISOString(),
-      onlineEmails 
-    })}\n\n`);
+      onlineEmails: MessagesController.visibleOnline(sseClient)
+    });
 
-    // Broadcast user joined / online presence update
-    if (clientEmail) {
-      MessagesController.broadcast({
-        type: 'PRESENCE_CHANGE',
-        data: {
-          email: clientEmail,
-          status: 'online',
-          onlineEmails
-        }
-      });
-    }
+    // Tell this person's contacts (and admins) that they came online
+    if (clientEmail) MessagesController.broadcastPresence(clientEmail);
 
     // Keep connection alive with heartbeat every 15s
     const heartbeat = setInterval(() => {
-      res.write(`data: ${JSON.stringify({ type: 'HEARTBEAT' })}\n\n`);
+      MessagesController.send(sseClient, { type: 'HEARTBEAT' });
     }, 15000);
 
     req.on('close', () => {
       clearInterval(heartbeat);
       MessagesController.sseClients = MessagesController.sseClients.filter(c => c.id !== id);
-
-      const remainingOnlineEmails = MessagesController.getOnlineEmails();
-      if (clientEmail) {
-        MessagesController.broadcast({
-          type: 'PRESENCE_CHANGE',
-          data: {
-            email: clientEmail,
-            status: remainingOnlineEmails.includes(clientEmail) ? 'online' : 'offline',
-            onlineEmails: remainingOnlineEmails
-          }
-        });
-      }
+      if (clientEmail) MessagesController.broadcastPresence(clientEmail);
     });
   }
 
+  /** The online emails one listener may see */
+  private static visibleOnline(client: SSEClient): string[] {
+    return MessagesController.getOnlineEmails().filter((e) => !client.contacts || client.contacts.has(e));
+  }
+
+  /** A person's online status changed: tell only the listeners who may see it, each with their own list */
+  private static broadcastPresence(email: string): void {
+    const online = MessagesController.getOnlineEmails();
+    for (const client of MessagesController.sseClients) {
+      if (client.contacts && !client.contacts.has(email)) continue;
+      MessagesController.send(client, {
+        type: 'PRESENCE_CHANGE',
+        data: {
+          email,
+          status: online.includes(email) ? 'online' : 'offline',
+          onlineEmails: MessagesController.visibleOnline(client)
+        }
+      });
+    }
+  }
+
+  private static send(client: SSEClient, event: unknown): void {
+    try {
+      client.res.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch {
+      MessagesController.sseClients = MessagesController.sseClients.filter(c => c.id !== client.id);
+    }
+  }
+
   /**
-   * Broadcast an event to all connected SSE clients
+   * Send an event to the listeners it concerns: admins, plus anyone known by one of `parties`
+   * (the sender, the recipient, the conversation's client or therapist). Never to everyone.
    */
-  private static broadcast(event: { type: string; data: any }): void {
-    const payload = `data: ${JSON.stringify(event)}\n\n`;
-    MessagesController.sseClients.forEach(client => {
-      try {
-        client.res.write(payload);
-      } catch {
-        MessagesController.sseClients = MessagesController.sseClients.filter(c => c.id !== client.id);
-      }
-    });
+  private static broadcast(event: { type: string; data: any }, parties: unknown[]): void {
+    for (const client of [...MessagesController.sseClients]) {
+      if (client.kind === 'admin' || isParty(client, parties)) MessagesController.send(client, event);
+    }
   }
 
   /**
@@ -235,17 +383,27 @@ export class MessagesController {
   static async setTyping(req: Request, res: Response): Promise<void> {
     try {
       const { senderName, senderRole, recipientEmail, recipientId, isTyping } = req.body || {};
+      // Who is typing comes from the sign-in token when there is one, so the other side can match the open chat
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in again.' });
+        return;
+      }
+      const tokenEmail = [...viewer.ids].find((v) => v.includes('@')) || '';
+      // Only the person being typed to hears it
       MessagesController.broadcast({
         type: 'TYPING',
         data: {
           senderName: senderName || 'Someone',
-          senderRole: senderRole || 'therapist',
+          senderRole: viewer.kind === 'client' ? 'client' : viewer.kind === 'therapist' ? 'therapist' : senderRole || 'therapist',
+          senderEmail: tokenEmail || String(req.body?.senderEmail || '').toLowerCase().trim(),
+          senderId: String(req.body?.senderId || ''),
           recipientEmail: (recipientEmail || '').toLowerCase().trim(),
           recipientId: String(recipientId || ''),
           isTyping: Boolean(isTyping),
           timestamp: new Date().toISOString()
         }
-      });
+      }, [recipientEmail, recipientId]);
       res.json({ success: true });
     } catch {
       res.status(500).json({ success: false });
@@ -261,11 +419,50 @@ export class MessagesController {
       const db = getDatabase();
       const { clientEmail, clientId, consultantId, consultantName, consultantEmail, role } = req.query;
 
-      const cEmail = clientEmail ? String(clientEmail).toLowerCase().trim() : '';
-      const cId = clientId ? String(clientId).trim() : '';
+      // Private conversations: only the two people in them (identified by the API token), an admin or the server
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to read messages.' });
+        return;
+      }
+      const me = viewerIdentity(viewer);
 
-      // If this request is from or for a client, enforce that they ONLY see messages with their assigned consultant!
-      if (cEmail || cId || role === 'client') {
+      let cEmail = clientEmail ? String(clientEmail).toLowerCase().trim() : '';
+      let cId = clientId ? String(clientId).trim() : '';
+
+      if (viewer.kind === 'therapist') {
+        // A therapist reads only their own conversations; naming another consultant is refused
+        const thId = String(consultantId || '').toLowerCase().trim();
+        const thEmail = String(consultantEmail || '').toLowerCase().trim();
+        if ((thId && !viewer.ids.has(thId)) || (thEmail && !viewer.ids.has(thEmail))) {
+          res.status(403).json({ success: false, error: 'You can only read your own conversations.' });
+          return;
+        }
+        const query: any = { $or: consultantSide(me.ids, me.emails) };
+        // Optionally one client's conversation with this therapist
+        const oneClient = clientSide(cEmail, cId);
+        const messages = await db.collection<any>('Message')
+          .find(oneClient.length ? { $and: [query, { $or: oneClient }] } : query)
+          .sort({ createdAt: 1 })
+          .toArray();
+        res.json({ success: true, count: messages.length, messages });
+        return;
+      }
+
+      if (viewer.kind === 'client') {
+        // A client reads only their own conversation, found from the token; naming someone else is refused
+        const own = await MessagesController.getClientAssignedConsultant(me.email, me.ids[0] || '');
+        const ownValues = new Set([...viewer.ids, lc(own?.clientEmail), lc(own?.clientId)].filter(Boolean));
+        if ((cEmail && !ownValues.has(cEmail)) || (cId && !ownValues.has(lc(cId)))) {
+          res.status(403).json({ success: false, error: 'You can only read your own conversations.' });
+          return;
+        }
+        cEmail = lc(own?.clientEmail) || me.email;
+        cId = own?.clientId || me.ids[0] || '';
+      }
+
+      // A client (or an admin / the server reading one client's conversation): only with the client's assigned consultant
+      if (viewer.kind === 'client' || cEmail || cId || role === 'client') {
         const assigned = await MessagesController.getClientAssignedConsultant(cEmail, cId);
         if (!assigned) {
           res.json({ success: true, count: 0, messages: [], consultant: null });
@@ -278,10 +475,7 @@ export class MessagesController {
         // Strictly match:
         // 1. Client is either sender or recipient/clientEmail/clientId
         // 2. Consultant is strictly the assigned consultant!
-        const clientConditions: any[] = [
-          ...(userClientEmail ? [{ clientEmail: userClientEmail }, { recipientEmail: userClientEmail }, { senderEmail: userClientEmail }] : []),
-          ...(userClientId ? [{ clientId: userClientId }, { recipientId: userClientId }, { receiverId: userClientId }, { senderId: userClientId }, { userId: userClientId }] : [])
-        ];
+        const clientConditions: any[] = clientSide(userClientEmail, userClientId);
 
         const consultantConditions: any[] = [
           { consultantId: assigned.id },
@@ -323,7 +517,7 @@ export class MessagesController {
         return;
       }
 
-      // A therapist's messages with their clients, by consultant id (custom id or _id), email or name
+      // Admin / server: one therapist's messages with their clients, by consultant id (custom id or _id), email or name
       const query: any = {};
       const thId = String(consultantId || '').trim();
       const thEmail = String(consultantEmail || '').toLowerCase().trim();
@@ -335,19 +529,7 @@ export class MessagesController {
         const ids = [...new Set([thId, consultant?.id, consultant?._id].filter(Boolean).map(String))];
         const emails = [...new Set([thEmail, consultant?.email].filter(Boolean).map((e) => String(e).toLowerCase()))];
 
-        const cConditions: any[] = [];
-        if (ids.length) {
-          cConditions.push({ consultantId: { $in: ids } }, { recipientId: { $in: ids } }, { receiverId: { $in: ids } }, { senderId: { $in: ids } });
-        }
-        if (emails.length) {
-          cConditions.push({ consultantEmail: { $in: emails } }, { recipientEmail: { $in: emails } }, { senderEmail: { $in: emails } });
-        }
-        const cleanName = String(consultantName || '').replace(/^dr\.?\s*/i, '').trim();
-        if (cleanName && !ids.length && !emails.length) {
-          cConditions.push({ consultantName: { $regex: new RegExp(escapeRx(cleanName), 'i') } });
-          cConditions.push({ receiverName: { $regex: new RegExp(escapeRx(cleanName), 'i') } });
-          cConditions.push({ senderName: { $regex: new RegExp(escapeRx(cleanName), 'i') } });
-        }
+        const cConditions = consultantSide(ids, emails, String(consultantName || ''));
         if (!cConditions.length) {
           res.json({ success: true, count: 0, messages: [] });
           return;
@@ -370,7 +552,7 @@ export class MessagesController {
         messages
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch messages' });
+      serverError(res, error, 'Failed to fetch messages');
     }
   }
 
@@ -388,15 +570,33 @@ export class MessagesController {
         return;
       }
 
-      const text = body.content || body.text || body.message || '';
-      const senderRole = body.senderRole || (body.sender === 'therapist' ? 'therapist' : body.sender === 'client' ? 'client' : 'therapist');
+      const text = String(body.content || body.text || body.message || '');
+
+      // Who sends comes from the API token: a client sends as themself, a therapist as themself.
+      // Only an admin or the server may send on someone's behalf (the body then names the sender).
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to send a message.' });
+        return;
+      }
+      const onBehalf = viewer.kind === 'admin' || viewer.kind === 'internal';
+      const me = viewerIdentity(viewer);
+      const senderRole = viewer.kind === 'client' ? 'client'
+        : viewer.kind === 'therapist' ? 'therapist'
+        : body.senderRole || (body.sender === 'therapist' ? 'therapist' : body.sender === 'client' ? 'client' : 'therapist');
 
       let consultantId = String(body.consultantId || '');
       let consultantName = body.consultantName || 'Therapist';
-      let consultantEmail = (body.consultantEmail || body.recipientEmail || '').toLowerCase();
+      let consultantEmail = String(body.consultantEmail || body.recipientEmail || '').toLowerCase();
       let clientId = String(body.clientId || '');
       let clientName = body.clientName || 'Client';
-      let clientEmail = (body.clientEmail || body.senderEmail || '').toLowerCase();
+      let clientEmail = String(body.clientEmail || body.senderEmail || '').toLowerCase();
+
+      if (viewer.kind === 'client') {
+        // The sender is the signed-in client, whatever the body says
+        clientEmail = me.email;
+        clientId = me.ids[0] || '';
+      }
 
       // 🔒 ENFORCEMENT: If the sender is a client, override & lock recipient strictly to their assigned consultant!
       if (senderRole === 'client') {
@@ -409,17 +609,46 @@ export class MessagesController {
         consultantName = assigned.name;
         consultantEmail = assigned.email.toLowerCase();
 
-        clientName = body.senderName || body.clientName || clientName;
-        clientEmail = (body.senderEmail || body.clientEmail || assigned.clientEmail || clientEmail).toLowerCase();
-        clientId = body.senderId || body.clientId || assigned.clientId || clientId;
+        if (onBehalf) {
+          clientName = body.senderName || body.clientName || clientName;
+          clientEmail = String(body.senderEmail || body.clientEmail || assigned.clientEmail || clientEmail).toLowerCase();
+          clientId = body.senderId || body.clientId || assigned.clientId || clientId;
+        } else {
+          const self: any = assigned.clientId ? await db.collection<any>('User').findOne(idQuery(assigned.clientId)).catch(() => null) : null;
+          clientName = self?.name || body.senderName || body.clientName || clientName;
+          clientEmail = assigned.clientEmail || clientEmail;
+          clientId = assigned.clientId || clientId;
+        }
       }
 
       // 🔒 ENFORCEMENT: If the sender is a consultant, verify that the client belongs to this consultant!
       if (senderRole === 'therapist') {
-        const thId = String(body.senderId || body.consultantId || consultantId).trim();
-        const thEmail = (body.senderEmail || body.consultantEmail || consultantEmail).toLowerCase().trim();
-        const thName = String(body.senderName || body.consultantName || consultantName).trim();
+        let thId = String(body.senderId || body.consultantId || consultantId).trim();
+        let thEmail = String(body.senderEmail || body.consultantEmail || consultantEmail).toLowerCase().trim();
+        let thName = String(body.senderName || body.consultantName || consultantName).trim();
+        if (viewer.kind === 'therapist') {
+          // The sender is the signed-in therapist's own consultant record
+          let self: any = null;
+          for (const id of me.ids) {
+            self = await findConsultantById(db, id);
+            if (self) break;
+          }
+          if (!self && me.email) self = await db.collection<any>('Consultant').findOne({ email: me.email }).catch(() => null);
+          thId = String(self?.id || self?._id || me.ids[0] || '');
+          thEmail = String(self?.email || me.email).toLowerCase();
+          thName = String(self?.name || thName);
+          consultantId = thId;
+          consultantEmail = thEmail;
+          consultantName = thName || consultantName;
+        }
         const cleanThName = thName.replace(/^dr\.?\s*/i, '').trim();
+        const thNameRx = cleanThName ? new RegExp(escapeRx(cleanThName), 'i') : null;
+        // A signed-in therapist is known by their consultant id, its _id and their sign-in id
+        const thIds = [...new Set([thId, ...(viewer.kind === 'therapist' ? me.ids : [])].filter(Boolean))];
+        if (!clientEmail && !clientId) {
+          res.status(400).json({ success: false, error: 'Say which client the message is for.' });
+          return;
+        }
 
         const [targetUser, targetBooking] = await Promise.all([
           db.collection<any>('User').findOne({
@@ -443,9 +672,9 @@ export class MessagesController {
               },
               {
                 $or: [
-                  ...(thId ? [{ consultantId: thId }, { therapistId: thId }] : []),
+                  ...(thIds.length ? [{ consultantId: { $in: thIds } }, { therapistId: { $in: thIds } }] : []),
                   ...(thEmail ? [{ consultantEmail: thEmail }] : []),
-                  ...(cleanThName ? [{ consultantName: { $regex: cleanThName, $options: 'i' } }] : [])
+                  ...(thNameRx ? [{ consultantName: { $regex: thNameRx } }] : [])
                 ]
               }
             ]
@@ -459,9 +688,9 @@ export class MessagesController {
               },
               {
                 $or: [
-                  ...(thId ? [{ consultantId: thId }, { therapistId: thId }] : []),
+                  ...(thIds.length ? [{ consultantId: { $in: thIds } }, { therapistId: { $in: thIds } }] : []),
                   ...(thEmail ? [{ consultantEmail: thEmail }] : []),
-                  ...(cleanThName ? [{ consultantName: { $regex: cleanThName, $options: 'i' } }] : [])
+                  ...(thNameRx ? [{ consultantName: { $regex: thNameRx } }] : [])
                 ]
               }
             ]
@@ -469,7 +698,7 @@ export class MessagesController {
         ]);
 
         const isAssigned = targetUser && (
-          (thId && (targetUser.assignedTherapistId === thId || targetUser.assignedTherapistId === consultantId)) ||
+          (thIds.some((v) => lc(v) === lc(targetUser.assignedTherapistId)) || (!!consultantId && targetUser.assignedTherapistId === consultantId)) ||
           (thEmail && targetUser.assignedTherapistEmail?.toLowerCase() === thEmail) ||
           (cleanThName && targetUser.assignedTherapistName?.toLowerCase().includes(cleanThName.toLowerCase()))
         );
@@ -517,11 +746,14 @@ export class MessagesController {
       const result = await db.collection<any>('Message').insertOne(newMessage);
       const saved = { ...newMessage, _id: result.insertedId };
 
-      // ⚡ INSTANT 0ms REAL-TIME BROADCAST TO ALL LISTENERS VIA SSE
+      // Live delivery to the two people in this conversation (and admins) only
       MessagesController.broadcast({
         type: 'NEW_MESSAGE',
         data: saved
-      });
+      }, [
+        saved.consultantId, saved.consultantEmail, saved.clientId, saved.clientEmail,
+        saved.senderId, saved.senderEmail, saved.recipientId, saved.recipientEmail
+      ]);
 
       // Persistent in-app notification
       try {
@@ -548,7 +780,7 @@ export class MessagesController {
         consultant: isClientSender ? { id: consultantId, name: consultantName, email: consultantEmail } : undefined
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to create message' });
+      serverError(res, error, 'Failed to create message');
     }
   }
 
@@ -560,7 +792,17 @@ export class MessagesController {
       const db = getDatabase();
       const { clientEmail, clientId, consultantId, messageIds } = req.body || {};
 
+      // Only a signed-in person marks messages read, and only messages sent TO them (never their own)
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in again.' });
+        return;
+      }
+
       const conditions: any[] = [];
+      if (viewer.kind === 'therapist') conditions.push({ senderRole: { $ne: 'therapist' } });
+      if (viewer.kind === 'client') conditions.push({ senderRole: { $ne: 'client' } });
+      const scoped = conditions.length;
 
       if (Array.isArray(messageIds) && messageIds.length > 0) {
         const idMatches: any[] = [];
@@ -609,12 +851,12 @@ export class MessagesController {
         });
       }
 
-      let finalFilter: any = {};
-      if (conditions.length === 1) {
-        finalFilter = conditions[0];
-      } else if (conditions.length > 1) {
-        finalFilter = { $and: conditions };
+      // Without message ids or a conversation the request would match every message
+      if (conditions.length === scoped) {
+        res.status(400).json({ success: false, error: 'Say which messages to mark as read (messageIds, or the conversation).' });
+        return;
       }
+      const finalFilter: any = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
       await Promise.all([
         db.collection<any>('Message').updateMany(finalFilter, {
@@ -630,11 +872,11 @@ export class MessagesController {
       MessagesController.broadcast({
         type: 'MESSAGES_READ',
         data: { clientEmail, clientId, consultantId }
-      });
+      }, [clientEmail, clientId, consultantId, ...viewer.ids]);
 
       res.json({ success: true, message: 'Messages marked as read' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to mark messages as read' });
+      serverError(res, error, 'Failed to mark messages as read');
     }
   }
 
@@ -642,8 +884,14 @@ export class MessagesController {
    * DELETE /api/messages/cleanup-greetings
    * Remove artificial mock / hardcoded greeting messages from MongoDB collections
    */
-  static async deleteHardcodedGreetings(_req: Request, res: Response): Promise<void> {
+  static async deleteHardcodedGreetings(req: Request, res: Response): Promise<void> {
     try {
+      // A destructive maintenance task: administrators and the server only
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind !== 'admin' && viewer.kind !== 'internal') {
+        res.status(viewer.kind === 'anonymous' ? 401 : 403).json({ success: false, error: 'Administrator authentication required.' });
+        return;
+      }
       const db = getDatabase();
       const filter = {
         $or: [
@@ -664,7 +912,7 @@ export class MessagesController {
         message: 'Hardcoded greetings deleted from MongoDB Atlas.'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to delete hardcoded greetings' });
+      serverError(res, error, 'Failed to delete hardcoded greetings');
     }
   }
 }

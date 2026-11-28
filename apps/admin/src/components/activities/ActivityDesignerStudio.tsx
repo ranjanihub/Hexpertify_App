@@ -155,10 +155,10 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
   const codedRegItem = getCodedActivityComponent(formData.id);
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in font-['Plus_Jakarta_Sans']">
+    <div className="space-y-6 pb-12 animate-fade-in font-['Open_Sans']">
       {/* Top Header & Navigation Control Bar */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-4 z-30">
-        <div className="flex items-center gap-3">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative lg:sticky lg:top-4 z-30">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={onBack}
@@ -169,10 +169,10 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
           </button>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase tracking-wider font-mono">
+              <span className="text-[10px] font-extrabold text-[#450bc8] uppercase tracking-wider font-mono">
                 Activity Designer Studio · {formData.id}
               </span>
-              <span className="px-2 py-0.5 bg-purple-50 text-[#5e2be2] font-bold text-[10px] rounded-md border border-purple-200/60">
+              <span className="px-2 py-0.5 bg-purple-50 text-[#450bc8] font-bold text-[10px] rounded-md border border-purple-200/60">
                 {formData.category}
               </span>
               {codedRegItem && (
@@ -186,11 +186,11 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleCopyJsonSchema}
-            className="px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] rounded-xl font-extrabold text-xs border border-purple-200/80 transition-all flex items-center gap-1.5 shadow-2xs"
+            className="px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-[#450bc8] rounded-xl font-extrabold text-xs border border-purple-200/80 transition-all flex items-center gap-1.5 shadow-2xs"
           >
             {copiedSchema ? <Check className="w-4 h-4 text-emerald-600" /> : <Code className="w-4 h-4" />}
             <span>{copiedSchema ? 'Schema Copied!' : 'Copy JSON Schema'}</span>
@@ -199,7 +199,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
           <button
             type="button"
             onClick={handleSaveAll}
-            className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#5e2be2]/25 transition-all active:scale-95 flex items-center gap-2"
+            className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#450bc8]/25 transition-all active:scale-95 flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
             <span>Save Activity Design</span>
@@ -208,17 +208,17 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
       </div>
 
       {/* Main Studio Grid: Left (Controls & Builder) | Right (Live Sandbox Preview) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Left Column: 7 Cols (Builder & Configurator) */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="xl:col-span-7 space-y-6 min-w-0">
           {/* Sub-Tab Navigation Bar */}
-          <div className="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 border border-slate-200/80 shadow-xs gap-1">
+          <div className="flex flex-col sm:flex-row border-b border-slate-200 bg-white rounded-2xl p-1.5 border border-slate-200/80 shadow-xs gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('builder')}
               className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'builder'
-                  ? 'bg-[#5e2be2] text-white shadow-sm'
+                  ? 'bg-[#450bc8] text-white shadow-sm'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -230,7 +230,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
               onClick={() => setActiveTab('metadata')}
               className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'metadata'
-                  ? 'bg-[#5e2be2] text-white shadow-sm'
+                  ? 'bg-[#450bc8] text-white shadow-sm'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -242,7 +242,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
               onClick={() => setActiveTab('json')}
               className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'json'
-                  ? 'bg-[#5e2be2] text-white shadow-sm'
+                  ? 'bg-[#450bc8] text-white shadow-sm'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -253,13 +253,13 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
 
           {/* TAB 1: COMPONENT BUILDER & TEMPLATE DESIGNER */}
           {activeTab === 'builder' && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-5">
+            <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Design Activity Template & Fields</h3>
                   <p className="text-[11px] text-slate-400">Select template renderer type and customize input fields for other developers.</p>
                 </div>
-                <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-mono font-extrabold text-xs rounded-lg border border-purple-100">
+                <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-mono font-extrabold text-xs rounded-lg border border-purple-100">
                   {config.templateType}
                 </span>
               </div>
@@ -282,11 +282,11 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                       onClick={() => handleTemplateChange(tpl.id as any)}
                       className={`p-3 rounded-2xl text-left border transition-all ${
                         config.templateType === tpl.id
-                          ? 'bg-purple-50 border-[#5e2be2] ring-2 ring-[#5e2be2]/20'
+                          ? 'bg-purple-50 border-[#450bc8] ring-2 ring-[#450bc8]/20'
                           : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      <p className={`font-extrabold text-xs ${config.templateType === tpl.id ? 'text-[#5e2be2]' : 'text-slate-800'}`}>
+                      <p className={`font-extrabold text-xs ${config.templateType === tpl.id ? 'text-[#450bc8]' : 'text-slate-800'}`}>
                         {tpl.label}
                       </p>
                       <p className="text-[10px] text-slate-400 font-medium mt-0.5">{tpl.desc}</p>
@@ -307,7 +307,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                       config: { ...config, instructions: e.target.value }
                     })}
                     placeholder="Provide clear step-by-step guidance for the client..."
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-xs text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-xs text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
 
@@ -322,7 +322,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                         config: { ...config, mediaUrl: e.target.value }
                       })}
                       placeholder="https://cdn.example.com/audio/mindful-breathing.mp3"
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-xs text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-xs text-slate-800 focus:bg-white focus:border-[#450bc8]"
                     />
                   </div>
                 )}
@@ -338,7 +338,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                   <button
                     type="button"
                     onClick={handleAddField}
-                    className="px-3 py-1.5 bg-purple-50 text-[#5e2be2] hover:bg-purple-100 font-extrabold text-xs rounded-xl border border-purple-200/80 transition-all flex items-center gap-1"
+                    className="px-3 py-1.5 bg-purple-50 text-[#450bc8] hover:bg-purple-100 font-extrabold text-xs rounded-xl border border-purple-200/80 transition-all flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Custom Field</span>
@@ -420,7 +420,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
 
           {/* TAB 2: BASIC ACTIVITY INFO */}
           {activeTab === 'metadata' && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-4">
+            <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-4">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="font-extrabold text-slate-900 text-sm">Basic Activity Details</h3>
                 <p className="text-[11px] text-slate-400">Configure name, category, difficulty, duration, and status.</p>
@@ -434,7 +434,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
 
@@ -444,7 +444,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                     >
                       <option value="CBT">CBT</option>
                       <option value="Mindfulness">Mindfulness</option>
@@ -460,7 +460,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                     <select
                       value={formData.difficulty}
                       onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as any })}
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                     >
                       <option value="Easy">Easy (Beginner Friendly)</option>
                       <option value="Medium">Medium (Guided Practice)</option>
@@ -476,7 +476,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                       type="number"
                       value={formData.estimatedMinutes}
                       onChange={(e) => setFormData({ ...formData, estimatedMinutes: Number(e.target.value) })}
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                     />
                   </div>
 
@@ -485,7 +485,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                     <select
                       value={formData.status || 'Active'}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                     >
                       <option value="Active">Active (Available for Therapists & Clients)</option>
                       <option value="Draft">Draft (Developer Studio Mode)</option>
@@ -499,7 +499,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                     rows={3}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2] leading-relaxed"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#450bc8] leading-relaxed"
                   />
                 </div>
               </div>
@@ -508,7 +508,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
 
           {/* TAB 3: DEVELOPER JSON SCHEMA */}
           {activeTab === 'json' && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-4">
+            <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Developer Configuration JSON Payload</h3>
@@ -535,11 +535,11 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
         </div>
 
         {/* Right Column: 5 Cols (Live Client Interactive Sandbox Preview) */}
-        <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-4">
+        <div className="xl:col-span-5 space-y-6 xl:sticky xl:top-24 min-w-0">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#5e2be2]" />
+                <Sparkles className="w-4 h-4 text-[#450bc8]" />
                 <span className="font-extrabold text-slate-900 text-xs">Live Interactive Sandbox Preview</span>
               </div>
               <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
@@ -550,7 +550,7 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
             {/* Render Preview according to templateType */}
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="px-2.5 py-1 bg-purple-100 text-[#5e2be2] font-bold text-[10px] rounded-full">
+                <span className="px-2.5 py-1 bg-purple-100 text-[#450bc8] font-bold text-[10px] rounded-full">
                   {formData.category}
                 </span>
                 <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
@@ -586,13 +586,13 @@ export const ActivityDesignerStudio: React.FC<ActivityDesignerStudioProps> = ({
                           ))}
                         </select>
                       ) : f.type === 'slider' ? (
-                        <input type="range" min="1" max="100" className="w-full accent-[#5e2be2]" />
+                        <input type="range" min="1" max="100" className="w-full accent-[#450bc8]" />
                       ) : (
                         <input type="text" placeholder={f.placeholder} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none" />
                       )}
                     </div>
                   ))}
-                  <button type="button" className="w-full py-2.5 bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl shadow-xs">
+                  <button type="button" className="w-full py-2.5 bg-[#450bc8] text-white font-extrabold text-xs rounded-xl shadow-xs">
                     Save CBT Thought Log Entry
                   </button>
                 </div>

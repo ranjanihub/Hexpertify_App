@@ -88,7 +88,7 @@ export default async function ServiceByIdPage(props: {
     identifier: item?.identifier,
     name: item?.name,
     Description: item?.about,
-    Languages: item?.languages?.join(" ,"),
+    Languages: item?.languages?.filter(Boolean).join(", "),
     // No current plan → no price shown (never ₹0)
     Price: lowestPrice(item?.services, item?.minPrice),
     rating: item?.reviews?.length

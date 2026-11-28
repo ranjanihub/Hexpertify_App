@@ -40,7 +40,7 @@ const DEFAULT_AFFIRMATIONS: AffirmationCard[] = [
     text: 'I am inherently worthy, safe, and fully capable of navigating this day with calm confidence.',
     category: 'SELF-WORTH',
     theme: 'Self-Worth & Safety',
-    accent: '#5e2be2',
+    accent: '#450bc8',
     reflectionPrompt: 'Notice your shoulders dropping as you claim your right to occupy space.'
   },
   {
@@ -321,7 +321,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
       text: customText.trim(),
       category: 'SELF-WORTH',
       theme: 'Personal Intent',
-      accent: '#5e2be2',
+      accent: '#450bc8',
       reflectionPrompt: 'Your chosen truth, spoken from personal agency.'
     };
     setAffirmations([newCard, ...affirmations]);
@@ -333,24 +333,24 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-3 font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="w-full max-w-4xl mx-auto space-y-3 font-['Open_Sans',sans-serif]">
       {/* ─────────────────────────────────────────────────────────────
           1. CLEAN, VIEWPORT-FITTED AFFIRMATION MIRROR CARD
          ───────────────────────────────────────────────────────────── */}
       <div className="w-full rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-lg shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden p-4 sm:p-5 select-none">
         {/* Ambient background glows */}
         <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-purple-500/5 dark:bg-purple-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
 
         {/* Top Controls Bar: Digital Mirror & Voice On */}
         <div className="relative z-10 flex items-center justify-end mb-3">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCameraActive(!cameraActive)}
-              className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              className={`px-3 py-2 sm:py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
                 cameraActive
                   ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300'
-                  : 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border-purple-200/80 dark:border-purple-800'
+                  : 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border-purple-200/80 dark:border-purple-800'
               }`}
               title="Toggle Live Camera Reflection"
             >
@@ -360,11 +360,11 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
 
             <button
               onClick={toggleVoice}
-              className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-3 py-2 sm:py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
               title="Toggle Voice Guidance"
             >
               {voiceEnabled ? (
-                <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" />
+                <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" />
               ) : (
                 <VolumeX className="w-3.5 h-3.5 text-slate-400" />
               )}
@@ -422,7 +422,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                     <div className="flex flex-col items-center gap-1.5">
                       <button
                         onClick={handleStart}
-                        className="px-6 py-2 rounded-full bg-gradient-to-r from-[#5e2be2] via-purple-600 to-indigo-600 hover:from-[#5123cc] hover:to-indigo-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-purple-500/30 transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.03] active:scale-[0.97]"
+                        className="px-6 py-2 rounded-full bg-gradient-to-r from-[#450bc8] via-purple-600 to-indigo-600 hover:from-[#5123cc] hover:to-indigo-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-purple-500/30 transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.03] active:scale-[0.97]"
                       >
                         <Play className="w-3.5 h-3.5 fill-white" />
                         <span>Start Practice</span>
@@ -505,7 +505,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                       }}
                       className={`h-2 rounded-full transition-all cursor-pointer ${
                         isCurrent
-                          ? 'w-6 bg-[#5e2be2]'
+                          ? 'w-6 bg-[#450bc8]'
                           : isSealed
                           ? 'w-2 bg-emerald-500'
                           : 'w-2 bg-slate-200 dark:bg-slate-700'
@@ -524,7 +524,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           /* Completion State & Reflection Gallery */
           <div className="max-w-md mx-auto py-4 text-center space-y-4 animate-fade-in relative z-10">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-fuchsia-600 p-0.5 mx-auto shadow-lg shadow-purple-500/20 flex items-center justify-center">
-              <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#5e2be2] dark:text-purple-400">
+              <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#450bc8] dark:text-purple-400">
                 <Sparkles className="w-7 h-7 animate-pulse" />
               </div>
             </div>
@@ -549,11 +549,11 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                     key={aff.id}
                     className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-2 shadow-xs"
                   >
-                    <div className="w-4 h-4 rounded-full bg-[#5e2be2] text-white text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-4 h-4 rounded-full bg-[#450bc8] text-white text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">
                       ✓
                     </div>
                     <div>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#5e2be2] dark:text-purple-300">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#450bc8] dark:text-purple-300">
                         {aff.theme}
                       </span>
                       <p className="text-[11px] font-medium text-slate-800 dark:text-purple-100 leading-snug line-clamp-2">
@@ -577,7 +577,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                 onClick={() => {
                   if (onComplete) onComplete({ completed: true });
                 }}
-                className="flex-1 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1"
+                className="flex-1 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" /> Return to Activities
               </button>
@@ -592,7 +592,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-purple-200 dark:border-purple-900 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#5e2be2]" /> Write Custom Affirmation
+                <Sparkles className="w-5 h-5 text-[#450bc8]" /> Write Custom Affirmation
               </h3>
               <button
                 onClick={() => setShowCustomModal(false)}
@@ -612,7 +612,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                   placeholder="e.g. I am proud of how hard I am trying, and I deserve peace."
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-purple-200 dark:border-purple-800 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#5e2be2]"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-purple-200 dark:border-purple-800 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#450bc8]"
                   autoFocus
                 />
               </div>
@@ -628,7 +628,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
                 <button
                   type="submit"
                   disabled={!customText.trim()}
-                  className="px-6 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
+                  className="px-6 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
                 >
                   Project into Mirror
                 </button>
@@ -641,7 +641,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
       {/* ─────────────────────────────────────────────────────────────
           2. EDUCATIONAL DESCRIPTION CARD: What is the Affirmation Mirror?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -656,7 +656,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -665,13 +665,13 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
                   Visual Reflection
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   PHASE 1
                 </span>
               </div>
@@ -680,13 +680,13 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
                   Vocalized Affirmation
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   PHASE 2
                 </span>
               </div>
@@ -695,13 +695,13 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">3</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">3</span>
                   Somatic Absorption
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   10 SECONDS
                 </span>
               </div>
@@ -716,7 +716,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -725,8 +725,8 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -737,8 +737,8 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Shield className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -749,8 +749,8 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Heart className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -761,8 +761,8 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Activity className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -777,7 +777,7 @@ export const MoodLiftAffirmationPlayer: React.FC<BaseActivityComponentProps> = (
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">

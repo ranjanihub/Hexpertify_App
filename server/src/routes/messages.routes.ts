@@ -3,6 +3,7 @@ import { MessagesController } from '../controllers/messages.controller';
 
 const router = Router();
 
+router.post('/stream-ticket', MessagesController.streamTicket);
 router.get('/stream', MessagesController.stream);
 router.get('/presence', MessagesController.getPresence);
 router.get('/consultant', MessagesController.getAssignedConsultant);

@@ -295,23 +295,23 @@ export default function HtmlChunkEditor() {
   return (
     <div className="space-y-6 pb-20 max-w-7xl mx-auto">
       {/* Header Actions Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-border shadow-sm sticky top-[72px] z-20">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm lg:sticky lg:top-24 z-20">
+        <div className="flex items-center gap-3 min-w-0">
           <Link href="/html-chunk-pages">
             <Button variant="ghost" size="icon" className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold text-gray-900">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 break-words">
                 {isEditing ? `Edit: ${title || "Page"}` : "Create New HTML Chunk Page"}
               </h1>
               <Badge variant={status === "published" ? "default" : "outline"} className="capitalize">
                 {status}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+            <p className="text-xs text-muted-foreground mt-0.5 font-mono break-all">
               URL: https://hexpertify.com/{identifierUrl || "identifier-url"}
             </p>
           </div>
@@ -361,11 +361,11 @@ export default function HtmlChunkEditor() {
 
       {/* Main Form & Builder Workspace */}
       <Tabs defaultValue="builder" className="space-y-6">
-        <TabsList className="bg-white p-1 border border-border rounded-xl shadow-sm">
-          <TabsTrigger value="builder" className="rounded-lg text-xs font-bold gap-2">
+        <TabsList className="bg-white p-1 border border-border rounded-xl shadow-sm max-w-full overflow-x-auto justify-start h-auto sm:h-9">
+          <TabsTrigger value="builder" className="rounded-lg text-xs font-bold gap-2 py-2.5 sm:py-1">
             <Layout className="w-4 h-4" /> Page Builder & Chunks
           </TabsTrigger>
-          <TabsTrigger value="seo" className="rounded-lg text-xs font-bold gap-2">
+          <TabsTrigger value="seo" className="rounded-lg text-xs font-bold gap-2 py-2.5 sm:py-1">
             <Search className="w-4 h-4" /> SEO & Meta Settings
           </TabsTrigger>
         </TabsList>
@@ -616,7 +616,7 @@ export default function HtmlChunkEditor() {
 
           {/* Canvas of Chunks */}
           <div className="space-y-4">
-            <h3 className="text-base font-extrabold text-gray-900 flex items-center justify-between">
+            <h3 className="text-base font-extrabold text-gray-900 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <span>Page Layout Chunks ({chunks.length})</span>
               <span className="text-xs text-muted-foreground font-normal">Use arrows to rearrange chunk order</span>
             </h3>

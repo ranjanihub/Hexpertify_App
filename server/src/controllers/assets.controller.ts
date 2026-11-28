@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { getDatabase } from '../db/mongodb';
 import { idQuery, newId } from '../services/live-content';
+import { serverError } from '../services/clinical-access';
 import { ASSET_FOLDER, deleteFromCloudinary, uploadToCloudinary, type UploadedFile } from '../services/cloudinary';
 
 /** apps/web/prisma/schema.prisma enum AssetCategory */
@@ -37,6 +38,27 @@ const isDataUri = (value: unknown): value is string => typeof value === 'string'
 const contentVersion = (dataUri: string) => crypto.createHash('sha1').update(dataUri).digest('hex').slice(0, 12);
 const fileUrl = (id: string, dataUri: string) => `/api/assets/${encodeURIComponent(id)}/file?v=${contentVersion(dataUri)}`;
 const isOwnFileUrl = (value: string) => /^\/api\/assets\/[^/]+\/file(\?|$)/.test(value);
+
+/** Content types served inline from /api/assets/:id/file; anything else is a download */
+const SERVABLE_TYPES = new Set([
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif', 'image/bmp', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml',
+  'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+  'application/pdf',
+  'font/woff', 'font/woff2', 'font/ttf', 'font/otf', 'application/font-woff', 'application/font-woff2'
+]);
+
+/** The Content-Type to serve for a stored file: a whitelisted media type, else application/octet-stream */
+function servedContentType(claimed: string, bytes: Buffer): string {
+  let type = String(claimed || '').trim().toLowerCase().split(';')[0];
+  if (type === 'image/jpg') type = 'image/jpeg';
+  if (!SERVABLE_TYPES.has(type)) return 'application/octet-stream';
+  if (type === 'image/svg+xml') {
+    // SVG is markup: one carrying script, event handlers or foreign HTML is never served as an image
+    const text = bytes.toString('utf8');
+    if (/<script|\bon[a-z]+\s*=|javascript:|<foreignObject|<iframe|<embed|<object/i.test(text)) return 'application/octet-stream';
+  }
+  return type;
+}
 
 function readableBytes(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -75,7 +97,7 @@ export class AssetsController {
         assets: assets.map(publicAsset)
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch assets' });
+      serverError(res, 'assets', error, 'Failed to fetch assets');
     }
   }
 
@@ -98,7 +120,7 @@ export class AssetsController {
         asset: publicAsset(asset)
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch asset' });
+      serverError(res, 'assets', error, 'Failed to fetch asset');
     }
   }
 
@@ -121,12 +143,22 @@ export class AssetsController {
       }
       const header = DATA_URI.exec(inline)!;
       const bytes = Buffer.from(inline.slice(header[0].length), 'base64');
-      res.setHeader('Content-Type', header[1]);
+      // The stored type is whatever the uploader claimed: only media types are served as such
+      const type = servedContentType(header[1], bytes);
+      res.setHeader('Content-Type', type);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (type === 'application/octet-stream') {
+        res.setHeader('Content-Disposition', 'attachment');
+      }
+      if (type === 'image/svg+xml') {
+        // An SVG opened directly is a document: no scripts, no outside requests
+        res.setHeader('Content-Security-Policy', "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox");
+      }
       res.setHeader('Content-Length', String(bytes.length));
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       res.end(bytes);
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to load asset file' });
+      serverError(res, 'assets', error, 'Failed to load asset file');
     }
   }
 
@@ -183,7 +215,7 @@ export class AssetsController {
         message: 'Asset created successfully in MongoDB'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to create asset' });
+      serverError(res, 'assets', error, 'Failed to create asset');
     }
   }
 
@@ -247,7 +279,7 @@ export class AssetsController {
         message: 'Asset updated successfully'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to update asset' });
+      serverError(res, 'assets', error, 'Failed to update asset');
     }
   }
 
@@ -276,7 +308,7 @@ export class AssetsController {
         message: 'Asset deleted successfully'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to delete asset' });
+      serverError(res, 'assets', error, 'Failed to delete asset');
     }
   }
 }

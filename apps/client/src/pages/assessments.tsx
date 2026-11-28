@@ -1016,10 +1016,8 @@ export default function Assessments() {
 
   // Compute completed sessions accurately across live bookings, storage & user profile
   const completedSessionsCount = useMemo(() => {
-    const pastCount = sessions.filter(s => 
-      s.status === 'past' || 
-      (s.scheduledAt && new Date(s.scheduledAt).getTime() < Date.now() - 1000 * 60 * 60)
-    ).length;
+    // Only sessions the server marked COMPLETED count; cancelled or no-show ones whose time has passed do not
+    const pastCount = sessions.filter(s => s.bookingStatus === 'COMPLETED').length;
     const profileCompleted = clientAuthUser?.completedSessionsCount ?? currentAuth?.completedSessionsCount ?? 0;
     const historyCount = clientAuthUser?.sessionHistory?.length ?? currentAuth?.sessionHistory?.length ?? 0;
     return Math.max(pastCount, profileCompleted, historyCount);
@@ -1230,6 +1228,14 @@ export default function Assessments() {
     severity: AssessmentSeverityRange | null;
     flagged: boolean;
   } | null>(null);
+  // Whether the finished result reached the server (and so the therapist); 'failed' offers Retry
+  const [scoreSave, setScoreSave] = useState<{ status: 'saving' | 'saved' | 'failed'; error?: string } | null>(null);
+  const pendingScoreRef = React.useRef<{
+    payload: Record<string, unknown>;
+    submission: AssessmentSubmission;
+    acronym: string;
+    severityLabel: string;
+  } | null>(null);
 
   // Multi-Step Assignment Modal State (Identical to Activities page)
   const [assignModalAssessment, setAssignModalAssessment] = useState<ClinicalAssessment | null>(null);
@@ -1432,7 +1438,7 @@ export default function Assessments() {
 
     let IconComponent = Brain;
     let iconBgClass = 'bg-purple-500/10 text-purple-600 dark:text-purple-400';
-    let categoryColor = 'text-[#5e2be2] dark:text-purple-400 font-extrabold';
+    let categoryColor = 'text-[#450bc8] dark:text-purple-400 font-extrabold';
 
     if (acronym.includes('WHO')) {
       IconComponent = Activity;
@@ -1734,6 +1740,8 @@ export default function Assessments() {
     setRunnerCurrentStep(0);
     setRunnerAnswers({});
     setRunnerCompletedReport(null);
+    setScoreSave(null);
+    pendingScoreRef.current = null;
   };
 
   const calculateResultsWithAnswers = (answersMap: Record<string, number>) => {
@@ -1786,7 +1794,8 @@ export default function Assessments() {
 
     // Save score to submissions state and Backend API
     const newSubmission: AssessmentSubmission = {
-      id: `SUB-${Date.now().toString().slice(-4)}`,
+      // The server keeps this id, so it must not repeat across clients
+      id: `SUB-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       assessmentId: activeRunnerModal.id,
       assessmentAcronym: activeRunnerModal.acronym,
       assessmentTitle: activeRunnerModal.title,
@@ -1798,7 +1807,7 @@ export default function Assessments() {
       totalScore: score,
       maxScore,
       severityLabel: matchedSeverity?.label || 'Evaluated',
-      severityColor: matchedSeverity?.color || 'bg-[#5e2be2] text-white',
+      severityColor: matchedSeverity?.color || 'bg-[#450bc8] text-white',
       flaggedRisk: flagged,
       answers: Object.entries(answersMap).map(([qId, val]) => {
         const question = activeRunnerModal.questions?.find((q) => q.id === qId);
@@ -1815,37 +1824,13 @@ export default function Assessments() {
       }),
     };
 
-    setSubmissions((prev) => [newSubmission, ...prev]);
-
-
-    // Update local client auth with assessment score
-    if (userAuth) {
-      const prevScores = Array.isArray(userAuth.assessmentScores) ? userAuth.assessmentScores : [];
-      const updatedScores = [
-        ...prevScores.filter((s) => s.name !== activeRunnerModal.acronym),
-        {
-          name: activeRunnerModal.acronym,
-          score,
-          maxScore,
-          date: new Date().toISOString().split('T')[0],
-          severity: matchedSeverity?.label || 'Evaluated'
-        }
-      ];
-      const updatedAuth = {
-        ...userAuth,
-        assessmentScores: updatedScores
-      };
-      setClientAuth(updatedAuth);
-      setClientAuthUser(updatedAuth);
-    }
-
-    // Trigger local events for immediate reactive state updates
-    window.dispatchEvent(new Event('client_data_updated'));
-
-    fetch('/api/assessments/score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    // Sent with the submission's id so the server copy and this one are the same entry
+    pendingScoreRef.current = {
+      submission: newSubmission,
+      acronym: activeRunnerModal.acronym,
+      severityLabel: matchedSeverity?.label || 'Evaluated',
+      payload: {
+        id: newSubmission.id,
         assignmentId: pendingAssignment?.id,
         assessmentId: activeRunnerModal.id,
         assessmentAcronym: activeRunnerModal.acronym,
@@ -1865,14 +1850,75 @@ export default function Assessments() {
         severityColor: matchedSeverity?.color,
         flaggedRisk: flagged,
         answers: newSubmission.answers,
-      }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // The server marked the matching assignment Completed: show its state
-        return loadClientAssignments();
-      })
-      .catch((err) => console.warn('Could not post score to API:', err));
+      },
+    };
+    void sendPendingScore();
+  };
+
+  /** Sends the finished result to the server; it is shown as submitted only once the server confirmed it */
+  const sendPendingScore = async () => {
+    const pending = pendingScoreRef.current;
+    if (!pending) return;
+    setScoreSave({ status: 'saving' });
+
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setScoreSave({ status: 'failed', error: 'You are offline.' });
+      return;
+    }
+    try {
+      const res = await fetch('/api/assessments/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pending.payload),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.success === false) {
+        setScoreSave({ status: 'failed', error: data?.error || `The server answered with error ${res.status}.` });
+        return;
+      }
+    } catch {
+      setScoreSave({ status: 'failed', error: 'Hexpertify could not be reached.' });
+      return;
+    }
+
+    // A newer attempt replaced this one while it was being sent
+    if (pendingScoreRef.current !== pending) return;
+    pendingScoreRef.current = null;
+    setScoreSave({ status: 'saved' });
+    const { submission } = pending;
+    setSubmissions((prev) => [submission, ...prev.filter((s) => s.id !== submission.id)]);
+
+    // Keep the cached sign-in profile in step with the saved score
+    const userAuth = getClientAuth();
+    if (userAuth) {
+      const prevScores = Array.isArray(userAuth.assessmentScores) ? userAuth.assessmentScores : [];
+      const updatedAuth = {
+        ...userAuth,
+        assessmentScores: [
+          ...prevScores.filter((s) => s.name !== pending.acronym),
+          {
+            name: pending.acronym,
+            score: submission.totalScore,
+            maxScore: submission.maxScore,
+            date: new Date().toISOString().split('T')[0],
+            severity: pending.severityLabel
+          }
+        ]
+      };
+      setClientAuth(updatedAuth);
+      setClientAuthUser(updatedAuth);
+    }
+    // Reloads the assignments too: the server marked the matching one Completed
+    window.dispatchEvent(new Event('client_data_updated'));
+  };
+
+  /** Closing with an unsent result loses it, so ask first */
+  const closeRunner = () => {
+    if (scoreSave?.status === 'failed' &&
+        !window.confirm('Your result has not been sent to your therapist yet. Close anyway and lose this result?')) {
+      return;
+    }
+    setActiveRunnerModal(null);
   };
 
   const handleRunnerSelectAnswer = (qId: string, val: number) => {
@@ -1892,7 +1938,7 @@ export default function Assessments() {
     <div className="space-y-6 pb-16 w-full">
       {/* Toast Banner */}
       {toastMessage && (
-        <div className="fixed top-6 right-6 z-50 bg-[#5e2be2] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top border border-purple-300">
+        <div className="fixed top-6 right-6 z-50 bg-[#450bc8] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top border border-purple-300">
           <Sparkles className="w-5 h-5 text-amber-300 shrink-0" />
           <span className="font-extrabold text-xs tracking-wide">{toastMessage}</span>
         </div>
@@ -1915,7 +1961,7 @@ export default function Assessments() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by acronym, condition, title..."
-            className="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+            className="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
           />
           {searchTerm && (
             <button
@@ -1935,7 +1981,7 @@ export default function Assessments() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 px-3 py-1.5 outline-none focus:border-[#5e2be2]"
+              className="bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 px-3 py-1.5 outline-none focus:border-[#450bc8]"
             >
               <option value="All">All Categories</option>
               <option value="Stress">1. Stress (PSS-10)</option>
@@ -1957,7 +2003,7 @@ export default function Assessments() {
           <button
             type="button"
             onClick={() => setActiveTab('library')}
-            className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-[#5e2be2] text-white shadow-md"
+            className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-[#450bc8] text-white shadow-md"
           >
             <Layers className="w-4 h-4" />
             <span>Assessment Library ({filteredAssessments.length})</span>
@@ -1971,7 +2017,7 @@ export default function Assessments() {
 
           {/* Grid View */}
           {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 gap-4 sm:gap-5">
               {filteredAssessments.map((ass) => {
                 const isGeneral = GENERAL_ASSESSMENT_ACRONYMS.includes(ass.acronym.trim().toUpperCase());
                 const matchingAssignment = clientAssignments.find(
@@ -1989,7 +2035,7 @@ export default function Assessments() {
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-3">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-3 py-1 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-lg border border-purple-100">
+                          <span className="px-3 py-1 bg-purple-50 text-[#450bc8] font-black text-xs rounded-lg border border-purple-100">
                             {ass.acronym}
                           </span>
                           {isGeneral ? (
@@ -2011,7 +2057,7 @@ export default function Assessments() {
 
                       <h3
                         onClick={() => setActiveProtocolModal(ass)}
-                        className="font-extrabold text-slate-900 text-base group-hover:text-[#5e2be2] transition-colors cursor-pointer"
+                        className="font-extrabold text-slate-900 text-base group-hover:text-[#450bc8] transition-colors cursor-pointer"
                       >
                         {ass.title}
                       </h3>
@@ -2024,7 +2070,7 @@ export default function Assessments() {
                           <span className="font-semibold text-slate-700">
                             By {matchingAssignment.therapistName || (matchingAssignment as any).consultantName || 'Consultant'}
                           </span>
-                          <span className="font-bold text-[#5e2be2]">
+                          <span className="font-bold text-[#450bc8]">
                             Due: {matchingAssignment.dueDate || 'Check-in'}
                           </span>
                         </div>
@@ -2046,7 +2092,7 @@ export default function Assessments() {
                         <button
                           type="button"
                           onClick={() => handleOpenRunner(ass)}
-                          className="inline-flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-primary-border min-h-9 px-4 py-2 w-full h-11 rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-sm transition-all duration-200 cursor-pointer shadow-md shadow-purple-500/20 gap-2"
+                          className="inline-flex items-center justify-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-primary-border min-h-9 px-4 py-2 w-full h-11 rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-sm transition-all duration-200 cursor-pointer shadow-md shadow-purple-500/20 gap-2"
                         >
                           <Play className="w-4 h-4 fill-white" />
                           <span>Play Assessment</span>
@@ -2061,7 +2107,7 @@ export default function Assessments() {
 
           {/* Table View */}
           {viewMode === 'table' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -2081,7 +2127,7 @@ export default function Assessments() {
                       <tr key={ass.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
-                            <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-lg border border-purple-100">
+                            <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-black text-xs rounded-lg border border-purple-100">
                               {ass.acronym}
                             </span>
                             <div>
@@ -2122,7 +2168,7 @@ export default function Assessments() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenRunner(ass)}
-                                className="px-3.5 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                                className="px-3.5 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                               >
                                 <Play className="w-3.5 h-3.5 fill-white" />
                                 <span>Play</span>
@@ -2162,7 +2208,7 @@ export default function Assessments() {
                     onClick={() => setSubmissionFilter(filterVal)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
                       submissionFilter === filterVal
-                        ? 'bg-[#5e2be2] text-white shadow-sm'
+                        ? 'bg-[#450bc8] text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -2177,7 +2223,7 @@ export default function Assessments() {
             </span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -2219,7 +2265,7 @@ export default function Assessments() {
                       <button
                         type="button"
                         onClick={() => setSelectedSubmissionModal(sub)}
-                        className="px-3 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl transition-colors"
+                        className="px-3 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl transition-colors"
                       >
                         View Answers
                       </button>
@@ -2235,7 +2281,7 @@ export default function Assessments() {
       {/* TAB 3: CLIENT ASSIGNMENTS */}
       {activeTab === 'assignments' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -2254,7 +2300,7 @@ export default function Assessments() {
                       <span className="font-bold text-slate-900 text-sm whitespace-nowrap">{asn.clientName}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-md border border-purple-100">
+                      <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-black text-xs rounded-md border border-purple-100">
                         {asn.assessmentAcronym}
                       </span>
                     </td>
@@ -2289,10 +2335,10 @@ export default function Assessments() {
       {/* Protocol Details Modal */}
       {activeProtocolModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] my-auto">
+          <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94dvh] sm:max-h-[90dvh] my-auto">
             <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-[#5e2be2] text-white font-mono font-extrabold text-xs rounded-lg">
+                <span className="px-3 py-1 bg-[#450bc8] text-white font-mono font-extrabold text-xs rounded-lg">
                   {activeProtocolModal.acronym}
                 </span>
                 <div>
@@ -2385,7 +2431,7 @@ export default function Assessments() {
                           )}
                         </div>
                         {q.subtext && (
-                          <p className="text-[11px] text-[#5e2be2] font-semibold">{q.subtext}</p>
+                          <p className="text-[11px] text-[#450bc8] font-semibold">{q.subtext}</p>
                         )}
                         <div className="flex flex-wrap gap-2 pt-1">
                           {q.options.map((opt, oIdx) => (
@@ -2430,9 +2476,9 @@ export default function Assessments() {
       {/* Test Simulator Runner Modal */}
       {activeRunnerModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] my-auto">
+          <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94dvh] sm:max-h-[90dvh] my-auto">
             {/* Modal Header */}
-            <div className="p-6 bg-gradient-to-r from-[#4f28d9] to-[#5e2be2] text-white flex items-center justify-between">
+            <div className="p-6 bg-gradient-to-r from-[#3a0aa8] to-[#450bc8] text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white font-mono font-extrabold text-xs rounded-lg border border-white/20">
                   {activeRunnerModal.acronym}
@@ -2443,7 +2489,7 @@ export default function Assessments() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveRunnerModal(null)}
+                onClick={closeRunner}
                 className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -2464,7 +2510,7 @@ export default function Assessments() {
                     </div>
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#5e2be2] transition-all duration-300"
+                        className="h-full bg-[#450bc8] transition-all duration-300"
                         style={{
                           width: `${(runnerCurrentStep / (activeRunnerModal.questions?.length || 1)) * 100}%`
                         }}
@@ -2503,14 +2549,14 @@ export default function Assessments() {
                               onClick={() => handleRunnerSelectAnswer(currentQId, opt.value)}
                               className={`w-full p-4 rounded-2xl border text-left font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
                                 isSelected
-                                  ? 'bg-purple-50 border-[#5e2be2] text-[#5e2be2] shadow-xs'
+                                  ? 'bg-purple-50 border-[#450bc8] text-[#450bc8] shadow-xs'
                                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                               }`}
                             >
                               <span>{cleanOptionLabel(opt.label)}</span>
                               <div
                                 className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                                  isSelected ? 'border-[#5e2be2] bg-[#5e2be2] text-white' : 'border-slate-300'
+                                  isSelected ? 'border-[#450bc8] bg-[#450bc8] text-white' : 'border-slate-300'
                                 }`}
                               >
                                 {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -2546,6 +2592,32 @@ export default function Assessments() {
                       <strong>Recommended Action:</strong> {runnerCompletedReport.severity?.clinicalAction}
                     </p>
                   </div>
+                  {scoreSave?.status === 'saving' && (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-600 text-xs font-semibold">
+                      Sending your result to your therapist…
+                    </div>
+                  )}
+                  {scoreSave?.status === 'saved' && (
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-900 text-xs font-semibold">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Your result was saved and sent to your therapist.</span>
+                    </div>
+                  )}
+                  {scoreSave?.status === 'failed' && (
+                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3 text-rose-900 text-xs font-semibold">
+                      <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
+                      <span className="flex-1">
+                        Your result could not be sent to your therapist. {scoreSave.error} Check your connection and press Retry. If you close this window now, the result will not be saved.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void sendPendingScore()}
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shrink-0 cursor-pointer"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
                   {runnerCompletedReport.flagged && (
                     <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-900 text-xs font-semibold">
                       <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
@@ -2584,7 +2656,7 @@ export default function Assessments() {
                         calculateResultsWithAnswers(runnerAnswers);
                       }
                     }}
-                    className="px-6 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-6 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <span>
                       {activeRunnerModal.questions && runnerCurrentStep === activeRunnerModal.questions.length - 1
@@ -2597,8 +2669,8 @@ export default function Assessments() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setActiveRunnerModal(null)}
-                  className="w-full py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer text-center"
+                  onClick={closeRunner}
+                  className="w-full py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer text-center"
                 >
                   Close Simulator
                 </button>
@@ -2611,8 +2683,8 @@ export default function Assessments() {
 
       {/* Assign Assessment & Select Frequency Multi-Step Modal */}
       {assignModalAssessment && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 space-y-5">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-7 max-w-lg w-full max-h-[90dvh] overflow-y-auto shadow-2xl border border-slate-200 animate-in zoom-in-95 space-y-5">
             {/* Header with Step Indicator */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
@@ -2625,7 +2697,7 @@ export default function Assessments() {
                     : `Configure individual assessment frequencies for each assigned client.`}
                 </p>
               </div>
-              <span className="text-xs font-extrabold text-[#5e2be2] bg-purple-50 px-3 py-1 rounded-full border border-purple-100 shrink-0">
+              <span className="text-xs font-extrabold text-[#450bc8] bg-purple-50 px-3 py-1 rounded-full border border-purple-100 shrink-0">
                 Step {assignStep} of 2
               </span>
             </div>
@@ -2640,7 +2712,7 @@ export default function Assessments() {
                   <button
                     type="button"
                     onClick={toggleSelectAllClients}
-                    className="text-xs font-bold text-[#5e2be2] hover:underline cursor-pointer"
+                    className="text-xs font-bold text-[#450bc8] hover:underline cursor-pointer"
                   >
                     {selectedClientsToAssign.length === CLIENT_LIST.length ? "Deselect All" : "Select All"}
                   </button>
@@ -2655,7 +2727,7 @@ export default function Assessments() {
                         onClick={() => toggleClientSelection(client)}
                         className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none ${
                           isChecked
-                            ? "bg-purple-50/80 border-[#5e2be2]/40 text-[#5e2be2] font-semibold"
+                            ? "bg-purple-50/80 border-[#450bc8]/40 text-[#450bc8] font-semibold"
                             : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                         }`}
                       >
@@ -2663,7 +2735,7 @@ export default function Assessments() {
                           <div
                             className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
                               isChecked
-                                ? "bg-[#5e2be2] border-[#5e2be2] text-white"
+                                ? "bg-[#450bc8] border-[#450bc8] text-white"
                                 : "border-slate-300 bg-white"
                             }`}
                           >
@@ -2692,7 +2764,7 @@ export default function Assessments() {
                         key={f}
                         type="button"
                         onClick={() => applyFrequencyToAll(f)}
-                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-slate-700 hover:text-[#5e2be2] border border-slate-200 hover:border-[#5e2be2]/30 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-slate-700 hover:text-[#450bc8] border border-slate-200 hover:border-[#450bc8]/30 transition-colors cursor-pointer"
                       >
                         {f}
                       </button>
@@ -2701,7 +2773,7 @@ export default function Assessments() {
                 </div>
 
                 {/* Per-Client Frequency Configuration List */}
-                <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[320px] [@media(max-height:500px)]:max-h-none overflow-y-auto pr-1">
                   {selectedClientsToAssign.map((clientName) => {
                     const currentConfig = clientFrequencies[clientName] || {
                       frequency: "Weekly",
@@ -2719,7 +2791,7 @@ export default function Assessments() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-purple-100 text-[#5e2be2] font-bold flex items-center justify-center text-xs shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-purple-100 text-[#450bc8] font-bold flex items-center justify-center text-xs shrink-0">
                               {initials}
                             </div>
                             <div>
@@ -2727,7 +2799,7 @@ export default function Assessments() {
                               <p className="text-[11px] text-slate-500 font-medium mt-0.5">Individual Schedule</p>
                             </div>
                           </div>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#5e2be2] border border-purple-100">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#450bc8] border border-purple-100">
                             {currentConfig.frequency}
                           </span>
                         </div>
@@ -2740,7 +2812,7 @@ export default function Assessments() {
                             <select
                               value={currentConfig.frequency}
                               onChange={(e) => updateClientFrequency(clientName, e.target.value)}
-                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#5e2be2] focus:outline-none"
+                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#450bc8] focus:outline-none"
                             >
                               {FREQUENCY_OPTIONS.map((opt) => (
                                 <option key={opt.id} value={opt.id}>
@@ -2757,7 +2829,7 @@ export default function Assessments() {
                             <select
                               value={currentConfig.timeOfDay}
                               onChange={(e) => updateClientTimeOfDay(clientName, e.target.value)}
-                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#5e2be2] focus:outline-none"
+                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#450bc8] focus:outline-none"
                             >
                               {TIME_OPTIONS.map((t) => (
                                 <option key={t} value={t}>
@@ -2803,7 +2875,7 @@ export default function Assessments() {
                     type="button"
                     disabled={selectedClientsToAssign.length === 0}
                     onClick={() => setAssignStep(2)}
-                    className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <span>Next: Configure Schedule</span>
                     <ChevronRight className="w-4 h-4" />
@@ -2812,7 +2884,7 @@ export default function Assessments() {
                   <button
                     type="button"
                     onClick={handleConfirmAssignment}
-                    className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Check className="w-4 h-4 stroke-[3]" />
                     <span>Confirm Assignment</span>
@@ -2826,11 +2898,11 @@ export default function Assessments() {
 
       {/* Submission Breakdown Modal */}
       {selectedSubmissionModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-7 max-w-xl w-full shadow-2xl space-y-5 border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-7 max-w-xl w-full max-h-[90dvh] overflow-y-auto shadow-2xl space-y-5 border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <span className="px-2 py-0.5 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-md">
+                <span className="px-2 py-0.5 bg-purple-50 text-[#450bc8] font-black text-xs rounded-md">
                   {selectedSubmissionModal.assessmentAcronym}
                 </span>
                 <h3 className="text-lg font-black text-slate-900 mt-1">{selectedSubmissionModal.clientName}</h3>
@@ -2883,11 +2955,11 @@ export default function Assessments() {
       )}
       {/* Create Assessment Modal */}
       {isCreateAssessmentOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full max-h-[85vh] overflow-y-auto shadow-2xl space-y-5 border border-slate-200 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-7 max-w-xl w-full max-h-[90dvh] overflow-y-auto shadow-2xl space-y-5 border border-slate-200 animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#5e2be2] flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#450bc8] flex items-center justify-center font-bold">
                   <Plus className="w-5 h-5" />
                 </div>
                 <div>
@@ -2917,7 +2989,7 @@ export default function Assessments() {
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     placeholder="e.g. Generalized Anxiety Disorder Scale"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -2928,7 +3000,7 @@ export default function Assessments() {
                     value={newAcronym}
                     onChange={(e) => setNewAcronym(e.target.value)}
                     placeholder="e.g. GAD-7"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
               </div>
@@ -2939,7 +3011,7 @@ export default function Assessments() {
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
                   >
                     <option value="Anxiety">Anxiety</option>
                     <option value="Depression">Depression</option>
@@ -2957,7 +3029,7 @@ export default function Assessments() {
                     value={newCondition}
                     onChange={(e) => setNewCondition(e.target.value)}
                     placeholder="e.g. Anxiety Severity"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
               </div>
@@ -2969,7 +3041,7 @@ export default function Assessments() {
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Provide a brief summary and scoring criteria..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2] resize-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8] resize-none"
                 />
               </div>
 
@@ -2981,7 +3053,7 @@ export default function Assessments() {
                   max={60}
                   value={newEstimatedMinutes}
                   onChange={(e) => setNewEstimatedMinutes(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
                 />
               </div>
 
@@ -2991,7 +3063,7 @@ export default function Assessments() {
                 <select
                   value={optionScalePreset}
                   onChange={(e) => setOptionScalePreset(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
                 >
                   <option value="0-3">0 – 3 Scale</option>
                   <option value="0-4">0 – 4 Scale</option>
@@ -3002,11 +3074,11 @@ export default function Assessments() {
                 {optionScalePreset === 'custom' && (
                   <div className="space-y-2 pt-1 pl-2 border-l-2 border-purple-300 bg-purple-50/40 p-3 rounded-xl">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-[#5e2be2]">Custom Option Labels</span>
+                      <span className="text-[11px] font-bold text-[#450bc8]">Custom Option Labels</span>
                       <button
                         type="button"
                         onClick={addCustomOption}
-                        className="text-[11px] text-[#5e2be2] font-extrabold flex items-center gap-1 cursor-pointer"
+                        className="text-[11px] text-[#450bc8] font-extrabold flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Add Option</span>
@@ -3021,7 +3093,7 @@ export default function Assessments() {
                           value={optVal}
                           onChange={(e) => updateCustomOption(oIdx, e.target.value)}
                           placeholder={`Option ${oIdx} label`}
-                          className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:border-[#5e2be2]"
+                          className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:border-[#450bc8]"
                         />
                         <button
                           type="button"
@@ -3046,7 +3118,7 @@ export default function Assessments() {
                   <button
                     type="button"
                     onClick={addQuestionField}
-                    className="text-xs text-[#5e2be2] hover:text-[#431bb5] font-extrabold flex items-center gap-1 cursor-pointer bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200"
+                    className="text-xs text-[#450bc8] hover:text-[#431bb5] font-extrabold flex items-center gap-1 cursor-pointer bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Question Item</span>
@@ -3063,7 +3135,7 @@ export default function Assessments() {
                         value={qText}
                         onChange={(e) => updateQuestionField(idx, e.target.value)}
                         placeholder="Enter question here..."
-                        className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+                        className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
                       />
                       <button
                         type="button"
@@ -3092,7 +3164,7 @@ export default function Assessments() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
                   <span>Create Assessment</span>

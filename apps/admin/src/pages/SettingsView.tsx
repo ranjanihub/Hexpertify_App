@@ -476,7 +476,7 @@ export const SettingsView: React.FC = () => {
       )}
 
       {/* Hero Header */}
-      <div className="relative rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-3">
@@ -484,8 +484,8 @@ export const SettingsView: React.FC = () => {
               Platform Configuration
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-1">Admin Settings & RBAC Control</h1>
-          <p className="text-purple-100 text-sm mt-1 max-w-xl">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">Admin Settings & RBAC Control</h1>
+          <p className="text-purple-100 text-xs sm:text-sm mt-1 max-w-xl">
             Manage admin credentials, consultant user accounts, role permissions, and live database sync.
           </p>
         </div>
@@ -493,7 +493,7 @@ export const SettingsView: React.FC = () => {
         <button
           onClick={fetchLiveDatabaseData}
           disabled={isLoadingDb}
-          className="relative z-10 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-bold text-white flex items-center gap-2 backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+          className="relative z-10 self-start md:self-auto shrink-0 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-bold text-white flex items-center gap-2 backdrop-blur-md transition-all active:scale-95 cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDb ? 'animate-spin' : ''}`} />
           <span>Sync with Database</span>
@@ -501,15 +501,15 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* Section Container with Role Tabs */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-6">
         {/* Navigation Tabs between Admin Users and Consultant Users */}
         <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl">
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('admins')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              className={`flex-1 sm:flex-none justify-center px-3 sm:px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'admins'
-                  ? 'bg-white text-[#5e2be2] shadow-sm font-extrabold'
+                  ? 'bg-white text-[#450bc8] shadow-sm font-extrabold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -518,9 +518,9 @@ export const SettingsView: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('consultants')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              className={`flex-1 sm:flex-none justify-center px-3 sm:px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'consultants'
-                  ? 'bg-white text-[#5e2be2] shadow-sm font-extrabold'
+                  ? 'bg-white text-[#450bc8] shadow-sm font-extrabold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -532,7 +532,7 @@ export const SettingsView: React.FC = () => {
           {activeTab === 'admins' ? (
             <button
               onClick={handleOpenAddAdminModal}
-              className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 flex items-center gap-2 transition-all cursor-pointer"
+              className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 flex items-center gap-2 transition-all cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               Add Admin User
@@ -540,7 +540,7 @@ export const SettingsView: React.FC = () => {
           ) : (
             <button
               onClick={handleOpenAddConsultantModal}
-              className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 flex items-center gap-2 transition-all cursor-pointer"
+              className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 flex items-center gap-2 transition-all cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               Add Consultant User
@@ -559,9 +559,9 @@ export const SettingsView: React.FC = () => {
               </div>
             ) : (
               adminUsers.map((usr) => (
-                <div key={usr.id} className="py-4 flex items-center justify-between flex-wrap gap-4 hover:bg-slate-50/50 px-3 rounded-2xl transition-colors">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 text-[#5e2be2] flex items-center justify-center font-extrabold text-sm border border-purple-200/50 shadow-xs">
+                <div key={usr.id} className="py-4 flex items-center justify-between flex-wrap gap-3 sm:gap-4 hover:bg-slate-50/50 px-2 sm:px-3 rounded-2xl transition-colors">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 text-[#450bc8] flex items-center justify-center font-extrabold text-sm border border-purple-200/50 shadow-xs">
                       {usr.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
@@ -569,7 +569,7 @@ export const SettingsView: React.FC = () => {
                         {usr.name}
                       </h4>
                       {usr.email && (
-                        <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5 break-all">
                           <Mail className="w-3 h-3 text-slate-400" />
                           {usr.email}
                         </p>
@@ -577,8 +577,8 @@ export const SettingsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-purple-50 text-[#5e2be2] font-bold text-xs rounded-full border border-purple-100/60 flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span className="px-3 py-1 whitespace-nowrap bg-purple-50 text-[#450bc8] font-bold text-xs rounded-full border border-purple-100/60 flex items-center gap-1">
                       <Shield className="w-3 h-3" />
                       {usr.role}
                     </span>
@@ -586,7 +586,7 @@ export const SettingsView: React.FC = () => {
                     <button
                       onClick={() => handleToggleAdminStatus(usr.id, usr.email)}
                       title="Click to toggle status"
-                      className={`px-3 py-1 font-bold text-xs rounded-full transition-all cursor-pointer ${
+                      className={`px-3 py-2 sm:py-1 font-bold text-xs rounded-full transition-all cursor-pointer ${
                         usr.status === 'Active'
                           ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
                           : usr.status === 'Pending'
@@ -597,11 +597,11 @@ export const SettingsView: React.FC = () => {
                       {usr.status}
                     </button>
 
-                    <div className="flex items-center gap-1 ml-2 border-l border-slate-200 pl-3">
+                    <div className="flex items-center gap-1 ml-auto sm:ml-2 sm:border-l border-slate-200 sm:pl-3">
                       <button
                         onClick={() => handleOpenEditAdminModal(usr)}
                         title="Edit Admin"
-                        className="p-2 text-slate-400 hover:text-[#5e2be2] hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                        className="p-2 text-slate-400 hover:text-[#450bc8] hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -631,9 +631,9 @@ export const SettingsView: React.FC = () => {
               </div>
             ) : (
               consultantUsers.map((usr) => (
-                <div key={usr.id} className="py-4 flex items-center justify-between flex-wrap gap-4 hover:bg-slate-50/50 px-3 rounded-2xl transition-colors">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-100 to-purple-100 text-[#5e2be2] flex items-center justify-center font-extrabold text-sm border border-purple-200/50 shadow-xs">
+                <div key={usr.id} className="py-4 flex items-center justify-between flex-wrap gap-3 sm:gap-4 hover:bg-slate-50/50 px-2 sm:px-3 rounded-2xl transition-colors">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-100 to-purple-100 text-[#450bc8] flex items-center justify-center font-extrabold text-sm border border-purple-200/50 shadow-xs">
                       {usr.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
@@ -641,7 +641,7 @@ export const SettingsView: React.FC = () => {
                         {usr.name}
                       </h4>
                       {usr.email && (
-                        <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5 break-all">
                           <Mail className="w-3 h-3 text-slate-400" />
                           {usr.email}
                         </p>
@@ -649,7 +649,7 @@ export const SettingsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     {usr.profession && (
                       <span className="px-3 py-1 bg-amber-50 text-amber-800 font-bold text-xs rounded-full border border-amber-200/60 flex items-center gap-1">
                         <Award className="w-3 h-3 text-amber-600" />
@@ -660,7 +660,7 @@ export const SettingsView: React.FC = () => {
                     <button
                       onClick={() => handleToggleConsultantStatus(usr.id)}
                       title="Click to toggle status"
-                      className={`px-3 py-1 font-bold text-xs rounded-full transition-all cursor-pointer ${
+                      className={`px-3 py-2 sm:py-1 font-bold text-xs rounded-full transition-all cursor-pointer ${
                         usr.status === 'Active'
                           ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
                           : usr.status === 'Pending'
@@ -671,7 +671,7 @@ export const SettingsView: React.FC = () => {
                       {usr.status}
                     </button>
 
-                    <div className="flex items-center gap-1 ml-2 border-l border-slate-200 pl-3">
+                    <div className="flex items-center gap-1 ml-auto sm:ml-2 sm:border-l border-slate-200 sm:pl-3">
                       <button
                         onClick={() => {
                           launchConsultantPanel({
@@ -690,7 +690,7 @@ export const SettingsView: React.FC = () => {
                       <button
                         onClick={() => handleOpenEditConsultantModal(usr)}
                         title="Edit Consultant"
-                        className="p-2 text-slate-400 hover:text-[#5e2be2] hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                        className="p-2 text-slate-400 hover:text-[#450bc8] hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -712,12 +712,12 @@ export const SettingsView: React.FC = () => {
 
       {/* ── MODAL: ADD / EDIT ADMIN USER ── */}
       {isAdminModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden space-y-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden overflow-y-auto max-h-[90dvh] my-auto space-y-0">
             {/* Modal Header */}
             <div className="p-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100/60 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#5e2be2] text-white flex items-center justify-center shadow-md">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#450bc8] text-white flex items-center justify-center shadow-md">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
@@ -753,7 +753,7 @@ export const SettingsView: React.FC = () => {
                       if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                     }}
                     className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border ${
-                      errors.name ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#5e2be2]'
+                      errors.name ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#450bc8]'
                     } rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2`}
                   />
                 </div>
@@ -781,7 +781,7 @@ export const SettingsView: React.FC = () => {
                       if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                     }}
                     className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border ${
-                      errors.email ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#5e2be2]'
+                      errors.email ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#450bc8]'
                     } rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2`}
                   />
                 </div>
@@ -802,7 +802,7 @@ export const SettingsView: React.FC = () => {
                   <select
                     value={adminFormData.role}
                     onChange={(e) => setAdminFormData((prev) => ({ ...prev, role: e.target.value as AdminUser['role'] }))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                   >
                     <option value="Super Admin">Super Admin</option>
                     <option value="Finance Admin">Finance Admin</option>
@@ -819,7 +819,7 @@ export const SettingsView: React.FC = () => {
                   <select
                     value={adminFormData.status}
                     onChange={(e) => setAdminFormData((prev) => ({ ...prev, status: e.target.value as AdminUser['status'] }))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                   >
                     <option value="Active">Active</option>
                     <option value="Pending">Pending</option>
@@ -839,7 +839,7 @@ export const SettingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 transition-all cursor-pointer"
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 transition-all cursor-pointer"
                 >
                   {editingAdmin ? 'Save Changes' : 'Create Admin User'}
                 </button>
@@ -851,12 +851,12 @@ export const SettingsView: React.FC = () => {
 
       {/* ── MODAL: ADD / EDIT CONSULTANT USER ── */}
       {isConsultantModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden space-y-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden overflow-y-auto max-h-[90dvh] my-auto space-y-0">
             {/* Modal Header */}
             <div className="p-6 bg-gradient-to-r from-amber-50 via-purple-50 to-indigo-50 border-b border-purple-100/60 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#5e2be2] text-white flex items-center justify-center shadow-md">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#450bc8] text-white flex items-center justify-center shadow-md">
                   <UserCheck className="w-5 h-5" />
                 </div>
                 <div>
@@ -892,7 +892,7 @@ export const SettingsView: React.FC = () => {
                       if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                     }}
                     className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border ${
-                      errors.name ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#5e2be2]'
+                      errors.name ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#450bc8]'
                     } rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2`}
                   />
                 </div>
@@ -920,7 +920,7 @@ export const SettingsView: React.FC = () => {
                       if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                     }}
                     className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border ${
-                      errors.email ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#5e2be2]'
+                      errors.email ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 focus:ring-[#450bc8]'
                     } rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2`}
                   />
                 </div>
@@ -949,7 +949,7 @@ export const SettingsView: React.FC = () => {
                         setConsultantFormData((prev) => ({ ...prev, profession: e.target.value }));
                         if (errors.profession) setErrors((prev) => ({ ...prev, profession: undefined }));
                       }}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                     />
                     <datalist id="profession-options">
                       <option value="Licensed Psychologist" />
@@ -976,7 +976,7 @@ export const SettingsView: React.FC = () => {
                   <select
                     value={consultantFormData.status}
                     onChange={(e) => setConsultantFormData((prev) => ({ ...prev, status: e.target.value as ConsultantUser['status'] }))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                   >
                     <option value="Active">Active</option>
                     <option value="Pending">Pending</option>
@@ -996,7 +996,7 @@ export const SettingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 transition-all cursor-pointer"
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 transition-all cursor-pointer"
                 >
                   {editingConsultant ? 'Save Changes' : 'Create in Database'}
                 </button>

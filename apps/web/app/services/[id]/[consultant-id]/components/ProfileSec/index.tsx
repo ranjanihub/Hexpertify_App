@@ -73,47 +73,70 @@
 import Image from "next/image";
 import React from "react";
 import { IoStar } from "react-icons/io5";
-import { PiCertificateThin } from "react-icons/pi";
 
 interface props {
   ConsultantProfileDetails: any;
 }
 
+/** Scrolls the section with this id into view (the site scrolls inside <main>, so anchors alone are unreliable) */
+const scrollToSection = (id: string) => {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
 const ProfileSec = ({ ConsultantProfileDetails }: props) => {
-  const profileInfo = {
-    Consultations: ConsultantProfileDetails?.info?.patients,
-    "Booking Price": ConsultantProfileDetails?.info?.bookingPrice,
-    Certified: ConsultantProfileDetails?.info?.certified ? "Yes" : "No",
-    Experience: ConsultantProfileDetails?.info?.experience,
-    [ConsultantProfileDetails?.info?.languages.join(", ")]: "Languages",
-  };
+  const info = ConsultantProfileDetails?.info || {};
+  const languages = Array.isArray(info.languages) ? info.languages.filter(Boolean).join(", ") : "";
+  // Each box shows its value above its label
+  const profileInfo: Array<{ label: string; value: React.ReactNode }> = [
+    { label: "Consultations", value: info.patients ?? 0 },
+    { label: "Booking Price", value: info.bookingPrice || "N/A" },
+    { label: "Certified", value: info.certified ? "Yes" : "No" },
+    { label: "Experience", value: info.experience || "—" },
+    { label: "Languages", value: languages || "—" },
+  ];
+  const photo = ConsultantProfileDetails?.profileUrl || ConsultantProfileDetails?.photoUrl;
+  const initials = String(ConsultantProfileDetails?.name || "")
+    .replace(/^dr\.?\s*/i, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part: string) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
   return (
     <div
-      className="flex gap-[30px] my-[20px] justify-between items-center 
-                    max-md:flex-col max-md:text-center max-md:gap-[20px]"
+      id="consultant-info"
+      className="flex gap-[30px] my-[20px] justify-between items-center
+                    max-lg:flex-col max-lg:text-center max-lg:gap-[20px]"
     >
-      {/* Image */}
-      <div className="w-full md:w-[420px] lg:w-[450px] shrink-0 overflow-hidden rounded-[25px] shadow-sm bg-slate-100 flex items-center justify-center">
-        <Image
-          src={
-            ConsultantProfileDetails?.profileUrl ||
-            ConsultantProfileDetails?.photoUrl ||
-            "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=600&q=80"
-          }
-          width={500}
-          height={450}
-          alt={
-            ConsultantProfileDetails?.profileUrlAltText ||
-            ConsultantProfileDetails?.photoAltText ||
-            ConsultantProfileDetails?.name ||
-            "Consultant Profile"
-          }
-          className="w-full h-[320px] sm:h-[380px] md:h-[420px] lg:h-[450px] object-cover rounded-[25px]"
-          priority
-        />
+      {/* Image: the consultant's own photo, or their initials (never a stock photo of someone else) */}
+      <div className="w-full max-lg:max-w-[560px] lg:w-[450px] shrink-0 overflow-hidden rounded-[25px] shadow-sm bg-slate-100 flex items-center justify-center">
+        {photo ? (
+          <Image
+            src={photo}
+            width={500}
+            height={450}
+            alt={
+              ConsultantProfileDetails?.profileUrlAltText ||
+              ConsultantProfileDetails?.photoAltText ||
+              ConsultantProfileDetails?.name ||
+              "Consultant Profile"
+            }
+            className="w-full h-[320px] sm:h-[380px] md:h-[420px] lg:h-[450px] object-cover rounded-[25px]"
+            priority
+          />
+        ) : (
+          <div
+            role="img"
+            aria-label={ConsultantProfileDetails?.name || "Consultant"}
+            className="w-full h-[320px] sm:h-[380px] md:h-[420px] lg:h-[450px] rounded-[25px] bg-[#F3EDF7] flex items-center justify-center text-[96px] font-bold text-[#877CA1]"
+          >
+            {initials || "?"}
+          </div>
+        )}
       </div>
 
-      <div className="max-md:flex max-md:flex-col max-md:items-center max-md:w-full">
+      <div className="min-w-0 lg:flex-1 max-lg:flex max-lg:flex-col max-lg:items-center max-lg:w-full">
         {/* Name + Rating */}
         <div
           className="flex justify-between items-center w-full 
@@ -151,91 +174,45 @@ const ProfileSec = ({ ConsultantProfileDetails }: props) => {
 
         {/* Info - Review Tabs */}
         <div
-          className="border border-black flex justify-between rounded-[30px] 
-                        border-solid my-[20px] cursor-pointer w-full 
+          className="border border-black flex justify-between rounded-[30px]
+                        border-solid my-[20px] w-full overflow-hidden
                         max-md:mt-[30px] max-md:text-[14px]"
         >
-          <div
-            className="text-black w-full p-[10px] flex justify-center 
-                          bg-[#F3EDF7] rounded-l-[30px]"
+          <button
+            type="button"
+            onClick={() => scrollToSection("consultant-info")}
+            className="text-black w-full p-[10px] flex justify-center bg-[#F3EDF7] cursor-pointer"
           >
             Informations
-          </div>
+          </button>
 
-          <a
-            href="#userReview"
-            className="text-black w-full p-[10px] flex justify-center"
+          <button
+            type="button"
+            onClick={() => scrollToSection("userReview")}
+            className="text-black w-full p-[10px] flex justify-center cursor-pointer"
           >
             User Reviews
-          </a>
+          </button>
         </div>
 
-        {/* Info Boxes */}
+        {/* Info Boxes: 3 on the first row, 2 on the second */}
         <div className="flex flex-col items-center w-full">
-          {/* --- First Row (3 Items) --- */}
-          <div className="flex justify-center flex-wrap items-center w-full">
-            {Object?.entries(profileInfo)
-              ?.slice(0, 3)
-              .map(([key, value]: any, index: number) => (
+          {[profileInfo.slice(0, 3), profileInfo.slice(3)].map((row, rowIndex) => (
+            <div
+              key={rowIndex}
+              className={`flex justify-center flex-wrap items-center w-full ${rowIndex ? "md:*:mt-4 mt-8" : ""}`}
+            >
+              {row.map((item, index) => (
                 <div
-                  key={index}
-                  // CHANGES:
-                  // 1. w-1/3: Makes items take up 33% width on mobile so 3 fit in a row.
-                  // 2. md:w-[235px]: Keeps your fixed width on desktop.
-                  // 3. Removed max-md:border-r-0 to keep borders on mobile.
-                  className={`
-            w-1/3 md:w-[235px] 
-            ${index !== 2 ? "border-r-[1px]" : ""} 
-            flex flex-col justify-center items-center border-[#877CA1]
-        `}
+                  key={item.label}
+                  className={`${rowIndex ? "w-[45%]" : "w-1/3"} max-w-[235px] min-w-0 px-1 ${index !== row.length - 1 ? "border-r-[1px]" : ""} flex flex-col justify-center items-center border-[#877CA1]`}
                 >
-                  {key === "Certified" ? (
-                    // You might want to wrap this in a div to scale it via CSS on mobile,
-                    // or use a conditional variable for size. Kept as is for now.
-                    <PiCertificateThin size={40} color="#877CA1" />
-                  ) : (
-                    <p className="text-[32px] text-[#877CA1] max-md:text-[18px] font-bold">
-                      {`${value}`}
-                    </p>
-                  )}
-
-                  {/* Reduced label size for mobile */}
-                  <p className="text-[16px] max-md:text-[10px] text-center">
-                    {key}
-                  </p>
+                  <p className="text-[18px] md:text-[26px] xl:text-[32px] text-[#877CA1] font-bold text-center break-words">{item.value}</p>
+                  <p className="text-[12px] md:text-[16px] text-center">{item.label}</p>
                 </div>
               ))}
-          </div>
-
-          {/* --- Second Row (2 Items) --- */}
-          <div className="flex justify-center flex-wrap items-center w-full md:*:mt-4 mt-8">
-            {Object?.entries(profileInfo)
-              ?.slice(3, 5)
-              .map(([key, value]: any, index: number) => (
-                <div
-                  key={index}
-                  // CHANGES:
-                  // 1. w-[45%] or w-1/2: Ensures the 2 items fit side-by-side on mobile.
-                  className={`
-            w-[45%] md:w-[235px] 
-            ${index !== 1 ? "border-r-[1px]" : ""} 
-            flex flex-col justify-center items-center border-[#877CA1]
-        `}
-                >
-                  {key === "Certified" ? (
-                    <PiCertificateThin size={40} color="#877CA1" />
-                  ) : (
-                    <p className="text-[32px] text-[#877CA1] max-md:text-[18px] font-bold">
-                      {`${value}`}
-                    </p>
-                  )}
-
-                  <p className="text-[16px] max-md:text-[10px] text-center">
-                    {key}
-                  </p>
-                </div>
-              ))}
-          </div>
+            </div>
+          ))}
         </div>
         {/* <div className="flex justify-center flex-wrap items-center gap-[20px] gap-y-[50px] w-full">
           {Object?.entries(profileInfo)?.slice(0, 3).map(

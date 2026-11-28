@@ -10,15 +10,18 @@ export const SLOT_MINUTES = 60;
 const MINUTE = 60 * 1000;
 const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-/** Used for consultants who never saved a weekly schedule (same as the consultant panel's default) */
+/**
+ * Used for consultants who never saved a weekly schedule (same as the consultant panel's default): weekdays only.
+ * Weekends open only when the therapist turns them on, so nobody is booked on a Saturday/Sunday by surprise.
+ */
 const DEFAULT_SCHEDULE: Record<string, { enabled: boolean; slots: { start: string; end: string }[] }> = {
   monday: { enabled: true, slots: [{ start: '9:00 AM', end: '6:00 PM' }] },
   tuesday: { enabled: true, slots: [{ start: '9:00 AM', end: '6:00 PM' }] },
   wednesday: { enabled: true, slots: [{ start: '9:00 AM', end: '6:00 PM' }] },
   thursday: { enabled: true, slots: [{ start: '9:00 AM', end: '6:00 PM' }] },
   friday: { enabled: true, slots: [{ start: '9:00 AM', end: '5:00 PM' }] },
-  saturday: { enabled: true, slots: [{ start: '10:00 AM', end: '2:00 PM' }] },
-  sunday: { enabled: true, slots: [{ start: '10:00 AM', end: '2:00 PM' }] }
+  saturday: { enabled: false, slots: [{ start: '10:00 AM', end: '2:00 PM' }] },
+  sunday: { enabled: false, slots: [{ start: '10:00 AM', end: '2:00 PM' }] }
 };
 
 export interface DaySlot {

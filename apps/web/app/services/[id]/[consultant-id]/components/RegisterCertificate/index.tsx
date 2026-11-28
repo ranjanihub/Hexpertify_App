@@ -3,6 +3,8 @@ import CarouselCommon from "@/components/Carousel";
 import React from "react";
 
 const RegisteredCertificate = ({ data }: { data: any }) => {
+  // Nothing to show: no empty heading and carousel
+  if (!Array.isArray(data) || data.filter(Boolean).length === 0) return null;
   return (
     <div className="py-2 px-4 md:px-0">
       <p className="text-[24px] font-bold my-[25px]">Registered Certificate</p>

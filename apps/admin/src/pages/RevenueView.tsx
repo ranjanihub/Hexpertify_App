@@ -33,7 +33,7 @@ import { useAppContext } from '../context/AppContext';
 
 type TimeRange = 'Week' | 'Month' | 'Year';
 
-const serviceBreakdownColors = ['#5e2be2', '#3b1799', '#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6'];
+const serviceBreakdownColors = ['#450bc8', '#3b1799', '#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6'];
 const PAGE_SIZE = 10;
 
 export const RevenueView: React.FC = () => {
@@ -285,9 +285,9 @@ interface ServiceBreakdownItem {
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-fade-in font-['Plus_Jakarta_Sans']">
+    <div className="space-y-8 pb-12 animate-fade-in font-['Open_Sans']">
       {/* Hero Header */}
-      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 space-y-1 sm:space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] sm:text-xs font-bold tracking-wide uppercase text-purple-200">
@@ -300,7 +300,7 @@ interface ServiceBreakdownItem {
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="relative z-10 flex flex-wrap items-center gap-2.5 sm:gap-3 xl:shrink-0">
           {/* Time Range Selector */}
           <div className="flex items-center gap-1 bg-white/10 backdrop-blur-xl p-1 rounded-xl sm:rounded-2xl border border-white/20 shadow-2xl">
             {(['Week', 'Month', 'Year'] as const).map((range) => (
@@ -309,7 +309,7 @@ interface ServiceBreakdownItem {
                 onClick={() => setTimeRange(range)}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all ${
                   timeRange === range
-                    ? 'bg-white text-[#4f28d9] shadow-md'
+                    ? 'bg-white text-[#3a0aa8] shadow-md'
                     : 'text-white/80 hover:text-white'
                 }`}
               >
@@ -330,7 +330,7 @@ interface ServiceBreakdownItem {
       </div>
 
       {/* Dynamic KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5">
         {/* Card 1: Revenue Today */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:border-purple-200 transition-colors">
           <div className="flex items-center justify-between mb-3">
@@ -350,7 +350,7 @@ interface ServiceBreakdownItem {
         {/* Card 2: Period Revenue */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:border-purple-200 transition-colors">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#5e2be2] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#450bc8] flex items-center justify-center">
               <TrendingUp className="w-5 h-5" />
             </div>
             <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
@@ -359,7 +359,7 @@ interface ServiceBreakdownItem {
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 mb-0.5 truncate">Gross ({timeRange})</p>
-            <h3 className="text-2xl font-extrabold text-[#5e2be2]">₹{currentDataset.periodTotal.toLocaleString()}</h3>
+            <h3 className="text-2xl font-extrabold text-[#450bc8]">₹{currentDataset.periodTotal.toLocaleString()}</h3>
           </div>
         </div>
 
@@ -397,14 +397,14 @@ interface ServiceBreakdownItem {
       </div>
 
       {/* Main Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 sm:gap-8">
         {/* Revenue Growth Trend Chart */}
-        <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+        <div className="xl:col-span-8 min-w-0 bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-lg text-slate-900">Revenue & Session Growth</h3>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5e2be2] font-mono font-bold border border-purple-100">
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-50 text-[#450bc8] font-mono font-bold border border-purple-100">
                   {timeRange}
                 </span>
               </div>
@@ -416,9 +416,9 @@ interface ServiceBreakdownItem {
               <button
                 type="button"
                 onClick={() => setChartMode('line')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   chartMode === 'line'
-                    ? 'bg-white text-[#5e2be2] shadow-sm'
+                    ? 'bg-white text-[#450bc8] shadow-sm'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -428,9 +428,9 @@ interface ServiceBreakdownItem {
               <button
                 type="button"
                 onClick={() => setChartMode('bar')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   chartMode === 'bar'
-                    ? 'bg-white text-[#5e2be2] shadow-sm'
+                    ? 'bg-white text-[#450bc8] shadow-sm'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -440,9 +440,9 @@ interface ServiceBreakdownItem {
               <button
                 type="button"
                 onClick={() => setChartMode('combo')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   chartMode === 'combo'
-                    ? 'bg-white text-[#5e2be2] shadow-sm'
+                    ? 'bg-white text-[#450bc8] shadow-sm'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -458,7 +458,7 @@ interface ServiceBreakdownItem {
                 <ComposedChart data={currentDataset.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="barGradientRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#5e2be2" stopOpacity={0.9} />
+                      <stop offset="0%" stopColor="#450bc8" stopOpacity={0.9} />
                       <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.7} />
                     </linearGradient>
                   </defs>
@@ -511,7 +511,7 @@ interface ServiceBreakdownItem {
                 <BarChart data={currentDataset.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="barGrossGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#5e2be2" stopOpacity={0.9} />
+                      <stop offset="0%" stopColor="#450bc8" stopOpacity={0.9} />
                       <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.7} />
                     </linearGradient>
                     <linearGradient id="barPlatformGradient" x1="0" y1="0" x2="0" y2="1">
@@ -565,9 +565,9 @@ interface ServiceBreakdownItem {
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#5e2be2"
+                    stroke="#450bc8"
                     strokeWidth={3}
-                    dot={{ r: 4, fill: '#5e2be2', stroke: '#ffffff', strokeWidth: 2 }}
+                    dot={{ r: 4, fill: '#450bc8', stroke: '#ffffff', strokeWidth: 2 }}
                     activeDot={{ r: 7 }}
                     name="Gross Revenue"
                   />
@@ -587,7 +587,7 @@ interface ServiceBreakdownItem {
         </div>
 
         {/* Revenue by Service Category Pie Chart */}
-        <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+        <div className="xl:col-span-4 min-w-0 bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-4">
           <div>
             <h3 className="font-extrabold text-lg text-slate-900">Revenue by Service</h3>
             <p className="text-xs text-slate-400">Share of total revenue per therapy modality</p>
@@ -644,11 +644,11 @@ interface ServiceBreakdownItem {
       </div>
 
       {/* Top Generating Therapists Table (10 per page) */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-[#5e2be2]" />
+              <UserCheck className="w-5 h-5 text-[#450bc8]" />
               Top Revenue Generating Therapists ({filteredTherapists.length})
             </h3>
             <p className="text-xs text-slate-400">Therapist performance, gross earnings, and platform commission</p>
@@ -664,13 +664,13 @@ interface ServiceBreakdownItem {
                 setTherapistSearch(e.target.value);
                 setTherapistPage(1);
               }}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20"
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[760px] whitespace-nowrap text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-extrabold text-[10px] bg-slate-50/50">
                 <th className="py-3 px-4 rounded-l-xl">Therapist</th>
@@ -704,13 +704,13 @@ interface ServiceBreakdownItem {
                           />
                           <div>
                             <p className="font-bold text-slate-900">{t.name}</p>
-                            <span className="text-[10px] text-slate-400 font-mono">ID: {t.id}</span>
+                            <span className="block max-w-[180px] truncate text-[10px] text-slate-400 font-mono">ID: {t.id}</span>
                           </div>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600">{t.profession}</td>
                       <td className="py-3.5 px-4 font-bold text-slate-800">{t.computedSessions} sessions</td>
-                      <td className="py-3.5 px-4 font-extrabold text-[#5e2be2]">₹{t.computedGross.toLocaleString()}</td>
+                      <td className="py-3.5 px-4 font-extrabold text-[#450bc8]">₹{t.computedGross.toLocaleString()}</td>
                       <td className="py-3.5 px-4 font-bold text-emerald-600">
                         ₹{t.computedFee.toLocaleString()}
                         <span className="text-[10px] text-slate-400 font-normal ml-1">
@@ -738,7 +738,7 @@ interface ServiceBreakdownItem {
             <button
               onClick={() => setTherapistPage((p) => Math.max(1, p - 1))}
               disabled={therapistPage === 1}
-              className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#5e2be2] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#450bc8] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -748,7 +748,7 @@ interface ServiceBreakdownItem {
             <button
               onClick={() => setTherapistPage((p) => Math.min(totalTherapistPages, p + 1))}
               disabled={therapistPage === totalTherapistPages}
-              className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#5e2be2] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#450bc8] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -757,14 +757,14 @@ interface ServiceBreakdownItem {
       </div>
 
       {/* Dynamic Transactions History Table (10 per page) */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-4">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div>
             <h3 className="font-extrabold text-lg text-slate-900">Recent Transaction History ({filteredBookings.length})</h3>
             <p className="text-xs text-slate-400">Detailed record of client consultation payments</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center gap-3 min-w-0">
             <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
@@ -775,11 +775,11 @@ interface ServiceBreakdownItem {
                   setTxSearch(e.target.value);
                   setTxPage(1);
                 }}
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20"
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20"
               />
             </div>
 
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
               {(['All', 'Paid', 'Pending Payout', 'Refunded'] as const).map((pf) => (
                 <button
                   key={pf}
@@ -787,9 +787,9 @@ interface ServiceBreakdownItem {
                     setPaymentFilter(pf);
                     setTxPage(1);
                   }}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-2 sm:py-1 text-[11px] font-bold rounded-lg transition-all ${
                     paymentFilter === pf
-                      ? 'bg-white shadow-2xs text-[#5e2be2]'
+                      ? 'bg-white shadow-2xs text-[#450bc8]'
                       : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
@@ -801,7 +801,7 @@ interface ServiceBreakdownItem {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[820px] whitespace-nowrap text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-extrabold text-[10px] bg-slate-50/50">
                 <th className="py-3 px-4 rounded-l-xl">Booking Code</th>
@@ -863,7 +863,7 @@ interface ServiceBreakdownItem {
             <button
               onClick={() => setTxPage((p) => Math.max(1, p - 1))}
               disabled={txPage === 1}
-              className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#5e2be2] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#450bc8] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -873,7 +873,7 @@ interface ServiceBreakdownItem {
             <button
               onClick={() => setTxPage((p) => Math.min(totalTxPages, p + 1))}
               disabled={txPage === totalTxPages}
-              className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#5e2be2] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#450bc8] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

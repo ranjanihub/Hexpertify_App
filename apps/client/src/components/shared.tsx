@@ -49,7 +49,7 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#5e2be2] to-[#361394] p-6 sm:p-7 md:p-8 text-white shadow-lg shadow-purple-900/10 overflow-hidden relative mb-6 border border-white/10">
+    <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#450bc8] to-[#361394] p-6 sm:p-7 md:p-8 text-white shadow-lg shadow-purple-900/10 overflow-hidden relative mb-6 border border-white/10">
       {/* Decorative ambient background glows */}
       <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
       <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-purple-400/15 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />

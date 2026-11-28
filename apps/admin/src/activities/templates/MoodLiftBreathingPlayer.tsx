@@ -78,7 +78,7 @@ function BellyTogglePill({ on, onClick, onIcon, offIcon, onLabel, offLabel }: {
       aria-pressed={on}
       className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
         on
-          ? 'bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border-purple-200 dark:border-purple-800'
+          ? 'bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border-purple-200 dark:border-purple-800'
           : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
       }`}
     >
@@ -104,8 +104,8 @@ function BellyTensionScale({ value, onChange }: { value: number | null; onChange
             }}
             className={`h-9 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
               value === n
-                ? 'bg-[#5e2be2] border-[#5e2be2] text-white shadow-md shadow-purple-500/25 scale-105'
-                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-[#5e2be2]/50 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                ? 'bg-[#450bc8] border-[#450bc8] text-white shadow-md shadow-purple-500/25 scale-105'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-[#450bc8]/50 hover:bg-purple-50 dark:hover:bg-purple-950/40'
             }`}
           >
             {n}
@@ -347,9 +347,9 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 font-['Plus_Jakarta_Sans',sans-serif] text-slate-800 dark:text-slate-100">
+    <div className="w-full max-w-4xl mx-auto space-y-6 font-['Open_Sans',sans-serif] text-slate-800 dark:text-slate-100">
       <div className="w-full min-h-[520px] flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-purple-500/5 p-4 sm:p-6 relative overflow-hidden select-none">
-        <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-purple-400/5 dark:bg-purple-400/10 blur-3xl pointer-events-none" />
 
         {stage === 'setup' && (
@@ -362,7 +362,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
 
             <div className="flex-1 flex flex-col items-center justify-center gap-6 max-w-xl w-full mx-auto py-4 text-center">
               <div className="space-y-1.5">
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center mx-auto mb-2">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[#450bc8] dark:text-purple-300 flex items-center justify-center mx-auto mb-2">
                   <Hand className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -379,7 +379,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
                   <div key={p.short} className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 px-2 py-3">
                     <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Step {i + 1}</div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">{p.short}</div>
-                    <div className="text-lg font-black text-[#5e2be2] dark:text-purple-300 leading-tight">{p.duration}s</div>
+                    <div className="text-lg font-black text-[#450bc8] dark:text-purple-300 leading-tight">{p.duration}s</div>
                   </div>
                 ))}
               </div>
@@ -405,7 +405,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
                       }}
                       className={`py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
                         durationMinutes === mins
-                          ? 'bg-white dark:bg-slate-900 text-[#5e2be2] dark:text-purple-300 shadow-sm'
+                          ? 'bg-white dark:bg-slate-900 text-[#450bc8] dark:text-purple-300 shadow-sm'
                           : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                       }`}
                     >
@@ -427,7 +427,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
               <button
                 type="button"
                 onClick={handleStart}
-                className="w-full sm:w-auto px-10 py-3 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-sm font-bold shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-10 py-3 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-sm font-bold shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center gap-2"
               >
                 <Play className="w-4 h-4 fill-white" />
                 <span>Start breathing</span>
@@ -451,7 +451,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
               </div>
             </div>
             <div className="mt-3 h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#986af0] to-[#5e2be2]" style={{ width: `${sessionPct}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-[#986af0] to-[#450bc8]" style={{ width: `${sessionPct}%` }} />
             </div>
 
             {/* Belly orb */}
@@ -472,7 +472,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
                       cy={ringSize / 2}
                       r={ringRadius}
                       fill="none"
-                      stroke="#5e2be2"
+                      stroke="#450bc8"
                       strokeWidth={ringStroke}
                       strokeLinecap="round"
                       strokeDasharray={ringCircumference}
@@ -483,7 +483,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
 
                 {/* Soft halo */}
                 <div
-                  className="absolute rounded-full bg-[#5e2be2]/20 dark:bg-[#986af0]/25 blur-2xl pointer-events-none"
+                  className="absolute rounded-full bg-[#450bc8]/20 dark:bg-[#986af0]/25 blur-2xl pointer-events-none"
                   style={{ width: 200, height: 200, transform: `scale(${orbScale * 1.1})` }}
                 />
                 {/* Orb */}
@@ -493,7 +493,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
                     width: 200,
                     height: 200,
                     transform: `scale(${orbScale})`,
-                    background: 'radial-gradient(circle at 35% 30%, #b99bf6 0%, #783be6 45%, #5e2be2 100%)',
+                    background: 'radial-gradient(circle at 35% 30%, #b99bf6 0%, #783be6 45%, #450bc8 100%)',
                     opacity: isPaused ? 0.55 : 1
                   }}
                 />
@@ -536,7 +536,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
                       key={p.short}
                       className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
                         isCurrent
-                          ? 'bg-[#5e2be2] text-white shadow-sm shadow-purple-500/25'
+                          ? 'bg-[#450bc8] text-white shadow-sm shadow-purple-500/25'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                       }`}
                     >
@@ -561,7 +561,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
                 type="button"
                 onClick={handleTogglePause}
                 disabled={stage !== 'active'}
-                className="justify-self-center w-14 h-14 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-50 disabled:cursor-default text-white flex items-center justify-center shadow-lg shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="justify-self-center w-14 h-14 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 disabled:cursor-default text-white flex items-center justify-center shadow-lg shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 aria-label={isPaused ? 'Resume' : 'Pause'}
               >
                 {isPaused ? <Play className="w-5 h-5 fill-current ml-0.5" /> : <Pause className="w-5 h-5 fill-current" />}
@@ -583,7 +583,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
           /* ── CHECK-OUT SCREEN ── */
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-5 max-w-md w-full mx-auto py-4 text-center animate-fadeIn">
             <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-950/60 p-1.5 flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-[#5e2be2] flex items-center justify-center text-white shadow-md shadow-purple-500/30">
+              <div className="w-full h-full rounded-full bg-[#450bc8] flex items-center justify-center text-white shadow-md shadow-purple-500/30">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
             </div>
@@ -596,11 +596,11 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
 
             <div className="grid grid-cols-2 gap-3 w-full">
               <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 p-3">
-                <div className="text-2xl font-black text-[#5e2be2] dark:text-purple-300">{formatTime(sessionMs)}</div>
+                <div className="text-2xl font-black text-[#450bc8] dark:text-purple-300">{formatTime(sessionMs)}</div>
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Time practiced</div>
               </div>
               <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 p-3">
-                <div className="text-2xl font-black text-[#5e2be2] dark:text-purple-300">{cycles}</div>
+                <div className="text-2xl font-black text-[#450bc8] dark:text-purple-300">{cycles}</div>
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Full breaths</div>
               </div>
             </div>
@@ -614,7 +614,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
               {preTension !== null && postTension !== null && (
                 <p className="text-xs font-semibold text-center pt-1 text-slate-500 dark:text-slate-400">
                   Before {preTension}/10 → After {postTension}/10
-                  {postTension < preTension && <span className="text-[#5e2be2] dark:text-purple-300"> · {preTension - postTension} points calmer</span>}
+                  {postTension < preTension && <span className="text-[#450bc8] dark:text-purple-300"> · {preTension - postTension} points calmer</span>}
                 </p>
               )}
             </div>
@@ -631,7 +631,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
               <button
                 type="button"
                 onClick={handleSave}
-                className="py-3 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-sm font-bold shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                className="py-3 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-sm font-bold shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Save & finish</span>
@@ -654,7 +654,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
 
         <div className="space-y-4">
           <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
-            <Wind className="w-5 h-5 text-[#5e2be2]" />
+            <Wind className="w-5 h-5 text-[#450bc8]" />
             <span>How It Works</span>
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -665,11 +665,11 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
             ].map((s, i) => (
               <div key={s.step} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-black text-[#5e2be2] dark:text-purple-300 flex items-center gap-2">
+                  <span className="text-sm font-black text-[#450bc8] dark:text-purple-300 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/60 flex items-center justify-center text-xs">{i + 1}</span>
                     {s.step}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-xs font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-xs font-bold">
                     {s.secs} sec
                   </span>
                 </div>
@@ -681,7 +681,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
 
         <div className="space-y-4">
           <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+            <Sparkles className="w-5 h-5 text-[#450bc8]" />
             <span>Benefits</span>
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -694,7 +694,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
               const Icon = b.icon;
               return (
                 <div key={b.title} className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 flex gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#5e2be2]/10 dark:bg-[#5e2be2]/20 flex items-center justify-center text-[#5e2be2] dark:text-purple-300 shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#450bc8]/10 dark:bg-[#450bc8]/20 flex items-center justify-center text-[#450bc8] dark:text-purple-300 shrink-0">
                     <Icon className="w-4 h-4" />
                   </div>
                   <div>
@@ -708,7 +708,7 @@ function DiaphragmaticBellyPlayer({ activityName, onComplete }: { activityName?:
         </div>
 
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
@@ -939,19 +939,19 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Plus_Jakarta_Sans'] flex flex-col items-center justify-between p-4 sm:p-5 sm:px-8 select-none">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Open_Sans'] flex flex-col items-center justify-between p-4 sm:p-5 sm:px-8 select-none">
         {/* Background Soft Glow Orbs */}
-        <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-[#5e2be2]/5 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-[#450bc8]/5 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-cyan-500/5 blur-3xl pointer-events-none" />
 
         {/* Top Header Controls (Voice Toggle Only) */}
         <div className="w-full flex items-center justify-end z-10 pb-1">
           <button
             onClick={handleToggleVoice}
-            className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
             title="Toggle Voice Guidance"
           >
-            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
             <span>{voiceEnabled ? 'Voice On' : 'Muted'}</span>
           </button>
         </div>
@@ -963,10 +963,10 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                ───────────────────────────────────────────────────────────── */}
             <div className="relative w-[180px] h-[180px] flex items-center justify-center">
               {/* Ambient Purple Glow Halo */}
-              <div className="absolute inset-0 rounded-[24px] bg-[#5e2be2]/15 blur-xl pointer-events-none" />
+              <div className="absolute inset-0 rounded-[24px] bg-[#450bc8]/15 blur-xl pointer-events-none" />
 
               {/* Clean Rounded Perimeter Box Container (No interior fill shading) */}
-              <div className="absolute inset-0 rounded-[24px] border-[2px] border-[#5e2be2]/40 dark:border-purple-800/60 bg-slate-50/60 dark:bg-slate-800/40 backdrop-blur-sm pointer-events-none shadow-[0_0_20px_rgba(94,43,226,0.15)]" />
+              <div className="absolute inset-0 rounded-[24px] border-[2px] border-[#450bc8]/40 dark:border-purple-800/60 bg-slate-50/60 dark:bg-slate-800/40 backdrop-blur-sm pointer-events-none shadow-[0_0_20px_rgba(94,43,226,0.15)]" />
 
               {/* SVG Dynamic Glowing Perimeter Stroke that fills with the ball */}
               <svg className="absolute inset-0 w-[180px] h-[180px] pointer-events-none overflow-visible z-10" viewBox="0 0 180 180">
@@ -974,7 +974,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                   <linearGradient id="activeBoxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#38bdf8" />
                     <stop offset="40%" stopColor="#7c3aed" />
-                    <stop offset="100%" stopColor="#5e2be2" />
+                    <stop offset="100%" stopColor="#450bc8" />
                   </linearGradient>
                   <filter id="activeGlow" x="-20%" y="-20%" width="140%" height="140%">
                     <feGaussianBlur stdDeviation="3" result="blur" />
@@ -1011,7 +1011,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
 
               {/* The Glowing Laser Ball directly centered on top of perimeter lines */}
               <div
-                className="absolute w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-[#5e2be2] to-[#a855f7] shadow-[0_0_8px_#5e2be2,0_0_14px_rgba(94,43,226,0.85)] pointer-events-none ring-1.5 ring-white dark:ring-slate-900 transform -translate-x-1/2 -translate-y-1/2 z-20"
+                className="absolute w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-[#450bc8] to-[#a855f7] shadow-[0_0_8px_#450bc8,0_0_14px_rgba(94,43,226,0.85)] pointer-events-none ring-1.5 ring-white dark:ring-slate-900 transform -translate-x-1/2 -translate-y-1/2 z-20"
                 style={{
                   left: `${orbPos.x}px`,
                   top: `${orbPos.y}px`,
@@ -1019,13 +1019,13 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
               />
 
               {/* Center Display (Timer & Phase Text or Start Button) */}
-              <div className="relative z-10 text-center space-y-0.5 font-['Plus_Jakarta_Sans',sans-serif]">
+              <div className="relative z-10 text-center space-y-0.5 font-['Open_Sans',sans-serif]">
                 {isPlaying ? (
                   <div className="space-y-0.5 animate-fade-in">
-                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-['Plus_Jakarta_Sans',sans-serif]">
+                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-['Open_Sans',sans-serif]">
                       {formatTime(remainingTotalSeconds)}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-[#5e2be2] dark:text-purple-300 uppercase tracking-wider transition-all duration-300">
+                    <div className="text-sm sm:text-base font-black text-[#450bc8] dark:text-purple-300 uppercase tracking-wider transition-all duration-300">
                       {currentPhase.name}
                     </div>
                   </div>
@@ -1033,7 +1033,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                   <div>
                     <button
                       onClick={handleToggle}
-                      className="px-5 py-2 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                      className="px-5 py-2 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                     >
                       Start
                     </button>
@@ -1066,7 +1066,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                       }}
                       className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
                         selectedDurationMinutes === mins
-                          ? 'bg-[#5e2be2] text-white shadow-sm shadow-purple-500/20 scale-105'
+                          ? 'bg-[#450bc8] text-white shadow-sm shadow-purple-500/20 scale-105'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                       }`}
                     >
@@ -1089,7 +1089,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
                 <div className="flex flex-col items-center">
                   <button
                     onClick={handleToggle}
-                    className="w-10 h-10 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white flex items-center justify-center shadow-md shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    className="w-10 h-10 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white flex items-center justify-center shadow-md shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                     title={isPlaying ? "Pause" : "Play"}
                   >
                     {isPlaying ? (
@@ -1114,7 +1114,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
              ───────────────────────────────────────────────────────────── */
           <div className="text-center py-6 space-y-4 max-w-sm mx-auto animate-fade-in z-10">
             <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border border-purple-100 dark:border-purple-900/50 p-1 mx-auto shadow-md shadow-purple-500/20 flex items-center justify-center">
-              <div className="w-full h-full rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#5e2be2]">
+              <div className="w-full h-full rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#450bc8]">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
             </div>
@@ -1126,7 +1126,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
             </div>
             <button
               onClick={handleReset}
-              className="w-full py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md shadow-purple-500/25 transition-all cursor-pointer"
+              className="w-full py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md shadow-purple-500/25 transition-all cursor-pointer"
             >
               Practice Another Box
             </button>
@@ -1137,7 +1137,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
       {/* ─────────────────────────────────────────────────────────────
           EDUCATIONAL DESCRIPTION CARD: What is Box Breathing?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -1152,7 +1152,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Square className="w-5 h-5 text-[#5e2be2]" />
+              <Square className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1162,13 +1162,13 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Step 1: Breathe In */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
                   Breathe In
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   4 SECONDS
                 </span>
               </div>
@@ -1178,7 +1178,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
             </div>
 
             {/* Step 2: Hold */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-[#7c3aed] uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-[#7c3aed] dark:text-indigo-300 flex items-center justify-center text-[10px] font-bold">2</span>
@@ -1194,7 +1194,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
             </div>
 
             {/* Step 3: Breathe Out */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-[#4f46e5] uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-[#4f46e5] dark:text-blue-300 flex items-center justify-center text-[10px] font-bold">3</span>
@@ -1210,7 +1210,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
             </div>
 
             {/* Step 4: Hold */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[10px] font-bold">4</span>
@@ -1231,7 +1231,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1243,7 +1243,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
             {/* Benefit 1: Reduces Anxiety */}
             <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-2 hover:border-purple-300 transition-colors">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#5e2be2]/10 dark:bg-[#5e2be2]/20 flex items-center justify-center text-[#5e2be2]">
+                <div className="w-8 h-8 rounded-xl bg-[#450bc8]/10 dark:bg-[#450bc8]/20 flex items-center justify-center text-[#450bc8]">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Reduces Anxiety</h4>
@@ -1296,7 +1296,7 @@ function BoxBreathingTacticalHUD({ activityName, onComplete }: { activityName?: 
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
@@ -1350,7 +1350,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
       cue: 'Inhale quietly through your nose into your diaphragm as the orb ascends.',
       duration: 4,
       voice: 'Inhale.',
-      color: '#5e2be2',
+      color: '#450bc8',
       glow: 'rgba(94, 43, 226, 0.45)',
       rate: 1.0,
     },
@@ -1542,10 +1542,10 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
   const orbPos = isPlaying ? getOrbCoords() : { x: 115, y: 18 };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 font-['Plus_Jakarta_Sans',sans-serif]">
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Plus_Jakarta_Sans',sans-serif] flex flex-col justify-between p-4 sm:p-5 sm:px-8 select-none">
+    <div className="w-full max-w-4xl mx-auto space-y-6 font-['Open_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Open_Sans',sans-serif] flex flex-col justify-between p-4 sm:p-5 sm:px-8 select-none">
         {/* Soft Ambient Floating Glows */}
-        <div className="absolute top-6 left-8 w-60 h-60 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-6 left-8 w-60 h-60 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-10 right-8 w-64 h-64 rounded-full bg-purple-500/5 dark:bg-purple-500/10 blur-3xl pointer-events-none" />
 
         {/* ─────────────────────────────────────────────────────────────
@@ -1554,10 +1554,10 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
         <div className="relative z-10 flex items-center justify-end">
           <button
             onClick={handleToggleVoice}
-            className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
             title="Toggle Voice Guidance"
           >
-            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
             <span>{voiceEnabled ? 'Voice On' : 'Muted'}</span>
           </button>
         </div>
@@ -1591,7 +1591,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                     <linearGradient id="triangleOrbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#8b5cf6" stopOpacity="1" />
                       <stop offset="50%" stopColor="#7c3aed" stopOpacity="1" />
-                      <stop offset="100%" stopColor="#5e2be2" stopOpacity="1" />
+                      <stop offset="100%" stopColor="#450bc8" stopOpacity="1" />
                     </linearGradient>
                     <filter id="dotGlow478" x="-50%" y="-50%" width="200%" height="200%">
                       <feGaussianBlur stdDeviation="3" result="blur" />
@@ -1632,7 +1632,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                       cx={orbPos.x}
                       cy={orbPos.y}
                       r={9}
-                      fill="#5e2be2"
+                      fill="#450bc8"
                       stroke="#ffffff"
                       strokeWidth="2"
                       filter="url(#dotGlow478)"
@@ -1643,7 +1643,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                       cx={115}
                       cy={18}
                       r={9}
-                      fill="#5e2be2"
+                      fill="#450bc8"
                       stroke="#ffffff"
                       strokeWidth="2"
                     />
@@ -1659,7 +1659,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                         {currentPhase.name}
                       </h3>
                       {/* Countdown seconds: 4s / 7s / 8s */}
-                      <div className="text-base sm:text-lg font-bold text-[#5e2be2] dark:text-purple-400 pt-0.5">
+                      <div className="text-base sm:text-lg font-bold text-[#450bc8] dark:text-purple-400 pt-0.5">
                         {phaseSecsLeft}s
                       </div>
                     </div>
@@ -1667,7 +1667,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                     <div className="pointer-events-auto">
                       <button
                         onClick={handleTogglePlay}
-                        className="px-5 py-2 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                        className="px-5 py-2 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                       >
                         Start
                       </button>
@@ -1690,7 +1690,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
              ───────────────────────────────────────────────────────────── */
           <div className="relative z-10 text-center py-4 space-y-3 max-w-sm mx-auto animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-purple-500/20 p-1 mx-auto flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-[#5e2be2] flex items-center justify-center text-white shadow-lg shadow-purple-500/40">
+              <div className="w-full h-full rounded-full bg-[#450bc8] flex items-center justify-center text-white shadow-lg shadow-purple-500/40">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
             </div>
@@ -1702,7 +1702,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
             </div>
             <button
               onClick={handleReset}
-              className="w-full py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-purple-500/20"
+              className="w-full py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-purple-500/20"
             >
               Practice Again
             </button>
@@ -1726,7 +1726,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
                   }}
                   className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
                     selectedDurationMinutes === mins
-                      ? 'bg-[#5e2be2] text-white shadow-sm shadow-purple-500/20 scale-105'
+                      ? 'bg-[#450bc8] text-white shadow-sm shadow-purple-500/20 scale-105'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                   }`}
                 >
@@ -1749,7 +1749,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
             <div className="flex flex-col items-center">
               <button
                 onClick={handleTogglePlay}
-                className="w-10 h-10 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white flex items-center justify-center shadow-md shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="w-10 h-10 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white flex items-center justify-center shadow-md shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 title={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
@@ -1772,7 +1772,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
       {/* ─────────────────────────────────────────────────────────────
           EDUCATIONAL DESCRIPTION CARD: What is 4-7-8 Breathing?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -1787,7 +1787,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Triangle className="w-5 h-5 text-[#5e2be2]" />
+              <Triangle className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1797,13 +1797,13 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* Step 1: Inhale */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
                   Inhale
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   4 SECONDS
                 </span>
               </div>
@@ -1813,7 +1813,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
             </div>
 
             {/* Step 2: Hold */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-[#7c3aed] uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-[#7c3aed] dark:text-indigo-300 flex items-center justify-center text-[10px] font-bold">2</span>
@@ -1829,7 +1829,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
             </div>
 
             {/* Step 3: Exhale */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-[#06b6d4] uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-5 h-5 rounded-full bg-cyan-100 dark:bg-cyan-900/60 text-[#06b6d4] dark:text-cyan-300 flex items-center justify-center text-[10px] font-bold">3</span>
@@ -1850,7 +1850,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1862,7 +1862,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
             {/* Benefit 1: Reduces Anxiety */}
             <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-2 hover:border-purple-300 transition-colors">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#5e2be2]/10 dark:bg-[#5e2be2]/20 flex items-center justify-center text-[#5e2be2]">
+                <div className="w-8 h-8 rounded-xl bg-[#450bc8]/10 dark:bg-[#450bc8]/20 flex items-center justify-center text-[#450bc8]">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Reduces Anxiety</h4>
@@ -1915,7 +1915,7 @@ function Triangle478BreathingPlayer({ activityName, onComplete }: { activityName
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
@@ -2145,19 +2145,19 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Plus_Jakarta_Sans'] flex flex-col items-center justify-between p-4 sm:p-5 sm:px-8 select-none">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Open_Sans'] flex flex-col items-center justify-between p-4 sm:p-5 sm:px-8 select-none">
         {/* Background Soft Glow Orbs */}
         <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-purple-500/5 dark:bg-purple-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
 
         {/* Top Header Controls (Voice Toggle Only) */}
         <div className="w-full flex items-center justify-end z-10 pb-1">
           <button
             onClick={handleToggleVoice}
-            className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
             title="Toggle Voice Guidance"
           >
-            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
             <span>{voiceEnabled ? 'Voice On' : 'Muted'}</span>
           </button>
         </div>
@@ -2372,7 +2372,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
                       }}
                       className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                         targetRounds === rounds
-                          ? 'bg-[#5e2be2] text-white shadow-md shadow-purple-500/25 scale-105'
+                          ? 'bg-[#450bc8] text-white shadow-md shadow-purple-500/25 scale-105'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                     >
@@ -2395,7 +2395,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
                 <div className="flex flex-col items-center">
                   <button
                     onClick={handleToggle}
-                    className="w-10 h-10 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white flex items-center justify-center shadow-md shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    className="w-10 h-10 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white flex items-center justify-center shadow-md shadow-purple-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                     title={isPlaying ? "Pause" : "Play"}
                   >
                     {isPlaying ? (
@@ -2420,7 +2420,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
              ───────────────────────────────────────────────────────────── */
           <div className="relative z-10 text-center py-8 px-6 space-y-4 max-w-md mx-auto my-auto animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-purple-500/20 p-1 mx-auto flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-[#5e2be2] flex items-center justify-center text-white shadow-lg shadow-purple-500/40">
+              <div className="w-full h-full rounded-full bg-[#450bc8] flex items-center justify-center text-white shadow-lg shadow-purple-500/40">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
             </div>
@@ -2432,7 +2432,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
             </div>
             <button
               onClick={handleReset}
-              className="w-full py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-purple-500/25 transition-all cursor-pointer"
+              className="w-full py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-purple-500/25 transition-all cursor-pointer"
             >
               Practice Another Session
             </button>
@@ -2443,7 +2443,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
       {/* ─────────────────────────────────────────────────────────────
           4. EDUCATIONAL DESCRIPTION CARD: What is Alternate Nostril Breathing?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -2458,7 +2458,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Wind className="w-5 h-5 text-[#5e2be2]" />
+              <Wind className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -2486,11 +2486,11 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
             {/* Step 2: Hold Gently */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-purple-500/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
+                <span className="text-xs font-black text-[#450bc8] dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
                   Hold Gently
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   2 SECONDS
                 </span>
               </div>
@@ -2521,7 +2521,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -2530,8 +2530,8 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2542,8 +2542,8 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <TrendingDown className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2554,8 +2554,8 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Smile className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2566,8 +2566,8 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2582,7 +2582,7 @@ function AlternateNostrilHemisphericPlayer({ activityName, onComplete }: { activ
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">

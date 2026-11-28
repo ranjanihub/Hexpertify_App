@@ -99,7 +99,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
   return (
     <div className="space-y-8 pb-12 animate-fade-in">
       {/* Header Banner */}
-      <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden">
+      <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden">
         {/* Background Decorative Circles */}
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-1/3 -bottom-20 w-80 h-80 bg-purple-400/10 rounded-full blur-xl pointer-events-none" />
@@ -140,7 +140,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
       </div>
 
       {/* KPI Cards Row (2x2 Grid on Mobile) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5">
         {/* Card 1: Sessions Today */}
         <div
           onClick={() => onSelectPage('bookings')}
@@ -212,7 +212,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
       </div>
 
       {/* Secondary Operational Metrics Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <div
           onClick={() => onSelectPage('therapists')}
           className="bg-white p-3 sm:p-4 rounded-xl border border-slate-100 flex items-center gap-2.5 sm:gap-3 cursor-pointer hover:border-purple-200 transition-colors min-w-0"
@@ -267,11 +267,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
       </div>
 
       {/* Main Grid: Graphs & Schedule Timeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 sm:gap-8">
         {/* Left Column: Charts & Today's Schedule */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="xl:col-span-8 space-y-6 sm:space-y-8 min-w-0">
           {/* Session counts */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-5">
             <div className="flex flex-col gap-3 border-b border-slate-100 pb-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -289,7 +289,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                 <button
                   type="button"
                   onClick={() => onSelectPage('bookings')}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#5e2be2] hover:underline shrink-0"
+                  className="inline-flex items-center gap-1 py-2 sm:py-0 text-xs font-bold text-[#450bc8] hover:underline shrink-0"
                 >
                   View bookings
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -303,8 +303,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                       key={r.key}
                       type="button"
                       onClick={() => setCountRange(r.key)}
-                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                        countRange === r.key ? 'bg-white shadow-2xs text-[#5e2be2]' : 'text-slate-500 hover:text-slate-900'
+                      className={`px-3 py-2 sm:py-1 text-xs font-bold rounded-lg transition-all ${
+                        countRange === r.key ? 'bg-white shadow-2xs text-[#450bc8]' : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
                       {r.label}
@@ -320,8 +320,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                     setCountRange('day');
                   }}
                   title="Pick a day"
-                  className={`h-8 px-2.5 text-xs font-bold rounded-xl border bg-white outline-none cursor-pointer ${
-                    countRange === 'day' ? 'border-[#5e2be2] text-[#5e2be2]' : 'border-slate-200 text-slate-500'
+                  className={`h-9 sm:h-8 px-2.5 text-xs font-bold rounded-xl border bg-white outline-none cursor-pointer ${
+                    countRange === 'day' ? 'border-[#450bc8] text-[#450bc8]' : 'border-slate-200 text-slate-500'
                   }`}
                 />
               </div>
@@ -330,7 +330,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
                 { label: 'Total sessions', value: sessionCounts.total, tone: 'text-slate-900', bg: 'bg-slate-50 border-slate-100' },
-                { label: 'Scheduled', value: sessionCounts.scheduled, tone: 'text-[#5e2be2]', bg: 'bg-purple-50/60 border-purple-100' },
+                { label: 'Scheduled', value: sessionCounts.scheduled, tone: 'text-[#450bc8]', bg: 'bg-purple-50/60 border-purple-100' },
                 { label: 'To be scheduled', value: sessionCounts.toBeScheduled, tone: 'text-amber-600', bg: 'bg-amber-50/60 border-amber-100', note: countRange === 'all' ? '' : 'No date yet · not filtered' },
                 { label: 'Completed', value: sessionCounts.completed, tone: 'text-emerald-600', bg: 'bg-emerald-50/60 border-emerald-100' },
                 { label: 'Cancelled', value: sessionCounts.cancelled, tone: 'text-rose-600', bg: 'bg-rose-50/60 border-rose-100' },
@@ -354,7 +354,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
               </div>
               <button
                 onClick={() => onSelectPage('bookings')}
-                className="text-xs font-bold text-[#5e2be2] hover:underline flex items-center gap-1 shrink-0"
+                className="self-start sm:self-auto py-2 sm:py-0 text-xs font-bold text-[#450bc8] hover:underline flex items-center gap-1 shrink-0"
               >
                 View All Bookings
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -370,7 +370,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                   placeholder="Filter schedule by client or therapist..."
                   value={scheduleSearch}
                   onChange={(e) => setScheduleSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20"
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20"
                 />
               </div>
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
@@ -378,9 +378,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                   <button
                     key={st}
                     onClick={() => setScheduleFilter(st)}
-                    className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                    className={`shrink-0 px-2.5 py-2 sm:py-1 text-[11px] font-bold rounded-lg transition-all ${
                       scheduleFilter === st
-                        ? 'bg-white shadow-2xs text-[#5e2be2]'
+                        ? 'bg-white shadow-2xs text-[#450bc8]'
                         : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
@@ -403,7 +403,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/70 hover:bg-slate-50 border border-slate-100 rounded-2xl gap-3 transition-colors"
                   >
                     <div className="flex items-center gap-4 min-w-0 flex-1">
-                      <div className="px-3 py-1.5 bg-purple-100 text-[#5e2be2] font-bold text-xs rounded-xl shrink-0 whitespace-nowrap">
+                      <div className="px-3 py-1.5 bg-purple-100 text-[#450bc8] font-bold text-xs rounded-xl shrink-0 whitespace-nowrap">
                         {item.time.split(' - ')[0] || item.time}
                       </div>
                       <div className="min-w-0">
@@ -458,9 +458,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
         </div>
 
         {/* Right Column: Priority Actions & Live Platform Activity */}
-        <div className="lg:col-span-4 space-y-8">
+        <div className="xl:col-span-4 space-y-6 sm:space-y-8 min-w-0">
           {/* Priority Quick Actions */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 text-white space-y-4 shadow-xl">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-4 sm:p-6 text-white space-y-4 shadow-xl">
             <h3 className="font-extrabold text-base flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-400" />
               Administrative Actions
@@ -472,25 +472,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
             <div className="space-y-2 pt-2">
               <button
                 onClick={() => onSelectPage('payments')}
-                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between transition-colors"
+                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between gap-2 transition-colors"
               >
                 <span>Release Therapist Payouts</span>
-                <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-md text-[10px]">
+                <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-md text-[10px] shrink-0 whitespace-nowrap">
                   {metrics.pendingReportsCount} Pending
                 </span>
               </button>
 
               <button
                 onClick={() => onSelectPage('therapists')}
-                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between transition-colors"
+                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between gap-2 transition-colors"
               >
                 <span>Verify Therapist Licenses</span>
-                <span className="bg-purple-400/20 text-purple-300 px-2 py-0.5 rounded-md text-[10px]">Active</span>
+                <span className="bg-purple-400/20 text-purple-300 px-2 py-0.5 rounded-md text-[10px] shrink-0 whitespace-nowrap">Active</span>
               </button>
 
               <button
                 onClick={() => onSelectPage('homepage')}
-                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between transition-colors"
+                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between gap-2 transition-colors"
               >
                 <span>Update Homepage</span>
                 <ArrowUpRight className="w-4 h-4 text-slate-300" />
@@ -498,7 +498,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectPage }) =>
 
               <button
                 onClick={() => onSelectPage('assessments')}
-                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between transition-colors"
+                className="w-full p-3 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-left text-xs font-bold flex items-center justify-between gap-2 transition-colors"
               >
                 <span>Manage Assessments</span>
                 <ChevronRight className="w-4 h-4 text-slate-300" />

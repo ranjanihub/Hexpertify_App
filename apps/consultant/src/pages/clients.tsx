@@ -138,42 +138,61 @@ export default function Clients() {
   const fetchRealClientsFromDb = async () => {
     try {
       setIsDbLoading(true);
-      const myName = authUser?.name || 'Sadaf Bhimani';
+      const myName = authUser?.name || '';
       const myId = authUser?.id || '';
+      if (!myId) {
+        setDbClients([]);
+        return;
+      }
 
-      const queryParams = `?consultantId=${encodeURIComponent(myId)}&consultantName=${encodeURIComponent(myName)}&role=client`;
-
+      // The server filters both lists to this therapist (by id, never by name)
       const [usersRes, bookingsRes] = await Promise.all([
-        fetch(`/api/users${queryParams}`).then(r => r.ok ? r.json() : { users: [] }).catch(() => ({ users: [] })),
-        fetch(`/api/bookings${queryParams}`).then(r => r.ok ? r.json() : { bookings: [] }).catch(() => ({ bookings: [] }))
+        fetch(`/api/users?therapistId=${encodeURIComponent(myId)}`).then(r => r.ok ? r.json() : { users: [] }).catch(() => ({ users: [] })),
+        fetch(`/api/bookings?consultantId=${encodeURIComponent(myId)}`).then(r => r.ok ? r.json() : { bookings: [] }).catch(() => ({ bookings: [] }))
       ]);
 
       const rawUsers = Array.isArray(usersRes?.users) ? usersRes.users : [];
       const rawBookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
+      const now = Date.now();
+      const sessionTime = (b: any) => {
+        const t = b.scheduledAt ? new Date(b.scheduledAt).getTime() : NaN;
+        return Number.isFinite(t) ? t : null;
+      };
+      const status = (b: any) => String(b.status || '').toUpperCase();
 
-      const formatted = rawUsers.map((u: any, idx: number) => {
-        const userBooking = rawBookings.find((b: any) => 
-          (b.clientEmail && b.clientEmail.toLowerCase() === (u.email || '').toLowerCase()) ||
-          b.clientId === String(u._id || u.id) ||
-          (b.clientName && b.clientName.toLowerCase() === (u.name || '').toLowerCase())
+      const formatted = rawUsers.map((u: any) => {
+        // Bookings store the client's Mongo _id (older ones the custom id); consultant queries carry no client email
+        const userIds = [u._id, u.id].filter(Boolean).map(String);
+        const userBookings = rawBookings.filter((b: any) =>
+          userIds.includes(String(b.clientId || '')) || userIds.includes(String(b.userId || ''))
         );
 
-        const dateStr = u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '2026-08-20';
+        // Last = most recent session already past (not cancelled); next = soonest upcoming that is still on
+        const past = userBookings
+          .filter((b: any) => { const t = sessionTime(b); return t !== null && t < now && !['CANCELLED', 'EXPIRED', 'PENDING_PAYMENT'].includes(status(b)); })
+          .sort((a: any, b: any) => (sessionTime(b) as number) - (sessionTime(a) as number));
+        const upcoming = userBookings
+          .filter((b: any) => { const t = sessionTime(b); return t !== null && t >= now && ['PENDING', 'CONFIRMED', 'RESCHEDULED'].includes(status(b)); })
+          .sort((a: any, b: any) => (sessionTime(a) as number) - (sessionTime(b) as number));
+        const last = past[0];
+        const next = upcoming[0];
 
         return {
-          id: String(u._id || u.id || idx + 1),
-          code: `#CL-${101 + idx}`,
+          id: String(u._id || u.id),
+          // The stored client number (e.g. CL-00007); nothing when the client has none yet
+          code: u.clientNumber ? String(u.clientNumber) : '',
           name: u.name || 'Client User',
           // Contact details are only sent for the therapist's own clients; never invent placeholders
           email: u.email || '',
           phone: u.phoneNumber || u.phone || '',
-          therapist: u.assignedTherapistName || userBooking?.consultantName || userBooking?.therapistName || myName,
-          modality: userBooking?.serviceTitle || 'Individual Therapy',
-          lastSession: userBooking?.date?.split('T')[0] || dateStr,
-          nextSession: userBooking?.date?.split('T')[0] || '2026-09-02',
-          nextSessionTime: userBooking?.time || '(10:00 AM)',
-          status: (u.status ? String(u.status).toLowerCase() : ((u.emailVerified || userBooking) ? 'active' : 'new')),
-          primaryGoal: u.primaryGoal || u.therapyGoals?.[0] || 'Anxiety Management & CBT Progression',
+          therapist: u.assignedTherapistName || myName,
+          modality: (next || last)?.serviceTitle || 'Individual Therapy',
+          lastSession: last ? (last.date || new Date(sessionTime(last) as number).toISOString().split('T')[0]) : '',
+          lastSessionAt: last ? sessionTime(last) : null,
+          nextSession: next ? (next.date || new Date(sessionTime(next) as number).toISOString().split('T')[0]) : '',
+          nextSessionTime: next?.time || '',
+          status: (u.status ? String(u.status).toLowerCase() : ((u.emailVerified || userBookings.length) ? 'active' : 'new')),
+          primaryGoal: u.primaryGoal || u.therapyGoals?.[0] || '',
           avatar: u.image || u.avatarUrl || undefined,
           createdAt: u.createdAt
         };
@@ -220,8 +239,10 @@ export default function Clients() {
   const sortedClients = [...filteredClients].sort((a, b) => {
     if (sortBy === "name") return (a.name || "").localeCompare(b.name || "");
     if (sortBy === "status") return (a.status || "").localeCompare(b.status || "");
-    return new Date(b.createdAt || b.lastSession || 0).getTime() - new Date(a.createdAt || a.lastSession || 0).getTime();
+    return new Date(b.createdAt || b.lastSessionAt || 0).getTime() - new Date(a.createdAt || a.lastSessionAt || 0).getTime();
   });
+
+  const hasActiveFilters = search.trim() !== "" || statusFilter !== "all";
 
   const totalPages = rowsPerPage === 0 ? 1 : Math.max(1, Math.ceil(sortedClients.length / rowsPerPage));
   const validCurrentPage = Math.min(currentPage, totalPages);
@@ -233,6 +254,61 @@ export default function Clients() {
   const endRow = rowsPerPage === 0 ? sortedClients.length : Math.min(validCurrentPage * rowsPerPage, sortedClients.length);
 
   const activeCount = clientList.filter((c: any) => c.status === "active" || c.status === "new").length;
+
+  // Up to five page buttons around the current page (never past either end)
+  const pageWindowStart = Math.max(1, Math.min(validCurrentPage - 2, totalPages - 4));
+  const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, i) => pageWindowStart + i);
+
+  // Shared by the mobile cards and the desktop table so paging works on every screen size
+  const renderPagination = (className: string) => (
+    <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-600", className)}>
+      <div>
+        Showing <span className="font-extrabold text-slate-900">{startRow}</span> to <span className="font-extrabold text-slate-900">{endRow}</span> of <span className="font-extrabold text-[#450bc8]">{sortedClients.length}</span> client records
+      </div>
+
+      {rowsPerPage !== 0 && totalPages > 1 && (
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={validCurrentPage <= 1}
+            onClick={() => setCurrentPage(Math.max(1, validCurrentPage - 1))}
+            className="h-8 px-3 rounded-xl border-slate-200 text-xs font-bold"
+          >
+            Previous
+          </Button>
+
+          <div className="flex items-center gap-1 px-1">
+            {pageNumbers.map((pageNum) => (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => setCurrentPage(pageNum)}
+                className={cn(
+                  "w-8 h-8 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center",
+                  validCurrentPage === pageNum
+                    ? "bg-[#450bc8] text-white shadow-sm"
+                    : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                )}
+              >
+                {pageNum}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={validCurrentPage >= totalPages}
+            onClick={() => setCurrentPage(Math.min(totalPages, validCurrentPage + 1))}
+            className="h-8 px-3 rounded-xl border-slate-200 text-xs font-bold"
+          >
+            Next
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 
   const getStatusBadge = (status: string) => {
     const s = (status || "").toLowerCase();
@@ -251,7 +327,7 @@ export default function Clients() {
   return (
     <div className="space-y-6 pb-12">
       {/* TOP HEADER PURPLE BANNER MATCHING HEXPERTIFY SYSTEM COLOR THEME */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#5e2be2] to-[#361394] p-6 sm:p-8 text-white shadow-lg shadow-purple-900/10 border border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#450bc8] to-[#361394] p-6 sm:p-8 text-white shadow-lg shadow-purple-900/10 border border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         {/* Decorative ambient background glows */}
         <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-purple-400/15 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />
@@ -292,9 +368,10 @@ export default function Clients() {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0 max-w-full">
             {/* Status Filter Buttons */}
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl">
+            {/* Scrolls sideways inside itself on narrow screens instead of widening the page */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl min-w-0 max-w-full overflow-x-auto">
               {[
                 { id: "all", label: "All" },
                 { id: "active", label: "Active" },
@@ -312,7 +389,7 @@ export default function Clients() {
                   className={cn(
                     "px-4 py-1.5 rounded-xl text-xs font-extrabold capitalize transition-all cursor-pointer whitespace-nowrap",
                     statusFilter === item.id 
-                      ? "bg-[#5e2be2] text-white shadow-sm" 
+                      ? "bg-[#450bc8] text-white shadow-sm" 
                       : "text-slate-600 hover:text-slate-900"
                   )}
                 >
@@ -357,15 +434,15 @@ export default function Clients() {
         </div>
       ) : sortedClients.length === 0 ? (
         <div className="text-center py-16 px-4 bg-white rounded-3xl border border-slate-200 space-y-4 shadow-xs">
-          <div className="w-16 h-16 bg-purple-50 text-[#5e2be2] rounded-2xl flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 bg-purple-50 text-[#450bc8] rounded-2xl flex items-center justify-center mx-auto">
             <Users className="w-8 h-8" />
           </div>
           <div className="max-w-md mx-auto">
             <h3 className="text-base font-extrabold text-slate-900">
-              {search ? "No clients match your filter" : "No Clients Assigned Yet"}
+              {hasActiveFilters ? "No clients match this filter" : "No Clients Assigned Yet"}
             </h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              {search 
+              {hasActiveFilters
                 ? "Try adjusting your search query or status filter." 
                 : `There are currently no clients booked or assigned to ${authUser?.name || 'your consultant profile'}. When a client books a session through the platform or an administrator assigns a client, their profile will appear here.`
               }
@@ -381,7 +458,10 @@ export default function Clients() {
                 <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
                   <div>
                     <h3 className="font-extrabold text-slate-900 text-sm leading-tight">{clientItem.name}</h3>
-                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">{clientItem.modality || 'Individual Therapy'}</p>
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      {clientItem.code ? <span className="font-mono">{clientItem.code} · </span> : null}
+                      {clientItem.modality || 'Individual Therapy'}
+                    </p>
                   </div>
                   <div>
                     {getStatusBadge(clientItem.status)}
@@ -391,30 +471,31 @@ export default function Clients() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Last Session</span>
-                    <span className="font-mono font-semibold text-slate-700 text-xs mt-0.5 block">{clientItem.lastSession || '2026-07-28'}</span>
+                    <span className="font-mono font-semibold text-slate-700 text-xs mt-0.5 block">{clientItem.lastSession || '—'}</span>
                   </div>
 
                   <div className="bg-purple-50/60 p-2.5 rounded-xl border border-purple-100">
-                    <span className="text-[10px] font-bold text-[#5e2be2] uppercase tracking-wider block">Next Session</span>
+                    <span className="text-[10px] font-bold text-[#450bc8] uppercase tracking-wider block">Next Session</span>
                     {clientItem.nextSession ? (
-                      <span className="font-mono font-extrabold text-[#5e2be2] text-xs mt-0.5 block">
+                      <span className="font-mono font-extrabold text-[#450bc8] text-xs mt-0.5 block">
                         {clientItem.nextSession} <span className="text-[10px] font-normal text-slate-500">{clientItem.nextSessionTime}</span>
                       </span>
                     ) : (
-                      <span className="text-slate-400 font-normal text-xs block">-</span>
+                      <span className="text-slate-400 font-normal text-xs block">—</span>
                     )}
                   </div>
                 </div>
 
                 <div className="pt-1">
                   <Link href={`/clients/${clientItem.id}`} className="block w-full">
-                    <Button className="w-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs h-10 rounded-xl shadow-sm cursor-pointer">
+                    <Button className="w-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs h-10 rounded-xl shadow-sm cursor-pointer">
                       View Full Record
                     </Button>
                   </Link>
                 </div>
               </div>
             ))}
+            {renderPagination("p-4 bg-white rounded-2xl border border-slate-200 shadow-xs")}
           </div>
 
           {/* Desktop Table View (Visible on desktop viewports >= 768px) */}
@@ -438,21 +519,26 @@ export default function Clients() {
                         <div className="font-extrabold text-slate-900 text-sm">
                           {clientItem.name}
                         </div>
+                        {clientItem.code && (
+                          <div className="text-[11px] font-mono font-medium text-slate-400 mt-0.5">{clientItem.code}</div>
+                        )}
                       </td>
                       <td className="py-4 px-6 font-medium text-slate-600 whitespace-nowrap">
                         {clientItem.modality || 'Individual Therapy'}
                       </td>
                       <td className="py-4 px-6 font-medium text-slate-500 font-mono whitespace-nowrap">
-                        {clientItem.lastSession || '2026-07-28'}
+                        {clientItem.lastSession || '—'}
                       </td>
-                      <td className="py-4 px-6 font-bold text-[#5e2be2] font-mono whitespace-nowrap">
+                      <td className="py-4 px-6 font-bold text-[#450bc8] font-mono whitespace-nowrap">
                         {clientItem.nextSession ? (
                           <div>
                             <span className="block">{clientItem.nextSession}</span>
-                            <span className="block text-[11px] font-normal text-slate-500">{clientItem.nextSessionTime || '(10:00 AM)'}</span>
+                            {clientItem.nextSessionTime && (
+                              <span className="block text-[11px] font-normal text-slate-500">{clientItem.nextSessionTime}</span>
+                            )}
                           </div>
                         ) : (
-                          <span className="text-slate-400 font-normal">-</span>
+                          <span className="text-slate-400 font-normal">—</span>
                         )}
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap">
@@ -460,7 +546,7 @@ export default function Clients() {
                       </td>
                       <td className="py-4 px-6 text-right whitespace-nowrap">
                         <Link href={`/clients/${clientItem.id}`}>
-                          <Button className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap">
+                          <Button className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap">
                             View Full Record
                           </Button>
                         </Link>
@@ -472,59 +558,7 @@ export default function Clients() {
             </div>
 
             {/* MODERN TABLE PAGINATION & ROW FILTER FOOTER */}
-            <div className="p-4 sm:px-6 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-600">
-              <div>
-                Showing <span className="font-extrabold text-slate-900">{startRow}</span> to <span className="font-extrabold text-slate-900">{endRow}</span> of <span className="font-extrabold text-[#5e2be2]">{sortedClients.length}</span> client records
-              </div>
-
-              {rowsPerPage !== 0 && totalPages > 1 && (
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={validCurrentPage <= 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className="h-8 px-3 rounded-xl border-slate-200 text-xs font-bold"
-                  >
-                    Previous
-                  </Button>
-
-                  <div className="flex items-center gap-1 px-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum = i + 1;
-                      if (totalPages > 5 && validCurrentPage > 3) {
-                        pageNum = validCurrentPage - 2 + i;
-                        if (pageNum > totalPages) pageNum = totalPages - 4 + i;
-                      }
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={cn(
-                            "w-8 h-8 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center",
-                            validCurrentPage === pageNum
-                              ? "bg-[#5e2be2] text-white shadow-sm"
-                              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
-                          )}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={validCurrentPage >= totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    className="h-8 px-3 rounded-xl border-slate-200 text-xs font-bold"
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
-            </div>
+            {renderPagination("p-4 sm:px-6 bg-slate-50/80 border-t border-slate-100")}
           </div>
         </>
       )}
@@ -532,26 +566,26 @@ export default function Clients() {
       <Dialog open={!!selectedRecordClient} onOpenChange={() => setSelectedRecordClient(null)}>
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[92vh] flex flex-col p-0 overflow-y-auto rounded-3xl border-0 shadow-2xl">
           {selectedRecordClient && (
-            <div className="p-6 space-y-6">
-              <div className="flex items-start justify-between pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#5e2be2] text-white font-black text-lg flex items-center justify-center shadow-lg shadow-[#5e2be2]/20">
+            <div className="p-4 sm:p-6 space-y-6">
+              <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-[#450bc8] text-white font-black text-lg flex items-center justify-center shadow-lg shadow-[#450bc8]/20">
                     {selectedRecordClient.name.split(' ').map((n: string) => n[0]).join('')}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-extrabold text-slate-900">{selectedRecordClient.name}</h2>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 break-words">{selectedRecordClient.name}</h2>
                       {getStatusBadge(selectedRecordClient.status)}
                     </div>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">
-                      {selectedRecordClient.code} · {selectedRecordClient.modality} · {selectedRecordClient.therapist}
+                      {[selectedRecordClient.code, selectedRecordClient.modality, selectedRecordClient.therapist].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedRecordClient(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-10 h-10 sm:w-8 sm:h-8 shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -563,7 +597,7 @@ export default function Clients() {
                   onClick={() => setActiveModalTab("intake")}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer",
-                    activeModalTab === "intake" ? "bg-[#5e2be2] text-white" : "bg-slate-100 text-slate-600"
+                    activeModalTab === "intake" ? "bg-[#450bc8] text-white" : "bg-slate-100 text-slate-600"
                   )}
                 >
                   <Brain className="w-4 h-4" /> Intake
@@ -573,7 +607,7 @@ export default function Clients() {
                   onClick={() => setActiveModalTab("assessments")}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer",
-                    activeModalTab === "assessments" ? "bg-[#5e2be2] text-white" : "bg-slate-100 text-slate-600"
+                    activeModalTab === "assessments" ? "bg-[#450bc8] text-white" : "bg-slate-100 text-slate-600"
                   )}
                 >
                   <Award className="w-4 h-4" /> Assessments
@@ -583,7 +617,7 @@ export default function Clients() {
                   onClick={() => setActiveModalTab("mood")}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer",
-                    activeModalTab === "mood" ? "bg-[#5e2be2] text-white" : "bg-slate-100 text-slate-600"
+                    activeModalTab === "mood" ? "bg-[#450bc8] text-white" : "bg-slate-100 text-slate-600"
                   )}
                 >
                   <Activity className="w-4 h-4" /> Goals
@@ -593,7 +627,7 @@ export default function Clients() {
                   onClick={() => setActiveModalTab("sessions")}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer",
-                    activeModalTab === "sessions" ? "bg-[#5e2be2] text-white" : "bg-slate-100 text-slate-600"
+                    activeModalTab === "sessions" ? "bg-[#450bc8] text-white" : "bg-slate-100 text-slate-600"
                   )}
                 >
                   <Calendar className="w-4 h-4" /> Sessions
@@ -603,7 +637,7 @@ export default function Clients() {
                   onClick={() => setActiveModalTab("documents")}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer",
-                    activeModalTab === "documents" ? "bg-[#5e2be2] text-white" : "bg-slate-100 text-slate-600"
+                    activeModalTab === "documents" ? "bg-[#450bc8] text-white" : "bg-slate-100 text-slate-600"
                   )}
                 >
                   <FileText className="w-4 h-4" /> Docs
@@ -638,7 +672,7 @@ export default function Clients() {
                               type="checkbox"
                               checked={goal.completed}
                               onChange={() => toggleGoal(goal.id)}
-                              className="w-4 h-4 accent-[#5e2be2] rounded cursor-pointer"
+                              className="w-4 h-4 accent-[#450bc8] rounded cursor-pointer"
                             />
                             <span className={cn("font-semibold text-slate-800", goal.completed && "line-through text-slate-400")}>
                               {goal.text}
@@ -664,7 +698,7 @@ export default function Clients() {
                       />
                       <button
                         type="submit"
-                        className="bg-[#5e2be2] text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-[#4f28d9] transition-colors cursor-pointer shrink-0"
+                        className="bg-[#450bc8] text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-[#3a0aa8] transition-colors cursor-pointer shrink-0"
                       >
                         Add Goal
                       </button>
@@ -702,7 +736,7 @@ export default function Clients() {
                       <button
                         type="button"
                         onClick={() => toast({ title: "Session Booking", description: `Opened booking calendar for ${selectedRecordClient.name}.` })}
-                        className="inline-flex items-center gap-1.5 bg-[#5e2be2] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs hover:bg-[#4f28d9] cursor-pointer"
+                        className="inline-flex items-center gap-1.5 bg-[#450bc8] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs hover:bg-[#3a0aa8] cursor-pointer"
                       >
                         <Calendar className="w-3.5 h-3.5" />
                         <span>Schedule Session</span>
@@ -722,7 +756,7 @@ export default function Clients() {
                         <span className="text-xs font-bold text-slate-900 block">Session #13 · Review &amp; Sleep Hygiene</span>
                         <span className="text-[11px] text-slate-500">Upcoming Aug 01, 2026 at 09:00 AM</span>
                       </div>
-                      <span className="text-xs font-bold text-[#5e2be2] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">Scheduled</span>
+                      <span className="text-xs font-bold text-[#450bc8] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">Scheduled</span>
                     </div>
                   </div>
 
@@ -762,7 +796,7 @@ export default function Clients() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Workspace Documents</h4>
-                    <label className="inline-flex items-center gap-1.5 bg-[#5e2be2] text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-xs hover:bg-[#4f28d9] cursor-pointer">
+                    <label className="inline-flex items-center gap-1.5 bg-[#450bc8] text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-xs hover:bg-[#3a0aa8] cursor-pointer">
                       <Upload className="w-3.5 h-3.5" />
                       <span>Upload Document</span>
                       <input
@@ -793,7 +827,7 @@ export default function Clients() {
                       <button
                         type="button"
                         onClick={() => toast({ title: "Downloading Worksheet", description: "CBT_Thought_Record_Worksheet.pdf downloaded." })}
-                        className="text-xs font-bold text-[#5e2be2] hover:underline cursor-pointer flex items-center gap-1"
+                        className="text-xs font-bold text-[#450bc8] hover:underline cursor-pointer flex items-center gap-1"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download</span>
@@ -811,7 +845,7 @@ export default function Clients() {
                       <button
                         type="button"
                         onClick={() => toast({ title: "Downloading Intake Form", description: "Initial_Intake_Assessment_Form.pdf downloaded." })}
-                        className="text-xs font-bold text-[#5e2be2] hover:underline cursor-pointer flex items-center gap-1"
+                        className="text-xs font-bold text-[#450bc8] hover:underline cursor-pointer flex items-center gap-1"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download</span>
@@ -829,7 +863,7 @@ export default function Clients() {
                       <button
                         type="button"
                         onClick={() => toast({ title: "Downloading Psychoeducation Guide", description: "Sleep_Hygiene_Psychoeducation_Guide.pdf downloaded." })}
-                        className="text-xs font-bold text-[#5e2be2] hover:underline cursor-pointer flex items-center gap-1"
+                        className="text-xs font-bold text-[#450bc8] hover:underline cursor-pointer flex items-center gap-1"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download</span>

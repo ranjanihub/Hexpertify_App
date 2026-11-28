@@ -24,10 +24,10 @@ export const CBTThoughtRecord: React.FC<BaseActivityComponentProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Plus_Jakarta_Sans']">
+    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Open_Sans']">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div>
-          <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
+          <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
             Coded Component · ACT-02
           </span>
           <h3 className="text-xl font-extrabold text-slate-900 mt-1">{activityName}</h3>
@@ -43,7 +43,7 @@ export const CBTThoughtRecord: React.FC<BaseActivityComponentProps> = ({
             value={formData.situation}
             onChange={(e) => setFormData({ ...formData, situation: e.target.value })}
             placeholder="Describe what happened, where you were, and who was present..."
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-[#5e2be2]"
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-[#450bc8]"
           />
         </div>
 
@@ -55,7 +55,7 @@ export const CBTThoughtRecord: React.FC<BaseActivityComponentProps> = ({
             value={formData.automaticThought}
             onChange={(e) => setFormData({ ...formData, automaticThought: e.target.value })}
             placeholder="What unhelpful thought automatically went through your head?"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-[#5e2be2]"
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-[#450bc8]"
           />
         </div>
 
@@ -69,7 +69,7 @@ export const CBTThoughtRecord: React.FC<BaseActivityComponentProps> = ({
               disabled={isReadOnly}
               value={formData.emotionRating}
               onChange={(e) => setFormData({ ...formData, emotionRating: Number(e.target.value) })}
-              className="w-full accent-[#5e2be2]"
+              className="w-full accent-[#450bc8]"
             />
           </div>
 
@@ -98,7 +98,7 @@ export const CBTThoughtRecord: React.FC<BaseActivityComponentProps> = ({
             value={formData.alternativeReframe}
             onChange={(e) => setFormData({ ...formData, alternativeReframe: e.target.value })}
             placeholder="What is an objective, realistic, and compassionate alternative perspective?"
-            className="w-full p-3 bg-purple-50/50 border border-purple-200 rounded-xl text-xs outline-none focus:bg-white focus:border-[#5e2be2]"
+            className="w-full p-3 bg-purple-50/50 border border-purple-200 rounded-xl text-xs outline-none focus:bg-white focus:border-[#450bc8]"
           />
         </div>
 
@@ -111,7 +111,7 @@ export const CBTThoughtRecord: React.FC<BaseActivityComponentProps> = ({
           <button
             type="submit"
             disabled={isReadOnly}
-            className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+            className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
           >
             <Save className="w-4 h-4" />
             <span>Save Thought Log</span>

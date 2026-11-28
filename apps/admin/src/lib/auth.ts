@@ -106,85 +106,34 @@ export function logoutAdmin(): void {
 }
 
 /**
- * Generates a signed cryptographic SSO launch URL and opens target workspace in new tab or current window
+ * Opens the therapist or client panel as that account. The server issues a signed single-use ticket only to a
+ * signed-in admin, and builds it from the account stored in the database; the panel redeems it for its own
+ * API token. Only the ticket travels in the address (no user details).
  */
-export async function launchConsultantPanel(targetUser: any, newTab: boolean = true): Promise<void> {
-  const isSinglePort = window.location.pathname.startsWith('/admin') || window.location.port === '5000';
-  const targetBaseUrl = isSinglePort ? '/consultant' : 'http://localhost:5000';
-  let targetUrl = `${targetBaseUrl}/?sso_user=${encodeURIComponent(JSON.stringify(targetUser))}`;
-
+async function launchPanel(targetUser: any, targetRole: 'therapist' | 'client', newTab: boolean): Promise<void> {
+  const label = targetRole === 'therapist' ? 'the Consultant Suite' : 'the Client Portal';
   try {
-    const apiEndpoints = ['http://localhost:5000/api/auth/sso-ticket', '/api/auth/sso-ticket'];
-    let res: Response | null = null;
-
-    for (const endpoint of apiEndpoints) {
-      try {
-        const r = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user: targetUser, targetRole: 'therapist' }),
-          signal: AbortSignal.timeout(600)
-        });
-        if (r && r.ok) {
-          res = r;
-          break;
-        }
-      } catch {}
+    const res = await fetch('/api/auth/sso-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getApiAuthHeaders() },
+      body: JSON.stringify({ user: { id: targetUser?.id, email: targetUser?.email }, targetRole })
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.ticket) {
+      throw new Error(data?.error || `The server refused the request (HTTP ${res.status}).`);
     }
-
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data?.ticket) {
-        targetUrl = `${targetBaseUrl}/?sso_ticket=${encodeURIComponent(data.ticket)}&sso_user=${encodeURIComponent(JSON.stringify(targetUser))}`;
-      }
-    }
-  } catch (e) {}
-
-  if (newTab) {
-    window.open(targetUrl, '_blank');
-  } else {
-    window.location.href = targetUrl;
+    const targetUrl = `/${targetRole === 'therapist' ? 'consultant' : 'client'}/?sso_ticket=${encodeURIComponent(data.ticket)}`;
+    if (newTab) window.open(targetUrl, '_blank');
+    else window.location.href = targetUrl;
+  } catch (err: any) {
+    window.alert(`Could not open ${label} for ${targetUser?.name || targetUser?.email || 'this account'}: ${err?.message || 'request failed'}`);
   }
 }
 
-/**
- * Generates a signed cryptographic SSO launch URL and opens Client Portal
- */
-export async function launchClientPanel(targetUser: any, newTab: boolean = true): Promise<void> {
-  const isSinglePort = window.location.pathname.startsWith('/admin') || window.location.port === '5000';
-  const targetBaseUrl = isSinglePort ? '/client' : 'http://localhost:5000';
-  let targetUrl = `${targetBaseUrl}/?sso_user=${encodeURIComponent(JSON.stringify(targetUser))}`;
+export function launchConsultantPanel(targetUser: any, newTab: boolean = true): Promise<void> {
+  return launchPanel(targetUser, 'therapist', newTab);
+}
 
-  try {
-    const apiEndpoints = ['http://localhost:5000/api/auth/sso-ticket', '/api/auth/sso-ticket'];
-    let res: Response | null = null;
-
-    for (const endpoint of apiEndpoints) {
-      try {
-        const r = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user: targetUser, targetRole: 'client' }),
-          signal: AbortSignal.timeout(600)
-        });
-        if (r && r.ok) {
-          res = r;
-          break;
-        }
-      } catch {}
-    }
-
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data?.ticket) {
-        targetUrl = `${targetBaseUrl}/?sso_ticket=${encodeURIComponent(data.ticket)}&sso_user=${encodeURIComponent(JSON.stringify(targetUser))}`;
-      }
-    }
-  } catch (e) {}
-
-  if (newTab) {
-    window.open(targetUrl, '_blank');
-  } else {
-    window.location.href = targetUrl;
-  }
+export function launchClientPanel(targetUser: any, newTab: boolean = true): Promise<void> {
+  return launchPanel(targetUser, 'client', newTab);
 }

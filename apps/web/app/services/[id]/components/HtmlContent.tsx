@@ -26,9 +26,9 @@ const HtmlContent = ({ content }: HtmlContentProps) => {
   const htmlWithoutScripts = content.replace(scriptRegex, "");
 
   return (
-    <div className="bg-white rounded-xl p-5 md:p-8 border border-gray-100 shadow-sm">
+    <div className="bg-white rounded-xl p-5 md:p-8 border border-gray-100 shadow-sm overflow-x-auto break-words">
       <div
-        className="html-content max-w-none [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h1]:mt-6 [&>h2]:text-xl [&>h2]:font-semibold [&>h2]:mb-3 [&>h2]:mt-5 [&>h3]:text-lg [&>h3]:font-semibold [&>h3]:mb-2 [&>h3]:mt-4 [&>p]:text-sm [&>p]:leading-relaxed [&>p]:mb-3 [&>p]:text-gray-700 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-3 [&>li]:text-sm [&>li]:text-gray-700 [&>strong]:font-semibold [&>strong]:text-gray-900 [&>a]:text-primary [&>a]:underline"
+        className="html-content max-w-none [&_img]:max-w-full [&_img]:h-auto [&_iframe]:max-w-full [&_video]:max-w-full [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h1]:mt-6 [&>h2]:text-xl [&>h2]:font-semibold [&>h2]:mb-3 [&>h2]:mt-5 [&>h3]:text-lg [&>h3]:font-semibold [&>h3]:mb-2 [&>h3]:mt-4 [&>p]:text-sm [&>p]:leading-relaxed [&>p]:mb-3 [&>p]:text-gray-700 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-3 [&>li]:text-sm [&>li]:text-gray-700 [&>strong]:font-semibold [&>strong]:text-gray-900 [&>a]:text-primary [&>a]:underline"
         dangerouslySetInnerHTML={{ __html: htmlWithoutScripts }}
       />
       {scripts.map((script, index) =>

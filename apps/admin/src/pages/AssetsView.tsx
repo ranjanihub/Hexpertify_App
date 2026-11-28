@@ -366,21 +366,21 @@ export const AssetsView: React.FC = () => {
       )}
 
       {/* Hero Header matching Home Page card gradient */}
-      <div className="relative rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
           <span className="px-3.5 py-1.5 bg-white/15 backdrop-blur-md rounded-full text-xs font-bold tracking-wide uppercase text-purple-200 border border-white/20">
             Media Vault & Assets CMS
           </span>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-3">Central Platform Assets Vault</h1>
-          <p className="text-purple-100 text-sm mt-1 max-w-xl">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-3">Central Platform Assets Vault</h1>
+          <p className="text-purple-100 text-xs sm:text-sm mt-1 max-w-xl">
             Store, replace, organize, and manage website banners, therapy worksheets, audio guides, and videos.
           </p>
         </div>
 
         <button
           onClick={handleOpenModal}
-          className="relative z-10 px-6 py-3 bg-white text-[#4f28d9] hover:bg-purple-50 rounded-2xl font-extrabold text-sm flex items-center gap-2 shadow-lg transition-all active:scale-95 shrink-0"
+          className="relative z-10 px-6 py-3 bg-white text-[#3a0aa8] hover:bg-purple-50 rounded-2xl font-extrabold text-sm flex items-center gap-2 shadow-lg transition-all active:scale-95 shrink-0"
         >
           <Upload className="w-4 h-4" />
           <span>Upload Asset</span>
@@ -397,7 +397,7 @@ export const AssetsView: React.FC = () => {
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                 selectedCategory === cat
-                  ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20 font-extrabold'
+                  ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20 font-extrabold'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -414,7 +414,7 @@ export const AssetsView: React.FC = () => {
             placeholder="Search assets by name or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 outline-none focus:border-[#5e2be2] focus:ring-1 focus:ring-[#5e2be2]/10 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 outline-none focus:border-[#450bc8] focus:ring-1 focus:ring-[#450bc8]/10 transition-all"
           />
         </div>
       </div>
@@ -422,7 +422,7 @@ export const AssetsView: React.FC = () => {
       {/* Asset Cards Grid */}
       {isLoading ? (
         <div className="text-center py-24 bg-white border border-slate-100 rounded-3xl space-y-3">
-          <Loader2 className="w-10 h-10 text-[#5e2be2] animate-spin mx-auto" />
+          <Loader2 className="w-10 h-10 text-[#450bc8] animate-spin mx-auto" />
           <p className="text-sm font-extrabold text-slate-800">Loading Live Assets from Database...</p>
           <p className="text-xs text-slate-400">Fetching high-resolution Cloudinary media vault records</p>
         </div>
@@ -433,7 +433,7 @@ export const AssetsView: React.FC = () => {
           <p className="text-xs text-slate-400">Try adjusting your search query or upload a new asset.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {filteredAssets.map((ast) => (
             <div
               key={ast.id}
@@ -464,7 +464,7 @@ export const AssetsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={(e) => handleCopyUrl(ast.url.startsWith('#') ? `https://assets.hexpertify.com/uploads/${ast.name}` : ast.url, ast.name, e)}
-                    className="px-3 py-1.5 bg-white text-[#5e2be2] hover:bg-purple-50 rounded-xl font-extrabold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-white text-[#450bc8] hover:bg-purple-50 rounded-xl font-extrabold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5"
                     title="Copy Direct Asset URL"
                   >
                     {copiedUrl === (ast.url.startsWith('#') ? `https://assets.hexpertify.com/uploads/${ast.name}` : ast.url) ? (
@@ -514,7 +514,7 @@ export const AssetsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={(e) => handleCopyUrl(ast.url.startsWith('#') ? `https://assets.hexpertify.com/uploads/${ast.name}` : ast.url, ast.name, e)}
-                    className="p-1 hover:bg-purple-100 text-[#5e2be2] rounded-lg transition-colors shrink-0"
+                    className="p-2 -m-1 sm:m-0 sm:p-1 hover:bg-purple-100 text-[#450bc8] rounded-lg transition-colors shrink-0"
                     title="Copy URL"
                   >
                     {copiedUrl === (ast.url.startsWith('#') ? `https://assets.hexpertify.com/uploads/${ast.name}` : ast.url) ? (
@@ -537,7 +537,7 @@ export const AssetsView: React.FC = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-purple-50 text-[#5e2be2] rounded-2xl border border-purple-100">
+                <div className="p-2.5 bg-purple-50 text-[#450bc8] rounded-2xl border border-purple-100">
                   <CloudUpload className="w-5 h-5" />
                 </div>
                 <div>
@@ -566,7 +566,7 @@ export const AssetsView: React.FC = () => {
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
                     isDragOver
-                      ? 'border-[#5e2be2] bg-purple-50/60 scale-[1.01]'
+                      ? 'border-[#450bc8] bg-purple-50/60 scale-[1.01]'
                       : selectedFile || previewUrl
                       ? 'border-emerald-300 bg-emerald-50/30'
                       : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300'
@@ -587,7 +587,7 @@ export const AssetsView: React.FC = () => {
                           <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                         </div>
                       ) : (
-                        <div className="p-3 bg-purple-100 text-[#5e2be2] rounded-2xl">
+                        <div className="p-3 bg-purple-100 text-[#450bc8] rounded-2xl">
                           {getCategoryIcon(assetCategory)}
                         </div>
                       )}
@@ -600,7 +600,7 @@ export const AssetsView: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="p-3 bg-[#5e2be2]/10 text-[#5e2be2] rounded-2xl">
+                      <div className="p-3 bg-[#450bc8]/10 text-[#450bc8] rounded-2xl">
                         <CloudUpload className="w-7 h-7" />
                       </div>
                       <div>
@@ -608,7 +608,7 @@ export const AssetsView: React.FC = () => {
                           Drag and drop your image / file here
                         </p>
                         <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                          or <span className="text-[#5e2be2] font-bold underline">browse file</span> from your device
+                          or <span className="text-[#450bc8] font-bold underline">browse file</span> from your device
                         </p>
                       </div>
                       <p className="text-[9px] text-slate-400 font-mono">Supports PNG, JPG, WEBP, MP4, MP3, PDF (Max 50MB)</p>
@@ -625,7 +625,7 @@ export const AssetsView: React.FC = () => {
                   placeholder="https://res.cloudinary.com/.../image/upload/v123/folder/file.webp"
                   value={hostedUrl}
                   onChange={(e) => setHostedUrl(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                 />
                 <p className="text-[10px] text-slate-400">Used instead of the chosen file. Without it, the file itself is stored with the asset.</p>
               </div>
@@ -638,7 +638,7 @@ export const AssetsView: React.FC = () => {
                   placeholder="e.g. Mindfulness_Guide_Banner.png"
                   value={assetName}
                   onChange={(e) => setAssetName(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                   required
                 />
               </div>
@@ -649,7 +649,7 @@ export const AssetsView: React.FC = () => {
                 <select
                   value={assetCategory}
                   onChange={(e) => setAssetCategory(e.target.value as MediaAsset['type'])}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                 >
                   <option value="Professional">Professional</option>
                   <option value="Blog">Blog</option>
@@ -677,7 +677,7 @@ export const AssetsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold shadow-md shadow-[#5e2be2]/20 transition-all active:scale-95 flex items-center gap-2"
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold shadow-md shadow-[#450bc8]/20 transition-all active:scale-95 flex items-center gap-2"
                 >
                   <Upload className="w-4 h-4" />
                   <span>Upload Asset</span>
@@ -720,7 +720,7 @@ export const AssetsView: React.FC = () => {
 
             {/* Generated Direct Asset URL */}
             <div className="space-y-1.5 bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100">
-              <label className="text-xs font-extrabold text-[#5e2be2] flex items-center gap-1.5">
+              <label className="text-xs font-extrabold text-[#450bc8] flex items-center gap-1.5">
                 <Link className="w-3.5 h-3.5" />
                 Generated Direct Asset URL
               </label>
@@ -734,7 +734,7 @@ export const AssetsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleCopyUrl(activePreviewAsset.url.startsWith('#') ? `https://assets.hexpertify.com/uploads/${activePreviewAsset.name}` : activePreviewAsset.url, activePreviewAsset.name)}
-                  className="px-4 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-[#5e2be2]/20 transition-all active:scale-95 shrink-0"
+                  className="px-4 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-[#450bc8]/20 transition-all active:scale-95 shrink-0"
                 >
                   {copiedUrl === (activePreviewAsset.url.startsWith('#') ? `https://assets.hexpertify.com/uploads/${activePreviewAsset.name}` : activePreviewAsset.url) ? (
                     <>

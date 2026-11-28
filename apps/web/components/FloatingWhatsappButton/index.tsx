@@ -10,11 +10,7 @@ const DEFAULT_WHATSAPP_MESSAGE =
 
 export default function FloatingWhatsappButton() {
   const pathname = usePathname();
-  const isConsultantProfile = /^\/services\/[^/]+\/[^/]+\/?$/.test(pathname);
-
-  if (pathname?.startsWith("/dashboard")) {
-    return null;
-  }
+  const isConsultantProfile = /^\/services\/[^/]+\/[^/]+\/?$/.test(pathname ?? "");
 
   const whatsappNumber =
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || DEFAULT_WHATSAPP_NUMBER;

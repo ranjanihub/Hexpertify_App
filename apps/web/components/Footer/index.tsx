@@ -11,8 +11,8 @@ import React from "react";
 const Footer = () => {
   return (
     <>
-      <footer className="flex flex-wrap md:flex-nowrap bg-[#a081e2] justify-between items-start md:items-center p-6 md:p-[30px]">
-        <section className="w-full md:w-[25%] flex flex-col justify-start md:justify-center items-start md:items-center order-last md:order-first mt-8 pt-8 md:mt-0 md:pt-0 border-t border-gray-400 md:border-none">
+      <footer className="flex flex-wrap lg:flex-nowrap bg-[#a081e2] justify-between items-start lg:items-center p-6 md:p-[30px]">
+        <section className="w-full lg:w-[25%] flex flex-col justify-start lg:justify-center items-start lg:items-center order-last lg:order-first mt-8 pt-8 lg:mt-0 lg:pt-0 border-t border-gray-400 lg:border-none">
           {/* <Image 
  src={hexpertifyFooter} height={200} width={250}
 unoptimized={true} 
@@ -94,7 +94,7 @@ unoptimized={true}
           </div>
         </section>
 
-        <section className="w-1/2 md:w-[19%] flex flex-col gap-4 md:gap-[25px] pr-2 md:px-[20px] mb-8 md:mb-0">
+        <section className="w-1/2 md:w-1/4 lg:w-[19%] flex flex-col gap-4 md:gap-[25px] pr-2 md:px-3 lg:px-[20px] mb-8 md:mb-0">
           <Link href="/" className="menuText no-underline font-bold">
             Home
           </Link>
@@ -118,7 +118,7 @@ unoptimized={true}
           </Link>
         </section>
 
-        <section className="w-1/2 md:w-[19%] flex flex-col gap-4 md:gap-[25px] pl-2 md:px-[20px] mb-8 md:mb-0">
+        <section className="w-1/2 md:w-1/4 lg:w-[19%] flex flex-col gap-4 md:gap-[25px] pl-2 md:px-3 lg:px-[20px] mb-8 md:mb-0">
           <Link href="/#categories" className="menuText no-underline font-bold">
             Services
           </Link>
@@ -143,7 +143,7 @@ unoptimized={true}
           </Link>
         </section>
 
-        <section className="w-1/2 md:w-[19%] flex flex-col gap-4 md:gap-[25px] pr-2 md:px-[20px]">
+        <section className="w-1/2 md:w-1/4 lg:w-[19%] flex flex-col gap-4 md:gap-[25px] pr-2 md:px-3 lg:px-[20px]">
           <Link href="/about-us" className="menuText no-underline font-bold">
             About Us
           </Link>
@@ -167,18 +167,18 @@ unoptimized={true}
           </Link>
         </section>
 
-        <section className="w-1/2 md:w-[19%] flex flex-col gap-4 md:gap-[25px] pl-2 md:px-[20px]">
+        <section className="w-1/2 md:w-1/4 lg:w-[19%] flex flex-col gap-4 md:gap-[25px] pl-2 md:px-3 lg:px-[20px]">
           <Link href="/contact-us" className="menuText no-underline font-bold">
             Contact Us
           </Link>
           <Link
-            href="tel:+918940506900"
+            href="tel:+918618209518"
             className="h1 cursorPointer no-underline text-sm md:text-base"
           >
             Call Us
           </Link>
           <Link
-            href="mailto:hexpertifyapp@gmail.com"
+            href="mailto:contact@hexpertify.com"
             className="h1 cursorPointer no-underline text-sm md:text-base"
           >
             Email Us

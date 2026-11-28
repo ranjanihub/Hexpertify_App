@@ -5,7 +5,7 @@ import { pageTransition, PageHeader } from '@/components/shared';
 import { Camera, User, Mail, Phone, Globe, CalendarHeart, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { getClientAuth, setClientAuth } from '@/lib/auth';
+import { getClientAuth, setClientAuth, getApiAuthHeaders } from '@/lib/auth';
 
 export default function ProfilePage() {
   const { data: apiProfile, isLoading } = useGetClientProfile();
@@ -23,10 +23,7 @@ export default function ProfilePage() {
   const displayName = dbProfile?.name || authUser?.name || 'Client';
   const displayEmail = dbProfile?.email || authUser?.email || '';
 
-  const cleanPhone = (val?: string | null) => {
-    const s = String(val || '').trim();
-    return s === '8940506900' ? '' : s;
-  };
+  const cleanPhone = (val?: string | null) => String(val || '').trim();
 
   const cleanGender = (val?: string | null) => {
     const g = String(val || '').trim();
@@ -80,10 +77,34 @@ export default function ProfilePage() {
     }
   }, [apiProfile]);
 
+  const [fieldErrors, setFieldErrors] = useState<{ age?: string; phone?: string }>({});
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setIsDirty(true);
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'age' || name === 'phone') setFieldErrors(prev => ({ ...prev, [name]: undefined }));
+  };
+
+  /** Checks age and phone before anything is sent; returns the problems in plain words */
+  const validate = (data: typeof formData): { age?: string; phone?: string } => {
+    const errors: { age?: string; phone?: string } = {};
+    const age = data.age.trim();
+    if (age) {
+      const n = Number(age);
+      if (!/^\d+$/.test(age) || n < 13 || n > 120) {
+        errors.age = 'Please enter your age as a whole number between 13 and 120.';
+      }
+    }
+    const phone = data.phone.trim();
+    if (phone) {
+      const digits = phone.replace(/\D/g, '');
+      // Optional leading +, then digits with spaces or dashes between them
+      if (!/^\+?[\d\s-]+$/.test(phone) || digits.length < 10 || digits.length > 15) {
+        errors.phone = 'Please enter a phone number of 10 to 15 digits. You may start with + and use spaces or dashes, or leave it empty.';
+      }
+    }
+    return errors;
   };
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,7 +163,8 @@ export default function ProfilePage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${authUser?.email || formData.email}`
+          // The signed sign-in token: the server rejects a bare email as "not signed in"
+          ...getApiAuthHeaders()
         },
         body: JSON.stringify({
           id: targetId,
@@ -180,8 +202,18 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors = validate(formData);
+    setFieldErrors(errors);
+    if (errors.age || errors.phone) {
+      toast({
+        title: "Please check your details",
+        description: [errors.age, errors.phone].filter(Boolean).join(' '),
+        variant: "destructive"
+      });
+      return;
+    }
     setIsSaving(true);
-    
+
     const targetId = dbProfile?.id || authUser?.id || '';
     const cleanEmail = formData.email.trim().toLowerCase();
     const cleanPhoneValue = formData.phone.trim();
@@ -204,7 +236,8 @@ export default function ProfilePage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${authUser?.email || formData.email}`
+          // The signed sign-in token: the server rejects a bare email as "not signed in"
+          ...getApiAuthHeaders()
         },
         body: JSON.stringify(payload),
       });
@@ -355,28 +388,32 @@ export default function ProfilePage() {
               <label className="text-sm font-bold flex items-center gap-2 text-foreground">
                 <Phone className="w-4 h-4 text-primary" /> Phone Number
               </label>
-              <input 
-                type="tel" 
+              <input
+                type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="Enter phone number"
+                placeholder="e.g. +91 98765 43210"
+                aria-invalid={Boolean(fieldErrors.phone)}
                 className="hex-input w-full"
               />
+              {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-bold flex items-center gap-2 text-foreground">
                 <CalendarHeart className="w-4 h-4 text-primary" /> Age
               </label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 name="age"
                 value={formData.age}
                 onChange={handleChange}
                 placeholder="Enter age"
+                aria-invalid={Boolean(fieldErrors.age)}
                 className="hex-input w-full"
               />
+              {fieldErrors.age && <p className="text-xs text-destructive">{fieldErrors.age}</p>}
             </div>
 
             <div className="space-y-2">

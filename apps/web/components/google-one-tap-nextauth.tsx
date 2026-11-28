@@ -82,6 +82,13 @@ export function GoogleOneTapNextAuth() {
         }
         return;
       }
+      if (firstArg.includes("[GSI_LOGGER]")) {
+        // Any other Google Identity Services notice (e.g. "Check credential status returns invalid response":
+        // the visitor is not signed in to Google, third-party cookies are blocked, or this address is not an
+        // Authorized JavaScript origin). One Tap just doesn't show; the other sign-in options still work.
+        console.warn(...args);
+        return;
+      }
       originalConsoleError.apply(console, args);
     };
 
@@ -219,7 +226,9 @@ export function GoogleOneTapNextAuth() {
     <Script
       src="https://accounts.google.com/gsi/client"
       onLoad={() => setIsScriptLoaded(true)}
-      strategy="afterInteractive"
+      // After the page has loaded (afterInteractive preloaded it in <head>, competing with the page's own
+      // files); the prompt only ever opened after a 500 ms delay anyway
+      strategy="lazyOnload"
     />
   );
 }

@@ -263,14 +263,14 @@ export const AssessmentsView: React.FC = () => {
     <div className="space-y-8 pb-16 animate-fade-in text-slate-800">
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-[#4f28d9] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in border border-purple-300">
+        <div className="fixed top-5 right-5 z-50 bg-[#3a0aa8] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in border border-purple-300">
           <Sparkles className="w-5 h-5 text-amber-300" />
           <span className="font-bold text-xs tracking-wide">{toastMessage}</span>
         </div>
       )}
 
       {/* Hero Header */}
-      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 space-y-1 sm:space-y-1.5">
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Assessment Inventory</h1>
@@ -279,12 +279,12 @@ export const AssessmentsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap md:flex-col lg:flex-row items-center gap-3 shrink-0">
+        <div className="relative z-10 flex flex-wrap items-center gap-3 md:shrink-0">
           <button
             onClick={() => setActiveTab('builder')}
-            className="w-full sm:w-auto justify-center px-4 sm:px-5 py-2.5 sm:py-3 bg-white text-[#4f28d9] rounded-xl sm:rounded-2xl font-extrabold text-xs flex items-center gap-2 shadow-lg hover:bg-purple-50 transition-all active:scale-95"
+            className="w-full sm:w-auto justify-center px-4 sm:px-5 py-2.5 sm:py-3 bg-white text-[#3a0aa8] rounded-xl sm:rounded-2xl font-extrabold text-xs flex items-center gap-2 shadow-lg hover:bg-purple-50 transition-all active:scale-95"
           >
-            <Plus className="w-4 h-4 text-[#4f28d9]" />
+            <Plus className="w-4 h-4 text-[#3a0aa8]" />
             Create Custom Assessment
           </button>
         </div>
@@ -302,7 +302,7 @@ export const AssessmentsView: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by acronym, condition, title..."
-              className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium text-slate-800 outline-none focus:border-[#5e2be2]"
+              className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium text-slate-800 outline-none focus:border-[#450bc8]"
             />
           </div>
 
@@ -312,7 +312,7 @@ export const AssessmentsView: React.FC = () => {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full pl-10 pr-8 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs font-extrabold text-slate-800 outline-none focus:border-[#5e2be2] focus:bg-white appearance-none cursor-pointer transition-all"
+              className="w-full pl-10 pr-8 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs font-extrabold text-slate-800 outline-none focus:border-[#450bc8] focus:bg-white appearance-none cursor-pointer transition-all"
             >
               <option value="All">All Categories</option>
               {['Stress', 'Depression', 'Anxiety', 'PTSD & Trauma', 'OCD', 'ADHD', 'Well-Being'].map((cat) => (
@@ -334,7 +334,7 @@ export const AssessmentsView: React.FC = () => {
               onClick={() => setActiveTab('library')}
               className={`px-5 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition-all ${
                 activeTab === 'library'
-                  ? 'bg-[#5e2be2] text-white shadow-md'
+                  ? 'bg-[#450bc8] text-white shadow-md'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -346,7 +346,7 @@ export const AssessmentsView: React.FC = () => {
               onClick={() => setActiveTab('builder')}
               className={`px-5 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition-all ${
                 activeTab === 'builder'
-                  ? 'bg-[#5e2be2] text-white shadow-md'
+                  ? 'bg-[#450bc8] text-white shadow-md'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -363,7 +363,7 @@ export const AssessmentsView: React.FC = () => {
 
           {/* Grid View */}
           {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {filteredAssessments.map((ass) => (
                 <div
                   key={ass.id}
@@ -373,7 +373,7 @@ export const AssessmentsView: React.FC = () => {
                     {/* Header Acronym & Badges */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="px-3 py-1 bg-[#5e2be2]/10 text-[#5e2be2] font-extrabold font-mono text-xs rounded-xl border border-[#5e2be2]/20 flex-shrink-0">
+                        <span className="px-3 py-1 bg-[#450bc8]/10 text-[#450bc8] font-extrabold font-mono text-xs rounded-xl border border-[#450bc8]/20 flex-shrink-0">
                           {ass.acronym}
                         </span>
                         {ass.category && (
@@ -431,7 +431,7 @@ export const AssessmentsView: React.FC = () => {
 
                       <button
                         onClick={() => setActiveProtocolModal(ass)}
-                        className="py-2.5 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-all"
+                        className="py-2.5 bg-purple-50 hover:bg-purple-100 text-[#450bc8] font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-all"
                         title="View Protocol Details & Cutoff Scale"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -461,7 +461,7 @@ export const AssessmentsView: React.FC = () => {
                     <tr key={ass.id} className="hover:bg-slate-50/80 transition-all">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <span className="px-2.5 py-1 bg-purple-100 text-[#5e2be2] font-extrabold font-mono text-xs rounded-lg">
+                          <span className="px-2.5 py-1 bg-purple-100 text-[#450bc8] font-extrabold font-mono text-xs rounded-lg">
                             {ass.acronym}
                           </span>
                           <div>
@@ -494,7 +494,7 @@ export const AssessmentsView: React.FC = () => {
                           </button>
                           <button
                             onClick={() => setActiveProtocolModal(ass)}
-                            className="p-2 bg-purple-50 text-[#5e2be2] rounded-lg hover:bg-purple-100 transition-all"
+                            className="p-2 bg-purple-50 text-[#450bc8] rounded-lg hover:bg-purple-100 transition-all"
                             title="Protocol Info"
                           >
                             <Eye className="w-4 h-4" />
@@ -512,16 +512,16 @@ export const AssessmentsView: React.FC = () => {
 
       {/* TAB 2: ASSESSMENT BUILDER */}
       {activeTab === 'builder' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 sm:gap-8">
           {/* Builder Form Controls */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="xl:col-span-7 space-y-6 min-w-0">
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div>
                   <h3 className="font-extrabold text-lg text-slate-900">Custom Screener Builder</h3>
                   <p className="text-xs text-slate-500">Configure questions, response choices, and severity cutoff ranges.</p>
                 </div>
-                <span className="px-3 py-1 bg-purple-100 text-[#5e2be2] font-bold text-xs rounded-full">
+                <span className="px-3 py-1 bg-purple-100 text-[#450bc8] font-bold text-xs rounded-full">
                   Draft Mode
                 </span>
               </div>
@@ -536,7 +536,7 @@ export const AssessmentsView: React.FC = () => {
                       value={builderData.title}
                       onChange={(e) => setBuilderData({ ...builderData, title: e.target.value })}
                       placeholder="e.g. Work Resilience & Stress Index"
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#5e2be2] font-semibold text-slate-800"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#450bc8] font-semibold text-slate-800"
                     />
                   </div>
                   <div>
@@ -546,7 +546,7 @@ export const AssessmentsView: React.FC = () => {
                       value={builderData.acronym}
                       onChange={(e) => setBuilderData({ ...builderData, acronym: e.target.value })}
                       placeholder="e.g. WRSI-10"
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#5e2be2] font-bold text-slate-800"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#450bc8] font-bold text-slate-800"
                     />
                   </div>
                 </div>
@@ -597,12 +597,12 @@ export const AssessmentsView: React.FC = () => {
               <div className="pt-4 border-t border-slate-100 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-[#5e2be2]" />
+                    <HelpCircle className="w-4 h-4 text-[#450bc8]" />
                     Question Items ({builderData.questions?.length || 0})
                   </h4>
                   <button
                     onClick={handleAddQuestionToBuilder}
-                    className="px-3.5 py-1.5 bg-purple-50 text-[#5e2be2] font-extrabold text-xs rounded-xl hover:bg-purple-100 flex items-center gap-1"
+                    className="px-3.5 py-1.5 bg-purple-50 text-[#450bc8] font-extrabold text-xs rounded-xl hover:bg-purple-100 flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add Question
@@ -613,7 +613,7 @@ export const AssessmentsView: React.FC = () => {
                   {builderData.questions?.map((q, idx) => (
                     <div key={q.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                       <div className="flex items-start justify-between gap-3">
-                        <span className="w-6 h-6 rounded-full bg-purple-100 text-[#5e2be2] font-bold text-xs flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 rounded-full bg-purple-100 text-[#450bc8] font-bold text-xs flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
                         <input
@@ -667,7 +667,7 @@ export const AssessmentsView: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSaveCustomAssessment}
-                  className="px-6 py-2.5 bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl shadow-lg hover:bg-[#4f28d9] flex items-center gap-2"
+                  className="px-6 py-2.5 bg-[#450bc8] text-white font-extrabold text-xs rounded-xl shadow-lg hover:bg-[#3a0aa8] flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
                   Publish Assessment Tool
@@ -677,7 +677,7 @@ export const AssessmentsView: React.FC = () => {
           </div>
 
           {/* Interactive Mobile/Tablet Live Preview Side Column */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="xl:col-span-5 space-y-6 min-w-0">
             <div className="bg-slate-900 text-white rounded-[32px] p-6 shadow-2xl space-y-5 border border-slate-800 sticky top-6">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
@@ -752,7 +752,7 @@ export const AssessmentsView: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] my-auto">
             {/* Modal Header */}
-            <div className="p-6 bg-gradient-to-r from-[#4f28d9] to-[#5e2be2] text-white flex items-center justify-between">
+            <div className="p-6 bg-gradient-to-r from-[#3a0aa8] to-[#450bc8] text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white font-mono font-extrabold text-xs rounded-lg border border-white/20">
                   {activeRunnerModal.acronym}
@@ -783,7 +783,7 @@ export const AssessmentsView: React.FC = () => {
                     </div>
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#5e2be2] transition-all duration-300"
+                        className="h-full bg-[#450bc8] transition-all duration-300"
                         style={{
                           width: `${((runnerCurrentStep + 1) / (activeRunnerModal.questions?.length || 1)) * 100}%`
                         }}
@@ -823,14 +823,14 @@ export const AssessmentsView: React.FC = () => {
                               }
                               className={`w-full p-4 rounded-2xl border text-left font-bold text-xs flex items-center justify-between transition-all ${
                                 isSelected
-                                  ? 'bg-purple-50 border-[#5e2be2] text-[#5e2be2] shadow-sm'
+                                  ? 'bg-purple-50 border-[#450bc8] text-[#450bc8] shadow-sm'
                                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                               }`}
                             >
                               <span>{opt.label}</span>
                               <div
                                 className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                                  isSelected ? 'border-[#5e2be2] bg-[#5e2be2] text-white' : 'border-slate-300'
+                                  isSelected ? 'border-[#450bc8] bg-[#450bc8] text-white' : 'border-slate-300'
                                 }`}
                               >
                                 {isSelected && <Check className="w-3 h-3" />}
@@ -873,7 +873,7 @@ export const AssessmentsView: React.FC = () => {
 
                   {/* Clinical Recommendation */}
                   <div className="bg-purple-50 p-5 rounded-2xl border border-purple-100 space-y-2">
-                    <h5 className="font-extrabold text-[#5e2be2] text-xs uppercase tracking-wider">
+                    <h5 className="font-extrabold text-[#450bc8] text-xs uppercase tracking-wider">
                       Recommended Protocol:
                     </h5>
                     <p className="text-xs text-slate-700 leading-relaxed font-medium">
@@ -903,7 +903,7 @@ export const AssessmentsView: React.FC = () => {
                         runnerAnswers[activeRunnerModal.questions?.[runnerCurrentStep]?.id || ''] === undefined
                       }
                       onClick={() => setRunnerCurrentStep((prev) => prev + 1)}
-                      className="px-6 py-2 bg-[#5e2be2] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl shadow-md hover:bg-[#4f28d9] flex items-center gap-1.5 transition-all"
+                      className="px-6 py-2 bg-[#450bc8] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#450bc8] text-white font-extrabold text-xs rounded-xl shadow-md hover:bg-[#3a0aa8] flex items-center gap-1.5 transition-all"
                     >
                       Next Item <ChevronRight className="w-4 h-4" />
                     </button>
@@ -933,7 +933,7 @@ export const AssessmentsView: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setActiveRunnerModal(null)}
-                    className="px-6 py-2 bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl"
+                    className="px-6 py-2 bg-[#450bc8] text-white font-extrabold text-xs rounded-xl"
                   >
                     Close Test Runner
                   </button>
@@ -989,13 +989,13 @@ export const AssessmentsView: React.FC = () => {
               {/* Official PDF Marking & Scoring System Breakdown */}
               <div className="p-4 bg-gradient-to-br from-purple-50 via-slate-50 to-indigo-50/50 rounded-2xl border border-purple-200/70 space-y-3">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-[#5e2be2]" />
+                  <BookOpen className="w-4 h-4 text-[#450bc8]" />
                   <h4 className="font-extrabold text-sm text-slate-900">Official PDF Marking & Scoring System</h4>
                 </div>
 
                 {activeProtocolModal.acronym === 'PSS-10' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ Reverse Scoring Formula:</p>
+                    <p className="font-bold text-[#450bc8]">★ Reverse Scoring Formula:</p>
                     <p>Items 4, 5, 7, and 8 are reverse scored: <code className="bg-purple-100 text-purple-900 px-2 py-0.5 rounded font-mono font-bold">0 → 4, 1 → 3, 2 → 2, 3 → 1, 4 → 0</code>.</p>
                     <p className="font-medium text-slate-600">Total Score Range: 0 to 40. Scores 27+ indicate high perceived stress level.</p>
                   </div>
@@ -1003,7 +1003,7 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'WHO-5' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ Percentage Score Formula:</p>
+                    <p className="font-bold text-[#450bc8]">★ Percentage Score Formula:</p>
                     <p>Raw Score (0–25) = sum of 5 items (0 to 5 scale). <code className="bg-purple-100 text-purple-900 px-2 py-0.5 rounded font-mono font-bold">Percentage Score = Raw Score × 4</code> (0% to 100%).</p>
                     <p className="font-medium text-slate-600">Percentage &lt; 50% (Raw &lt; 13) indicates poor mental well-being & depression screen indication.</p>
                   </div>
@@ -1011,7 +1011,7 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'WSAS' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ 9-Point Impairment Scale (0 to 8):</p>
+                    <p className="font-bold text-[#450bc8]">★ 9-Point Impairment Scale (0 to 8):</p>
                     <p>5 life domains (Work, Home, Social Leisure, Private Leisure, Relationships). Rated 0 (Not at all) to 8 (Very severely impaired).</p>
                     <p className="font-medium text-slate-600">Total Score Range: 0 to 40. Scores &gt; 20 suggest moderately severe or worse psychopathology.</p>
                   </div>
@@ -1019,7 +1019,7 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'PHQ-9' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ 4-Point Frequency Scale (0 to 3):</p>
+                    <p className="font-bold text-[#450bc8]">★ 4-Point Frequency Scale (0 to 3):</p>
                     <p>Rated 0 (Not at all) to 3 (Nearly every day). Item 9 is marked as a critical Safety Risk Trigger for suicidal ideation.</p>
                     <p className="font-medium text-slate-600">Total Score Range: 0 to 27 across 5 severity tiers (Minimal, Mild, Moderate, Moderately Severe, Severe).</p>
                   </div>
@@ -1027,7 +1027,7 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'GAD-7' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ 4-Point Frequency Scale (0 to 3):</p>
+                    <p className="font-bold text-[#450bc8]">★ 4-Point Frequency Scale (0 to 3):</p>
                     <p>7 items rated 0 (Not at all) to 3 (Nearly every day) evaluating core anxiety symptoms over past 14 days.</p>
                     <p className="font-medium text-slate-600">Total Score Range: 0 to 21. Cutoffs: 5 (Mild), 10 (Moderate), 15 (Severe Anxiety).</p>
                   </div>
@@ -1035,7 +1035,7 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'PCL-5' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ DSM-5 PTSD Endorsement Rule:</p>
+                    <p className="font-bold text-[#450bc8]">★ DSM-5 PTSD Endorsement Rule:</p>
                     <p>20 items rated 0–4. Requires endorsement (rated ≥ 2 'Moderately'): 1 Criterion B (Q1-5), 1 Criterion C (Q6-7), 2 Criterion D (Q8-14), 2 Criterion E (Q15-20).</p>
                     <p className="font-medium text-slate-600">Total Score Range: 0 to 80. Recommended cut-point score of 33 for probable PTSD.</p>
                   </div>
@@ -1043,7 +1043,7 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'OCI-R' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ 6 OCD Subscales:</p>
+                    <p className="font-bold text-[#450bc8]">★ 6 OCD Subscales:</p>
                     <p>18 items rated 0–4 (Washing, Obsessing, Hoarding, Ordering, Checking, Neutralizing subscales with 3 items each).</p>
                     <p className="font-medium text-slate-600">Total Score Range: 0 to 72. Recommended cutoff score is 21 (scores ≥ 21 indicate likely OCD).</p>
                   </div>
@@ -1051,7 +1051,7 @@ export const AssessmentsView: React.FC = () => {
 
                 {activeProtocolModal.acronym === 'ASRS v1.1' && (
                   <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-[#5e2be2]">★ Part A Screening Threshold Rule:</p>
+                    <p className="font-bold text-[#450bc8]">★ Part A Screening Threshold Rule:</p>
                     <p>18 items rated 0 (Never) to 4 (Very Often). Part A consists of Q1–Q6.</p>
                     <p className="font-medium text-slate-600">Endorsing 4 or more shaded items in Part A indicates high likelihood of Adult ADHD requiring full evaluation.</p>
                   </div>
@@ -1175,7 +1175,7 @@ export const AssessmentsView: React.FC = () => {
               </button>
               <button
                 onClick={() => setSelectedSubmissionModal(null)}
-                className="px-5 py-2 bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl"
+                className="px-5 py-2 bg-[#450bc8] text-white font-extrabold text-xs rounded-xl"
               >
                 Close Report
               </button>

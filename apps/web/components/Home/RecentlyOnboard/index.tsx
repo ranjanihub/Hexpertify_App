@@ -36,6 +36,7 @@ const RecentlyOnboarded = ({ data }: props) => {
         type="card"
         autoSlide={true}
         DotSlider={false}
+        SlideButton
         // CLEANUP: Removed visual styles (bg, border, padding) from here.
         // We only leave basic layout height here. The spacing (padding-left) is handled by the CarouselCommon internal structure.
         cardClassName="h-full"
@@ -49,7 +50,7 @@ const RecentlyOnboarded = ({ data }: props) => {
             type="button"
             onClick={() => route.push(item?.link)}
             aria-label={`View ${item?.name} consultant profile`}
-            className={`flex flex-col justify-between h-full rounded-[12px] p-5 md:pl-[16px] md:pr-[30px] md:py-[30px] w-full text-left ${getGradientClass(index)}`}
+            className={`flex flex-col justify-between h-full rounded-[12px] px-12 py-5 sm:p-5 md:pl-[16px] md:pr-[30px] md:py-[30px] w-full text-left ${getGradientClass(index)}`}
           >
             {/* Top Section: Profile Pic & Name */}
             <div className="text-white flex items-center gap-3 md:gap-[20px]">

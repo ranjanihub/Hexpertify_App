@@ -31,7 +31,7 @@ const FeatureConsultant = ({ data, serviceNo }: props) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-[20px]">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-[20px]">
       {data?.map((item: consultants, index: number) => (
         <Link
           key={index}
@@ -61,11 +61,14 @@ const FeatureConsultant = ({ data, serviceNo }: props) => {
             <div className="flex justify-between items-start">
               <div className="block"></div>
 
-              <div className="flex justify-end">
-                <p className="py-[5px] px-[10px] bg-[#FFD400] text-white rounded-[30px] text-xs font-bold">
-                  CERTIFIED
-                </p>
-              </div>
+              {/* Only consultants marked certified in the admin panel */}
+              {item?.certified && (
+                <div className="flex justify-end">
+                  <p className="py-[5px] px-[10px] bg-[#FFD400] text-white rounded-[30px] text-xs font-bold">
+                    CERTIFIED
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-1 mt-1 sm:mt-0">
@@ -123,7 +126,7 @@ const FeatureConsultant = ({ data, serviceNo }: props) => {
               </div>
             </div>
 
-            <div className="flex flex-row justify-between items-center mt-2 sm:mt-[10px] gap-2">
+            <div className="flex flex-row flex-wrap justify-between items-center mt-2 sm:mt-[10px] gap-2">
               {item?.Price ? (
                 <p className="text-black text-[20px] sm:text-[26px] font-bold">
                   ₹{Number(item.Price).toLocaleString("en-IN")}

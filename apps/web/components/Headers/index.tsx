@@ -40,8 +40,8 @@ const Header = () => {
       </Link>
 
       {/* --- DESKTOP MENU (Hidden on Mobile) --- */}
-      <section className="hidden md:flex justify-center items-center gap-[30px]">
-        <ul className="flex menuText gap-[40px] cursor-pointer items-center">
+      <section className="hidden lg:flex justify-center items-center gap-[20px] xl:gap-[30px]">
+        <ul className="flex menuText gap-[22px] xl:gap-[40px] cursor-pointer items-center whitespace-nowrap">
           <li>
             <Link href="/">Home</Link>
           </li>
@@ -104,14 +104,14 @@ const Header = () => {
       </section>
 
       {/* --- MOBILE HAMBURGER BUTTON --- */}
-      <div className="md:hidden flex items-center z-50">
+      <div className="lg:hidden flex items-center z-50">
         <button
           type="button"
           onClick={() => setIsMobileMenuOpen(true)}
           aria-label="Open navigation menu"
           aria-controls="mobile-navigation-menu"
           aria-expanded={isMobileMenuOpen}
-          className="text-gray-700 focus:outline-none"
+          className="-mr-2 p-2 text-gray-700 focus:outline-none"
         >
           {/* DENSE VIEW CHANGE: Slightly smaller icon size (w-6 h-6) */}
           <svg
@@ -134,7 +134,7 @@ const Header = () => {
       {/* --- MOBILE DRAWER CONTAINER --- */}
       {/* Overlay Backdrop - Fades in/out */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+        className={`lg:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
           isMobileMenuOpen
             ? "opacity-100 visible"
             : "opacity-0 invisible pointer-events-none"
@@ -145,7 +145,7 @@ const Header = () => {
       {/* The Drawer - Slides in from right */}
       <div
         id="mobile-navigation-menu"
-        className={`fixed top-0 right-0 h-full w-[75%] sm:w-[60%] bg-white z-50 shadow-xl transform transition-transform duration-300 ease-in-out ${
+        className={`lg:hidden fixed top-0 right-0 h-full w-[80%] max-w-[360px] bg-white z-50 shadow-xl transform transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -156,7 +156,7 @@ const Header = () => {
               type="button"
               onClick={closeMenu}
               aria-label="Close navigation menu"
-              className="text-gray-700 hover:text-red-500 transition-colors"
+              className="-m-2 p-2 text-gray-700 hover:text-red-500 transition-colors"
             >
               <svg
                 className="w-8 h-8"

@@ -15,6 +15,61 @@ import { bookingInstant, isDateLabel, istLabels, resolveScheduledAt, ScheduleErr
 const UNSETTLED_STATUSES = new Set(['PENDING_PAYMENT', 'EXPIRED']);
 import { cacheService } from '../services/cache.service';
 import { numberMissing } from '../services/sequence';
+import { bookingAccess, refuseBookingChange } from '../services/booking-access';
+import { slotUnavailableReason } from '../services/booking-slots';
+import { resolveClientViewer } from '../services/client-access';
+import { finishAfterResponse } from '../services/after-response';
+import { portalUrl } from '../services/email-layout';
+import { UPCOMING_STATUSES } from '../services/booking-status';
+
+/** Hours before the start after which a client can no longer cancel or reschedule (Refund Policy) */
+const CLIENT_CHANGE_CUTOFF_HOURS = 3;
+const FINISHED_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'NO_SHOW_CLIENT', 'NO_SHOW_CONSULTANT', 'EXPIRED']);
+
+/**
+ * What a client may change on their own booking; returns the refusal, or null when allowed.
+ * `fieldsChecked`: limit the fields too (a client's own request; the website's server sends trusted fields).
+ * Allowed: cancel or reschedule an upcoming session more than 3 hours before it starts; hide a finished or
+ * cancelled session from their own list; give up a slot held for a payment they did not complete.
+ */
+function clientBookingChangeError(existing: any, updates: any, fieldsChecked: boolean): { message: string; status: number } | null {
+  const allowed = ['status', 'updatedAt', 'cancellationReason', 'cancelReason', 'scheduledAt', 'date', 'time', 'hiddenByClient'];
+  const extra = Object.keys(updates).filter((k) => !allowed.includes(k));
+  if (fieldsChecked && extra.length) {
+    return { message: 'You can only cancel, reschedule or remove your own sessions.', status: 403 };
+  }
+  const current = bookingStatusOf(existing);
+  const wantsMove = updates.scheduledAt !== undefined || updates.date !== undefined || updates.time !== undefined;
+  const status = updates.status;
+
+  // Giving up a payment hold (the payment window was closed): only that, only while it is still unpaid
+  if (status === 'EXPIRED') {
+    return current === 'PENDING_PAYMENT' && !wantsMove ? null : { message: 'Only an unpaid booking can be released.', status: 409 };
+  }
+  if (updates.hiddenByClient !== undefined) {
+    if (updates.hiddenByClient !== true || status !== undefined || wantsMove) {
+      return { message: 'Removing a session from your list cannot be combined with other changes.', status: 400 };
+    }
+    return FINISHED_STATUSES.has(current) ? null : { message: 'Only past or cancelled sessions can be removed from your list. Cancel an upcoming session instead.', status: 409 };
+  }
+  if (status !== undefined && status !== 'CANCELLED' && !(status === 'RESCHEDULED' && wantsMove)) {
+    return { message: 'You can only cancel or reschedule your session.', status: 403 };
+  }
+  if (status === 'CANCELLED' || wantsMove) {
+    if (!UPCOMING_STATUSES.has(current)) {
+      return { message: 'This session can no longer be changed.', status: 409 };
+    }
+    const start = bookingInstant(existing);
+    if (start && start.getTime() - Date.now() < CLIENT_CHANGE_CUTOFF_HOURS * 3600 * 1000) {
+      return {
+        message: `Sessions can be cancelled or rescheduled up to ${CLIENT_CHANGE_CUTOFF_HOURS} hours before they start. Please contact us for help with this session.`,
+        status: 409
+      };
+    }
+    if (wantsMove) updates.status = 'RESCHEDULED';
+  }
+  return null;
+}
 
 /** The booking's therapist email: stored on the booking, else looked up from the consultant record */
 async function consultantEmailFor(booking: any): Promise<string> {
@@ -195,13 +250,18 @@ export class BookingsController {
   static async create(req: Request, res: Response): Promise<void> {
     try {
       const body = req.body || {};
+      const viewer = await resolveClientViewer(req);
       // Only administrators may record a booking as paid; customer payments go through /api/payments.
       // A repeated POST with the same booking ID (double submit, client retry) must not create a second booking or resend emails.
       const { booking, duplicate } = await createBooking(body, {
         canSetPayment: isAdminUser(req.user),
         consultantEmailHint: body.consultantEmail,
-        // Admins and the website server may still book a consultant who is not open for booking
-        requireBookable: !isAdminUser(req.user) && !req.isInternal
+        // Admins and the website server may still book a consultant who is not open for booking;
+        // a therapist may add sessions to their own calendar while public booking is switched off
+        requireBookable: !isAdminUser(req.user) && !req.isInternal,
+        actorIds: viewer.kind === 'therapist' ? viewer.ids : undefined,
+        // Everyone else: no sessions in the past, no double-booking the same therapist
+        requireFutureFreeTime: !isAdminUser(req.user) && !req.isInternal
       });
       if (duplicate) {
         res.status(200).json({ success: true, booking, duplicate: true, message: 'Booking already exists.' });
@@ -282,7 +342,17 @@ export class BookingsController {
       const query = { $or: orConditions };
 
       const existing = await db.collection('Booking').findOne(query) || await db.collection('bookings').findOne(query);
+      const access = await bookingAccess(req, existing || {});
+      if (access === 'anonymous') return reject('Please sign in to change a booking.', 401);
       if (!existing) return reject('Booking not found', 404);
+      if (refuseBookingChange(res, access)) return;
+      // A client (in the panel, or the website acting for one) may only cancel, reschedule, hide a finished
+      // session from their own list, or give up an unpaid hold; changes follow the refund policy (3 hours)
+      const actingClient = access === 'client' || (access === 'full' && actorHint === 'client');
+      if (actingClient) {
+        const clientError = clientBookingChangeError(existing, updates, access === 'client');
+        if (clientError) return reject(clientError.message, clientError.status);
+      }
 
       // A reassigned booking stores the real Consultant _id, never a User id or a placeholder
       if (updates.consultantId !== undefined || updates.therapistId !== undefined) {
@@ -305,6 +375,22 @@ export class BookingsController {
       }
       const oldInstant = bookingInstant(existing);
       const moved = !!newInstant && (!oldInstant || oldInstant.getTime() !== newInstant.getTime());
+      // A new time chosen by the client or the therapist must be a slot the therapist offers and nobody else holds
+      // (admins may still move a session anywhere)
+      if ((actingClient || access === 'therapist') && moved && newInstant) {
+        const consultant = await resolveConsultant({ id: existing.consultantId || existing.therapistId, email: existing.consultantEmail });
+        if (!consultant) return reject('This session has no therapist to reschedule with. Please contact us.', 409);
+        const taken = await slotUnavailableReason(consultant, newInstant, Number(existing.durationMinutes) || 50, String(existing.id || existing._id));
+        if (taken) return reject(taken, 409);
+      }
+      // A session can only be marked held (completed) or missed (no-show) once it has started; admins may correct anything
+      if (!isAdminUser(req.user) && !req.isInternal && updates.status !== undefined &&
+          /^(COMPLETED|NO_SHOW)/.test(String(updates.status)) && String(updates.status) !== bookingStatusOf(existing)) {
+        const startsAt = newInstant || oldInstant;
+        if (startsAt && startsAt.getTime() > Date.now()) {
+          return reject('This session hasn\'t started yet. You can mark it completed or as a no-show once it has started.', 409);
+        }
+      }
       if (newInstant) {
         updates.scheduledAt = newInstant;
         // Keep the India-time labels in step with a new instant
@@ -466,9 +552,34 @@ export class BookingsController {
         }
       }
 
-      await Promise.allSettled(pending);
+      // 5. A session report's follow-up message reaches the client (in-app and email), once, on first submission
+      const report = updates.sessionReport;
+      const followUp = String(report?.followUpMessage || '').trim();
+      if (contact && followUp && !existing.sessionReportSubmittedAt && (access === 'therapist' || access === 'full')) {
+        const when: Record<string, string> = { '3_days': 'in 3 days', '1_week': 'in 1 week', '2_weeks': 'in 2 weeks', '1_month': 'in 1 month' };
+        const next = when[String(report?.recommendedFollowUp || '')] || String(report?.customFollowUpText || '').trim();
+        const message = next ? `${followUp}\n\nSuggested next session: ${next}.` : followUp;
+        const clientId = existing.clientId || existing.userId;
+        pending.push(createNotifications([
+          { recipientRole: 'CLIENT', recipientId: clientId, recipientEmail: contact.clientEmail, type: 'SESSION_FOLLOW_UP', bookingId: contact.bookingId,
+            title: `A note from ${contact.consultantName} after your session`, message: message.length > 200 ? `${message.slice(0, 200)}...` : message }
+        ]));
+        if (contact.clientEmail) {
+          pending.push(MailService.sendNotificationEmail({
+            to: contact.clientEmail, toName: contact.clientName, audience: 'CLIENT',
+            title: `A note from ${contact.consultantName} after your session`, message,
+            url: portalUrl('/client/sessions'), ctaLabel: 'Open your sessions', ref: `follow-up-${contact.bookingId}`
+          }).catch(() => {}));
+        }
+      }
+
+      // Emails and notifications finish after the response (no waiting on mail servers)
+      await finishAfterResponse(Promise.allSettled(pending));
+      // The saved booking, so the panels show exactly what the server stored
+      const saved = await db.collection('Booking').findOne(query).catch(() => null) || await db.collection('bookings').findOne(query).catch(() => null);
       res.json({
         success: true,
+        booking: saved ? { ...saved, id: saved.id || String(saved._id) } : undefined,
         message: 'Booking updated successfully in MongoDB Atlas and client notified.'
       });
     } catch (error: any) {
@@ -497,6 +608,23 @@ export class BookingsController {
 
       const existingMain = await db.collection('Booking').findOne(query);
       const existing = existingMain || await db.collection('bookings').findOne(query);
+      // Only an admin, the booking's therapist or the client who booked it may delete it
+      const access = await bookingAccess(req, existing || {});
+      if (access === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to change a booking.' });
+        return;
+      }
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Booking not found' });
+        return;
+      }
+      if (refuseBookingChange(res, access)) return;
+      // A booking is part of the therapist's and the platform's records: a client cancels it or removes it from
+      // their own list (PUT hiddenByClient), but never deletes it
+      if (access === 'client') {
+        res.status(403).json({ success: false, error: 'Sessions cannot be deleted. Cancel it, or remove a past session from your list.' });
+        return;
+      }
       const [deleted, deletedLegacy] = await Promise.all([
         db.collection('Booking').deleteMany(query),
         db.collection('bookings').deleteMany(query),
@@ -550,7 +678,8 @@ export class BookingsController {
         notifyCancellation({ ...existing, id: bookingId, clientId: existing.clientId || existing.userId },
           { clientEmail, clientName, consultantName, serviceTitle, formattedDate, formattedTime }, actor === 'therapist', pending);
 
-        await Promise.allSettled(pending);
+        // Emails and notifications finish after the response (no waiting on mail servers)
+        await finishAfterResponse(Promise.allSettled(pending));
       }
 
       res.json({

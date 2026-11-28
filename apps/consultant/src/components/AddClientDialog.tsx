@@ -207,7 +207,7 @@ export default function AddClientDialog({ open, onOpenChange }: AddClientDialogP
         </div>
 
         {/* Step content */}
-        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-5 flex-1 overflow-y-auto max-h-[60vh]">
+        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-5 flex-1 min-h-0 overflow-y-auto max-h-[60vh]">
           {step === 1 && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">

@@ -188,6 +188,21 @@ export function planDays(month: string, weeks: PlanWeek[]): Record<string, PlanD
   return days;
 }
 
+/**
+ * The first two ranges of a day that overlap, or null. One range ending when the next starts
+ * (10–1 and 1–4) is fine. Ranges with an unreadable or backwards time are skipped (reported elsewhere).
+ */
+export function overlappingRanges(slots: PlanRange[]): [PlanRange, PlanRange] | null {
+  const valid = slots
+    .map((s) => ({ s, from: toMinutes(s.start), to: toMinutes(s.end) }))
+    .filter((r): r is { s: PlanRange; from: number; to: number } => r.from !== null && r.to !== null && r.to > r.from)
+    .sort((a, b) => a.from - b.from);
+  for (let k = 1; k < valid.length; k++) {
+    if (valid[k].from < valid[k - 1].to) return [valid[k - 1].s, valid[k].s];
+  }
+  return null;
+}
+
 /** A readable problem with the hours, or "" when they can be saved */
 export function planProblem(month: string, weeks: PlanWeek[]): string {
   const rows = weeksOfMonth(month);
@@ -196,15 +211,21 @@ export function planProblem(month: string, weeks: PlanWeek[]): string {
     for (const d of rows[i]) {
       const day = weeks[i].days[d.dayKey];
       if (!day?.enabled) continue;
+      const where = `Week ${i + 1}, ${d.day} ${monthName(month).slice(0, 3)}`;
       for (const s of day.slots) {
         const from = toMinutes(s.start);
         const to = toMinutes(s.end);
         if (from === null || to === null || to <= from) {
-          return `Week ${i + 1}, ${d.day} ${monthName(month).slice(0, 3)}: the end time must be after the start time.`;
+          return `${where}: the end time must be after the start time.`;
         }
         if (to - from < 60) {
-          return `Week ${i + 1}, ${d.day} ${monthName(month).slice(0, 3)}: ${s.start} – ${s.end} is shorter than a one-hour session.`;
+          return `${where}: ${s.start} – ${s.end} is shorter than a one-hour session.`;
         }
+      }
+      // Overlapping ranges would offer the same hour twice
+      const clash = overlappingRanges(day.slots);
+      if (clash) {
+        return `${where}: ${clash[0].start} – ${clash[0].end} and ${clash[1].start} – ${clash[1].end} overlap. Change or remove one of them.`;
       }
     }
   }

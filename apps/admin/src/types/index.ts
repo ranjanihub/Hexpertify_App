@@ -255,6 +255,8 @@ export interface Therapist {
 
 export interface Client {
   id: string;
+  /** Running client number (CL-00001), shown instead of the internal id */
+  clientNumber?: string;
   name: string;
   avatar?: string;
   avatarUrl?: string;

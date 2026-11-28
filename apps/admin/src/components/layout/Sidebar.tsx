@@ -156,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
       style={{ boxShadow: '2px 0 16px rgba(0, 0, 0, 0.02)' }}
     >
       {/* Brand Header */}
-      <div className="h-24 px-4 flex items-center justify-start border-b border-[#f1f5f9] shrink-0 overflow-hidden">
+      <div className="h-24 [@media(max-height:480px)]:h-16 px-4 flex items-center justify-start border-b border-[#f1f5f9] shrink-0 overflow-hidden">
         <HexpertifyLogo
           size="lg"
           onClick={() => {
@@ -167,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto px-4 py-5 [@media(max-height:480px)]:py-3 space-y-6 custom-scrollbar">
         {sections.map((section, sIdx) => (
           <div key={section.title} className={sIdx > 0 ? 'pt-2 border-t border-slate-100' : ''}>
             {/* Major Section Header */}
@@ -195,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
                           onClick={() => handleNavigate(item)}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-medium text-[13.5px] transition-all duration-150 ${
                             isActive
-                              ? 'bg-[#5e2be2] text-white font-semibold shadow-md shadow-[#5e2be2]/25'
+                              ? 'bg-[#450bc8] text-white font-semibold shadow-md shadow-[#450bc8]/25'
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                           }`}
                         >
@@ -232,14 +232,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
       </div>
 
       {/* Admin Quick Profile Footer */}
-      <div className="p-4 border-t border-[#f1f5f9] bg-slate-50/50 shrink-0">
+      <div className="p-4 [@media(max-height:480px)]:py-2 border-t border-[#f1f5f9] bg-slate-50/50 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
               <img
                 src={getAdminAuth()?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"}
                 alt="Admin Avatar"
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-[#5e2be2]/20"
+                className="w-9 h-9 rounded-full object-cover ring-2 ring-[#450bc8]/20"
               />
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
             </div>
@@ -254,7 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage: _currentPage, onS
               window.location.href = '/login?role=admin';
             }}
             title="Sign Out"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+            className="p-2.5 lg:p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>

@@ -33,9 +33,9 @@ function daysInMonth(y: number, m: number) {
 }
 
 function dotColor(count: number) {
-  if (count >= 5) return 'bg-[#5e2be2]';
-  if (count >= 3) return 'bg-[#5e2be2]/60';
-  return 'bg-[#5e2be2]/30';
+  if (count >= 5) return 'bg-[#450bc8]';
+  if (count >= 3) return 'bg-[#450bc8]/60';
+  return 'bg-[#450bc8]/30';
 }
 
 function parseTimeToMinutes(t: string): number {
@@ -654,17 +654,17 @@ export const AvailabilityView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20 animate-fade-in text-slate-800 font-['Plus_Jakarta_Sans']">
+    <div className="space-y-6 pb-20 animate-fade-in text-slate-800 font-['Open_Sans']">
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:top-5 sm:right-5 sm:max-w-sm z-50 bg-[#4f28d9] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in border border-purple-300">
+        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:top-5 sm:right-5 sm:max-w-sm z-50 bg-[#3a0aa8] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in border border-purple-300">
           <Sparkles className="w-5 h-5 text-amber-300" />
           <span className="font-bold text-xs tracking-wide">{toastMessage}</span>
         </div>
       )}
 
       {/* Modern Gradient PageHeader Matching Consultant Calendar */}
-      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#5e2be2] to-[#361394] p-5 sm:p-7 xl:p-8 text-white shadow-lg shadow-purple-900/10 overflow-hidden relative mb-6 border border-white/10">
+      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#431bb5] via-[#450bc8] to-[#361394] p-5 sm:p-7 xl:p-8 text-white shadow-lg shadow-purple-900/10 overflow-hidden relative mb-6 border border-white/10">
         {/* Decorative ambient background glows */}
         <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-purple-400/15 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />
@@ -687,12 +687,12 @@ export const AvailabilityView: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto xl:shrink-0">
             {/* Consultant Selector */}
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/25 shadow-xs min-w-0 flex-1 sm:flex-none sm:max-w-[240px]">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3 py-0.5 sm:py-1.5 rounded-full border border-white/25 shadow-xs min-w-0 basis-full sm:basis-auto sm:flex-none sm:max-w-[240px]">
               <Users className="w-4 h-4 text-purple-200 shrink-0" />
               <select
                 value={selectedConsultantId}
                 onChange={(e) => setSelectedConsultantId(e.target.value)}
-                className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer truncate min-w-0 w-full [&>option]:text-slate-900"
+                className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer truncate min-w-0 w-full py-2.5 sm:py-0 [&>option]:text-slate-900"
               >
                 {dbTherapists.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -707,7 +707,7 @@ export const AvailabilityView: React.FC = () => {
               type="button"
               onClick={() => setIsPlanOpen(true)}
               disabled={!activeConsultant}
-              className="bg-white text-[#5e2be2] hover:bg-white/90 font-extrabold text-xs px-3.5 py-1.5 rounded-full cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50"
+              className="bg-white text-[#450bc8] hover:bg-white/90 font-extrabold text-xs px-3.5 py-2.5 sm:py-1.5 rounded-full cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50"
             >
               Plan Month
             </button>
@@ -716,7 +716,7 @@ export const AvailabilityView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAvailabilityModalOpen(true)}
-              className="border border-white/30 text-white hover:bg-white/20 font-bold text-xs px-3.5 py-1.5 rounded-full cursor-pointer bg-white/10 whitespace-nowrap shadow-xs"
+              className="border border-white/30 text-white hover:bg-white/20 font-bold text-xs px-3.5 py-2.5 sm:py-1.5 rounded-full cursor-pointer bg-white/10 whitespace-nowrap shadow-xs"
             >
               Set Availability
             </button>
@@ -732,7 +732,7 @@ export const AvailabilityView: React.FC = () => {
               <span className="font-extrabold text-slate-900">{MONTHS[month]} {year}:</span>{' '}
               {viewedMonthPlanned ? `${activeConsultant.name} has a month plan` : `${activeConsultant.name} uses weekly hours (no month plan)`}
             </p>
-            <button type="button" onClick={() => setIsPlanOpen(true)} className="text-xs font-extrabold text-[#5e2be2] hover:underline shrink-0">
+            <button type="button" onClick={() => setIsPlanOpen(true)} className="py-2 px-2 -mr-2 sm:p-0 sm:mr-0 text-xs font-extrabold text-[#450bc8] hover:underline shrink-0">
               {viewedMonthPlanned ? 'View / edit' : 'Plan'}
             </button>
           </div>
@@ -743,12 +743,12 @@ export const AvailabilityView: React.FC = () => {
               <p className="text-xs font-semibold text-slate-700">
                 <span className="font-extrabold text-slate-900">{monthName(planOverview.month)} plans:</span> {planOverview.planned} of {planOverview.total} therapists planned
               </p>
-              <button type="button" onClick={() => setShowPlanList((v) => !v)} className="text-xs font-extrabold text-[#5e2be2] hover:underline shrink-0">
+              <button type="button" onClick={() => setShowPlanList((v) => !v)} className="py-2 px-2 -mr-2 sm:p-0 sm:mr-0 text-xs font-extrabold text-[#450bc8] hover:underline shrink-0">
                 {showPlanList ? 'Hide' : 'Show list'}
               </button>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-              <div className="h-full bg-[#5e2be2] rounded-full" style={{ width: `${Math.round((planOverview.planned / planOverview.total) * 100)}%` }} />
+              <div className="h-full bg-[#450bc8] rounded-full" style={{ width: `${Math.round((planOverview.planned / planOverview.total) * 100)}%` }} />
             </div>
             {showPlanList && (
               <ul className="mt-3 max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs">
@@ -773,7 +773,7 @@ export const AvailabilityView: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Select Date</span>
-              <span className="text-xs font-bold text-[#5e2be2] bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
+              <span className="text-xs font-bold text-[#450bc8] bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
                 {MONTHS[month]} {year}
               </span>
             </div>
@@ -782,14 +782,14 @@ export const AvailabilityView: React.FC = () => {
             <div className="flex items-center justify-between mb-4 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
               <button
                 onClick={prevMonth}
-                className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-xs cursor-pointer"
+                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-xs cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="font-extrabold text-sm text-slate-900">{MONTHS[month]} {year}</span>
               <button
                 onClick={nextMonth}
-                className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-xs cursor-pointer"
+                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-xs cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -819,9 +819,9 @@ export const AvailabilityView: React.FC = () => {
                     onClick={() => setSelectedDay(day)}
                     className={`relative flex flex-col items-center justify-center rounded-2xl h-10 w-full text-xs font-bold transition-all cursor-pointer ${
                       sel
-                        ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20 scale-105 z-10'
+                        ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20 scale-105 z-10'
                         : tod
-                        ? 'border-2 border-[#5e2be2] text-[#5e2be2] bg-purple-50/50 font-extrabold'
+                        ? 'border-2 border-[#450bc8] text-[#450bc8] bg-purple-50/50 font-extrabold'
                         : 'text-slate-700 hover:bg-slate-100/80'
                     }`}
                   >
@@ -842,7 +842,7 @@ export const AvailabilityView: React.FC = () => {
                 Monthly Real Status
               </span>
               {activeConsultant && (
-                <span className="text-[10px] font-bold text-[#5e2be2] truncate max-w-[150px]">
+                <span className="text-[10px] font-bold text-[#450bc8] truncate max-w-[150px]">
                   {activeConsultant.name}
                 </span>
               )}
@@ -851,7 +851,7 @@ export const AvailabilityView: React.FC = () => {
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="flex flex-col justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1.5">
                 <span className="text-slate-500 font-medium text-[11px]">{MONTHS[month]} Bookings</span>
-                <span className="font-extrabold text-sm text-[#5e2be2] bg-purple-100/80 text-purple-900 px-2.5 py-1 rounded-xl w-fit border border-purple-200">
+                <span className="font-extrabold text-sm text-[#450bc8] bg-purple-100/80 text-purple-900 px-2.5 py-1 rounded-xl w-fit border border-purple-200">
                   {Object.keys(sessionData).reduce((sum, key) => {
                     const parts = key.split('-').map(Number);
                     if (parts[0] === year && parts[1] === month + 1) {
@@ -972,7 +972,7 @@ export const AvailabilityView: React.FC = () => {
                 setEventClientName(dbClients[0]?.name || '');
                 setIsAddEventModalOpen(true);
               }}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300 bg-white text-[#5e2be2] text-xs font-extrabold py-3 hover:bg-purple-50/80 transition-all cursor-pointer shadow-xs"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300 bg-white text-[#450bc8] text-xs font-extrabold py-3 hover:bg-purple-50/80 transition-all cursor-pointer shadow-xs"
             >
               <Plus className="w-4 h-4" />
               <span>Add Session Slot</span>
@@ -987,7 +987,7 @@ export const AvailabilityView: React.FC = () => {
                     setEventDate(`${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`);
                     setIsAddEventModalOpen(true);
                   }}
-                  className="mt-4 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md shadow-[#5e2be2]/20 cursor-pointer"
+                  className="mt-4 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md shadow-[#450bc8]/20 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 inline mr-1" /> Schedule Session
                 </button>
@@ -1065,7 +1065,7 @@ export const AvailabilityView: React.FC = () => {
                                 setAssignClientName(dbClients[0]?.name || '');
                                 setIsAssignModalOpen(true);
                               }}
-                              className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-[11px] h-7 px-2.5 rounded-lg shadow-xs cursor-pointer"
+                              className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-[11px] h-7 px-2.5 rounded-lg shadow-xs cursor-pointer"
                             >
                               + Book Client
                             </button>
@@ -1131,7 +1131,7 @@ export const AvailabilityView: React.FC = () => {
           <div className="bg-white rounded-3xl max-w-lg w-full max-h-[85vh] shadow-2xl border border-slate-100 flex flex-col my-auto overflow-hidden animate-fade-in">
             <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 shrink-0 bg-slate-50/50">
               <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-purple-100 text-[#5e2be2]">
+                <span className="p-2 rounded-xl bg-purple-100 text-[#450bc8]">
                   <CalendarDays className="w-5 h-5" />
                 </span>
                 <div>
@@ -1154,7 +1154,7 @@ export const AvailabilityView: React.FC = () => {
                   <select
                     value={eventClientName}
                     onChange={(e) => setEventClientName(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
                     required
                   >
                     {dbClients.map((c) => (
@@ -1172,7 +1172,7 @@ export const AvailabilityView: React.FC = () => {
                       type="date"
                       value={eventDate}
                       onChange={(e) => setEventDate(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
                       required
                     />
                   </div>
@@ -1183,7 +1183,7 @@ export const AvailabilityView: React.FC = () => {
                       value={eventTime}
                       onChange={(e) => setEventTime(e.target.value)}
                       placeholder="10:00 AM"
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
                       required
                     />
                   </div>
@@ -1195,7 +1195,7 @@ export const AvailabilityView: React.FC = () => {
                     <select
                       value={eventDuration}
                       onChange={(e) => setEventDuration(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
                     >
                       <option value="30 min">30 Minutes</option>
                       <option value="50 min">50 Minutes (Standard)</option>
@@ -1208,7 +1208,7 @@ export const AvailabilityView: React.FC = () => {
                     <select
                       value={eventType}
                       onChange={(e) => setEventType(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
                     >
                       <option value="Individual Therapy">Individual Therapy</option>
                       <option value="Comprehensive CBT Care">Comprehensive CBT</option>
@@ -1229,7 +1229,7 @@ export const AvailabilityView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer transition-all active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold shadow-md shadow-[#450bc8]/20 cursor-pointer transition-all active:scale-95"
                 >
                   Confirm & Schedule
                 </button>
@@ -1271,7 +1271,7 @@ export const AvailabilityView: React.FC = () => {
                             [dayKey]: { ...dayVal, enabled: e.target.checked }
                           });
                         }}
-                        className="w-4 h-4 rounded border-slate-300 text-[#5e2be2] focus:ring-[#5e2be2] accent-[#5e2be2] cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-300 text-[#450bc8] focus:ring-[#450bc8] accent-[#450bc8] cursor-pointer"
                       />
                       <span className="font-extrabold text-slate-800">{dayLabel}</span>
                     </label>
@@ -1287,7 +1287,7 @@ export const AvailabilityView: React.FC = () => {
                               [dayKey]: { ...dayVal, start: e.target.value }
                             });
                           }}
-                          className="w-20 sm:w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
+                          className="w-20 sm:w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#450bc8] outline-none"
                         />
                         <span className="text-slate-400 font-bold">to</span>
                         <input
@@ -1299,7 +1299,7 @@ export const AvailabilityView: React.FC = () => {
                               [dayKey]: { ...dayVal, end: e.target.value }
                             });
                           }}
-                          className="w-20 sm:w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#5e2be2] outline-none"
+                          className="w-20 sm:w-24 p-2 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-800 focus:border-[#450bc8] outline-none"
                         />
                       </div>
                     ) : (
@@ -1321,7 +1321,7 @@ export const AvailabilityView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveWorkingHours}
-                className="px-5 py-2.5 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold shadow-md shadow-[#450bc8]/20 cursor-pointer transition-all active:scale-95"
               >
                 Save Availability
               </button>
@@ -1352,7 +1352,7 @@ export const AvailabilityView: React.FC = () => {
               <select
                 value={assignClientName}
                 onChange={(e) => setAssignClientName(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#5e2be2]"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 outline-none focus:border-[#450bc8]"
               >
                 {dbClients.map((c) => (
                   <option key={c.id} value={c.name}>
@@ -1373,7 +1373,7 @@ export const AvailabilityView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmAssignClient}
-                className="px-5 py-2.5 rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold shadow-md shadow-[#5e2be2]/20 cursor-pointer transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold shadow-md shadow-[#450bc8]/20 cursor-pointer transition-all active:scale-95"
               >
                 Confirm Assignment
               </button>

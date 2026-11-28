@@ -110,25 +110,29 @@ export default function TherapistPage() {
     return DEFAULT_THERAPIST;
   });
 
-  // Check for any existing pending switch requests in localStorage
+  // This client's own pending switch request on this device (kept per account, never matched by name)
+  const switchKey = `hexpertify_switch_request_${(myEmail || authUser?.id || 'anonymous').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  // 'loading' until the server answers; 'none' when no therapist is assigned (no placeholder profile is shown)
+  const [assignment, setAssignment] = useState<'loading' | 'assigned' | 'none'>(authUser?.assignedTherapistName ? 'assigned' : 'loading');
+
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("therapist_switch_requests");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          const myRequest = parsed.find(
-            (r: any) =>
-              (r.clientEmail && r.clientEmail.toLowerCase() === myEmail) ||
-              (r.clientName && r.clientName.toLowerCase() === myName.toLowerCase())
-          );
-          if (myRequest) {
-            setPendingSwitchRequest(myRequest);
-          }
-        }
-      }
+      const stored = localStorage.getItem(switchKey);
+      if (stored) setPendingSwitchRequest(JSON.parse(stored));
     } catch {}
-  }, [myEmail, myName]);
+  }, [switchKey]);
+
+  // A switch request is over once a different therapist has been assigned
+  useEffect(() => {
+    if (!pendingSwitchRequest || assignment !== 'assigned') return;
+    const before = String(pendingSwitchRequest.currentTherapistId || '');
+    if (before && therapist?.id && String(therapist.id) !== before) {
+      try {
+        localStorage.removeItem(switchKey);
+      } catch {}
+      setPendingSwitchRequest(null);
+    }
+  }, [pendingSwitchRequest, therapist?.id, assignment, switchKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -136,13 +140,15 @@ export default function TherapistPage() {
 
     async function loadTherapist() {
       try {
-        let res = await fetch(`/api/client/therapist${userParam}`).catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch(`http://localhost:5000/api/client/therapist${userParam}`).catch(() => null);
+        const res = await fetch(`/api/client/therapist${userParam}`).catch(() => null);
+        if (isMounted && res && res.ok) {
+          const peek = await res.clone().json().catch(() => null);
+          if (!peek?.therapist && !authUser?.assignedTherapistName) setAssignment('none');
         }
         if (res && res.ok && isMounted) {
           const data = await res.json().catch(() => null);
           if (data?.success && data?.therapist) {
+            setAssignment('assigned');
             setTherapist((prev: any) => ({
               ...DEFAULT_THERAPIST,
               ...prev,
@@ -204,30 +210,37 @@ export default function TherapistPage() {
       createdAt: new Date().toISOString()
     };
 
-    // 1. Send notification to central backend
+    // The request reaches the care team as an admin notification; it only counts as sent once saved
+    let sent = false;
+    let reason = '';
     try {
-      await fetch('/api/notifications', {
+      const res = await fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload)
-      }).catch(() => {});
-    } catch {}
+      });
+      sent = res.ok;
+      if (!res.ok) reason = (await res.json().catch(() => null))?.error || `error ${res.status}`;
+    } catch {
+      reason = 'Hexpertify could not be reached';
+    }
+    setIsSubmittingSwitch(false);
 
-    // 2. Persist to local admin notifications & switch requests log
+    if (!sent) {
+      toast({
+        title: "Switch request not sent",
+        description: `${reason}. Please check your connection and try again.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      const existingAdminNotifs = JSON.parse(localStorage.getItem("admin_notifications") || "[]");
-      localStorage.setItem("admin_notifications", JSON.stringify([requestPayload, ...existingAdminNotifs]));
-
-      const existingSwitchReqs = JSON.parse(localStorage.getItem("therapist_switch_requests") || "[]");
-      const updatedReqs = [requestPayload, ...existingSwitchReqs.filter((r: any) => r.clientEmail !== myEmail)];
-      localStorage.setItem("therapist_switch_requests", JSON.stringify(updatedReqs));
-
+      localStorage.setItem(switchKey, JSON.stringify(requestPayload));
       window.dispatchEvent(new Event("notification_created"));
-      window.dispatchEvent(new Event("client_data_updated"));
     } catch {}
 
     setPendingSwitchRequest(requestPayload);
-    setIsSubmittingSwitch(false);
     setIsSwitchModalOpen(false);
 
     toast({
@@ -236,15 +249,33 @@ export default function TherapistPage() {
     });
   };
 
+  // No therapist yet: say so plainly instead of showing a made-up profile
+  if (assignment === 'none') {
+    return (
+      <motion.div {...pageTransition} className="w-full space-y-8 pb-16 font-['Open_Sans']">
+        <PageHeader title="My Therapist" description="Your dedicated partner in your wellness journey." />
+        <div className="hex-card text-center py-12 space-y-3">
+          <h3 className="text-lg font-bold text-foreground">No therapist assigned yet</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Our care team will match you with a therapist. Once they do, their profile and booking options appear here.
+          </p>
+          <a href="/contact-us" className="inline-flex px-5 py-2.5 rounded-full bg-primary text-primary-foreground font-bold text-sm">
+            Contact the care team
+          </a>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
-    <motion.div {...pageTransition} className="w-full space-y-8 pb-16 font-['Plus_Jakarta_Sans']">
+    <motion.div {...pageTransition} className="w-full space-y-8 pb-16 font-['Open_Sans']">
       <PageHeader title="My Therapist" description="Your dedicated partner in your wellness journey." />
 
       {/* Active Pending Switch Request Alert Banner */}
       {pendingSwitchRequest && (
         <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-purple-50 via-indigo-50/80 to-purple-50 dark:from-purple-950/40 dark:via-indigo-950/30 dark:to-purple-950/40 border border-purple-200 dark:border-purple-800/60 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#5e2be2] text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+            <div className="w-10 h-10 rounded-2xl bg-[#450bc8] text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
               <RefreshCw className="w-5 h-5 animate-spin-slow" />
             </div>
             <div className="space-y-1">
@@ -265,7 +296,7 @@ export default function TherapistPage() {
           <button
             type="button"
             onClick={() => setIsSwitchModalOpen(true)}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-purple-200 text-[#5e2be2] hover:bg-purple-50 transition-colors shadow-xs cursor-pointer shrink-0"
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-purple-200 text-[#450bc8] hover:bg-purple-50 transition-colors shadow-xs cursor-pointer shrink-0"
           >
             Update Preferences
           </button>
@@ -273,11 +304,11 @@ export default function TherapistPage() {
       )}
 
       {/* Main Profile Header Card */}
-      <div className="hex-card !p-8 md:!p-10 relative overflow-hidden shadow-lg border border-border">
+      <div className="hex-card !p-5 sm:!p-8 md:!p-10 relative overflow-hidden shadow-lg border border-border">
         {/* Decorative ambient background */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 pointer-events-none"></div>
         
-        <div className="flex flex-col md:flex-row gap-8 items-start relative z-10">
+        <div className="flex flex-col md:flex-row gap-6 sm:gap-8 items-start relative z-10">
           <div className="shrink-0 relative mx-auto md:mx-0">
             <div className="w-36 h-36 md:w-44 md:h-44 rounded-[32px] overflow-hidden bg-muted shadow-xl ring-4 ring-primary/10">
               <img 
@@ -343,7 +374,7 @@ export default function TherapistPage() {
               <button 
                 type="button"
                 onClick={() => setIsSwitchModalOpen(true)}
-                className="inline-flex items-center gap-2 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 font-semibold px-5 py-2.5 rounded-full border border-purple-200/80 dark:border-purple-800/60 shadow-xs transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 font-semibold px-5 py-2.5 rounded-full border border-purple-200/80 dark:border-purple-800/60 shadow-xs transition-all cursor-pointer"
                 title="Request to be reassigned to a different therapist"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -355,13 +386,13 @@ export default function TherapistPage() {
       </div>
 
       {/* Detail Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
         
         {/* Left 2 Cols: Clinical Philosophy, Specializations, Approach */}
-        <div className="md:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-5 sm:space-y-8">
           
           {/* About Section */}
-          <div className="hex-card !p-8 space-y-4">
+          <div className="hex-card !p-5 sm:!p-8 space-y-4">
             <h3 className="text-xl font-bold text-foreground flex items-center gap-2.5">
               <HeartPulse className="w-5 h-5 text-primary" />
               About {therapist.name}
@@ -373,7 +404,7 @@ export default function TherapistPage() {
 
           {/* Therapeutic Approach (only when the therapist has written one) */}
           {therapist.approach && (
-          <div className="hex-card !p-8 space-y-4">
+          <div className="hex-card !p-5 sm:!p-8 space-y-4">
             <h3 className="text-xl font-bold text-foreground flex items-center gap-2.5">
               <Sparkles className="w-5 h-5 text-primary" />
               Approach & Philosophy
@@ -385,7 +416,7 @@ export default function TherapistPage() {
           )}
 
           {/* Specializations & Focus Areas */}
-          <div className="hex-card !p-8 space-y-4">
+          <div className="hex-card !p-5 sm:!p-8 space-y-4">
             <h3 className="text-xl font-bold text-foreground flex items-center gap-2.5">
               <CheckCircle2 className="w-5 h-5 text-primary" />
               Areas of Specialization
@@ -406,10 +437,10 @@ export default function TherapistPage() {
         </div>
 
         {/* Right 1 Col: Practice Info, Education, Certifications */}
-        <div className="space-y-8">
+        <div className="space-y-5 sm:space-y-8 md:space-y-0 md:grid md:grid-cols-2 md:gap-5 lg:block lg:space-y-8">
           
           {/* Practice Information */}
-          <div className="hex-card !p-6 space-y-5">
+          <div className="hex-card !p-5 sm:!p-6 space-y-5">
             <h3 className="text-lg font-bold text-foreground pb-2 border-b border-border">
               Practice Information
             </h3>
@@ -426,7 +457,7 @@ export default function TherapistPage() {
           </div>
 
           {/* Education */}
-          <div className="hex-card !p-6 space-y-4">
+          <div className="hex-card !p-5 sm:!p-6 space-y-4">
             <h3 className="text-lg font-bold text-foreground flex items-center gap-2 pb-2 border-b border-border">
               <GraduationCap className="w-5 h-5 text-primary" />
               Education & Training
@@ -451,7 +482,7 @@ export default function TherapistPage() {
           </div>
 
           {/* Certifications */}
-          <div className="hex-card !p-6 space-y-4">
+          <div className="hex-card !p-5 sm:!p-6 space-y-4">
             <h3 className="text-lg font-bold text-foreground flex items-center gap-2 pb-2 border-b border-border">
               <BookOpen className="w-5 h-5 text-primary" />
               Board Certifications
@@ -478,10 +509,10 @@ export default function TherapistPage() {
       </div>
 
       {/* Bottom Switch Therapist Support Card */}
-      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-[#27116b] to-slate-950 text-white p-8 sm:p-10 relative overflow-hidden shadow-xl border border-purple-500/20">
+      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-[#27116b] to-slate-950 text-white p-5 sm:p-8 md:p-10 relative overflow-hidden shadow-xl border border-purple-500/20">
         <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-purple-200 text-xs font-bold">
               <ArrowRightLeft className="w-3.5 h-3.5 text-purple-300" />
@@ -500,7 +531,7 @@ export default function TherapistPage() {
             onClick={() => setIsSwitchModalOpen(true)}
             className="px-6 py-3.5 rounded-2xl bg-white text-slate-900 hover:bg-purple-50 font-extrabold text-sm shadow-xl transition-all hover:scale-[1.02] active:scale-95 cursor-pointer shrink-0 flex items-center gap-2.5"
           >
-            <RefreshCw className="w-4 h-4 text-[#5e2be2]" />
+            <RefreshCw className="w-4 h-4 text-[#450bc8]" />
             <span>Request Therapist Switch</span>
           </button>
         </div>
@@ -508,9 +539,9 @@ export default function TherapistPage() {
 
       {/* Switch Therapist Modal Dialog */}
       <Dialog open={isSwitchModalOpen} onOpenChange={setIsSwitchModalOpen}>
-        <DialogContent className="max-w-xl rounded-3xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl rounded-3xl p-5 sm:p-8 space-y-6 max-h-[90dvh] overflow-y-auto">
           <DialogHeader className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-[#5e2be2] text-xs font-bold w-fit">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-[#450bc8] text-xs font-bold w-fit">
               <RefreshCw className="w-3.5 h-3.5" />
               <span>SWITCH THERAPIST REQUEST</span>
             </div>
@@ -549,12 +580,12 @@ export default function TherapistPage() {
                     onClick={() => setSwitchReason(r.id)}
                     className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3 select-none ${
                       switchReason === r.id
-                        ? "border-[#5e2be2] bg-purple-50/50 dark:bg-purple-950/30"
+                        ? "border-[#450bc8] bg-purple-50/50 dark:bg-purple-950/30"
                         : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
                     }`}
                   >
                     <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${
-                      switchReason === r.id ? "border-[#5e2be2] bg-[#5e2be2]" : "border-slate-300 dark:border-slate-600"
+                      switchReason === r.id ? "border-[#450bc8] bg-[#450bc8]" : "border-slate-300 dark:border-slate-600"
                     }`}>
                       {switchReason === r.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
@@ -582,7 +613,7 @@ export default function TherapistPage() {
                       onClick={() => toggleSpecialty(spec)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
                         isSelected
-                          ? "bg-[#5e2be2] text-white border-[#5e2be2] shadow-xs"
+                          ? "bg-[#450bc8] text-white border-[#450bc8] shadow-xs"
                           : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300"
                       }`}
                     >
@@ -603,7 +634,7 @@ export default function TherapistPage() {
                 onChange={(e) => setSwitchNotes(e.target.value)}
                 placeholder="e.g., I would prefer appointments on Tuesdays/Thursdays after 6:00 PM, or a clinician with a focus on work-life balance..."
                 rows={3}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5e2be2] resize-none"
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#450bc8] resize-none"
               />
             </div>
 
@@ -617,7 +648,7 @@ export default function TherapistPage() {
                   onClick={() => setSwitchUrgency("standard")}
                   className={`p-3 rounded-2xl border-2 text-center cursor-pointer font-bold ${
                     switchUrgency === "standard"
-                      ? "border-[#5e2be2] bg-purple-50/50 text-[#5e2be2]"
+                      ? "border-[#450bc8] bg-purple-50/50 text-[#450bc8]"
                       : "border-slate-200 dark:border-slate-800 text-slate-600"
                   }`}
                 >
@@ -627,7 +658,7 @@ export default function TherapistPage() {
                   onClick={() => setSwitchUrgency("urgent")}
                   className={`p-3 rounded-2xl border-2 text-center cursor-pointer font-bold ${
                     switchUrgency === "urgent"
-                      ? "border-[#5e2be2] bg-purple-50/50 text-[#5e2be2]"
+                      ? "border-[#450bc8] bg-purple-50/50 text-[#450bc8]"
                       : "border-slate-200 dark:border-slate-800 text-slate-600"
                   }`}
                 >
@@ -650,7 +681,7 @@ export default function TherapistPage() {
               type="button"
               disabled={isSubmittingSwitch}
               onClick={handleSwitchSubmit}
-              className="px-6 py-2.5 rounded-2xl bg-[#5e2be2] hover:bg-[#4d1fc4] text-white text-xs font-bold shadow-md cursor-pointer flex items-center gap-2 transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-2xl bg-[#450bc8] hover:bg-[#4d1fc4] text-white text-xs font-bold shadow-md cursor-pointer flex items-center gap-2 transition-all disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{isSubmittingSwitch ? "Submitting..." : "Submit Switch Request & Notify Admin"}</span>

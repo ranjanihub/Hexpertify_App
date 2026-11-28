@@ -264,16 +264,16 @@ Curated by Hexpertify Wellness`;
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl space-y-6 font-['Plus_Jakarta_Sans'] transition-all">
+    <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl space-y-6 font-['Open_Sans'] transition-all">
       {/* Top Header Card */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#5e2be2] to-purple-500 text-white flex items-center justify-center shadow-lg shadow-[#5e2be2]/25 shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#450bc8] to-purple-500 text-white flex items-center justify-center shadow-lg shadow-[#450bc8]/25 shrink-0">
             <Wind className="w-6 h-6 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 bg-purple-50 text-[#5e2be2] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 bg-purple-50 text-[#450bc8] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
                 Mindfulness · ACT-01
               </span>
               <span className="text-slate-400 text-xs font-semibold flex items-center gap-1">
@@ -292,7 +292,7 @@ Curated by Hexpertify Wellness`;
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-2.5 rounded-2xl border transition-all text-xs font-bold flex items-center gap-1.5 ${
               soundEnabled
-                ? 'bg-purple-50 text-[#5e2be2] border-purple-200 hover:bg-purple-100'
+                ? 'bg-purple-50 text-[#450bc8] border-purple-200 hover:bg-purple-100'
                 : 'bg-slate-100 text-slate-400 border-slate-200'
             }`}
             title={soundEnabled ? 'Chimes Active' : 'Chimes Muted'}
@@ -304,7 +304,7 @@ Curated by Hexpertify Wellness`;
           <button
             type="button"
             onClick={handleReset}
-            className="p-2.5 text-slate-500 hover:text-[#5e2be2] bg-slate-50 hover:bg-purple-50 rounded-2xl border border-slate-200 transition-all active:scale-95"
+            className="p-2.5 text-slate-500 hover:text-[#450bc8] bg-slate-50 hover:bg-purple-50 rounded-2xl border border-slate-200 transition-all active:scale-95"
             title="Reset Session"
           >
             <RefreshCw className="w-4 h-4" />
@@ -316,7 +316,7 @@ Curated by Hexpertify Wellness`;
       {stage === 'pre_check' && (
         <div className="space-y-6 py-2 animate-fade-in">
           <div className="bg-gradient-to-r from-purple-50 via-indigo-50/50 to-white p-6 rounded-3xl border border-purple-100/80 space-y-3">
-            <span className="text-[11px] font-black uppercase text-[#5e2be2] tracking-wider bg-white px-3 py-1 rounded-full shadow-xs border border-purple-100">
+            <span className="text-[11px] font-black uppercase text-[#450bc8] tracking-wider bg-white px-3 py-1 rounded-full shadow-xs border border-purple-100">
               Step 1 of 3 · Initial Somatic Baseline
             </span>
             <h4 className="text-lg sm:text-xl font-extrabold text-slate-900">
@@ -330,7 +330,7 @@ Curated by Hexpertify Wellness`;
           <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200/80 space-y-5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-slate-600 uppercase tracking-wider">Distress Rating (SUDS 0-10)</span>
-              <span className="text-xl font-black text-[#5e2be2] bg-white px-4 py-1.5 rounded-2xl border border-purple-100 shadow-sm">
+              <span className="text-xl font-black text-[#450bc8] bg-white px-4 py-1.5 rounded-2xl border border-purple-100 shadow-sm">
                 {preAnxiety} / 10
               </span>
             </div>
@@ -342,7 +342,7 @@ Curated by Hexpertify Wellness`;
               step="1"
               value={preAnxiety}
               onChange={(e) => setPreAnxiety(Number(e.target.value))}
-              className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#5e2be2]"
+              className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#450bc8]"
             />
 
             <div className="flex justify-between text-[11px] font-bold text-slate-500">
@@ -356,7 +356,7 @@ Curated by Hexpertify Wellness`;
             <button
               type="button"
               onClick={startSensoryFlow}
-              className="px-8 py-3.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-2xl shadow-xl shadow-[#5e2be2]/30 flex items-center gap-2.5 transition-all active:scale-95"
+              className="px-8 py-3.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-sm rounded-2xl shadow-xl shadow-[#450bc8]/30 flex items-center gap-2.5 transition-all active:scale-95"
             >
               <span>Begin Sensory Orientation</span>
               <ArrowRight className="w-4 h-4" />
@@ -371,7 +371,7 @@ Curated by Hexpertify Wellness`;
           {/* Progress Steps Header */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-extrabold text-slate-700">
-              <span className="flex items-center gap-1.5 text-[#5e2be2]">
+              <span className="flex items-center gap-1.5 text-[#450bc8]">
                 <Activity className="w-4 h-4" />
                 <span>Sensory Phase {step} of 5</span>
               </span>
@@ -391,7 +391,7 @@ Curated by Hexpertify Wellness`;
                   }}
                   className={`h-2.5 flex-1 rounded-full transition-all duration-500 cursor-pointer ${
                     s.step === step
-                      ? 'bg-[#5e2be2] ring-2 ring-[#5e2be2]/30'
+                      ? 'bg-[#450bc8] ring-2 ring-[#450bc8]/30'
                       : s.step < step
                       ? 'bg-emerald-400'
                       : 'bg-slate-200'
@@ -435,7 +435,7 @@ Curated by Hexpertify Wellness`;
                   key={i}
                   type="button"
                   onClick={() => handleApplySuggestion(sug)}
-                  className="px-3 py-1.5 bg-slate-50 hover:bg-purple-50 hover:border-[#5e2be2] hover:text-[#5e2be2] text-slate-600 rounded-xl text-xs font-bold border border-slate-200/80 transition-all active:scale-95 shadow-2xs"
+                  className="px-3 py-1.5 bg-slate-50 hover:bg-purple-50 hover:border-[#450bc8] hover:text-[#450bc8] text-slate-600 rounded-xl text-xs font-bold border border-slate-200/80 transition-all active:scale-95 shadow-2xs"
                 >
                   + {sug}
                 </button>
@@ -448,9 +448,9 @@ Curated by Hexpertify Wellness`;
             {Array.from({ length: current.count }).map((_, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-3 p-1.5 bg-slate-50/80 rounded-2xl border border-slate-200/80 focus-within:border-[#5e2be2] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#5e2be2]/10 transition-all"
+                className="flex items-center gap-3 p-1.5 bg-slate-50/80 rounded-2xl border border-slate-200/80 focus-within:border-[#450bc8] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#450bc8]/10 transition-all"
               >
-                <span className="w-9 h-9 rounded-xl bg-purple-100/70 text-[#5e2be2] font-black text-xs flex items-center justify-center shrink-0 border border-purple-200/60 font-mono">
+                <span className="w-9 h-9 rounded-xl bg-purple-100/70 text-[#450bc8] font-black text-xs flex items-center justify-center shrink-0 border border-purple-200/60 font-mono">
                   #{idx + 1}
                 </span>
                 <input
@@ -489,7 +489,7 @@ Curated by Hexpertify Wellness`;
             <button
               type="button"
               onClick={handleNextStep}
-              className="px-6 py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-[#5e2be2]/25 flex items-center gap-2 transition-all active:scale-95"
+              className="px-6 py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-[#450bc8]/25 flex items-center gap-2 transition-all active:scale-95"
             >
               <span>{step === 5 ? 'Proceed to Post-Session Check ➔' : 'Next Sensory Step ➔'}</span>
             </button>
@@ -598,7 +598,7 @@ Curated by Hexpertify Wellness`;
           <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200/80 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h5 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                <Heart className="w-4 h-4 text-[#5e2be2]" />
+                <Heart className="w-4 h-4 text-[#450bc8]" />
                 <span>Client Sensory Anchor Breakdown</span>
               </h5>
               <span className="text-xs font-bold text-slate-500">Session Duration: {formatTimer(elapsedSeconds)}</span>
@@ -647,7 +647,7 @@ Curated by Hexpertify Wellness`;
             <button
               type="button"
               onClick={handleCopySummary}
-              className="px-5 py-2.5 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] font-extrabold text-xs rounded-2xl border border-purple-200 flex items-center gap-2 transition-all"
+              className="px-5 py-2.5 bg-purple-50 hover:bg-purple-100 text-[#450bc8] font-extrabold text-xs rounded-2xl border border-purple-200 flex items-center gap-2 transition-all"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? 'Copied to Clipboard!' : 'Copy Summary Report'}</span>
@@ -656,7 +656,7 @@ Curated by Hexpertify Wellness`;
             <button
               type="button"
               onClick={handleReset}
-              className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-2xl shadow-md flex items-center gap-2 transition-all active:scale-95"
+              className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-2xl shadow-md flex items-center gap-2 transition-all active:scale-95"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Start Fresh Exercise</span>

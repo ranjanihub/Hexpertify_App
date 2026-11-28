@@ -9,9 +9,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="h-[100vh]">
+    <div className="flex h-screen supports-[height:100dvh]:h-dvh flex-col">
       <Header />
-      <main className=" h-[calc(100vh-108.43px)] overflow-y-scroll">
+      <main className="min-h-0 flex-1 overflow-y-scroll max-md:has-[[data-sticky-book]]:pb-[73px]">
         <PageTransition>{children}</PageTransition>
         <Footer />
       </main>

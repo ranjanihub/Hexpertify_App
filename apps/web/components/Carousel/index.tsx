@@ -56,6 +56,9 @@ const CarouselCommon = ({
   const autoplayRef = plugin.current;
   const isMobile = useIsMobile();
   const [selectedIndex, setIndex] = useState(0);
+  // Card rows show their arrows only when the cards do not all fit (there is somewhere to move to)
+  const [canScroll, setCanScroll] = useState(false);
+  const isCardRow = type !== "heroBanner" && type !== "banner";
 
   const combined =
     HeroBanner?.carouselImageUrls?.map((url: any, index: number) => ({
@@ -84,8 +87,13 @@ const CarouselCommon = ({
           align: "start",
         }}
         setApi={(api: any) => {
+          if (!api) return;
           emblaApiRef.current = api;
+          const updateScrollable = () => setCanScroll(api.canScrollPrev() || api.canScrollNext());
           api.on("select", () => setIndex(api.selectedScrollSnap()));
+          api.on("reInit", updateScrollable);
+          api.on("resize", updateScrollable);
+          updateScrollable();
           if (!autoSlide) autoplayRef.stop();
         }}
         className="w-full relative group"
@@ -161,7 +169,7 @@ const CarouselCommon = ({
         {/* Pagination Dots */}
         {SlideButton && DotSlider && (
           <div className="absolute bottom-4 left-0 right-0 flex justify-center items-center z-10">
-            <div className="flex gap-2 bg-white/70 p-2 rounded-full backdrop-blur-sm shadow-sm">
+            <div className="flex bg-white/70 px-1 py-2 rounded-full backdrop-blur-sm shadow-sm">
               {(type === "heroBanner" ? heroBanner : HeroBanner)?.map(
                 (_: any, index: number) => (
                   <button
@@ -173,7 +181,9 @@ const CarouselCommon = ({
                     }}
                     aria-label={`Go to slide ${index + 1}`}
                     aria-current={index === selectedIndex ? "true" : undefined}
-                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                    // Padding (with the colour clipped to the content box) gives each dot a finger-sized hit area; the negative
+                    // vertical margin keeps the pill exactly as it looks, and the 4px side padding is the old 8px gap
+                    className={`box-content h-2 -my-3 py-3 px-1 bg-clip-content rounded-full transition-all duration-300 cursor-pointer ${
                       index === selectedIndex
                         ? "bg-white w-6"
                         : "bg-gray-400 w-2"
@@ -186,10 +196,10 @@ const CarouselCommon = ({
         )}
 
         {/* Arrow Buttons */}
-        {SlideButton && !DotSlider && (
+        {SlideButton && !DotSlider && (!isCardRow || canScroll) && (
           <>
-            <CarouselPrevious className="absolute left-2 h-8 w-8 sm:h-10 sm:w-10 z-10 bg-white/80 hover:bg-white" />
-            <CarouselNext className="absolute right-2 h-8 w-8 sm:h-10 sm:w-10 z-10 bg-white/80 hover:bg-white" />
+            <CarouselPrevious className="absolute left-2 h-9 w-9 sm:h-10 sm:w-10 z-10 bg-white/80 hover:bg-white" />
+            <CarouselNext className="absolute right-2 h-9 w-9 sm:h-10 sm:w-10 z-10 bg-white/80 hover:bg-white" />
           </>
         )}
       </Carousel>

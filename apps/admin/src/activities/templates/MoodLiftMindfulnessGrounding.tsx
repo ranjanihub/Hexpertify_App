@@ -156,10 +156,10 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-5 font-['Plus_Jakarta_Sans',sans-serif] text-slate-800 dark:text-slate-100 select-none">
+    <div className="w-full max-w-4xl mx-auto space-y-5 font-['Open_Sans',sans-serif] text-slate-800 dark:text-slate-100 select-none">
       {/* ── CARD CONTAINER (CONSTANT HEIGHT ACROSS ALL STEPS) ── */}
-      <div className="w-full min-h-[380px] sm:h-[395px] flex flex-col justify-between bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-purple-500/5 p-3.5 sm:py-4 sm:px-6 relative overflow-hidden transition-all font-['Plus_Jakarta_Sans'] select-none">
-        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+      <div className="w-full min-h-[380px] sm:h-[395px] flex flex-col justify-between bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-purple-500/5 p-3.5 sm:py-4 sm:px-6 relative overflow-hidden transition-all font-['Open_Sans'] select-none">
+        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-teal-500/5 dark:bg-teal-500/10 blur-3xl pointer-events-none" />
 
         {!isStarted ? (
@@ -178,12 +178,12 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                 }}
                 className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   voiceEnabled
-                    ? 'bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                    ? 'bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
                 }`}
                 title={voiceEnabled ? 'Voice Guidance Enabled' : 'Voice Guidance Muted'}
               >
-                {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+                {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
                 <span>{voiceEnabled ? 'Voice On' : 'Muted'}</span>
               </button>
             </div>
@@ -207,8 +207,8 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                     label: 'OBJECT',
                     desc: 'Pick an anchor',
                     icon: Target,
-                    color: 'text-[#5e2be2]',
-                    badgeBg: 'bg-purple-500/10 text-[#5e2be2] border-purple-200/80 dark:border-purple-800/80'
+                    color: 'text-[#450bc8]',
+                    badgeBg: 'bg-purple-500/10 text-[#450bc8] border-purple-200/80 dark:border-purple-800/80'
                   },
                   {
                     num: 2,
@@ -231,7 +231,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                   return (
                     <div
                       key={t.num}
-                      className="flex flex-col items-center justify-center p-3 sm:p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 transition-all hover:border-[#5e2be2]/30 group"
+                      className="flex flex-col items-center justify-center p-3 sm:p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 transition-all hover:border-[#450bc8]/30 group"
                     >
                       <div className={`w-9 h-9 rounded-xl ${t.badgeBg} border flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs`}>
                         <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${t.color}`} />
@@ -255,7 +255,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                     audioEngine.playSfx('tactile_tap');
                     if (voiceEnabled) audioEngine.speak('Step 1: Object. Look around your space and choose an anchor object to focus on.');
                   }}
-                  className="px-8 py-2.5 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
+                  className="px-8 py-2.5 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
                 >
                   <Play className="w-3.5 h-3.5 fill-white" />
                   <span>Start</span>
@@ -280,12 +280,12 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                 }}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   voiceEnabled
-                    ? 'bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                    ? 'bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
                 }`}
                 title={voiceEnabled ? 'Voice Guidance Active' : 'Voice Muted'}
               >
-                {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+                {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
                 <span className="hidden sm:inline">{voiceEnabled ? 'Voice On' : 'Muted'}</span>
               </button>
             </div>
@@ -297,7 +297,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                 <div className="p-3.5 sm:p-4 bg-slate-50/90 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 space-y-3 shadow-xs my-auto">
                   <div className="space-y-1">
                     <label className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5 tracking-tight">
-                      <Target className="w-4 h-4 text-[#5e2be2]" />
+                      <Target className="w-4 h-4 text-[#450bc8]" />
                       <span>Look around your room and pick an anchor object:</span>
                     </label>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -319,12 +319,12 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                           }}
                           className={`px-3 py-2 rounded-xl text-xs transition-all flex items-center justify-between text-left cursor-pointer border ${
                             isSelected
-                              ? 'bg-purple-100/90 dark:bg-purple-950/80 border-[#5e2be2] text-[#5e2be2] dark:text-purple-300 font-bold shadow-xs ring-1 ring-[#5e2be2]/30 scale-[1.01]'
+                              ? 'bg-purple-100/90 dark:bg-purple-950/80 border-[#450bc8] text-[#450bc8] dark:text-purple-300 font-bold shadow-xs ring-1 ring-[#450bc8]/30 scale-[1.01]'
                               : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 hover:border-purple-300 dark:hover:border-purple-700 font-medium'
                           }`}
                         >
                           <span className="truncate text-xs font-semibold">{label}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-[#5e2be2] shrink-0 stroke-[3]" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-[#450bc8] shrink-0 stroke-[3]" />}
                         </button>
                       );
                     })}
@@ -337,7 +337,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                       placeholder="Or type another object in your physical space..."
                       value={item.name}
                       onChange={(e) => setItem({ ...item, name: e.target.value })}
-                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#5e2be2] focus:ring-1 focus:ring-[#5e2be2]/30 font-medium shadow-2xs"
+                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#450bc8] focus:ring-1 focus:ring-[#450bc8]/30 font-medium shadow-2xs"
                     />
                   </div>
                 </div>
@@ -345,7 +345,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                 /* ── STEP 2: COLOR SELECTION & DIRECT TYPING ── */
                 <div className="p-3.5 sm:p-4 bg-slate-50/90 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 space-y-3 shadow-xs my-auto">
                   <div className="space-y-1">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200/60 dark:border-purple-800/60 text-[#5e2be2] dark:text-purple-300 text-[11px] font-semibold">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200/60 dark:border-purple-800/60 text-[#450bc8] dark:text-purple-300 text-[11px] font-semibold">
                       <span>Anchor Object:</span>
                       <span className="font-bold underline">{item.name || 'Selected Object'}</span>
                     </div>
@@ -390,7 +390,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                       placeholder="Or type a specific color or tone (e.g. Deep Navy, Muted Grey)..."
                       value={item.color}
                       onChange={(e) => setItem({ ...item, color: e.target.value })}
-                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#5e2be2] focus:ring-1 focus:ring-[#5e2be2]/30 font-medium shadow-2xs"
+                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#450bc8] focus:ring-1 focus:ring-[#450bc8]/30 font-medium shadow-2xs"
                     />
                   </div>
                 </div>
@@ -398,7 +398,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                 /* ── STEP 3: TEXTURE & LIGHT SELECTION ── */
                 <div className="p-3.5 sm:p-4 bg-slate-50/90 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 space-y-3 shadow-xs my-auto">
                   <div className="space-y-1">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200/60 dark:border-purple-800/60 text-[#5e2be2] dark:text-purple-300 text-[11px] font-semibold">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200/60 dark:border-purple-800/60 text-[#450bc8] dark:text-purple-300 text-[11px] font-semibold">
                       <span>Anchor Object:</span>
                       <span className="font-bold underline">{item.name || 'Selected Object'}</span>
                     </div>
@@ -443,7 +443,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                       placeholder="Or type surface or lighting details (e.g. Polished ceramic, sun-warmed glass)..."
                       value={item.texture}
                       onChange={(e) => setItem({ ...item, texture: e.target.value })}
-                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#5e2be2] focus:ring-1 focus:ring-[#5e2be2]/30 font-medium shadow-2xs"
+                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#450bc8] focus:ring-1 focus:ring-[#450bc8]/30 font-medium shadow-2xs"
                     />
                   </div>
                 </div>
@@ -478,7 +478,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                     disabled={!isStep1Valid}
                     className={`px-7 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${
                       isStep1Valid
-                        ? 'bg-[#5e2be2] hover:bg-[#4f28d9] text-white shadow-md shadow-purple-500/25 cursor-pointer hover:scale-105 active:scale-95'
+                        ? 'bg-[#450bc8] hover:bg-[#3a0aa8] text-white shadow-md shadow-purple-500/25 cursor-pointer hover:scale-105 active:scale-95'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
                     }`}
                   >
@@ -492,7 +492,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                     disabled={!isStep2Valid}
                     className={`px-7 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${
                       isStep2Valid
-                        ? 'bg-[#5e2be2] hover:bg-[#4f28d9] text-white shadow-md shadow-purple-500/25 cursor-pointer hover:scale-105 active:scale-95'
+                        ? 'bg-[#450bc8] hover:bg-[#3a0aa8] text-white shadow-md shadow-purple-500/25 cursor-pointer hover:scale-105 active:scale-95'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
                     }`}
                   >
@@ -506,7 +506,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
                     disabled={!isStep3Valid}
                     className={`px-7 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${
                       isStep3Valid
-                        ? 'bg-[#5e2be2] hover:bg-[#4f28d9] text-white shadow-md shadow-purple-500/25 cursor-pointer hover:scale-105 active:scale-95'
+                        ? 'bg-[#450bc8] hover:bg-[#3a0aa8] text-white shadow-md shadow-purple-500/25 cursor-pointer hover:scale-105 active:scale-95'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
                     }`}
                   >
@@ -520,19 +520,19 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
         ) : (
           /* ── COMPLETION SCREEN ── */
           <div className="flex-1 flex flex-col justify-center items-center text-center py-4 space-y-3.5 max-w-md mx-auto animate-fadeIn relative z-10 my-auto">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#5e2be2] via-purple-600 to-indigo-600 p-1 mx-auto shadow-lg shadow-purple-500/30 flex items-center justify-center">
-              <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#5e2be2]">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#450bc8] via-purple-600 to-indigo-600 p-1 mx-auto shadow-lg shadow-purple-500/30 flex items-center justify-center">
+              <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#450bc8]">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
             </div>
             <div className="space-y-1">
               <h3 className="text-xl font-black text-slate-900 dark:text-white">Anchored in Physical Space</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                You have successfully grounded your sensory attention to <span className="font-bold text-[#5e2be2]">{item.name}</span>.
+                You have successfully grounded your sensory attention to <span className="font-bold text-[#450bc8]">{item.name}</span>.
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-center pt-1">
-              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                 1. Object: {item.name}
               </span>
               <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
@@ -557,7 +557,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
       {/* ─────────────────────────────────────────────────────────────
           2. EDUCATIONAL DESCRIPTION CARD: What is Describe Your Room?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -572,7 +572,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -581,12 +581,12 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   1
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] dark:text-purple-300 uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] dark:text-purple-300 uppercase tracking-wider">
                   Target Isolation
                 </span>
               </div>
@@ -595,12 +595,12 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   2
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] dark:text-purple-300 uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] dark:text-purple-300 uppercase tracking-wider">
                   Granular Sensory Mapping
                 </span>
               </div>
@@ -609,12 +609,12 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   3
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] dark:text-purple-300 uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] dark:text-purple-300 uppercase tracking-wider">
                   Neuro-Somatic Safety
                 </span>
               </div>
@@ -629,7 +629,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -638,8 +638,8 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -650,8 +650,8 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Target className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -662,8 +662,8 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -674,8 +674,8 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Compass className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -690,7 +690,7 @@ function SensoryRoomScanner({ activityName, onComplete }: { activityName?: strin
 
         {/* Clinical Rule of Thumb */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-teal-500/10 border border-indigo-200/80 dark:border-indigo-800/80 flex items-start gap-3.5 shadow-xs">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
@@ -876,19 +876,19 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
       {/* ─────────────────────────────────────────────────────────────
           1. MAIN INTERACTIVE EMOTIONAL CHECK-IN STAGE
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Plus_Jakarta_Sans'] flex flex-col justify-between p-3.5 sm:p-5 sm:px-6 select-none">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Open_Sans'] flex flex-col justify-between p-3.5 sm:p-5 sm:px-6 select-none">
         {/* Ambient background glows */}
         <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-purple-500/5 dark:bg-purple-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
 
         {/* Top Header Bar (Voice Toggle Only) */}
         <div className="w-full flex items-center justify-end z-10 pb-0.5">
           <button
             onClick={handleToggleVoice}
-            className="px-3 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
             title="Toggle Voice Guidance"
           >
-            {voiceCoach ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+            {voiceCoach ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
             <span>{voiceCoach ? 'Voice On' : 'Muted'}</span>
           </button>
         </div>
@@ -900,7 +900,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               Take a slow breath. Let's gently check in with how you're feeling right now in this present moment.
             </p>
 
-            <div className="bg-purple-50/70 dark:bg-purple-950/40 border-l-4 border-[#5e2be2] p-2.5 sm:p-3 rounded-xl text-center max-w-sm mx-auto">
+            <div className="bg-purple-50/70 dark:bg-purple-950/40 border-l-4 border-[#450bc8] p-2.5 sm:p-3 rounded-xl text-center max-w-sm mx-auto">
               <p className="text-xs text-purple-950 dark:text-purple-200 italic leading-relaxed font-medium">
                 "Whatever you feel is allowed. There is no right or wrong emotion."
               </p>
@@ -909,7 +909,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
             <div className="pt-1">
               <button
                 onClick={handleStart}
-                className="px-6 py-2 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="px-6 py-2 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
                 Start
               </button>
@@ -932,9 +932,9 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
             {/* Glowing Pulsing Breathing Orb with Countdown */}
             <div className="flex justify-center py-2">
               <div className="relative flex items-center justify-center">
-                <div className="w-24 h-24 rounded-full bg-[#5e2be2]/10 dark:bg-[#5e2be2]/20 animate-ping duration-[3000ms] absolute" />
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-100 via-indigo-50 to-purple-50 dark:from-purple-900/40 dark:via-indigo-950/40 dark:to-purple-950/40 border-2 border-[#5e2be2]/30 shadow-lg shadow-purple-500/20 flex flex-col items-center justify-center relative animate-pulse duration-[2000ms]">
-                  <span className="text-2xl font-black text-[#5e2be2] dark:text-purple-300">
+                <div className="w-24 h-24 rounded-full bg-[#450bc8]/10 dark:bg-[#450bc8]/20 animate-ping duration-[3000ms] absolute" />
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-100 via-indigo-50 to-purple-50 dark:from-purple-900/40 dark:via-indigo-950/40 dark:to-purple-950/40 border-2 border-[#450bc8]/30 shadow-lg shadow-purple-500/20 flex flex-col items-center justify-center relative animate-pulse duration-[2000ms]">
+                  <span className="text-2xl font-black text-[#450bc8] dark:text-purple-300">
                     {countdown}
                   </span>
                   <span className="text-[7.5px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
@@ -984,7 +984,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                     onClick={() => handleSelectEmotion(e.name)}
                     className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
                       isSelected
-                        ? 'bg-purple-50 dark:bg-purple-950/70 border-[#5e2be2] text-[#5e2be2] dark:text-purple-300 shadow-xs ring-1 ring-[#5e2be2]/40 scale-[1.01]'
+                        ? 'bg-purple-50 dark:bg-purple-950/70 border-[#450bc8] text-[#450bc8] dark:text-purple-300 shadow-xs ring-1 ring-[#450bc8]/40 scale-[1.01]'
                         : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-purple-50/50 dark:hover:bg-slate-800 hover:border-purple-200'
                     }`}
                   >
@@ -992,7 +992,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                       <span className="text-sm shrink-0">{e.emoji}</span>
                       <span className="font-bold text-xs truncate text-slate-900 dark:text-white">{e.name}</span>
                     </div>
-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#5e2be2] dark:text-purple-300" />}
+                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#450bc8] dark:text-purple-300" />}
                   </button>
                 );
               })}
@@ -1005,7 +1005,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                 value={customEmotion}
                 onChange={(e) => handleCustomEmotionChange(e.target.value)}
                 placeholder="Or type what you're feeling in your own words..."
-                className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#5e2be2] focus:ring-1 focus:ring-[#5e2be2]/20 font-medium shadow-2xs"
+                className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#450bc8] focus:ring-1 focus:ring-[#450bc8]/20 font-medium shadow-2xs"
               />
             </div>
 
@@ -1019,7 +1019,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               <button
                 onClick={handleProceedToIntensity}
                 disabled={!activeEmotionName.trim()}
-                className="px-5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs rounded-full shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                className="px-5 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs rounded-full shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
               >
                 Continue to Intensity →
               </button>
@@ -1031,7 +1031,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
         {phase === 'intensity' && (
           <div className="max-w-lg mx-auto space-y-3 py-2 animate-fade-in z-10 w-full">
             <div className="text-center space-y-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800 inline-block">
+              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800 inline-block">
                 Acknowledged: {activeEmotionName}
               </span>
               <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
@@ -1045,7 +1045,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                 <span className="text-[11px]">🌱 Mild (1)</span>
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
                   <span className="text-base">{intensityMeta.emoji}</span>
-                  <span className="text-xs font-extrabold text-[#5e2be2] dark:text-purple-300">{intensityMeta.label}</span>
+                  <span className="text-xs font-extrabold text-[#450bc8] dark:text-purple-300">{intensityMeta.label}</span>
                 </div>
                 <span className="text-[11px]">🔥 Intense (10)</span>
               </div>
@@ -1056,11 +1056,11 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                 max="10"
                 value={intensity}
                 onChange={(e) => setIntensity(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[#5e2be2]"
+                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[#450bc8]"
               />
 
               <div className="text-center">
-                <span className="text-3xl font-black text-[#5e2be2] dark:text-purple-300">
+                <span className="text-3xl font-black text-[#450bc8] dark:text-purple-300">
                   {intensity}
                 </span>
                 <span className="text-xs font-bold text-slate-400 ml-1">/ 10</span>
@@ -1076,7 +1076,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </button>
               <button
                 onClick={handleProceedToReflection}
-                className="px-5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-full shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                className="px-5 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-full shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
               >
                 Continue to Reflection →
               </button>
@@ -1126,7 +1126,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               value={reflectionText}
               onChange={(e) => setReflectionText(e.target.value)}
               placeholder="What does your feeling want to tell you?"
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#5e2be2] focus:ring-1 focus:ring-[#5e2be2]/20 font-medium shadow-2xs resize-none"
+              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#450bc8] focus:ring-1 focus:ring-[#450bc8]/20 font-medium shadow-2xs resize-none"
             />
 
             <div className="flex items-center justify-between pt-1">
@@ -1138,7 +1138,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </button>
               <button
                 onClick={handleFinish}
-                className="px-5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-full shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                className="px-5 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-full shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
               >
                 Complete Check-In →
               </button>
@@ -1150,7 +1150,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
         {phase === 'complete' && (
           <div className="max-w-lg mx-auto text-center space-y-3 py-3 my-auto animate-fade-in z-10 w-full">
             <div className="w-12 h-12 rounded-full bg-purple-500/20 p-1 mx-auto flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-[#5e2be2] flex items-center justify-center text-white shadow-md shadow-purple-500/40">
+              <div className="w-full h-full rounded-full bg-[#450bc8] flex items-center justify-center text-white shadow-md shadow-purple-500/40">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
             </div>
@@ -1159,7 +1159,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               <h3 className="text-xl font-black text-slate-900 dark:text-white">
                 {activeEmotionName}
               </h3>
-              <p className="text-[10.5px] font-bold uppercase tracking-wider text-[#5e2be2] dark:text-purple-300 mt-0.5">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-[#450bc8] dark:text-purple-300 mt-0.5">
                 Emotional State Witnessed & Honored
               </p>
             </div>
@@ -1168,7 +1168,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
             <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-left space-y-1.5 text-xs">
               <div className="flex items-center justify-between font-bold">
                 <span className="text-slate-500 dark:text-slate-400">Intensity Level:</span>
-                <span className="text-[#5e2be2] dark:text-purple-300 font-extrabold flex items-center gap-1.5">
+                <span className="text-[#450bc8] dark:text-purple-300 font-extrabold flex items-center gap-1.5">
                   {intensity}/10 {intensityMeta.emoji} ({intensityMeta.label})
                 </span>
               </div>
@@ -1181,8 +1181,8 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
             </div>
 
             {/* Compassionate Clinical Validation Message */}
-            <div className="bg-purple-50 dark:bg-purple-950/50 border-l-4 border-[#5e2be2] p-3 rounded-xl text-left shadow-2xs">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#5e2be2] dark:text-purple-300 mb-0.5">
+            <div className="bg-purple-50 dark:bg-purple-950/50 border-l-4 border-[#450bc8] p-3 rounded-xl text-left shadow-2xs">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#450bc8] dark:text-purple-300 mb-0.5">
                 ✨ Compassionate Validation:
               </p>
               <p className="text-xs text-purple-950 dark:text-purple-100 font-medium italic leading-relaxed">
@@ -1201,7 +1201,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
                 onClick={() => {
                   if (onComplete) onComplete();
                 }}
-                className="flex-1 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" /> Return to Activities
               </button>
@@ -1213,7 +1213,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
       {/* ─────────────────────────────────────────────────────────────
           2. EDUCATIONAL DESCRIPTION CARD: What is Name the Moment?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -1228,7 +1228,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1238,13 +1238,13 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* Step 1: Pause & Breathe */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
                   Pause & Breathe
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   STEP 1
                 </span>
               </div>
@@ -1254,13 +1254,13 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
             </div>
 
             {/* Step 2: Name the Emotion */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
                   Name the Emotion
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   STEP 2
                 </span>
               </div>
@@ -1270,13 +1270,13 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
             </div>
 
             {/* Step 3: Validate & Reflect */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">3</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">3</span>
                   Validate & Reflect
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   STEP 3
                 </span>
               </div>
@@ -1291,7 +1291,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1300,8 +1300,8 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1312,8 +1312,8 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <TrendingDown className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1324,8 +1324,8 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Smile className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1336,8 +1336,8 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1352,7 +1352,7 @@ function EmotionalResonanceCompass({ activityName, onComplete }: { activityName?
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
@@ -1541,19 +1541,19 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
       {/* ─────────────────────────────────────────────────────────────
           1. MAIN INTERACTIVE PHYSICAL GROUNDING STAGE
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Plus_Jakarta_Sans'] flex flex-col justify-between p-3.5 sm:p-5 sm:px-6 select-none">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Open_Sans'] flex flex-col justify-between p-3.5 sm:p-5 sm:px-6 select-none">
         {/* Ambient background glows */}
         <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-cyan-500/5 dark:bg-cyan-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
 
         {/* Top Header Bar (Voice Toggle Only) */}
         <div className="w-full flex items-center justify-end z-10 pb-0.5">
           <button
             onClick={handleToggleVoice}
-            className="px-3 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5"
             title="Toggle Voice Guidance"
           >
-            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
             <span>{voiceEnabled ? 'Voice On' : 'Muted'}</span>
           </button>
         </div>
@@ -1567,14 +1567,14 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
 
             {/* Concentric Sensory Ripples Preview Box */}
             <div className="flex justify-center py-1.5">
-              <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-100 via-indigo-50 to-cyan-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-cyan-950/40 border-2 border-[#5e2be2]/30 dark:border-purple-500/30 shadow-md shadow-purple-500/10 flex flex-col items-center justify-center overflow-hidden">
-                <div className="absolute inset-2 border border-[#5e2be2]/20 dark:border-purple-400/20 rounded-xl animate-pulse duration-[3000ms]" />
-                <span className="text-2xl font-black text-[#5e2be2] dark:text-purple-300">15</span>
+              <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-100 via-indigo-50 to-cyan-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-cyan-950/40 border-2 border-[#450bc8]/30 dark:border-purple-500/30 shadow-md shadow-purple-500/10 flex flex-col items-center justify-center overflow-hidden">
+                <div className="absolute inset-2 border border-[#450bc8]/20 dark:border-purple-400/20 rounded-xl animate-pulse duration-[3000ms]" />
+                <span className="text-2xl font-black text-[#450bc8] dark:text-purple-300">15</span>
                 <span className="text-[7.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Seconds</span>
               </div>
             </div>
 
-            <div className="bg-purple-50/70 dark:bg-purple-950/40 border-l-4 border-[#5e2be2] p-2.5 rounded-xl text-center max-w-sm mx-auto">
+            <div className="bg-purple-50/70 dark:bg-purple-950/40 border-l-4 border-[#450bc8] p-2.5 rounded-xl text-center max-w-sm mx-auto">
               <p className="text-xs text-purple-950 dark:text-purple-200 italic font-medium leading-relaxed">
                 "Step 1: Cool water or cold surface touch to activate nervous system safety."
               </p>
@@ -1583,7 +1583,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
             <div className="pt-1">
               <button
                 onClick={handleStart}
-                className="px-6 py-2 rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="px-6 py-2 rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
                 Start
               </button>
@@ -1594,16 +1594,16 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
           <div className="max-w-xl mx-auto text-center space-y-2.5 py-1 animate-fade-in z-10 w-full">
             {/* Step Counter Pill */}
             <div className="space-y-0.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800 inline-block">
+              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800 inline-block">
                 Step {stepIndex + 1} of 5: {activeStep.title}
               </span>
             </div>
 
             {/* Concentric Sensory Ripples Countdown Box */}
             <div className="flex justify-center py-1">
-              <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-100 via-indigo-50 to-cyan-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-cyan-950/40 border-2 border-[#5e2be2]/30 dark:border-purple-500/30 shadow-md shadow-purple-500/10 flex flex-col items-center justify-center overflow-hidden">
-                <div className="absolute inset-2 border border-[#5e2be2]/20 dark:border-purple-400/20 rounded-xl animate-pulse duration-[3000ms]" />
-                <span className="text-3xl font-black text-[#5e2be2] dark:text-purple-300">
+              <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-100 via-indigo-50 to-cyan-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-cyan-950/40 border-2 border-[#450bc8]/30 dark:border-purple-500/30 shadow-md shadow-purple-500/10 flex flex-col items-center justify-center overflow-hidden">
+                <div className="absolute inset-2 border border-[#450bc8]/20 dark:border-purple-400/20 rounded-xl animate-pulse duration-[3000ms]" />
+                <span className="text-3xl font-black text-[#450bc8] dark:text-purple-300">
                   {secondsLeftInStep}
                 </span>
                 <span className="text-[7.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -1633,7 +1633,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
                     key={s.title}
                     className={`py-1 px-1 rounded-lg border text-center transition-all ${
                       isCurrent
-                        ? 'bg-purple-50 dark:bg-purple-950/70 border-[#5e2be2] text-[#5e2be2] font-bold shadow-2xs'
+                        ? 'bg-purple-50 dark:bg-purple-950/70 border-[#450bc8] text-[#450bc8] font-bold shadow-2xs'
                         : isPast
                         ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
                         : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-400'
@@ -1665,7 +1665,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
                 ) : (
                   <button
                     onClick={handleStart}
-                    className="px-4 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-full font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                    className="px-4 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-full font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" /> Resume
                   </button>
@@ -1684,7 +1684,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
           /* COMPLETION CELEBRATION */
           <div className="max-w-lg mx-auto text-center space-y-3 py-3 my-auto animate-fade-in z-10 w-full">
             <div className="w-12 h-12 rounded-full bg-purple-500/20 p-1 mx-auto flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-[#5e2be2] flex items-center justify-center text-white shadow-md shadow-purple-500/40">
+              <div className="w-full h-full rounded-full bg-[#450bc8] flex items-center justify-center text-white shadow-md shadow-purple-500/40">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
             </div>
@@ -1693,13 +1693,13 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               <h3 className="text-xl font-black text-slate-900 dark:text-white">
                 Anchored in Safety & Presence
               </h3>
-              <p className="text-[10.5px] font-bold uppercase tracking-wider text-[#5e2be2] dark:text-purple-300 mt-0.5">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-[#450bc8] dark:text-purple-300 mt-0.5">
                 Physical Grounding Sequence Complete
               </p>
             </div>
 
-            <div className="bg-purple-50 dark:bg-purple-950/50 border-l-4 border-[#5e2be2] p-3 rounded-xl text-left shadow-2xs">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#5e2be2] dark:text-purple-300 mb-0.5">
+            <div className="bg-purple-50 dark:bg-purple-950/50 border-l-4 border-[#450bc8] p-3 rounded-xl text-left shadow-2xs">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#450bc8] dark:text-purple-300 mb-0.5">
                 ✨ Somatic Integration Summary:
               </p>
               <p className="text-xs text-purple-950 dark:text-purple-100 font-medium italic leading-relaxed">
@@ -1718,7 +1718,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
                 onClick={() => {
                   if (onComplete) onComplete({ completed: true });
                 }}
-                className="flex-1 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" /> Return to Activities
               </button>
@@ -1730,7 +1730,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
       {/* ─────────────────────────────────────────────────────────────
           2. EDUCATIONAL DESCRIPTION CARD: What is Physical Grounding?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -1745,7 +1745,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1755,13 +1755,13 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* Step 1 */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">1</span>
                   Sensory & Cold Shift
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   15s
                 </span>
               </div>
@@ -1771,13 +1771,13 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
             </div>
 
             {/* Step 2 */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">2</span>
                   Tension Release
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   20s
                 </span>
               </div>
@@ -1787,13 +1787,13 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
             </div>
 
             {/* Step 3 */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#5e2be2]/40 transition-colors">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-[#450bc8]/40 transition-colors">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">3</span>
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">3</span>
                   Tactile & Plantar Anchor
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100/80 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 text-[10px] font-bold">
                   50s
                 </span>
               </div>
@@ -1808,7 +1808,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1817,8 +1817,8 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1829,8 +1829,8 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <TrendingDown className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1841,8 +1841,8 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Heart className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1853,8 +1853,8 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1869,7 +1869,7 @@ function BioRadarPhysicalGrounding({ activityName, onComplete }: { activityName?
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">
@@ -2051,11 +2051,11 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="w-full max-w-4xl mx-auto space-y-4 font-['Open_Sans',sans-serif]">
       {/* ─────────────────────────────────────────────────────────────
           1. INTERACTIVE COGNITIVE GROUNDING CONTAINER
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden font-['Open_Sans',sans-serif]">
         {/* Ambient background glows */}
         <div className="absolute top-0 right-1/4 w-80 h-80 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-80 h-80 rounded-full bg-purple-500/5 dark:bg-purple-500/10 blur-3xl pointer-events-none" />
@@ -2069,7 +2069,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               title="Toggle Voice Guidance"
             >
               {voiceEnabled ? (
-                <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" />
+                <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" />
               ) : (
                 <VolumeX className="w-3.5 h-3.5 text-slate-400" />
               )}
@@ -2099,11 +2099,11 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                 <div className="flex items-center gap-3">
                   <div className="w-28 sm:w-32 h-2.5 bg-white dark:bg-slate-800 rounded-full overflow-hidden border border-purple-200 dark:border-purple-800">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-500 via-[#5e2be2] to-emerald-400 transition-all duration-500 rounded-full"
+                      className="h-full bg-gradient-to-r from-purple-500 via-[#450bc8] to-emerald-400 transition-all duration-500 rounded-full"
                       style={{ width: `${Math.max(15, prefrontalPercentage)}%` }}
                     />
                   </div>
-                  <span className="text-xs font-black text-[#5e2be2] dark:text-purple-300 min-w-[36px] text-right">
+                  <span className="text-xs font-black text-[#450bc8] dark:text-purple-300 min-w-[36px] text-right">
                     {Math.max(15, prefrontalPercentage)}%
                   </span>
                 </div>
@@ -2134,7 +2134,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                         }}
                         className={`px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
                           timerDuration === sec
-                            ? 'bg-[#5e2be2] text-white shadow-sm'
+                            ? 'bg-[#450bc8] text-white shadow-sm'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                         }`}
                       >
@@ -2147,7 +2147,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-1">
                     <button
                       onClick={() => handleStartMode('categories')}
-                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#5e2be2] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
+                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#450bc8] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xl">🦁</span>
@@ -2155,7 +2155,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                           RECALL
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#5e2be2] transition-colors">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#450bc8] transition-colors">
                         Category Blitz
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
@@ -2165,7 +2165,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
 
                     <button
                       onClick={() => handleStartMode('countdown')}
-                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#5e2be2] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
+                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#450bc8] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xl">🔢</span>
@@ -2173,7 +2173,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                           CALCULATION
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#5e2be2] transition-colors">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#450bc8] transition-colors">
                         Reverse 7s Subtraction
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
@@ -2183,15 +2183,15 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
 
                     <button
                       onClick={() => handleStartMode('alphabet')}
-                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#5e2be2] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
+                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#450bc8] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xl">🔤</span>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200">
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200">
                           SEQUENCING
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#5e2be2] transition-colors">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#450bc8] transition-colors">
                         Alphabet Concept Chain
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
@@ -2201,7 +2201,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
 
                     <button
                       onClick={() => handleStartMode('spell')}
-                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#5e2be2] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
+                      className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#450bc8] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xl">🧩</span>
@@ -2209,7 +2209,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                           ORTHOGRAPHIC
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#5e2be2] transition-colors">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#450bc8] transition-colors">
                         Spell Backwards
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
@@ -2219,7 +2219,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
 
                     <button
                       onClick={() => handleStartMode('reality')}
-                      className="sm:col-span-2 p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#5e2be2] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
+                      className="sm:col-span-2 p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-[#450bc8] dark:hover:border-purple-400 transition-all space-y-1.5 cursor-pointer shadow-sm group text-left"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xl">📍</span>
@@ -2227,7 +2227,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                           REALITY TETHER
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#5e2be2] transition-colors">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#450bc8] transition-colors">
                         Concrete Reality Anchor Facts
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
@@ -2296,7 +2296,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                         handleCompleteDrill();
                       }
                     }}
-                    className="px-8 py-3.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-purple-500/25 transition-all cursor-pointer"
+                    className="px-8 py-3.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-purple-500/25 transition-all cursor-pointer"
                   >
                     {catIndex < CATEGORY_CHALLENGES.length - 1 ? 'Next Category →' : 'Complete Drill'}
                   </button>
@@ -2318,7 +2318,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                   <span className="text-cyan-600 dark:text-cyan-400 font-black">⏱️ {secondsRemaining}s remaining</span>
                 </div>
 
-                <div className="p-8 rounded-3xl bg-gradient-to-br from-cyan-600 via-indigo-600 to-[#5e2be2] text-white shadow-xl shadow-cyan-500/20 space-y-4">
+                <div className="p-8 rounded-3xl bg-gradient-to-br from-cyan-600 via-indigo-600 to-[#450bc8] text-white shadow-xl shadow-cyan-500/20 space-y-4">
                   <span className="text-[11px] font-extrabold uppercase tracking-widest text-cyan-200">
                     Mental Math Protocol • Subtract 7
                   </span>
@@ -2366,7 +2366,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                   <span className="text-purple-600 dark:text-purple-400 font-black">⏱️ {secondsRemaining}s remaining</span>
                 </div>
 
-                <div className="p-8 rounded-3xl bg-gradient-to-br from-[#5e2be2] via-purple-600 to-fuchsia-600 text-white shadow-xl shadow-purple-500/20 space-y-3">
+                <div className="p-8 rounded-3xl bg-gradient-to-br from-[#450bc8] via-purple-600 to-fuchsia-600 text-white shadow-xl shadow-purple-500/20 space-y-3">
                   <div className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-3xl font-black mx-auto backdrop-blur-md">
                     {ALPHABET_CHAIN[alphaIndex].letter}
                   </div>
@@ -2390,7 +2390,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                         handleCompleteDrill();
                       }
                     }}
-                    className="px-8 py-3.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-purple-500/25 transition-all cursor-pointer"
+                    className="px-8 py-3.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-purple-500/25 transition-all cursor-pointer"
                   >
                     {alphaIndex < ALPHABET_CHAIN.length - 1 ? 'Next Letter →' : 'Complete Alphabet Chain'}
                   </button>
@@ -2412,7 +2412,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                   <span className="text-fuchsia-600 font-black">⏱️ {secondsRemaining}s remaining</span>
                 </div>
 
-                <div className="p-8 rounded-3xl bg-gradient-to-br from-fuchsia-600 via-indigo-600 to-[#5e2be2] text-white shadow-xl shadow-fuchsia-500/20 space-y-4">
+                <div className="p-8 rounded-3xl bg-gradient-to-br from-fuchsia-600 via-indigo-600 to-[#450bc8] text-white shadow-xl shadow-fuchsia-500/20 space-y-4">
                   <span className="text-[10px] font-extrabold uppercase tracking-widest text-fuchsia-200">
                     Spell Word Backwards
                   </span>
@@ -2516,8 +2516,8 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
         ) : (
           /* COMPLETION CELEBRATION */
           <div className="max-w-xl mx-auto text-center space-y-6 py-6 animate-fade-in">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-indigo-500 to-[#5e2be2] p-0.5 mx-auto shadow-xl shadow-purple-500/20 flex items-center justify-center">
-              <div className="w-full h-full rounded-3xl bg-white dark:bg-slate-900 flex items-center justify-center text-4xl text-[#5e2be2]">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-indigo-500 to-[#450bc8] p-0.5 mx-auto shadow-xl shadow-purple-500/20 flex items-center justify-center">
+              <div className="w-full h-full rounded-3xl bg-white dark:bg-slate-900 flex items-center justify-center text-4xl text-[#450bc8]">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
               </div>
             </div>
@@ -2531,8 +2531,8 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </h2>
             </div>
 
-            <div className="bg-purple-50 dark:bg-purple-950/50 border-l-4 border-[#5e2be2] p-5 sm:p-6 rounded-2xl text-left shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-[#5e2be2] dark:text-purple-300 mb-1.5">
+            <div className="bg-purple-50 dark:bg-purple-950/50 border-l-4 border-[#450bc8] p-5 sm:p-6 rounded-2xl text-left shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#450bc8] dark:text-purple-300 mb-1.5">
                 ✨ Neuro-Cognitive Integration Summary:
               </p>
               <p className="text-xs sm:text-sm text-purple-950 dark:text-purple-100 font-medium leading-relaxed">
@@ -2551,7 +2551,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
                 onClick={() => {
                   if (onComplete) onComplete({ completed: true, drillsCompleted: completedDrillCount });
                 }}
-                className="flex-1 py-3.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" /> Return to Activities
               </button>
@@ -2565,7 +2565,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
       {/* ─────────────────────────────────────────────────────────────
           2. EDUCATIONAL DESCRIPTION CARD: What is Cognitive Grounding?
          ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="w-full rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xl shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 space-y-8 font-['Open_Sans',sans-serif]">
         {/* Section 1: Overview */}
         <div className="space-y-3">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -2580,7 +2580,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -2589,12 +2589,12 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   1
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Category Retrieval
                 </span>
               </div>
@@ -2603,12 +2603,12 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   2
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Serial Working Memory
                 </span>
               </div>
@@ -2617,12 +2617,12 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   3
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Reality Re-Anchoring
                 </span>
               </div>
@@ -2637,7 +2637,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -2646,8 +2646,8 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2658,8 +2658,8 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2670,8 +2670,8 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Zap className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2682,8 +2682,8 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -2698,7 +2698,7 @@ function PrefrontalCognitiveArcade({ activityName, onComplete }: { activityName?
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">

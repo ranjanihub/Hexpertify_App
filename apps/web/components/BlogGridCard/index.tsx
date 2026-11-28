@@ -30,8 +30,11 @@ interface BlogGridContainerProps {
 
 async function getLatestPosts(): Promise<BlogGridCardProps[]> {
   try {
+    // The blog is a separate app (hexpertify.com/blogs, served from the US). Fetching it on every home page
+    // request held the whole page back by 0.35-0.65 s, so the list is cached for 5 minutes and refreshed in
+    // the background (a visitor never waits for it once it is cached).
     const response = await fetch(LATEST_POSTS_API, {
-      cache: "no-store",
+      next: { revalidate: 300 },
       headers: {
         Accept: "application/json",
       },
@@ -150,7 +153,7 @@ export async function BlogGridContainer({
         <div className="mt-5 flex justify-end">
           <Link
             href="/blog"
-            className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700"
+            className="rounded-md bg-primary px-4 py-3 sm:py-2 text-xs font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700"
           >
             See more
           </Link>

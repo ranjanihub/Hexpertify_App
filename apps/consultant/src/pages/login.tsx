@@ -42,21 +42,22 @@ export default function Login() {
   
   // Client Form State
   const [fullName, setFullName] = useState("");
-  const [clientEmail, setClientEmail] = useState("sarah.jenkins@example.com");
-  const [clientPhone, setClientPhone] = useState("+1 555-019-2834");
-  const [clientPassword, setClientPassword] = useState("password123");
+  // Fields start empty: never ship a real account or a password in the page
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientPassword, setClientPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
   // Therapist Form State
-  const [therapistEmail, setTherapistEmail] = useState("sadafbhimani21@gmail.com");
-  const [therapistPassword, setTherapistPassword] = useState("password123");
+  const [therapistEmail, setTherapistEmail] = useState("");
+  const [therapistPassword, setTherapistPassword] = useState("");
 
   // Admin Form State
-  const [adminEmail, setAdminEmail] = useState("admin@hexpertify.com");
-  const [adminPassword, setAdminPassword] = useState("password123");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -228,8 +229,8 @@ export default function Login() {
             .join("")
             .slice(0, 2)
             .toUpperCase(),
-          photoUrl: data.user.image || data.user.photoUrl || consultantUser.photoUrl,
-          image: data.user.image || data.user.photoUrl || consultantUser.photoUrl
+          photoUrl: data.user.image || data.user.photoUrl || undefined,
+          image: data.user.image || data.user.photoUrl || undefined
         };
       }
     } catch (err: any) {
@@ -392,15 +393,13 @@ export default function Login() {
 
 
   const handleQuickFillDemo = () => {
+    // Example addresses only; no password is filled in
     if (role === "therapist") {
       setTherapistEmail("dr.evelyn@hexpertify.com");
-      setTherapistPassword("password123");
     } else if (role === "client") {
       setClientEmail("sarah.jenkins@example.com");
-      setClientPassword("password123");
     } else {
       setAdminEmail("admin@example.com");
-      setAdminPassword("password123");
     }
     toast({
       title: "Demo Credentials Loaded",
@@ -425,7 +424,7 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full bg-slate-900 grid grid-cols-1 lg:grid-cols-12 font-sans overflow-x-hidden">
       {/* Left Column - Hero Branding & Features */}
-      <div className="hidden lg:flex lg:col-span-7 sticky top-0 h-screen relative bg-gradient-to-br from-[#290e6e] via-[#3b1799] to-[#5e2be2] p-8 xl:p-12 flex-col justify-between overflow-hidden">
+      <div className="hidden lg:flex lg:col-span-7 sticky top-0 h-screen relative bg-gradient-to-br from-[#290e6e] via-[#3b1799] to-[#450bc8] p-8 xl:p-12 flex-col justify-between overflow-hidden">
         {/* Ambient glow effects */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3" />
@@ -512,7 +511,7 @@ export default function Login() {
         {/* Top Mobile Brand */}
         <div className="lg:hidden flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#5e2be2] flex items-center justify-center text-white">
+            <div className="w-8 h-8 rounded-lg bg-[#450bc8] flex items-center justify-center text-white">
               <HeartPulse className="w-4 h-4" />
             </div>
             <span className="font-extrabold text-slate-900 text-lg">Hexpertify</span>
@@ -551,7 +550,7 @@ export default function Login() {
               type="button"
               onClick={() => setRole("client")}
               className={`flex-1 py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                role === "client" ? "bg-white text-[#5e2be2] shadow-sm font-bold" : "hover:text-slate-900"
+                role === "client" ? "bg-white text-[#450bc8] shadow-sm font-bold" : "hover:text-slate-900"
               }`}
             >
               <User className="w-3.5 h-3.5" /> Client
@@ -560,7 +559,7 @@ export default function Login() {
               type="button"
               onClick={() => setRole("therapist")}
               className={`flex-1 py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                role === "therapist" ? "bg-white text-[#5e2be2] shadow-sm font-bold" : "hover:text-slate-900"
+                role === "therapist" ? "bg-white text-[#450bc8] shadow-sm font-bold" : "hover:text-slate-900"
               }`}
             >
               <UserCheck className="w-3.5 h-3.5" /> Consultant
@@ -569,7 +568,7 @@ export default function Login() {
               type="button"
               onClick={() => setRole("admin")}
               className={`flex-1 py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                role === "admin" ? "bg-white text-[#5e2be2] shadow-sm font-bold" : "hover:text-slate-900"
+                role === "admin" ? "bg-white text-[#450bc8] shadow-sm font-bold" : "hover:text-slate-900"
               }`}
             >
               <Shield className="w-3.5 h-3.5" /> Admin
@@ -620,7 +619,7 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-11 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold rounded-xl shadow-lg shadow-[#5e2be2]/25 text-sm transition-all flex items-center justify-center gap-2 mt-2"
+                className="w-full h-11 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold rounded-xl shadow-lg shadow-[#450bc8]/25 text-sm transition-all flex items-center justify-center gap-2 mt-2"
               >
                 {isLoading ? (
                   <>
@@ -734,7 +733,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-11 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold rounded-xl shadow-lg shadow-[#5e2be2]/25 text-sm transition-all flex items-center justify-center gap-2 mt-2"
+                  className="w-full h-11 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold rounded-xl shadow-lg shadow-[#450bc8]/25 text-sm transition-all flex items-center justify-center gap-2 mt-2"
                 >
                   {isLoading ? (
                     <>
@@ -755,7 +754,7 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={() => setClientMode("signin")}
-                      className="text-[#5e2be2] font-bold hover:underline"
+                      className="text-[#450bc8] font-bold hover:underline"
                     >
                       Log in
                     </button>
@@ -817,7 +816,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-11 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold rounded-xl shadow-lg shadow-[#5e2be2]/25 text-sm transition-all flex items-center justify-center gap-2 mt-2"
+                  className="w-full h-11 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold rounded-xl shadow-lg shadow-[#450bc8]/25 text-sm transition-all flex items-center justify-center gap-2 mt-2"
                 >
                   {isLoading ? (
                     <>
@@ -1020,7 +1019,7 @@ export default function Login() {
                   onClick={() => {
                     if (customGoogleEmail) handleGoogleSignInWithEmail(customGoogleEmail);
                   }}
-                  className="h-10 px-4 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl"
+                  className="h-10 px-4 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl"
                 >
                   Sign In
                 </Button>

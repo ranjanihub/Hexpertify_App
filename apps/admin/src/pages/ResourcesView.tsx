@@ -369,7 +369,7 @@ export const ResourcesView: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold text-[#5e2be2] uppercase tracking-wider bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200/60">
+            <span className="text-xs font-bold text-[#450bc8] uppercase tracking-wider bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200/60">
               Care Hub
             </span>
           </div>
@@ -390,7 +390,7 @@ export const ResourcesView: React.FC = () => {
               placeholder="Search resources..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-9 py-2.5 rounded-full border border-slate-200 bg-white text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5e2be2] focus:border-transparent text-sm font-medium transition-all"
+              className="w-full pl-10 pr-9 py-2.5 rounded-full border border-slate-200 bg-white text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#450bc8] focus:border-transparent text-sm font-medium transition-all"
             />
             {searchQuery && (
               <button
@@ -405,7 +405,7 @@ export const ResourcesView: React.FC = () => {
           {/* Add Resource Button */}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="w-full sm:w-auto rounded-full bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold h-10 px-5 shadow-md shadow-[#5e2be2]/25 shrink-0 flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
+            className="w-full sm:w-auto rounded-full bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold h-10 px-5 shadow-md shadow-[#450bc8]/25 shrink-0 flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Add Resource</span>
@@ -426,7 +426,7 @@ export const ResourcesView: React.FC = () => {
               onClick={() => setActiveCategory(cat)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                 isActive
-                  ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/25 font-bold'
+                  ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/25 font-bold'
                   : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
               }`}
             >
@@ -454,7 +454,7 @@ export const ResourcesView: React.FC = () => {
 
       {/* Resources Card Grid */}
       {filteredResources.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {filteredResources.map((res) => {
             const isBookmarked = bookmarkedIds.includes(res.id);
 
@@ -488,7 +488,7 @@ export const ResourcesView: React.FC = () => {
                     >
                       <Bookmark
                         className={`w-4 h-4 ${
-                          isBookmarked ? 'fill-[#5e2be2] text-[#5e2be2]' : 'text-slate-600'
+                          isBookmarked ? 'fill-[#450bc8] text-[#450bc8]' : 'text-slate-600'
                         }`}
                       />
                     </button>
@@ -498,7 +498,7 @@ export const ResourcesView: React.FC = () => {
                         setEditingResource(res);
                       }}
                       title="Edit Resource"
-                      className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md hover:bg-purple-50 text-slate-500 hover:text-[#5e2be2] flex items-center justify-center shadow-md border border-white/50 transition-all hover:scale-110 active:scale-95"
+                      className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md hover:bg-purple-50 text-slate-500 hover:text-[#450bc8] flex items-center justify-center shadow-md border border-white/50 transition-all hover:scale-110 active:scale-95"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
@@ -516,13 +516,13 @@ export const ResourcesView: React.FC = () => {
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
                     {res.isRecommended && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#5e2be2] mb-2">
-                        <Star className="w-3.5 h-3.5 fill-[#5e2be2] text-[#5e2be2]" />
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#450bc8] mb-2">
+                        <Star className="w-3.5 h-3.5 fill-[#450bc8] text-[#450bc8]" />
                         <span>Recommended by Therapist</span>
                       </div>
                     )}
 
-                    <h3 className="text-lg font-bold text-slate-900 leading-snug group-hover:text-[#5e2be2] transition-colors line-clamp-2 mb-2">
+                    <h3 className="text-lg font-bold text-slate-900 leading-snug group-hover:text-[#450bc8] transition-colors line-clamp-2 mb-2">
                       {res.title}
                     </h3>
 
@@ -562,8 +562,8 @@ export const ResourcesView: React.FC = () => {
       ) : (
         /* Empty State */
         <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-xs max-w-lg mx-auto space-y-4 my-8">
-          <div className="w-16 h-16 rounded-2xl bg-purple-50 text-[#5e2be2] flex items-center justify-center mx-auto">
-            <BookOpen className="w-8 h-8 text-[#5e2be2]" />
+          <div className="w-16 h-16 rounded-2xl bg-purple-50 text-[#450bc8] flex items-center justify-center mx-auto">
+            <BookOpen className="w-8 h-8 text-[#450bc8]" />
           </div>
           <h3 className="text-lg font-bold text-slate-900">No resources found</h3>
           <p className="text-xs text-slate-500">
@@ -615,7 +615,7 @@ export const ResourcesView: React.FC = () => {
                   </span>
 
                   {selectedResource.isRecommended && (
-                    <span className="bg-[#5e2be2] text-white px-3 py-0.5 rounded-full text-[11px] font-extrabold tracking-wider flex items-center gap-1 shadow-xs">
+                    <span className="bg-[#450bc8] text-white px-3 py-0.5 rounded-full text-[11px] font-extrabold tracking-wider flex items-center gap-1 shadow-xs">
                       <Star className="w-3 h-3 fill-white text-white" />
                       <span>Recommended by Therapist</span>
                     </span>
@@ -648,7 +648,7 @@ export const ResourcesView: React.FC = () => {
                   {selectedResource.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="bg-purple-50 text-[#5e2be2] text-xs font-bold px-2.5 py-0.5 rounded-full border border-purple-100"
+                      className="bg-purple-50 text-[#450bc8] text-xs font-bold px-2.5 py-0.5 rounded-full border border-purple-100"
                     >
                       #{tag}
                     </span>
@@ -680,14 +680,14 @@ export const ResourcesView: React.FC = () => {
                 onClick={(e) => toggleBookmark(selectedResource.id, e)}
                 className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 ${
                   bookmarkedIds.includes(selectedResource.id)
-                    ? 'bg-purple-100 text-[#5e2be2] border border-purple-200'
+                    ? 'bg-purple-100 text-[#450bc8] border border-purple-200'
                     : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <Bookmark
                   className={`w-4 h-4 ${
                     bookmarkedIds.includes(selectedResource.id)
-                      ? 'fill-[#5e2be2] text-[#5e2be2]'
+                      ? 'fill-[#450bc8] text-[#450bc8]'
                       : 'text-slate-500'
                   }`}
                 />
@@ -705,7 +705,7 @@ export const ResourcesView: React.FC = () => {
                     setSelectedResource(null);
                     setEditingResource(resToEdit);
                   }}
-                  className="px-4 py-2.5 bg-white hover:bg-purple-50 text-[#5e2be2] border border-purple-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-white hover:bg-purple-50 text-[#450bc8] border border-purple-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Edit Resource</span>
@@ -732,7 +732,7 @@ export const ResourcesView: React.FC = () => {
 
                 <button
                   onClick={() => setSelectedResource(null)}
-                  className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 transition-all"
+                  className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 transition-all"
                 >
                   Done
                 </button>
@@ -748,7 +748,7 @@ export const ResourcesView: React.FC = () => {
           <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden my-auto animate-in fade-in zoom-in-95 p-6 sm:p-7 space-y-5 max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#5e2be2] flex items-center justify-center border border-purple-100">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#450bc8] flex items-center justify-center border border-purple-100">
                   <Edit3 className="w-4 h-4" />
                 </div>
                 <div>
@@ -773,7 +773,7 @@ export const ResourcesView: React.FC = () => {
                   required
                   value={editingResource.title}
                   onChange={(e) => setEditingResource({ ...editingResource, title: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#5e2be2] outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#450bc8] outline-none"
                 />
               </div>
 
@@ -798,7 +798,7 @@ export const ResourcesView: React.FC = () => {
                         category: catMap[t]
                       });
                     }}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#5e2be2] outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#450bc8] outline-none"
                   >
                     <option value="article">Article</option>
                     <option value="worksheet">Worksheet</option>
@@ -813,7 +813,7 @@ export const ResourcesView: React.FC = () => {
                     type="text"
                     value={editingResource.duration}
                     onChange={(e) => setEditingResource({ ...editingResource, duration: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#5e2be2] outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#450bc8] outline-none"
                   />
                 </div>
               </div>
@@ -825,7 +825,7 @@ export const ResourcesView: React.FC = () => {
                   required
                   value={editingResource.description}
                   onChange={(e) => setEditingResource({ ...editingResource, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#5e2be2] outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#450bc8] outline-none"
                 />
               </div>
 
@@ -835,7 +835,7 @@ export const ResourcesView: React.FC = () => {
                   rows={4}
                   value={editingResource.fullContent || ''}
                   onChange={(e) => setEditingResource({ ...editingResource, fullContent: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#5e2be2] outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#450bc8] outline-none"
                 />
               </div>
 
@@ -845,7 +845,7 @@ export const ResourcesView: React.FC = () => {
                   type="url"
                   value={editingResource.imageUrl}
                   onChange={(e) => setEditingResource({ ...editingResource, imageUrl: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#5e2be2] outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#450bc8] outline-none"
                 />
               </div>
 
@@ -860,7 +860,7 @@ export const ResourcesView: React.FC = () => {
                       tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean)
                     })
                   }
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#5e2be2] outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#450bc8] outline-none"
                 />
               </div>
 
@@ -870,7 +870,7 @@ export const ResourcesView: React.FC = () => {
                     type="checkbox"
                     checked={editingResource.isRecommended || false}
                     onChange={(e) => setEditingResource({ ...editingResource, isRecommended: e.target.checked })}
-                    className="w-4 h-4 text-[#5e2be2] rounded"
+                    className="w-4 h-4 text-[#450bc8] rounded"
                   />
                   <span>Recommended by Therapist</span>
                 </label>
@@ -900,7 +900,7 @@ export const ResourcesView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                    className="px-5 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95"
                   >
                     Save Changes
                   </button>
@@ -913,8 +913,8 @@ export const ResourcesView: React.FC = () => {
 
       {/* ── ADD NEW RESOURCE MODAL (QUENZA-STYLE) ────────────────────── */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden my-auto animate-in fade-in zoom-in-95 p-6 sm:p-7 space-y-5">
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 max-h-[90dvh] overflow-y-auto my-auto animate-in fade-in zoom-in-95 p-5 sm:p-7 space-y-5">
             {/* Modal Header */}
             <div>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight">Add a resource</h3>
@@ -931,7 +931,7 @@ export const ResourcesView: React.FC = () => {
                   onClick={() => setResourceTab('file')}
                   className={`flex items-center gap-1.5 px-5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     resourceTab === 'file'
-                      ? 'bg-white text-[#5e2be2] shadow-xs'
+                      ? 'bg-white text-[#450bc8] shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -943,7 +943,7 @@ export const ResourcesView: React.FC = () => {
                   onClick={() => setResourceTab('link')}
                   className={`flex items-center gap-1.5 px-5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     resourceTab === 'link'
-                      ? 'bg-white text-[#5e2be2] shadow-xs'
+                      ? 'bg-white text-[#450bc8] shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -964,7 +964,7 @@ export const ResourcesView: React.FC = () => {
                     You can add a file to the client's resources
                   </p>
 
-                  <label className="border-2 border-dashed border-slate-200 hover:border-[#5e2be2]/60 hover:bg-purple-50/20 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group">
+                  <label className="border-2 border-dashed border-slate-200 hover:border-[#450bc8]/60 hover:bg-purple-50/20 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group">
                     <input
                       type="file"
                       onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
@@ -973,7 +973,7 @@ export const ResourcesView: React.FC = () => {
                     />
                     {selectedFile ? (
                       <div className="flex items-center gap-3 bg-purple-50 px-4 py-2 rounded-xl border border-purple-200">
-                        <FileText className="w-5 h-5 text-[#5e2be2]" />
+                        <FileText className="w-5 h-5 text-[#450bc8]" />
                         <div className="text-left">
                           <p className="text-xs font-bold text-slate-900 truncate max-w-xs">{selectedFile.name}</p>
                           <p className="text-[10px] text-slate-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
@@ -991,11 +991,11 @@ export const ResourcesView: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-purple-100 text-slate-600 group-hover:text-[#5e2be2] flex items-center justify-center transition-colors">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-purple-100 text-slate-600 group-hover:text-[#450bc8] flex items-center justify-center transition-colors">
                           <Upload className="w-5 h-5" />
                         </div>
                         <div className="text-xs font-medium text-slate-700">
-                          <span className="text-[#5e2be2] font-bold">Upload a file</span> or drag and drop
+                          <span className="text-[#450bc8] font-bold">Upload a file</span> or drag and drop
                         </div>
                       </>
                     )}
@@ -1021,7 +1021,7 @@ export const ResourcesView: React.FC = () => {
                       placeholder=""
                       value={linkLabel}
                       onChange={(e) => setLinkLabel(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                       required={resourceTab === 'link'}
                     />
                   </div>
@@ -1038,7 +1038,7 @@ export const ResourcesView: React.FC = () => {
                       placeholder="https://"
                       value={linkUrl}
                       onChange={(e) => setLinkUrl(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                       required={resourceTab === 'link'}
                     />
                   </div>
@@ -1066,7 +1066,7 @@ export const ResourcesView: React.FC = () => {
                         setContextSearch(e.target.value);
                         setIsContextDropdownOpen(true);
                       }}
-                      className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#5e2be2]"
+                      className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#450bc8]"
                     />
                     <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
@@ -1095,7 +1095,7 @@ export const ResourcesView: React.FC = () => {
                                 }}
                                 className={`w-full px-3 py-2 text-left rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
                                   isSelected
-                                    ? 'bg-purple-50 text-[#5e2be2] font-bold'
+                                    ? 'bg-purple-50 text-[#450bc8] font-bold'
                                     : 'hover:bg-slate-50 text-slate-700 font-medium'
                                 }`}
                               >
@@ -1105,7 +1105,7 @@ export const ResourcesView: React.FC = () => {
                                     {opt.type}
                                   </span>
                                 </div>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-[#5e2be2]" />}
+                                {isSelected && <Check className="w-3.5 h-3.5 text-[#450bc8]" />}
                               </button>
                             );
                           })}
@@ -1122,7 +1122,7 @@ export const ResourcesView: React.FC = () => {
                       {selectedContexts.map((name) => (
                         <span
                           key={name}
-                          className="inline-flex items-center gap-1.5 bg-purple-50 border border-purple-100 text-[#5e2be2] font-semibold text-xs px-2.5 py-1 rounded-full"
+                          className="inline-flex items-center gap-1.5 bg-purple-50 border border-purple-100 text-[#450bc8] font-semibold text-xs px-2.5 py-1 rounded-full"
                         >
                           <span>{name}</span>
                           <button
@@ -1150,7 +1150,7 @@ export const ResourcesView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95"
+                  className="px-6 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95"
                 >
                   Save
                 </button>

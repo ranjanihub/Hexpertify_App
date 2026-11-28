@@ -188,7 +188,7 @@ export default function ProfilePage() {
   };
 
   const handleContactUs = () => {
-    window.location.href = "tel:+918940506900";
+    window.location.href = "tel:+918618209518";
   };
 
   const getStatusColor = (status: string) => {
@@ -536,9 +536,9 @@ export default function ProfilePage() {
             <p className="text-sm text-gray-600 mb-2">
               Need help with your booking?
             </p>
-            <Link href="tel:+918940506900">
+            <Link href="tel:+918618209518">
               <p className="font-bold text-purple-700">
-                Contact Us: +91 8940506900
+                Contact Us: +91 8618209518
               </p>
             </Link>
           </div>

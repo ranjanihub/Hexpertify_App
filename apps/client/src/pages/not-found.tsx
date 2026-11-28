@@ -17,7 +17,7 @@ export default function NotFound() {
             The page you requested was not found.
           </p>
 
-          <a href="/client" className="inline-flex items-center justify-center px-4 py-2 bg-[#5e2be2] text-white rounded-xl font-bold text-xs hover:bg-[#4f28d9] transition-all">
+          <a href="/client" className="inline-flex items-center justify-center px-4 py-2 bg-[#450bc8] text-white rounded-xl font-bold text-xs hover:bg-[#3a0aa8] transition-all">
             Return to Dashboard
           </a>
         </CardContent>

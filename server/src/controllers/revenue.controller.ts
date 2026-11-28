@@ -68,6 +68,12 @@ export class RevenueController {
         let myEmails = new Set<string>();
         let myFeeType: string | undefined;
 
+        // An id that matches no therapist is reported as such, never as an empty ₹0 earnings page
+        if (myId && !myName && !allConsultants.some((c: any) =>
+          [c._id, c.id].some((v) => v && String(v).toLowerCase().trim() === myId))) {
+          return { success: false, notFound: true, error: 'No therapist profile matches this id.' };
+        }
+
         if (myId || myName) {
           const matchedConsultants = allConsultants.filter((c: any) => {
             const cId = String(c._id || c.id || '').toLowerCase().trim();
@@ -276,6 +282,10 @@ export class RevenueController {
         };
       });
 
+      if ((responseData as any)?.notFound) {
+        res.status(404).json({ success: false, error: (responseData as any).error });
+        return;
+      }
       res.json(responseData);
     } catch (error: any) {
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch revenue analytics' });

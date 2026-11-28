@@ -1,22 +1,20 @@
 import React from "react";
 import { Metadata } from "next";
 
+// A placeholder page: kept out of search results until it has real content
 export const metadata: Metadata = {
-  title: "Blog - Coming Soon | Hexpertify",
-  description:
-    "Our blog is under construction. Stay tuned for amazing content, insights, and updates coming soon!",
-  keywords: ["blog", "coming soon", "hexpertify", "updates", "insights"],
+  title: "Hire a Mentor - Coming Soon | Hexpertify",
+  description: "Hiring a mentor on Hexpertify is coming soon.",
+  robots: { index: false, follow: true },
   openGraph: {
-    title: "Blog - Coming Soon | Hexpertify",
-    description:
-      "Our blog is under construction. Stay tuned for amazing content, insights, and updates coming soon!",
+    title: "Hire a Mentor - Coming Soon | Hexpertify",
+    description: "Hiring a mentor on Hexpertify is coming soon.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog - Coming Soon | Hexpertify",
-    description:
-      "Our blog is under construction. Stay tuned for amazing content, insights, and updates coming soon!",
+    title: "Hire a Mentor - Coming Soon | Hexpertify",
+    description: "Hiring a mentor on Hexpertify is coming soon.",
   },
 };
 
@@ -34,11 +32,11 @@ const Page: React.FC<IPage> = (props) => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-        <h1 className="text-7xl md:text-9xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent mb-6 animate-fade-in">
+      <div className="relative z-10 text-center px-5 sm:px-6 py-12 max-w-4xl mx-auto">
+        <h1 className="text-6xl min-[400px]:text-7xl md:text-9xl pb-2 md:pb-4 font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent mb-6 animate-fade-in">
           Coming Soon
         </h1>
-        <p className="text-xl md:text-2xl text-gray-300 mb-8 animate-fade-in [animation-delay:0.2s]">
+        <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-8 animate-fade-in [animation-delay:0.2s]">
           Hire a mentor is under construction. Something amazing is on the way!
         </p>
         <div className="flex items-center justify-center gap-2 animate-fade-in [animation-delay:0.4s]">

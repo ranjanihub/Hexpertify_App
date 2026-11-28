@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useSubmitSessionReport } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Check, 
@@ -26,7 +25,6 @@ import {
   Sparkles, 
   Paperclip, 
   UserCheck, 
-  Smartphone, 
   Mail, 
   Bell, 
   CheckCircle2, 
@@ -86,9 +84,11 @@ type FormValues = z.infer<typeof formSchema>;
 type SessionReportDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  sessionId: number | null;
+  /** The booking id the report belongs to */
+  sessionId: string | null;
   clientName?: string;
-  onSuccess?: () => void;
+  /** Called with the saved booking once the server has stored the report */
+  onSuccess?: (booking?: any) => void;
 };
 
 const PRESET_TECHNIQUES = [
@@ -121,11 +121,11 @@ const ATTACHMENT_TYPES = [
   { id: "External Link", label: "External Link", icon: Paperclip },
 ];
 
-export function SessionReportDialog({ open, onOpenChange, sessionId, clientName = "Michael Chen", onSuccess }: SessionReportDialogProps) {
+export function SessionReportDialog({ open, onOpenChange, sessionId, clientName = "", onSuccess }: SessionReportDialogProps) {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
   const { toast } = useToast();
-  const submitReport = useSubmitSessionReport();
+  const [submitting, setSubmitting] = useState(false);
 
   // Custom Tag Inputs
   const [customTechnique, setCustomTechnique] = useState("");
@@ -149,20 +149,21 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
       initialClinicalImpression: "",
       therapyGoals: "",
       recommendedApproach: "",
-      techniquesUsed: ["CBT", "Mindfulness"],
-      topicsDiscussed: ["Anxiety", "Workplace"],
-      clinicalSummary: "Client demonstrated strong engagement during session. We reviewed homework exercises on identifying automatic negative thoughts. Introduced 4-7-8 breathing techniques for acute anxiety spikes.",
-      internalNotes: "Follow up next week on sleep log consistency.",
-      homeworkActivity: "Daily Thought Record & 10-min Evening Mindfulness",
-      homeworkInstructions: "Complete one thought log whenever feeling elevated anxiety (>6/10). Practice 4-7-8 breathing twice daily.",
-      homeworkFrequency: "Daily",
-      homeworkDuration: "10 mins",
-      homeworkNumberOfDays: "7 Days",
+      // Clinical fields start empty: a sample text left in place would be saved as this client's real report
+      techniquesUsed: [],
+      topicsDiscussed: [],
+      clinicalSummary: "",
+      internalNotes: "",
+      homeworkActivity: "",
+      homeworkInstructions: "",
+      homeworkFrequency: "",
+      homeworkDuration: "",
+      homeworkNumberOfDays: "",
       homeworkDueDate: "",
       recommendedFollowUp: "1_week",
       reminderTiming: "1_day_before",
-      followUpMessage: "Please continue the breathing exercise twice daily and complete the attached worksheet before our next session.",
-      attachments: ["Worksheet", "Audio"],
+      followUpMessage: "",
+      attachments: [],
     },
   });
 
@@ -203,59 +204,54 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
     if (step > 1) setStep(step - 1);
   };
 
-  const onSubmit = (values: FormValues) => {
-    if (!sessionId && sessionId !== 0) {
-      handleSuccessfulSubmission();
+  // The report is stored on the booking itself; success is shown only once the server confirms it
+  const onSubmit = async (values: FormValues) => {
+    if (submitting) return;
+    if (!sessionId) {
+      toast({
+        title: "Report not saved",
+        description: "This report isn't linked to a session. Close it and open the report from the session again.",
+        variant: "destructive",
+      });
+      setSwipeProgress(0);
       return;
     }
 
-    const engagementLevelMap: Record<string, "high" | "medium" | "low"> = {
-      high: "high",
-      moderate: "medium",
-      low: "low",
-    };
-
-    const payload = {
-      durationMinutes: 50,
-      clientCooperation: values.clientCooperation === "average" ? ("fair" as const) : (values.clientCooperation as any),
-      clientEngagementLevel: engagementLevelMap[values.clientEngagementLevel] || "medium",
-      moodComparedToPrevious: "better" as const,
-      progressTowardsGoals: values.progressSincePrevious === "achieved" ? ("significant" as const) : (values.progressSincePrevious as any),
-      techniquesUsed: values.techniquesUsed,
-      topicsDiscussed: values.topicsDiscussed,
-      riskFlags: null,
-      clinicalSummary: values.clinicalSummary,
-      internalNotes: values.internalNotes || null,
-      homeworkActivity: values.homeworkActivity || null,
-      homeworkInstructions: values.homeworkInstructions || null,
-      homeworkFrequency: values.homeworkFrequency || null,
-      nextSessionRecommendation: values.recommendedFollowUp,
-      followUpMessage: values.followUpMessage || null,
-    };
-
-    submitReport.mutate(
-      { id: sessionId, data: payload },
-      {
-        onSuccess: () => {
-          handleSuccessfulSubmission();
-        },
-        onError: () => {
-          handleSuccessfulSubmission();
-        },
+    setSubmitting(true);
+    try {
+      const submittedAt = new Date().toISOString();
+      const res = await fetch(`/api/bookings/${encodeURIComponent(sessionId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionReport: { ...values, submittedAt }, sessionReportSubmittedAt: submittedAt }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || "The server did not save the report.");
       }
-    );
+      handleSuccessfulSubmission(data?.booking);
+    } catch (err: any) {
+      setSwipeProgress(0);
+      toast({
+        title: "Report not saved",
+        description: `${err?.message || "Something went wrong."} Your answers are still here, so please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSuccessfulSubmission = () => {
+  const handleSuccessfulSubmission = (booking?: any) => {
     toast({
-      title: "Session Report Submitted! 🎉",
-      description: "Report saved, timeline updated, homework assigned, and automated follow-up scheduled.",
+      title: "Session report submitted",
+      description: `The report for ${clientName || "this session"} is saved.`,
     });
     onOpenChange(false);
     setStep(1);
     setSwipeProgress(0);
     form.reset();
-    if (onSuccess) onSuccess();
+    if (onSuccess) onSuccess(booking);
   };
 
   // Drag-to-submit logic
@@ -272,7 +268,7 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
     if (percent >= 85) {
       setIsSwiping(false);
       setSwipeProgress(100);
-      form.handleSubmit(onSubmit)();
+      form.handleSubmit(onSubmit, () => setSwipeProgress(0))();
     }
   };
 
@@ -345,7 +341,7 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
         </div>
 
         {/* STEP CONTENT CONTAINER */}
-        <div className="px-4 sm:px-6 py-4 sm:py-6 flex-1 max-h-[60vh] overflow-y-auto">
+        <div className="px-4 sm:px-6 py-4 sm:py-6 flex-1 min-h-0 max-h-[60vh] overflow-y-auto">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
@@ -990,11 +986,13 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
                     {/* Delivery Notice & Privacy Banner */}
                     <div className="bg-secondary/30 p-3 rounded-lg border border-border text-xs space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-foreground">The platform sends this automatically via:</span>
+                        <span className="font-medium text-foreground">When you submit, your message and the suggested next session go to the client by:</span>
                         <Badge variant="outline" className="text-[10px]"><Mail className="w-3 h-3 mr-1" /> Email</Badge>
-                        <Badge variant="outline" className="text-[10px]"><Smartphone className="w-3 h-3 mr-1" /> WhatsApp</Badge>
                         <Badge variant="outline" className="text-[10px]"><Bell className="w-3 h-3 mr-1" /> In-app notification</Badge>
                       </div>
+                      <p className="text-muted-foreground">
+                        Leave the message empty to send nothing. The reminder timing is saved with your report for your own planning; it doesn't schedule a reminder.
+                      </p>
                       <p className="text-muted-foreground font-medium flex items-center gap-1.5 pt-1">
                         <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
                         The therapist never sees the client's email or phone number.
@@ -1041,15 +1039,10 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
                   <div className="space-y-2">
                     <h4 className="text-xs font-semibold text-muted-foreground">Once you submit:</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-foreground">
+                      {/* Only what saving the report really does today */}
                       {[
-                        "Session report is saved.",
-                        "Client timeline is updated.",
-                        "Homework is assigned.",
-                        "Follow-up message is sent.",
-                        "Reminders are scheduled.",
-                        "Outcomes are updated.",
+                        "Session report is saved to this session.",
                         "Session marked Report Submitted.",
-                        "Admin notified for payout processing.",
                       ].map((action, idx) => (
                         <div key={idx} className="flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -1094,9 +1087,9 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
                       type="button"
                       className="bg-primary text-white"
                       onClick={form.handleSubmit(onSubmit)}
-                      disabled={submitReport.isPending}
+                      disabled={submitting}
                     >
-                      {submitReport.isPending ? "Submitting..." : (
+                      {submitting ? "Submitting..." : (
                         <>
                           <Save className="w-4 h-4 mr-2" /> Submit Report <ChevronRight className="w-4 h-4 ml-2" />
                         </>
@@ -1134,9 +1127,9 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
               type="button"
               className="bg-primary text-white"
               onClick={form.handleSubmit(onSubmit)}
-              disabled={submitReport.isPending}
+              disabled={submitting}
             >
-              {submitReport.isPending ? "Submitting..." : (
+              {submitting ? "Submitting..." : (
                 <>
                   <Save className="w-4 h-4 mr-2" /> Submit Report
                 </>

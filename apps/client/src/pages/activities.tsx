@@ -5,10 +5,7 @@ import {
   Clock, 
   Sparkles, 
   Search, 
-  Brain, 
-  Heart, 
   Wind, 
-  Smile, 
   Play,
   Repeat,
   BookOpen,
@@ -51,7 +48,7 @@ import { PageHeader } from "@/components/page-header";
 import { ActivityGamePlayer } from "@/components/activity-game-player";
 import { audioEngine } from "../activities/utils/therapeuticAudioEngine";
 import { cn } from "@/lib/utils";
-import { getUserActivities } from "@/lib/client-store";
+import { getUserActivities, getUserStorageKey } from "@/lib/client-store";
 import { getClientAuth } from "@/lib/auth";
 
 export function getActivitySlug(titleOrName: string): string {
@@ -69,6 +66,39 @@ export interface ClientAssignment {
   clientEmail?: string;
   frequency: string;
   timeOfDay?: string;
+}
+
+/** The old device-wide responses log, shared by everyone who signed in on this device */
+const LEGACY_RESPONSES_KEY = "completed_activities_log";
+
+/**
+ * This client's own "My Responses" log. Entries that are clearly theirs (same email) are moved out of
+ * the old shared log the first time; nobody else's entries are ever read.
+ */
+function readMyResponses(myEmail: string): CompletedActivityResponse[] {
+  const key = getUserStorageKey(LEGACY_RESPONSES_KEY);
+  try {
+    const own = JSON.parse(localStorage.getItem(key) || "null");
+    if (Array.isArray(own)) return own;
+
+    let mine: CompletedActivityResponse[] = [];
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_RESPONSES_KEY) || "[]");
+    if (Array.isArray(legacy) && myEmail) {
+      const isMine = (log: any) => String(log?.clientEmail || "").toLowerCase().trim() === myEmail;
+      mine = legacy.filter(isMine);
+      const others = legacy.filter((log: any) => !isMine(log));
+      if (others.length) localStorage.setItem(LEGACY_RESPONSES_KEY, JSON.stringify(others));
+      else localStorage.removeItem(LEGACY_RESPONSES_KEY);
+    }
+    localStorage.setItem(key, JSON.stringify(mine));
+    return mine;
+  } catch {
+    return [];
+  }
+}
+
+function writeMyResponses(list: CompletedActivityResponse[]): void {
+  localStorage.setItem(getUserStorageKey(LEGACY_RESPONSES_KEY), JSON.stringify(list));
 }
 
 export interface CompletedActivityResponse {
@@ -792,46 +822,41 @@ export default function ActivitiesPage() {
     data?: any;
   } | null>(null);
   const [sharingChoice, setSharingChoice] = useState<"full" | "private">("full");
+  // A completion is being saved: the confirm button is disabled so it cannot be sent twice
+  const [isSavingCompletion, setIsSavingCompletion] = useState(false);
+  // The first load finished (so an unknown address can be reported as "not found")
+  const [activitiesLoaded, setActivitiesLoaded] = useState(false);
+  const [slugNotFound, setSlugNotFound] = useState(false);
 
   // Synchronize route slug with activeActivity
   useEffect(() => {
     if (!routeSlug) {
+      setSlugNotFound(false);
       if (activeActivity && !completedActivityToReview) {
         setActiveActivity(null);
       }
       return;
     }
 
-    const cleanSlug = decodeURIComponent(routeSlug).toLowerCase().trim();
-    const matched = activities.find((act) => {
-      const actTitleSlug = getActivitySlug(act.title);
-      const actNameSlug = getActivitySlug(act.name || '');
-      const actId = String(act.id || '').toLowerCase();
-      const rawTitle = act.title.toLowerCase();
+    let cleanSlug = routeSlug.toLowerCase().trim();
+    try {
+      cleanSlug = decodeURIComponent(routeSlug).toLowerCase().trim();
+    } catch {}
+    // Exact slug or id only: a partial address such as /activities/a must not open some other activity
+    const isExactMatch = (act: ActivityItem) =>
+      getActivitySlug(act.title) === cleanSlug ||
+      (!!act.name && getActivitySlug(act.name) === cleanSlug) ||
+      String(act.id || '').toLowerCase() === cleanSlug;
+    const matched = activities.find(isExactMatch) || INITIAL_ACTIVITIES.find(isExactMatch);
 
-      return (
-        actTitleSlug === cleanSlug ||
-        actNameSlug === cleanSlug ||
-        actId === cleanSlug ||
-        cleanSlug.includes(actTitleSlug) ||
-        actTitleSlug.includes(cleanSlug) ||
-        cleanSlug.replace(/-/g, '').includes(rawTitle.replace(/\s+/g, '')) ||
-        rawTitle.replace(/\s+/g, '').includes(cleanSlug.replace(/-/g, ''))
-      );
-    }) || INITIAL_ACTIVITIES.find((act) => {
-      const actTitleSlug = getActivitySlug(act.title);
-      const actNameSlug = getActivitySlug(act.name || '');
-      const actId = String(act.id || '').toLowerCase();
-      const rawTitle = act.title.toLowerCase();
-      return (
-        actTitleSlug === cleanSlug || 
-        actNameSlug === cleanSlug || 
-        actId === cleanSlug ||
-        cleanSlug.includes(actTitleSlug) ||
-        actTitleSlug.includes(cleanSlug) ||
-        cleanSlug.replace(/-/g, '').includes(rawTitle.replace(/\s+/g, ''))
-      );
-    });
+    if (!matched) {
+      if (activitiesLoaded) {
+        setSlugNotFound(true);
+        setActiveActivity(null);
+      }
+      return;
+    }
+    setSlugNotFound(false);
 
     if (matched) {
       setActiveActivity(matched);
@@ -842,7 +867,7 @@ export default function ActivitiesPage() {
       const mainEl = document.querySelector('main');
       if (mainEl) mainEl.scrollTop = 0;
     }
-  }, [routeSlug, activities]);
+  }, [routeSlug, activities, activitiesLoaded]);
 
   // Ensure view always starts from the title at the top of the page whenever activeActivity changes
   useEffect(() => {
@@ -958,32 +983,12 @@ export default function ActivitiesPage() {
           setActivities(merged);
         }
 
-        // Load Responses Log strictly for current user
-        try {
-          const rawLogs = localStorage.getItem("completed_activities_log");
-          if (rawLogs) {
-            const parsed = JSON.parse(rawLogs);
-            if (Array.isArray(parsed)) {
-              const myLogs = parsed.filter((log: any) => {
-                const logEmail = String(log.clientEmail || '').toLowerCase().trim();
-                const logName = String(log.clientName || '').toLowerCase().trim();
-                const curEmail = String(myEmail || '').toLowerCase().trim();
-                const curName = String(myName || '').toLowerCase().trim();
-                if (curEmail && logEmail) return logEmail === curEmail;
-                if (curName && logName) return logName.includes(curName) || curName.includes(logName);
-                return !logEmail && !logName;
-              });
-              if (isMounted) setResponsesList(myLogs);
-            }
-          } else {
-            if (isMounted) setResponsesList([]);
-          }
-        } catch {
-          if (isMounted) setResponsesList([]);
-        }
+        // This client's own responses log (kept per user on this device)
+        if (isMounted) setResponsesList(readMyResponses(myEmail));
       } catch (err) {
         console.error("Failed to load activities:", err);
       }
+      if (isMounted) setActivitiesLoaded(true);
     }
 
     loadActivities();
@@ -1005,10 +1010,9 @@ export default function ActivitiesPage() {
 
   const handleDeleteResponse = (responseId: string) => {
     try {
-      const allLogs = JSON.parse(localStorage.getItem("completed_activities_log") || "[]");
-      const updatedAll = Array.isArray(allLogs) ? allLogs.filter((r: any) => r.id !== responseId) : [];
-      localStorage.setItem("completed_activities_log", JSON.stringify(updatedAll));
-      setResponsesList((prev) => prev.filter((r) => r.id !== responseId));
+      const updatedAll = readMyResponses(myEmail).filter((r) => r.id !== responseId);
+      writeMyResponses(updatedAll);
+      setResponsesList(updatedAll);
       window.dispatchEvent(new Event("client_data_updated"));
       toast({
         title: "Response Removed",
@@ -1072,154 +1076,175 @@ export default function ActivitiesPage() {
     document.body.scrollTop = 0;
   };
 
+  /** True when the finished activity holds answers that leaving now would throw away */
+  const reviewHasAnswers = (): boolean => {
+    const data = completedActivityToReview?.data;
+    if (data == null) return false;
+    if (typeof data !== "object") return true;
+    return Object.keys(data).length > 0;
+  };
+
+  const handleCancelReview = () => {
+    if (isSavingCompletion) return;
+    if (reviewHasAnswers() &&
+        !window.confirm("Leave without saving? Your answers to this activity will be lost and your therapist will not be told you completed it.")) {
+      return;
+    }
+    setCompletedActivityToReview(null);
+  };
+
   const handleConfirmPrivacyAndSave = async () => {
-    if (!completedActivityToReview) return;
+    if (!completedActivityToReview || isSavingCompletion) return;
     const { activity, data } = completedActivityToReview;
     const isPrivate = sharingChoice === "private";
-
-    // Play clinical completion audio
-    try {
-      audioEngine.playSuccess();
-    } catch {}
-
-    // Update local activities state
-    setActivities(prev =>
-      prev.map(a =>
-        String(a.id) === String(activity.id)
-          ? {
-              ...a,
-              status: "completed",
-              isPrivate,
-              sharingPreference: sharingChoice,
-              completedAt: new Date().toISOString()
-            }
-          : a
-      )
-    );
-
-    // Assigned activities are completed on the server, which notifies the assigned therapist
-    let savedToServer = false;
-    if (activity.assignmentId) {
-      try {
-        const res = await fetch(`/api/activities/assignments/${encodeURIComponent(String(activity.assignmentId))}/complete`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientEmail: myEmail,
-            clientId: authUser?.id || "",
-            isPrivate,
-            sharingPreference: sharingChoice,
-            submission: isPrivate ? null : (data || { completed: true, timestamp: new Date().toISOString() })
-          })
-        });
-        savedToServer = res.ok;
-      } catch {}
-      if (!savedToServer) {
-        toast({
-          title: "Could not save completion",
-          description: "Your therapist was not notified. Please check your connection and try again.",
-          variant: "destructive"
-        });
-      }
-    }
 
     const targetConsultantEmail = String(activity.assignedTherapistEmail || authUser?.assignedTherapistEmail || "").toLowerCase().trim();
     const targetConsultantId = String(activity.assignedTherapistId || authUser?.assignedTherapistId || "").trim();
     const targetConsultantName = String(activity.assignedTherapistName || authUser?.assignedTherapistName || "Assigned Consultant").trim();
+    const notifiesTherapist = Boolean(activity.assignmentId) || Boolean(targetConsultantEmail || targetConsultantId);
 
-    // Persist to local completed activities log (with full response data for client review)
+    setIsSavingCompletion(true);
     try {
-      const existingLogs = JSON.parse(localStorage.getItem("completed_activities_log") || "[]");
-      const newEntry: CompletedActivityResponse = {
-        id: `RESP-${Date.now()}`,
-        activityId: activity.id,
-        activityTitle: activity.title,
-        category: activity.category,
-        clientName: myName,
-        clientEmail: myEmail,
-        consultantName: targetConsultantName,
-        consultantEmail: targetConsultantEmail,
-        consultantId: targetConsultantId,
-        sharingPreference: sharingChoice,
-        isPrivate,
-        completedAt: new Date().toISOString(),
-        duration: activity.duration || "5-10 min",
-        submissionData: data || { completed: true, timestamp: new Date().toISOString() }
-      };
-      const updatedList = [newEntry, ...existingLogs];
-      localStorage.setItem("completed_activities_log", JSON.stringify(updatedList));
-      setResponsesList(updatedList);
+      if (typeof navigator !== "undefined" && navigator.onLine === false && notifiesTherapist) {
+        toast({
+          title: "Could not save completion",
+          description: "You are offline, so this activity was not saved and your therapist was not told. Reconnect and press Confirm again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Nothing is shown as completed until the server confirmed it
+      let failure = "";
+      try {
+        let res: Response | null = null;
+        if (activity.assignmentId) {
+          // Assigned activities are completed on the server, which notifies the assigned therapist
+          res = await fetch(`/api/activities/assignments/${encodeURIComponent(String(activity.assignmentId))}/complete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clientEmail: myEmail,
+              clientId: authUser?.id || "",
+              isPrivate,
+              sharingPreference: sharingChoice,
+              submission: isPrivate ? null : (data || { completed: true, timestamp: new Date().toISOString() })
+            })
+          });
+        } else if (targetConsultantEmail || targetConsultantId) {
+          // Practice runs of unassigned activities: tell the client's therapist from here
+          res = await fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipientRole: "CONSULTANT",
+              recipientEmail: targetConsultantEmail || undefined,
+              recipientId: targetConsultantId || undefined,
+              consultantEmail: targetConsultantEmail || undefined,
+              consultantId: targetConsultantId || undefined,
+              consultantName: targetConsultantName,
+              clientName: myName,
+              clientEmail: myEmail,
+              title: isPrivate
+                ? `Task Completed: ${activity.title}`
+                : `Activity Completed with Insights: ${activity.title}`,
+              message: isPrivate
+                ? `${myName} completed the activity "${activity.title}". Detailed responses were kept private by the client.`
+                : `${myName} completed "${activity.title}" and shared detailed results, scores, and reflection notes.`,
+              type: "ACTIVITY_COMPLETED",
+              activityId: activity.id,
+              activityTitle: activity.title,
+              isPrivate,
+              sharingPreference: sharingChoice,
+              submissionData: isPrivate ? null : data,
+              timestamp: new Date().toISOString()
+            })
+          });
+        }
+        if (res && !res.ok) {
+          const body = await res.json().catch(() => null);
+          failure = body?.error || `The server answered with error ${res.status}.`;
+        }
+      } catch {
+        failure = "Hexpertify could not be reached.";
+      }
+
+      if (failure) {
+        toast({
+          title: "Could not save completion",
+          description: `${failure} This activity is not marked completed and your therapist was not told. Check your connection and press Confirm again.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      try {
+        audioEngine.playSuccess();
+      } catch {}
+
+      setActivities(prev =>
+        prev.map(a =>
+          String(a.id) === String(activity.id)
+            ? {
+                ...a,
+                status: "completed",
+                isPrivate,
+                sharingPreference: sharingChoice,
+                completedAt: new Date().toISOString()
+              }
+            : a
+        )
+      );
+
+      // Keep the full answers in this client's own "My Responses" log
+      try {
+        const newEntry: CompletedActivityResponse = {
+          id: `RESP-${Date.now()}`,
+          activityId: activity.id,
+          activityTitle: activity.title,
+          category: activity.category,
+          clientName: myName,
+          clientEmail: myEmail,
+          consultantName: targetConsultantName,
+          consultantEmail: targetConsultantEmail,
+          consultantId: targetConsultantId,
+          sharingPreference: sharingChoice,
+          isPrivate,
+          completedAt: new Date().toISOString(),
+          duration: activity.duration || "5-10 min",
+          submissionData: data || { completed: true, timestamp: new Date().toISOString() }
+        };
+        const updatedList = [newEntry, ...readMyResponses(myEmail)];
+        writeMyResponses(updatedList);
+        setResponsesList(updatedList);
+      } catch (err) {
+        console.error("Failed to save completed activity log:", err);
+      }
+
+      if (!activity.assignmentId && notifiesTherapist) window.dispatchEvent(new Event("notification_created"));
       window.dispatchEvent(new Event("client_data_updated"));
-    } catch (err) {
-      console.error("Failed to save completed activity log:", err);
-    }
 
-    // Practice runs of unassigned activities: tell the client's therapist from here
-    if (!activity.assignmentId && (targetConsultantEmail || targetConsultantId)) try {
-      const notifPayload = {
-        recipientRole: "CONSULTANT",
-        recipientEmail: targetConsultantEmail || undefined,
-        recipientId: targetConsultantId || undefined,
-        consultantEmail: targetConsultantEmail || undefined,
-        consultantId: targetConsultantId || undefined,
-        consultantName: targetConsultantName,
-        clientName: myName,
-        clientEmail: myEmail,
-        title: isPrivate 
-          ? `Task Completed: ${activity.title}`
-          : `Activity Completed with Insights: ${activity.title}`,
-        message: isPrivate
-          ? `${myName} completed the activity "${activity.title}". Detailed responses were kept private by the client.`
-          : `${myName} completed "${activity.title}" and shared detailed results, scores, and reflection notes.`,
-        type: "ACTIVITY_COMPLETED",
-        activityId: activity.id,
-        activityTitle: activity.title,
-        isPrivate,
-        sharingPreference: sharingChoice,
-        submissionData: isPrivate ? null : data,
-        timestamp: new Date().toISOString()
-      };
+      // Show toast without doctor name
+      if (!notifiesTherapist) {
+        toast({
+          title: "Activity Completed",
+          description: "Saved to My Responses. You have no assigned therapist yet, so no one else was notified.",
+        });
+      } else if (isPrivate) {
+        toast({
+          title: "Activity Completed (Private)",
+          description: "Your results remain private to you. Your assigned consultant was notified that the task is completed.",
+        });
+      } else {
+        toast({
+          title: "Activity Completed & Shared",
+          description: "Full results and reflection metrics were shared with your assigned consultant.",
+        });
+      }
 
-      fetch("/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(notifPayload)
-      }).catch(() => {});
-
-      window.dispatchEvent(new Event("notification_created"));
-    } catch {}
-    if (savedToServer) window.dispatchEvent(new Event("client_data_updated"));
-
-    // Show toast without doctor name
-    if (isPrivate) {
-      toast({
-        title: "Activity Completed (Private)",
-        description: "Your results remain private to you. Your assigned consultant was notified that the task is completed.",
-      });
-    } else {
-      toast({
-        title: "Activity Completed & Shared",
-        description: "Full results and reflection metrics were shared with your assigned consultant.",
-      });
-    }
-
-    setCompletedActivityToReview(null);
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "MINDFULNESS":
-        return <Brain className="w-3.5 h-3.5" />;
-      case "CBT":
-        return <Sparkles className="w-3.5 h-3.5" />;
-      case "GRATITUDE":
-        return <Heart className="w-3.5 h-3.5" />;
-      case "BREATHING":
-        return <Wind className="w-3.5 h-3.5" />;
-      case "SOMATIC":
-        return <Smile className="w-3.5 h-3.5" />;
-      default:
-        return <Activity className="w-3.5 h-3.5" />;
+      setCompletedActivityToReview(null);
+    } finally {
+      setIsSavingCompletion(false);
     }
   };
 
@@ -1247,12 +1272,13 @@ export default function ActivitiesPage() {
   // ─────────────────────────────────────────────────────────────
   if (completedActivityToReview) {
     return (
-      <div className="space-y-6 pb-20 font-['Plus_Jakarta_Sans'] max-w-4xl mx-auto animate-in fade-in duration-300">
+      <div className="space-y-6 pb-20 font-['Open_Sans'] max-w-4xl mx-auto animate-in fade-in duration-300">
         {/* Top Back Navigation */}
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            onClick={() => setCompletedActivityToReview(null)}
+            onClick={handleCancelReview}
+            disabled={isSavingCompletion}
             className="rounded-2xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs h-10 px-4 gap-2 cursor-pointer shadow-sm"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -1264,7 +1290,7 @@ export default function ActivitiesPage() {
         </div>
 
         {/* Completion Banner */}
-        <div className="rounded-3xl bg-gradient-to-br from-[#4f28d9] via-[#3b1799] to-slate-950 text-white p-8 sm:p-10 relative overflow-hidden shadow-xl border border-purple-500/20">
+        <div className="rounded-3xl bg-gradient-to-br from-[#3a0aa8] via-[#3b1799] to-slate-950 text-white p-8 sm:p-10 relative overflow-hidden shadow-xl border border-purple-500/20">
           <div className="absolute top-0 right-0 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 space-y-4">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-emerald-300 text-xs font-bold shadow-inner">
@@ -1301,14 +1327,14 @@ export default function ActivitiesPage() {
               className={cn(
                 "p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between gap-4 select-none",
                 sharingChoice === "full"
-                  ? "border-[#5e2be2] bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 shadow-md ring-2 ring-[#5e2be2]/30"
+                  ? "border-[#450bc8] bg-[#450bc8]/5 dark:bg-[#450bc8]/10 shadow-md ring-2 ring-[#450bc8]/30"
                   : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900/50"
               )}
             >
               <div className="flex items-start gap-3.5">
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                  sharingChoice === "full" ? "bg-[#5e2be2] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                  sharingChoice === "full" ? "bg-[#450bc8] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
                 )}>
                   <Share2 className="w-5 h-5" />
                 </div>
@@ -1330,7 +1356,7 @@ export default function ActivitiesPage() {
                 <span className="text-[11px] font-medium text-slate-400">Collaborative care</span>
                 <div className={cn(
                   "w-5 h-5 rounded-full border flex items-center justify-center transition-colors",
-                  sharingChoice === "full" ? "border-[#5e2be2] bg-[#5e2be2] text-white" : "border-slate-300 dark:border-slate-700"
+                  sharingChoice === "full" ? "border-[#450bc8] bg-[#450bc8] text-white" : "border-slate-300 dark:border-slate-700"
                 )}>
                   {sharingChoice === "full" && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
@@ -1343,14 +1369,14 @@ export default function ActivitiesPage() {
               className={cn(
                 "p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between gap-4 select-none",
                 sharingChoice === "private"
-                  ? "border-[#5e2be2] bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 shadow-md ring-2 ring-[#5e2be2]/30"
+                  ? "border-[#450bc8] bg-[#450bc8]/5 dark:bg-[#450bc8]/10 shadow-md ring-2 ring-[#450bc8]/30"
                   : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900/50"
               )}
             >
               <div className="flex items-start gap-3.5">
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                  sharingChoice === "private" ? "bg-[#5e2be2] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                  sharingChoice === "private" ? "bg-[#450bc8] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
                 )}>
                   <Lock className="w-5 h-5" />
                 </div>
@@ -1372,7 +1398,7 @@ export default function ActivitiesPage() {
                 <span className="text-[11px] font-medium text-slate-400">Strict privacy</span>
                 <div className={cn(
                   "w-5 h-5 rounded-full border flex items-center justify-center transition-colors",
-                  sharingChoice === "private" ? "border-[#5e2be2] bg-[#5e2be2] text-white" : "border-slate-300 dark:border-slate-700"
+                  sharingChoice === "private" ? "border-[#450bc8] bg-[#450bc8] text-white" : "border-slate-300 dark:border-slate-700"
                 )}>
                   {sharingChoice === "private" && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
@@ -1382,8 +1408,8 @@ export default function ActivitiesPage() {
 
           {/* Clinical Privacy Notice */}
           <div className="flex items-center gap-2.5 p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 rounded-2xl text-xs text-slate-600 dark:text-slate-400">
-            <ShieldCheck className="w-5 h-5 text-[#5e2be2] shrink-0" />
-            <span>You have full autonomy over your records. You can adjust your sharing preferences at any time in your profile settings.</span>
+            <ShieldCheck className="w-5 h-5 text-[#450bc8] shrink-0" />
+            <span>This choice applies to this activity only. Your full answers are kept in My Responses on this device either way.</span>
           </div>
 
           {/* Action Buttons */}
@@ -1391,7 +1417,8 @@ export default function ActivitiesPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setCompletedActivityToReview(null)}
+              onClick={handleCancelReview}
+              disabled={isSavingCompletion}
               className="w-full sm:w-auto rounded-2xl h-12 px-6 text-xs font-semibold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               Cancel & Return
@@ -1399,13 +1426,37 @@ export default function ActivitiesPage() {
             <Button
               type="button"
               onClick={handleConfirmPrivacyAndSave}
-              className="w-full sm:w-auto rounded-2xl h-12 px-8 bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-sm font-bold shadow-xl shadow-purple-500/25 gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
+              disabled={isSavingCompletion}
+              className="w-full sm:w-auto rounded-2xl h-12 px-8 bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-sm font-bold shadow-xl shadow-purple-500/25 gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4 stroke-[3]" />
-              <span>Confirm & Complete Activity</span>
+              <span>{isSavingCompletion ? "Saving…" : "Confirm & Complete Activity"}</span>
             </Button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // The address names no activity (a partial or mistyped link): say so instead of opening another one
+  if (slugNotFound && !activeActivity) {
+    return (
+      <div className="max-w-xl mx-auto py-16 text-center space-y-4 font-['Open_Sans']">
+        <div className="w-14 h-14 rounded-2xl bg-purple-50 text-[#450bc8] flex items-center justify-center mx-auto">
+          <Search className="w-6 h-6" />
+        </div>
+        <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Activity not found</h1>
+        <p className="text-sm text-slate-500">
+          There is no activity at this address. It may have been removed, or the link may be incomplete.
+          Open the activities list to find it.
+        </p>
+        <Button
+          onClick={handleBackToLibrary}
+          className="rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs h-10 px-5 gap-2 cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Activities</span>
+        </Button>
       </div>
     );
   }
@@ -1415,21 +1466,21 @@ export default function ActivitiesPage() {
   // ─────────────────────────────────────────────────────────────
   if (activeActivity) {
     return (
-      <div id="activity-page-container" className="space-y-2 pb-2 font-['Plus_Jakarta_Sans',sans-serif] w-full max-w-5xl mx-auto animate-in fade-in duration-300">
+      <div id="activity-page-container" className="space-y-2 pb-2 font-['Open_Sans',sans-serif] w-full max-w-5xl mx-auto animate-in fade-in duration-300">
         {/* Top Navigation Bar with Centered Activity Title */}
         <div id="activity-title-header" className="flex items-center justify-between gap-3 py-0.5">
           <Button
             variant="outline"
             onClick={handleBackToLibrary}
-            className="w-fit rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs h-8 px-3 gap-1.5 cursor-pointer shadow-xs shrink-0"
+            className="w-fit rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs h-10 sm:h-8 px-3 gap-1.5 cursor-pointer shadow-xs shrink-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back</span>
           </Button>
 
           {/* Centered Activity Title (Prominently framed) */}
-          <div className="flex-1 text-center">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+          <div className="flex-1 min-w-0 text-center">
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight break-words">
               {activeActivity.title || activeActivity.name}
             </h1>
           </div>
@@ -1501,7 +1552,7 @@ export default function ActivitiesPage() {
   // 3. FULL PAGE VIEW: Activities Library & My Responses Tabs
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8 pb-16 font-['Plus_Jakarta_Sans']">
+    <div className="space-y-8 pb-16 font-['Open_Sans']">
       <PageHeader
         title={activePageTab === "library" ? "Activities Library" : "My Activity Responses"}
         description={
@@ -1513,24 +1564,24 @@ export default function ActivitiesPage() {
         icon={activePageTab === "library" ? <Activity className="w-4 h-4 text-purple-200" /> : <FileText className="w-4 h-4 text-purple-200" />}
       >
         {/* Top Tab Switcher */}
-        <div className="flex items-center gap-1.5 bg-black/25 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-inner">
+        <div className="flex items-center gap-1.5 w-full sm:w-auto bg-black/25 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-inner">
           <button
             type="button"
             onClick={() => setActivePageTab("library")}
             className={cn(
-              "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2",
+              "flex-1 sm:flex-none justify-center px-2.5 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold leading-tight transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2",
               activePageTab === "library"
                 ? "bg-white text-slate-900 shadow-md"
                 : "text-white/80 hover:text-white hover:bg-white/10"
             )}
           >
-            <Activity className="w-4 h-4" />
+            <Activity className="w-4 h-4 shrink-0 max-[379px]:hidden" />
             <span>Activities Library</span>
             <span
               className={cn(
                 "px-2 py-0.5 rounded-full text-[10px] font-extrabold",
                 activePageTab === "library"
-                  ? "bg-purple-100 text-[#5e2be2]"
+                  ? "bg-purple-100 text-[#450bc8]"
                   : "bg-white/20 text-white"
               )}
             >
@@ -1542,19 +1593,19 @@ export default function ActivitiesPage() {
             type="button"
             onClick={() => setActivePageTab("responses")}
             className={cn(
-              "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2",
+              "flex-1 sm:flex-none justify-center px-2.5 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold leading-tight transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2",
               activePageTab === "responses"
                 ? "bg-white text-slate-900 shadow-md"
                 : "text-white/80 hover:text-white hover:bg-white/10"
             )}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-4 h-4 shrink-0 max-[379px]:hidden" />
             <span>My Responses</span>
             <span
               className={cn(
                 "px-2 py-0.5 rounded-full text-[10px] font-extrabold",
                 activePageTab === "responses"
-                  ? "bg-purple-100 text-[#5e2be2]"
+                  ? "bg-purple-100 text-[#450bc8]"
                   : "bg-white/20 text-white"
               )}
             >
@@ -1571,13 +1622,13 @@ export default function ActivitiesPage() {
         <div className="space-y-10 animate-in fade-in duration-300">
           {/* 1st: THERAPIST RECOMMENDATION / ASSIGNED BY THERAPIST */}
           <section className="space-y-4">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-border">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#5e2be2]/10 text-[#5e2be2] flex items-center justify-center font-bold">
-                  <Sparkles className="w-4 h-4 text-[#5e2be2]" />
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-slate-100 dark:border-border">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 shrink-0 rounded-xl bg-[#450bc8]/10 text-[#450bc8] flex items-center justify-center font-bold">
+                  <Sparkles className="w-4 h-4 text-[#450bc8]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                     Therapist Recommendations
                   </h2>
                   <p className="text-xs text-slate-500 font-medium">
@@ -1585,22 +1636,22 @@ export default function ActivitiesPage() {
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-50 text-[#5e2be2] border border-purple-100">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-50 text-[#450bc8] border border-purple-100">
                 {assignedActivities.length} Prescribed
               </span>
             </div>
 
             {assignedActivities.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 gap-4 sm:gap-6">
                 {assignedActivities.map((act) => (
                   <div
                     key={act.id}
-                    className="group bg-white rounded-3xl border border-purple-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ring-1 ring-[#5e2be2]/10"
+                    className="group bg-white rounded-3xl border border-purple-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ring-1 ring-[#450bc8]/10"
                   >
                     {/* Top Image Container */}
                     <div 
                       onClick={() => handlePreviewActivity(act)}
-                      className="relative h-52 w-full overflow-hidden bg-slate-100 cursor-pointer"
+                      className="@container relative h-44 sm:h-52 w-full overflow-hidden bg-slate-100 cursor-pointer"
                     >
                       <img
                         src={act.imageUrl}
@@ -1611,13 +1662,12 @@ export default function ActivitiesPage() {
 
                       {/* Category Tag (Top Left) */}
                       <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] font-bold tracking-wider text-slate-900 flex items-center gap-1.5 shadow-sm border border-white/40">
-                        {getCategoryIcon(act.category)}
                         <span>{act.category}</span>
                       </div>
 
                       {/* Assigned Tag (Top Right) */}
-                      <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
-                        <div className="bg-[#5e2be2] text-white px-3 py-1 rounded-full text-[11px] font-bold tracking-wide flex items-center gap-1.5 shadow-md">
+                      <div className="absolute bottom-3 left-3 items-start @sm:bottom-auto @sm:left-auto @sm:top-4 @sm:right-4 @sm:items-end flex flex-col gap-1.5">
+                        <div className="bg-[#450bc8] text-white px-3 py-1 rounded-full text-[11px] font-bold tracking-wide flex items-center gap-1.5 shadow-md">
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>Therapist Recommendation</span>
                         </div>
@@ -1636,12 +1686,12 @@ export default function ActivitiesPage() {
                     </div>
 
                     {/* Body Content */}
-                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
                       <div 
                         onClick={() => handlePreviewActivity(act)}
                         className="cursor-pointer"
                       >
-                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#5e2be2] transition-colors leading-snug mb-2">
+                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#450bc8] transition-colors leading-snug mb-2">
                           {act.title}
                         </h3>
                         <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 mb-3">
@@ -1669,7 +1719,7 @@ export default function ActivitiesPage() {
                               "w-full h-11 rounded-2xl font-bold text-sm transition-all duration-200 cursor-pointer shadow-md gap-2",
                               act.status === 'completed'
                                 ? "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10"
-                                : "bg-[#5e2be2] hover:bg-[#4f28d9] text-white shadow-purple-500/20"
+                                : "bg-[#450bc8] hover:bg-[#3a0aa8] text-white shadow-purple-500/20"
                             )}
                           >
                             <Play className="w-4 h-4 fill-white" />
@@ -1692,7 +1742,7 @@ export default function ActivitiesPage() {
           <section className="space-y-5 pt-4 border-t border-slate-100 dark:border-border">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                   All Activities
                 </h2>
                 <p className="text-xs text-slate-500 font-medium">
@@ -1708,7 +1758,7 @@ export default function ActivitiesPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search activities..."
-                  className="w-full pl-9 pr-4 py-2 rounded-2xl bg-white border-slate-200 text-xs focus:ring-2 focus:ring-[#5e2be2]/20"
+                  className="w-full pl-9 pr-4 py-2 rounded-2xl bg-white border-slate-200 text-xs focus:ring-2 focus:ring-[#450bc8]/20"
                 />
               </div>
             </div>
@@ -1724,8 +1774,8 @@ export default function ActivitiesPage() {
                     onClick={() => setSelectedCategory(cat)}
                     className={
                       isActive
-                        ? "bg-[#5e2be2] text-white shadow-md shadow-purple-500/20 rounded-full px-5 py-2 text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
-                        : "bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+                        ? "bg-[#450bc8] text-white shadow-md shadow-purple-500/20 rounded-full px-5 py-2.5 sm:py-2 text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+                        : "bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 rounded-full px-5 py-2.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
                     }
                   >
                     <span>{cat}</span>
@@ -1736,7 +1786,7 @@ export default function ActivitiesPage() {
 
             {/* All Activities Cards Grid */}
             {filteredAllActivities.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 gap-4 sm:gap-6">
                 {filteredAllActivities.map((act) => {
                   const isRecommended = isAssignedToMe(act);
                   return (
@@ -1750,7 +1800,7 @@ export default function ActivitiesPage() {
                       {/* Top Image Container */}
                       <div 
                         onClick={() => handlePreviewActivity(act)}
-                        className="relative h-52 w-full overflow-hidden bg-slate-100 cursor-pointer"
+                        className="relative h-44 sm:h-52 w-full overflow-hidden bg-slate-100 cursor-pointer"
                       >
                         <img
                           src={act.imageUrl}
@@ -1761,14 +1811,13 @@ export default function ActivitiesPage() {
 
                         {/* Category Tag (Top Left) */}
                         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] font-bold tracking-wider text-slate-900 flex items-center gap-1.5 shadow-sm border border-white/40">
-                          {getCategoryIcon(act.category)}
                           <span>{act.category}</span>
                         </div>
 
                         {/* Recommended Tag / Status (Top Right) */}
                         <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
                           {isRecommended && (
-                            <div className="bg-[#5e2be2] text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-md">
+                            <div className="bg-[#450bc8] text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-md">
                               <Sparkles className="w-3.5 h-3.5" />
                               <span>Recommended</span>
                             </div>
@@ -1788,12 +1837,12 @@ export default function ActivitiesPage() {
                       </div>
 
                       {/* Body Content */}
-                      <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
                         <div 
                           onClick={() => handlePreviewActivity(act)}
                           className="cursor-pointer"
                         >
-                          <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#5e2be2] transition-colors leading-snug mb-2">
+                          <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#450bc8] transition-colors leading-snug mb-2">
                             {act.title}
                           </h3>
                           <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 mb-3">
@@ -1821,7 +1870,7 @@ export default function ActivitiesPage() {
                                 "w-full h-11 rounded-2xl font-bold text-sm transition-all duration-200 cursor-pointer shadow-md gap-2",
                                 act.status === 'completed'
                                   ? "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10"
-                                  : "bg-[#5e2be2] hover:bg-[#4f28d9] text-white shadow-purple-500/20"
+                                  : "bg-[#450bc8] hover:bg-[#3a0aa8] text-white shadow-purple-500/20"
                               )}
                             >
                               <Play className="w-4 h-4 fill-white" />
@@ -1857,7 +1906,7 @@ export default function ActivitiesPage() {
                   {responsesList.length}
                 </h3>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-[#5e2be2] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-[#450bc8] flex items-center justify-center">
                 <Award className="w-6 h-6" />
               </div>
             </div>
@@ -1906,7 +1955,7 @@ export default function ActivitiesPage() {
               <select
                 value={responseCategoryFilter}
                 onChange={(e) => setResponseCategoryFilter(e.target.value)}
-                className="h-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:ring-1 focus:ring-[#5e2be2]"
+                className="h-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:ring-1 focus:ring-[#450bc8]"
               >
                 <option value="All">All Categories</option>
                 <option value="BREATHING">Breathing</option>
@@ -1919,7 +1968,7 @@ export default function ActivitiesPage() {
               <select
                 value={responsePrivacyFilter}
                 onChange={(e) => setResponsePrivacyFilter(e.target.value as any)}
-                className="h-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:ring-1 focus:ring-[#5e2be2]"
+                className="h-10 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:ring-1 focus:ring-[#450bc8]"
               >
                 <option value="all">All Privacy Levels</option>
                 <option value="shared">Shared with Consultant</option>
@@ -1946,8 +1995,7 @@ export default function ActivitiesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1.5 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/50 text-[#5e2be2] border border-purple-200/50">
-                            {getCategoryIcon(resp.category || "MINDFULNESS")}
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/50 text-[#450bc8] border border-purple-200/50">
                             <span>{resp.category || "EXERCISE"}</span>
                           </span>
                           <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
@@ -2089,7 +2137,7 @@ export default function ActivitiesPage() {
                           <span className="text-slate-500 font-medium">Comfort Anchors Selected:</span>
                           <div className="flex flex-wrap gap-1 pt-1">
                             {data.selectedItems.map((item: string, i: number) => (
-                              <span key={i} className="bg-purple-50 dark:bg-purple-950/50 text-[#5e2be2] px-2.5 py-0.5 rounded-full text-[11px] border border-purple-200 font-medium">
+                              <span key={i} className="bg-purple-50 dark:bg-purple-950/50 text-[#450bc8] px-2.5 py-0.5 rounded-full text-[11px] border border-purple-200 font-medium">
                                 ✓ {item}
                               </span>
                             ))}
@@ -2107,7 +2155,7 @@ export default function ActivitiesPage() {
 
                       {/* Reflection Notes */}
                       {(data.reflection || data.notes) && (
-                        <div className="text-xs text-slate-600 dark:text-slate-300 italic border-l-2 border-[#5e2be2] pl-2.5 py-0.5">
+                        <div className="text-xs text-slate-600 dark:text-slate-300 italic border-l-2 border-[#450bc8] pl-2.5 py-0.5">
                           "{data.reflection || data.notes}"
                         </div>
                       )}
@@ -2138,7 +2186,7 @@ export default function ActivitiesPage() {
                           <Button
                             size="sm"
                             onClick={() => handlePreviewActivity(matchedActivity)}
-                            className="rounded-xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold h-9 px-3 gap-1.5 cursor-pointer shadow-xs"
+                            className="rounded-xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs font-bold h-9 px-3 gap-1.5 cursor-pointer shadow-xs"
                           >
                             <Play className="w-3.5 h-3.5 fill-white" />
                             <span>Practice Again</span>
@@ -2161,7 +2209,7 @@ export default function ActivitiesPage() {
             </div>
           ) : (
             <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-950/50 text-[#5e2be2] flex items-center justify-center mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-950/50 text-[#450bc8] flex items-center justify-center mx-auto">
                 <FileText className="w-7 h-7" />
               </div>
               <div>
@@ -2174,7 +2222,7 @@ export default function ActivitiesPage() {
               </div>
               <Button
                 onClick={() => setActivePageTab("library")}
-                className="rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs h-10 px-5 cursor-pointer"
+                className="rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs h-10 px-5 cursor-pointer"
               >
                 <span>Browse Activities Library →</span>
               </Button>
@@ -2188,11 +2236,10 @@ export default function ActivitiesPage() {
          ───────────────────────────────────────────────────────────── */}
       {selectedResponseModal && (
         <Dialog open={true} onOpenChange={() => setSelectedResponseModal(null)}>
-          <DialogContent className="max-w-2xl rounded-3xl p-6 sm:p-8 space-y-6 max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl rounded-3xl p-5 sm:p-8 space-y-6 max-h-[90dvh] overflow-y-auto">
             <DialogHeader className="space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-[#5e2be2] border border-purple-200/50">
-                  {getCategoryIcon(selectedResponseModal.category || "MINDFULNESS")}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-[#450bc8] border border-purple-200/50">
                   <span>{selectedResponseModal.category || "WELLNESS EXERCISE"}</span>
                 </span>
                 <span className="text-xs text-slate-400 font-medium">
@@ -2302,7 +2349,7 @@ export default function ActivitiesPage() {
                     });
                   }
                 }}
-                className="rounded-2xl bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-bold h-10 px-5 gap-1.5 cursor-pointer shadow-md"
+                className="rounded-2xl bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs font-bold h-10 px-5 gap-1.5 cursor-pointer shadow-md"
               >
                 <Play className="w-3.5 h-3.5 fill-white" />
                 <span>Practice Exercise Again</span>

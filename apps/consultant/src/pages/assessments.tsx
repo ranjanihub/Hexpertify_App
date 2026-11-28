@@ -147,18 +147,9 @@ export interface AssessmentAssignment {
   status: 'Pending' | 'Completed' | 'Overdue';
 }
 
-// Mock Datasets (Synchronized with Super Admin)
-export const mockClientsList = [
-  { id: 'CL-101', name: 'Sarah Jenkins', therapy: 'CBT · Anxiety & Depression', therapist: 'Dr. Alex Harrison' },
-  { id: 'CL-102', name: 'Michael Chen', therapy: 'ACT · Major Depression', therapist: 'Dr. Alex Harrison' },
-  { id: 'CL-103', name: 'Emily Rodriguez', therapy: 'DBT · Distress Tolerance', therapist: 'Dr. Alex Harrison' },
-  { id: 'CL-104', name: 'David Kim', therapy: 'CBT · Social Anxiety', therapist: 'Dr. Alex Harrison' },
-  { id: 'CL-105', name: 'Jessica Taylor', therapy: 'CBT · Panic Protocol', therapist: 'Dr. Alex Harrison' },
-  { id: 'CL-106', name: 'Sofia Rodriguez', therapy: 'ACT · Generalized Anxiety', therapist: 'Dr. Alex Harrison' },
-  { id: 'CL-107', name: 'Marcus O\'Neill', therapy: 'Couples Therapy', therapist: 'Dr. Alex Harrison' },
-];
-
-export const mockAssessmentsData: ClinicalAssessment[] = [
+// The standard scales the client app offers (same items and cutoffs as apps/client). Usage counts are
+// filled in from this therapist's real submissions and assignments, never hard-coded.
+export const STANDARD_ASSESSMENTS: ClinicalAssessment[] = [
   {
     id: 'ASS-01',
     title: 'Perceived Stress Scale-10',
@@ -166,7 +157,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 10,
     targetCondition: 'Perceived Stress',
     category: 'Stress',
-    timesCompleted: 1240,
+    timesCompleted: 0,
     type: 'Standard',
     description: 'Classic 10-item instrument measuring the degree to which situations in one\'s life are appraised as unpredictable, uncontrollable, and overloading.',
     estimatedMinutes: 4,
@@ -174,7 +165,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'General for all clients',
     authorOrSource: 'Cohen, Kamarck & Mermelstein (1983) / Mind Garden',
     status: 'Active',
-    assignedClientCount: 380,
+    assignedClientCount: 0,
     createdAt: '2025-01-10',
     severityRanges: [
       { minScore: 0, maxScore: 13, label: 'Low Perceived Stress', color: 'bg-emerald-500', clinicalAction: 'Normal stress coping capacity. Continue routine wellness activities.' },
@@ -305,7 +296,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 5,
     targetCondition: 'Subjective Well-Being',
     category: 'Well-Being',
-    timesCompleted: 1560,
+    timesCompleted: 0,
     type: 'Standard',
     description: 'Official World Health Organization 5-item rating scale measuring subjective psychological well-being over the past two weeks.',
     estimatedMinutes: 3,
@@ -313,7 +304,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'General for all clients',
     authorOrSource: 'World Health Organization (WHO 2024)',
     status: 'Active',
-    assignedClientCount: 490,
+    assignedClientCount: 0,
     createdAt: '2025-01-05',
     severityRanges: [
       { minScore: 13, maxScore: 25, label: 'Good Well-Being (50-100%)', color: 'bg-emerald-500', clinicalAction: 'Positive mental well-being. Maintain routine support.' },
@@ -390,7 +381,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 5,
     targetCondition: 'Functional Impairment',
     category: 'Well-Being',
-    timesCompleted: 940,
+    timesCompleted: 0,
     type: 'Standard',
     description: 'Simple 5-item measure of impairment in functioning across work, home management, social leisure, private leisure, and relationships.',
     estimatedMinutes: 3,
@@ -398,7 +389,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'General for all clients',
     authorOrSource: 'Mundt, Marks, Shear & Greist (2002)',
     status: 'Active',
-    assignedClientCount: 310,
+    assignedClientCount: 0,
     createdAt: '2025-01-12',
     severityRanges: [
       { minScore: 0, maxScore: 9, label: 'Subthreshold Population', color: 'bg-emerald-500', clinicalAction: 'Minimal functional impairment.' },
@@ -491,7 +482,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 9,
     targetCondition: 'Depression Severity',
     category: 'Depression',
-    timesCompleted: 2120,
+    timesCompleted: 0,
     type: 'Standard',
     description: 'Standardized 9-question instrument for screening and tracking depression severity over time.',
     estimatedMinutes: 4,
@@ -499,7 +490,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'Adults (18+)',
     authorOrSource: 'Kroenke, Spitzer & Williams (2001) / Pfizer',
     status: 'Active',
-    assignedClientCount: 620,
+    assignedClientCount: 0,
     createdAt: '2025-01-01',
     severityRanges: [
       { minScore: 0, maxScore: 4, label: 'Minimal / None', color: 'bg-emerald-500', clinicalAction: 'No intervention required. Continue routine wellness tracking.' },
@@ -610,7 +601,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 7,
     targetCondition: 'Anxiety Severity',
     category: 'Anxiety',
-    timesCompleted: 1890,
+    timesCompleted: 0,
     type: 'Standard',
     description: '7-item self-report questionnaire measuring generalized anxiety disorder symptoms over the past 14 days.',
     estimatedMinutes: 4,
@@ -618,7 +609,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'Adults & Adolescents (12+)',
     authorOrSource: 'Spitzer, Kroenke, Williams et al. (2006)',
     status: 'Active',
-    assignedClientCount: 520,
+    assignedClientCount: 0,
     createdAt: '2025-01-10',
     severityRanges: [
       { minScore: 0, maxScore: 4, label: 'Minimal Anxiety', color: 'bg-emerald-500', clinicalAction: 'No treatment indicated.' },
@@ -706,7 +697,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 20,
     targetCondition: 'PTSD Severity',
     category: 'PTSD & Trauma',
-    timesCompleted: 780,
+    timesCompleted: 0,
     type: 'Standard',
     description: '20-item self-report measure assessing the 20 DSM-5 symptoms of PTSD. Cutoff score of 33 indicates probable PTSD.',
     estimatedMinutes: 8,
@@ -714,7 +705,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'Trauma Survivors & Adults',
     authorOrSource: 'Weathers et al. (2013) / VA National Center for PTSD',
     status: 'Active',
-    assignedClientCount: 240,
+    assignedClientCount: 0,
     createdAt: '2025-01-20',
     severityRanges: [
       { minScore: 0, maxScore: 32, label: 'Subthreshold Symptoms', color: 'bg-emerald-500', clinicalAction: 'Does not meet provisional cut-point threshold.' },
@@ -751,7 +742,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 18,
     targetCondition: 'OCD Symptoms',
     category: 'OCD',
-    timesCompleted: 640,
+    timesCompleted: 0,
     type: 'Standard',
     description: '18-item self-report scale assessing symptoms of Obsessive-Compulsive Disorder across 6 subscales. Recommended cutoff score is 21.',
     estimatedMinutes: 6,
@@ -759,7 +750,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'Adults (18+)',
     authorOrSource: 'Foa, Huppert, Leiberg et al. (2002)',
     status: 'Active',
-    assignedClientCount: 195,
+    assignedClientCount: 0,
     createdAt: '2025-01-25',
     severityRanges: [
       { minScore: 0, maxScore: 20, label: 'Subthreshold OCD Symptoms', color: 'bg-emerald-500', clinicalAction: 'Does not exceed recommended cutoff threshold.' },
@@ -794,7 +785,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     questionCount: 18,
     targetCondition: 'Adult ADHD',
     category: 'ADHD',
-    timesCompleted: 870,
+    timesCompleted: 0,
     type: 'Standard',
     description: '18-question self-report scale developed with WHO assessing symptoms of Adult ADHD. Part A (Q1–6) serves as primary screener.',
     estimatedMinutes: 6,
@@ -802,7 +793,7 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
     targetPopulation: 'Adults (18+)',
     authorOrSource: 'Kessler, Adler et al. (2005) / WHO',
     status: 'Active',
-    assignedClientCount: 310,
+    assignedClientCount: 0,
     createdAt: '2025-01-30',
     severityRanges: [
       { minScore: 0, maxScore: 3, label: 'Unlikely ADHD', color: 'bg-emerald-500', clinicalAction: 'Symptoms not consistent with Adult ADHD threshold.' },
@@ -831,174 +822,28 @@ export const mockAssessmentsData: ClinicalAssessment[] = [
   }
 ];
 
-export const mockSubmissionsData: AssessmentSubmission[] = [
-  {
-    id: 'SUB-901',
-    assessmentId: 'ASS-04',
-    assessmentAcronym: 'PHQ-9',
-    assessmentTitle: 'Patient Health Questionnaire-9',
-    clientId: 'CL-101',
-    clientName: 'Sarah Jenkins',
-    therapistName: 'Dr. Alex Harrison',
-    completedAt: '2026-08-01 14:32',
-    totalScore: 16,
-    maxScore: 27,
-    severityLabel: 'Moderately Severe Depression',
-    severityColor: 'bg-rose-600 text-white',
-    flaggedRisk: true,
-    answers: [
-      { questionId: 'q1', questionText: 'Little interest or pleasure in doing things', answerLabel: 'More than half the days (2)', score: 2 },
-      { questionId: 'q2', questionText: 'Feeling down, depressed, or hopeless', answerLabel: 'Nearly every day (3)', score: 3 },
-      { questionId: 'q3', questionText: 'Trouble falling or staying asleep', answerLabel: 'More than half the days (2)', score: 2 },
-      { questionId: 'q9', questionText: 'Thoughts of self-harm or hurting yourself', answerLabel: 'Several days (1)', score: 1 }
-    ]
-  },
-  {
-    id: 'SUB-902',
-    assessmentId: 'ASS-05',
-    assessmentAcronym: 'GAD-7',
-    assessmentTitle: 'Generalized Anxiety Disorder-7',
-    clientId: 'CL-102',
-    clientName: 'Michael Chen',
-    therapistName: 'Dr. Alex Harrison',
-    completedAt: '2026-08-01 11:15',
-    totalScore: 8,
-    maxScore: 21,
-    severityLabel: 'Mild Anxiety',
-    severityColor: 'bg-amber-500 text-white',
-    flaggedRisk: false,
-    answers: [
-      { questionId: 'g1', questionText: 'Feeling nervous, anxious, or on edge', answerLabel: 'Several days (1)', score: 1 },
-      { questionId: 'g2', questionText: 'Not being able to stop or control worrying', answerLabel: 'More than half the days (2)', score: 2 },
-      { questionId: 'g3', questionText: 'Worrying too much about different things', answerLabel: 'Several days (1)', score: 1 }
-    ]
-  },
-  {
-    id: 'SUB-903',
-    assessmentId: 'ASS-04',
-    assessmentAcronym: 'PHQ-9',
-    assessmentTitle: 'Patient Health Questionnaire-9',
-    clientId: 'CL-104',
-    clientName: 'David Kim',
-    therapistName: 'Dr. Alex Harrison',
-    completedAt: '2026-08-02 09:40',
-    totalScore: 8,
-    maxScore: 27,
-    severityLabel: 'Mild Depression',
-    severityColor: 'bg-amber-500 text-white',
-    flaggedRisk: false,
-    answers: []
-  },
-  {
-    id: 'SUB-904',
-    assessmentId: 'ASS-06',
-    assessmentAcronym: 'PCL-5',
-    assessmentTitle: 'PTSD Checklist for DSM-5',
-    clientId: 'CL-103',
-    clientName: 'Emily Rodriguez',
-    therapistName: 'Dr. Alex Harrison',
-    completedAt: '2026-07-26 16:20',
-    totalScore: 24,
-    maxScore: 80,
-    severityLabel: 'Subthreshold Trauma',
-    severityColor: 'bg-emerald-500 text-white',
-    flaggedRisk: false,
-    answers: []
-  },
-  {
-    id: 'SUB-905',
-    assessmentId: 'ASS-05',
-    assessmentAcronym: 'GAD-7',
-    assessmentTitle: 'Generalized Anxiety Disorder-7',
-    clientId: 'CL-105',
-    clientName: 'Jessica Taylor',
-    therapistName: 'Dr. Alex Harrison',
-    completedAt: '2026-07-12 10:05',
-    totalScore: 3,
-    maxScore: 21,
-    severityLabel: 'Minimal Anxiety (Remission)',
-    severityColor: 'bg-emerald-500 text-white',
-    flaggedRisk: false,
-    answers: []
-  }
-];
-
-export const mockAssignmentsData: AssessmentAssignment[] = [
-  {
-    id: 'ASN-301',
-    assessmentId: 'ASS-04',
-    assessmentAcronym: 'PHQ-9',
-    assessmentTitle: 'Patient Health Questionnaire-9',
-    clientId: 'CL-101',
-    clientName: 'Sarah Jenkins',
-    therapistName: 'Dr. Alex Harrison',
-    assignedDate: '2026-08-01',
-    dueDate: '2026-08-08',
-    frequency: 'Weekly',
-    status: 'Pending'
-  },
-  {
-    id: 'ASN-302',
-    assessmentId: 'ASS-05',
-    assessmentAcronym: 'GAD-7',
-    assessmentTitle: 'Generalized Anxiety Disorder-7',
-    clientId: 'CL-102',
-    clientName: 'Michael Chen',
-    therapistName: 'Dr. Alex Harrison',
-    assignedDate: '2026-07-28',
-    dueDate: '2026-08-04',
-    frequency: 'Bi-weekly',
-    status: 'Completed'
-  },
-  {
-    id: 'ASN-303',
-    assessmentId: 'ASS-06',
-    assessmentAcronym: 'PCL-5',
-    assessmentTitle: 'PTSD Checklist for DSM-5',
-    clientId: 'CL-103',
-    clientName: 'Emily Rodriguez',
-    therapistName: 'Dr. Alex Harrison',
-    assignedDate: '2026-07-25',
-    dueDate: '2026-08-01',
-    frequency: 'Monthly',
-    status: 'Completed'
-  },
-  {
-    id: 'ASN-304',
-    assessmentId: 'ASS-05',
-    assessmentAcronym: 'GAD-7',
-    assessmentTitle: 'Generalized Anxiety Disorder-7',
-    clientId: 'CL-104',
-    clientName: 'David Kim',
-    therapistName: 'Dr. Alex Harrison',
-    assignedDate: '2026-07-31',
-    dueDate: '2026-08-05',
-    frequency: 'One-time',
-    status: 'Pending'
-  }
-];
-
 export default function Assessments() {
   const authUser = getAuthUser();
 
   // Main State
-  const [assessments, setAssessments] = useState<ClinicalAssessment[]>(mockAssessmentsData);
+  const assessments = STANDARD_ASSESSMENTS;
   const [submissions, setSubmissions] = useState<AssessmentSubmission[]>([]);
   const [assignments, setAssignments] = useState<AssessmentAssignment[]>([]);
   const [clientList, setClientList] = useState<string[]>([]);
   const [clientObjects, setClientObjects] = useState<any[]>([]);
+  const [clientsLoaded, setClientsLoaded] = useState(false);
 
   // Load real submissions, assignments, and respected clients from MongoDB Atlas
   useEffect(() => {
     async function loadData() {
       try {
-        const myName = authUser?.name || '';
         const myId = String(authUser?.id || '');
+        if (!myId) return;
 
-        const [assessRes, usersRes, bookingsRes] = await Promise.all([
-          fetch(`/api/assessments?consultantId=${encodeURIComponent(myId)}&consultantName=${encodeURIComponent(myName)}`).then(r => r.ok ? r.json() : { submissions: [], assignments: [] }).catch(() => ({ submissions: [], assignments: [] })),
-          fetch(`/api/users?consultantId=${encodeURIComponent(myId)}&consultantName=${encodeURIComponent(myName)}&role=client`).then(r => r.ok ? r.json() : { users: [] }).catch(() => ({ users: [] })),
-          fetch(`/api/bookings?consultantId=${encodeURIComponent(myId)}&consultantName=${encodeURIComponent(myName)}`).then(r => r.ok ? r.json() : { bookings: [] }).catch(() => ({ bookings: [] }))
+        // By id only: the server finds this therapist's clients and their results (no name matching)
+        const [assessRes, usersRes] = await Promise.all([
+          fetch(`/api/assessments?consultantId=${encodeURIComponent(myId)}`).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/users?therapistId=${encodeURIComponent(myId)}`).then(r => r.ok ? r.json() : null).catch(() => null)
         ]);
 
         if (Array.isArray(assessRes?.submissions)) {
@@ -1008,50 +853,28 @@ export default function Assessments() {
           setAssignments(assessRes.assignments);
         }
 
-        // Build list of respected clients
-        const rawUsers = Array.isArray(usersRes?.users) ? usersRes.users : [];
-        const rawBookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
+        // A failed load keeps the last good list rather than emptying it
+        if (!Array.isArray(usersRes?.users)) return;
+        const myUsers = usersRes.users.filter((u: any) => String(u.role || '').toUpperCase() !== 'ADMIN');
 
-        const myBookings = rawBookings.filter((b: any) => {
-          const bCid = String(b.consultantId || b.therapistId || '').toLowerCase().trim();
-          const bCname = String(b.consultantName || b.therapistName || '').toLowerCase().trim();
-          return (myId && bCid === myId) || (myName && bCname.includes(myName.toLowerCase())) || (myName && myName.toLowerCase().includes(bCname) && bCname.length > 3);
-        });
-
-        const myUsers = rawUsers.filter((u: any) => {
-          if (String(u.role).toUpperCase() === 'ADMIN') return false;
-          const uAssignedName = String(u.assignedTherapistName || u.therapist || '').toLowerCase().trim();
-          const uAssignedId = String(u.assignedTherapistId || '').toLowerCase().trim();
-          const isAssigned = (myId && uAssignedId === myId) || (myName && uAssignedName.includes(myName.toLowerCase()));
-          const hasBooking = myBookings.some((b: any) => 
-            (b.clientEmail && u.email && b.clientEmail.toLowerCase() === u.email.toLowerCase()) ||
-            (b.clientName && u.name && b.clientName.toLowerCase() === u.name.toLowerCase())
-          );
-          return isAssigned || hasBooking;
-        });
-
-        const cMap = new Map<string, any>();
+        // One entry per client account; a shared name gets the email so the label stays unique
+        const nameCounts = new Map<string, number>();
         myUsers.forEach((u: any) => {
-          const key = u.name || u.email;
-          if (key) cMap.set(key, { id: String(u.id || u._id || ''), name: u.name || 'Client', email: String(u.email || '').toLowerCase() });
+          const n = String(u.name || u.email || '').trim();
+          nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
         });
-        myBookings.forEach((b: any) => {
-          if (b.clientName && !cMap.has(b.clientName) && b.clientName !== 'Open Consultation Slot') {
-            // A booking's own id is not a client id: only the booking's clientId (a User id) is
-            const user = rawUsers.find((u: any) =>
-              (b.clientEmail && String(u.email || '').toLowerCase() === String(b.clientEmail).toLowerCase()) ||
-              (b.clientId && (String(u.id) === String(b.clientId) || String(u._id) === String(b.clientId))));
-            cMap.set(b.clientName, {
-              id: user ? String(user.id || user._id) : String(b.clientId || ''),
-              name: b.clientName,
-              email: String(user?.email || b.clientEmail || '').toLowerCase()
-            });
-          }
-        });
+        const cObjs = myUsers
+          .map((u: any) => {
+            const email = String(u.email || '').toLowerCase();
+            const baseName = String(u.name || u.email || '').trim() || 'Client';
+            const name = (nameCounts.get(baseName) || 0) > 1 && email ? `${baseName} (${email})` : baseName;
+            return { id: String(u.id || u._id || ''), name, accountName: u.name || baseName, email };
+          })
+          .filter((c: any) => c.id || c.email);
 
-        const cObjs = Array.from(cMap.values());
         setClientObjects(cObjs);
-        setClientList(cObjs.map(c => c.name));
+        setClientList(cObjs.map((c: any) => c.name));
+        setClientsLoaded(true);
       } catch (err) {
         console.error('Failed to load assessment data:', err);
       }
@@ -1074,134 +897,6 @@ export default function Assessments() {
   const [activeProtocolModal, setActiveProtocolModal] = useState<ClinicalAssessment | null>(null);
   const [activeRunnerModal, setActiveRunnerModal] = useState<ClinicalAssessment | null>(null);
   const [selectedSubmissionModal, setSelectedSubmissionModal] = useState<AssessmentSubmission | null>(null);
-  const [isCreateAssessmentOpen, setIsCreateAssessmentOpen] = useState(false);
-
-  // New Assessment Form State
-  const [newTitle, setNewTitle] = useState('');
-  const [newAcronym, setNewAcronym] = useState('');
-  const [newCategory, setNewCategory] = useState('Anxiety');
-  const [newCondition, setNewCondition] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newEstimatedMinutes, setNewEstimatedMinutes] = useState(5);
-  const [newAuthor, setNewAuthor] = useState(authUser?.name || 'Licensed Psychologist');
-  const [newQuestions, setNewQuestions] = useState<string[]>(['']);
-  const [optionScalePreset, setOptionScalePreset] = useState<string>('0-3');
-  const [customOptions, setCustomOptions] = useState<string[]>([
-    'Not at all',
-    'Several days',
-    'Over half the days',
-    'Nearly every day',
-  ]);
-
-  const addQuestionField = () => {
-    setNewQuestions([...newQuestions, '']);
-  };
-
-  const updateQuestionField = (index: number, text: string) => {
-    const updated = [...newQuestions];
-    updated[index] = text;
-    setNewQuestions(updated);
-  };
-
-  const removeQuestionField = (index: number) => {
-    if (newQuestions.length <= 1) return;
-    setNewQuestions(newQuestions.filter((_, i) => i !== index));
-  };
-
-  const addCustomOption = () => {
-    setCustomOptions([...customOptions, `Option ${customOptions.length}`]);
-  };
-
-  const updateCustomOption = (idx: number, val: string) => {
-    const next = [...customOptions];
-    next[idx] = val;
-    setCustomOptions(next);
-  };
-
-  const removeCustomOption = (idx: number) => {
-    if (customOptions.length <= 2) return;
-    setCustomOptions(customOptions.filter((_, i) => i !== idx));
-  };
-
-  const getOptionsForQuestions = (): AssessmentOption[] => {
-    if (optionScalePreset === '0-3') {
-      return [
-        { label: 'Not at all', value: 0 },
-        { label: 'Several days', value: 1 },
-        { label: 'Over half the days', value: 2 },
-        { label: 'Nearly every day', value: 3 },
-      ];
-    }
-    if (optionScalePreset === '0-4') {
-      return [
-        { label: 'Never', value: 0 },
-        { label: 'Almost Never', value: 1 },
-        { label: 'Sometimes', value: 2 },
-        { label: 'Fairly Often', value: 3 },
-        { label: 'Very Often', value: 4 },
-      ];
-    }
-    if (optionScalePreset === 'yes-no') {
-      return [
-        { label: 'No', value: 0 },
-        { label: 'Yes', value: 1 },
-      ];
-    }
-    return customOptions.map((optLabel, i) => ({
-      label: optLabel,
-      value: i,
-    }));
-  };
-
-  const handleCreateAssessment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-
-    const acronym = newAcronym.trim() || newTitle.slice(0, 4).toUpperCase();
-    const validQuestions = newQuestions.filter((q) => q.trim().length > 0);
-    const optionsToUse = getOptionsForQuestions();
-    
-    const questionsList: AssessmentQuestion[] = validQuestions.map((qText, idx) => ({
-      id: `q${idx + 1}`,
-      text: qText.trim(),
-      options: optionsToUse,
-    }));
-
-    const created: ClinicalAssessment = {
-      id: `ASS-${(assessments.length + 1).toString().padStart(2, '0')}`,
-      title: newTitle.trim(),
-      acronym,
-      questionCount: questionsList.length || 1,
-      targetCondition: newCondition.trim() || newCategory,
-      category: newCategory,
-      timesCompleted: 0,
-      type: 'Standard',
-      description: newDescription.trim() || `Therapist custom protocol for evaluating ${newTitle.trim()}.`,
-      estimatedMinutes: Number(newEstimatedMinutes) || 5,
-      validityScore: "Cronbach's α = 0.88",
-      targetPopulation: 'Assigned clients',
-      authorOrSource: newAuthor.trim() || authUser?.name || 'Licensed Psychologist',
-      status: 'Active',
-      assignedClientCount: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-      severityRanges: [
-        { minScore: 0, maxScore: 4, label: 'Minimal Symptoms', color: 'bg-emerald-500', clinicalAction: 'Routine monitoring indicated.' },
-        { minScore: 5, maxScore: 9, label: 'Mild Symptoms', color: 'bg-amber-500', clinicalAction: 'Review at next follow-up.' },
-        { minScore: 10, maxScore: 14, label: 'Moderate Symptoms', color: 'bg-orange-500', clinicalAction: 'Targeted CBT intervention recommended.' },
-        { minScore: 15, maxScore: 21, label: 'Severe Elevation', color: 'bg-rose-600', clinicalAction: 'Immediate priority assessment.' },
-      ],
-      questions: questionsList,
-    };
-
-    setAssessments([created, ...assessments]);
-    setIsCreateAssessmentOpen(false);
-    setNewTitle('');
-    setNewAcronym('');
-    setNewCondition('');
-    setNewDescription('');
-    setNewQuestions(['']);
-    showToast(`New assessment "${acronym} - ${newTitle}" created successfully!`);
-  };
 
   // Runner Simulator Internal State
   const [runnerCurrentStep, setRunnerCurrentStep] = useState(0);
@@ -1226,11 +921,9 @@ export default function Assessments() {
   const openAssignModal = (assessment: ClinicalAssessment) => {
     setAssignModalAssessment(assessment);
     setAssignStep(1);
-    const initialClient = clientList[0] || "Ranjani B";
-    setSelectedClientsToAssign([initialClient]);
-    setClientFrequencies({
-      [initialClient]: { frequency: "Weekly", timeOfDay: "Morning (8:00 AM)" },
-    });
+    // Nobody is preselected: the therapist picks each client on purpose
+    setSelectedClientsToAssign([]);
+    setClientFrequencies({});
   };
 
   const toggleClientSelection = (clientName: string) => {
@@ -1254,7 +947,7 @@ export default function Assessments() {
 
   const toggleSelectAllClients = () => {
     if (selectedClientsToAssign.length === clientList.length) {
-      setSelectedClientsToAssign([clientList[0] || "Ranjani B"]);
+      setSelectedClientsToAssign([]);
     } else {
       setSelectedClientsToAssign([...clientList]);
       const newFreqs: Record<string, { frequency: string; timeOfDay: string }> = {};
@@ -1298,8 +991,10 @@ export default function Assessments() {
     }));
   };
 
+  const [isAssigning, setIsAssigning] = useState(false);
+
   const handleConfirmAssignment = async () => {
-    if (!assignModalAssessment || selectedClientsToAssign.length === 0) return;
+    if (!assignModalAssessment || selectedClientsToAssign.length === 0 || isAssigning) return;
 
     const newAssignments: AssessmentAssignment[] = selectedClientsToAssign.map((clientName, idx) => {
       const cfg = clientFrequencies[clientName] || { frequency: "Weekly", timeOfDay: "Morning (8:00 AM)" };
@@ -1326,33 +1021,53 @@ export default function Assessments() {
       return;
     }
 
-    setAssignments((prev) => [...newAssignments, ...prev]);
-
-    // Persist to Backend API
+    // Each assignment is saved and checked one by one; only the ones the server stored are shown
+    setIsAssigning(true);
+    const saved: AssessmentAssignment[] = [];
+    const failed: string[] = [];
     for (const asn of newAssignments) {
-      fetch('/api/assessments/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assessmentId: asn.assessmentId,
-          assessmentAcronym: asn.assessmentAcronym,
-          assessmentTitle: asn.assessmentTitle,
-          clientId: asn.clientId,
-          clientName: asn.clientName,
-          clientEmail: (asn as any).clientEmail,
-          consultantId: authUser?.id || '',
-          consultantName: authUser?.name || '',
-          dueDate: asn.dueDate,
-          frequency: asn.frequency
-        })
-      }).catch(() => {});
+      const accountName = clientObjects.find(c => c.name === asn.clientName)?.accountName || asn.clientName;
+      try {
+        const res = await fetch('/api/assessments/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assessmentId: asn.assessmentId,
+            assessmentAcronym: asn.assessmentAcronym,
+            assessmentTitle: asn.assessmentTitle,
+            clientId: asn.clientId,
+            clientName: accountName,
+            clientEmail: (asn as any).clientEmail,
+            consultantId: authUser?.id || '',
+            consultantName: authUser?.name || '',
+            dueDate: asn.dueDate,
+            frequency: asn.frequency
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.success === false) throw new Error(data?.error || `status ${res.status}`);
+        saved.push(data?.assignment ? { ...asn, ...data.assignment } : asn);
+      } catch {
+        failed.push(asn.clientName);
+      }
     }
+    setIsAssigning(false);
 
-    setAssignModalAssessment(null);
-    setAssignStep(1);
-    showToast(
-      `Successfully assigned ${assignModalAssessment.acronym} to ${selectedClientsToAssign.length} client(s)!`
-    );
+    if (saved.length > 0) setAssignments((prev) => [...saved, ...prev]);
+
+    if (failed.length === 0) {
+      setAssignModalAssessment(null);
+      setAssignStep(1);
+      showToast(`Assigned ${assignModalAssessment.acronym} to ${saved.length} client(s).`);
+    } else {
+      // Keep the modal open with only the clients that still need assigning, so a retry can't duplicate
+      setSelectedClientsToAssign(failed);
+      showToast(
+        saved.length > 0
+          ? `Assigned to ${saved.length} client(s), but it failed for ${failed.join(', ')}. Please try again.`
+          : `Couldn't assign ${assignModalAssessment.acronym} to ${failed.join(', ')}. Please try again.`
+      );
+    }
   };
 
   // Submission Filter State
@@ -1364,8 +1079,19 @@ export default function Assessments() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Usage numbers come from this therapist's own clients' records ("ASRS v1.1" and "ASRS" are one scale)
+  const scaleKey = (raw: unknown) => String(raw || '').toUpperCase().replace(/\s*V\d+(\.\d+)?$/, '').replace(/[^A-Z0-9]/g, '');
+  const libraryWithUsage = assessments.map((ass) => {
+    const key = scaleKey(ass.acronym);
+    const subs = submissions.filter((s) => scaleKey(s.assessmentAcronym) === key);
+    const assignedClients = new Set(
+      assignments.filter((a) => scaleKey(a.assessmentAcronym) === key).map((a) => a.clientId || (a as any).clientEmail || a.clientName)
+    );
+    return { ...ass, timesCompleted: subs.length, assignedClientCount: assignedClients.size };
+  });
+
   // Filtered Assessments Library
-  const filteredAssessments = assessments.filter((ass) => {
+  const filteredAssessments = libraryWithUsage.filter((ass) => {
     const matchesSearch =
       ass.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ass.acronym.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1379,10 +1105,12 @@ export default function Assessments() {
   // Filtered Submissions
   const filteredSubmissions = submissions.filter((sub) => {
     if (submissionFilter === 'All') return true;
-    if (submissionFilter === 'High Risk') return sub.flaggedRisk || sub.severityLabel.toLowerCase().includes('severe');
-    if (submissionFilter === 'Moderate') return sub.severityLabel.toLowerCase().includes('moderate');
-    if (submissionFilter === 'Mild') return sub.severityLabel.toLowerCase().includes('mild');
-    if (submissionFilter === 'Minimal') return sub.severityLabel.toLowerCase().includes('minimal');
+    // Older records may carry only `severity`, or nothing (restricted results); never crash on them
+    const label = String(sub.severityLabel || (sub as any).severity || '').toLowerCase();
+    if (submissionFilter === 'High Risk') return Boolean(sub.flaggedRisk) || label.includes('severe');
+    if (submissionFilter === 'Moderate') return label.includes('moderate');
+    if (submissionFilter === 'Mild') return label.includes('mild');
+    if (submissionFilter === 'Minimal') return label.includes('minimal');
     return true;
   });
 
@@ -1466,7 +1194,7 @@ export default function Assessments() {
     <div className="space-y-6 pb-16 max-w-[1400px] mx-auto">
       {/* Toast Banner */}
       {toastMessage && (
-        <div className="fixed top-6 right-6 z-50 bg-[#5e2be2] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top border border-purple-300">
+        <div className="fixed top-6 right-6 z-50 bg-[#450bc8] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top border border-purple-300">
           <Sparkles className="w-5 h-5 text-amber-300 shrink-0" />
           <span className="font-extrabold text-xs tracking-wide">{toastMessage}</span>
         </div>
@@ -1477,27 +1205,25 @@ export default function Assessments() {
         title="Assessments"
         description="Monitor standardized scale responses (PHQ-9, GAD-7, PSS-10, PCL-5), track patient risk safety alerts, and evaluate progress."
       >
-        <button
-          type="button"
-          onClick={() => {
-            setNewTitle('');
-            setNewAcronym('');
-            setNewCondition('');
-            setNewDescription('');
-            setNewQuestions(['']);
-            setIsCreateAssessmentOpen(true);
-          }}
-          className="px-4 py-2.5 bg-white text-[#5e2be2] hover:bg-purple-50 font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer border border-purple-200 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create Assessment</span>
-        </button>
+        {/* There is no server storage for custom scales yet, so creating one is off rather than faked */}
+        <div className="flex flex-col items-start lg:items-end gap-1 shrink-0">
+          <button
+            type="button"
+            disabled
+            title="Custom assessments are coming soon"
+            className="px-4 py-2.5 bg-white text-[#450bc8] font-bold text-xs rounded-xl shadow-md flex items-center gap-2 border border-purple-200 opacity-60 cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Assessment</span>
+          </button>
+          <span className="text-[11px] font-semibold text-white/80">Custom assessments are coming soon</span>
+        </div>
       </PageHeader>
 
 
 
       {/* Search & Filter Toolbar */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -1505,7 +1231,7 @@ export default function Assessments() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by acronym, condition, title..."
-            className="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
+            className="w-full pl-10 pr-8 py-2.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8]"
           />
           {searchTerm && (
             <button
@@ -1525,7 +1251,7 @@ export default function Assessments() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 px-3 py-1.5 outline-none focus:border-[#5e2be2]"
+              className="bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 px-3 py-2.5 sm:py-1.5 outline-none focus:border-[#450bc8]"
             >
               <option value="All">All Categories</option>
               <option value="Depression">Depression</option>
@@ -1549,7 +1275,7 @@ export default function Assessments() {
             onClick={() => setActiveTab('library')}
             className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
               activeTab === 'library'
-                ? 'bg-[#5e2be2] text-white shadow-md'
+                ? 'bg-[#450bc8] text-white shadow-md'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -1562,7 +1288,7 @@ export default function Assessments() {
             onClick={() => setActiveTab('submissions')}
             className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all relative ${
               activeTab === 'submissions'
-                ? 'bg-[#5e2be2] text-white shadow-md'
+                ? 'bg-[#450bc8] text-white shadow-md'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -1576,7 +1302,7 @@ export default function Assessments() {
             onClick={() => setActiveTab('assignments')}
             className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
               activeTab === 'assignments'
-                ? 'bg-[#5e2be2] text-white shadow-md'
+                ? 'bg-[#450bc8] text-white shadow-md'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -1592,7 +1318,7 @@ export default function Assessments() {
 
           {/* Grid View */}
           {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {filteredAssessments.map((ass) => (
                 <div
                   key={ass.id}
@@ -1600,7 +1326,7 @@ export default function Assessments() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="px-3 py-1 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-lg border border-purple-100">
+                      <span className="px-3 py-1 bg-purple-50 text-[#450bc8] font-black text-xs rounded-lg border border-purple-100">
                         {ass.acronym}
                       </span>
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1610,7 +1336,7 @@ export default function Assessments() {
 
                     <h3
                       onClick={() => setActiveProtocolModal(ass)}
-                      className="font-extrabold text-slate-900 text-base group-hover:text-[#5e2be2] transition-colors cursor-pointer"
+                      className="font-extrabold text-slate-900 text-base group-hover:text-[#450bc8] transition-colors cursor-pointer"
                     >
                       {ass.title}
                     </h3>
@@ -1623,7 +1349,7 @@ export default function Assessments() {
                     <button
                       type="button"
                       onClick={() => handleOpenRunner(ass)}
-                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-3.5 sm:px-3 py-2.5 sm:py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <Play className="w-3 h-3 fill-emerald-700" />
                       <span>Run</span>
@@ -1631,7 +1357,7 @@ export default function Assessments() {
                     <button
                       type="button"
                       onClick={() => openAssignModal(ass)}
-                      className="px-3 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-3.5 sm:px-3 py-2.5 sm:py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <Send className="w-3 h-3" />
                       <span>Assign</span>
@@ -1660,7 +1386,7 @@ export default function Assessments() {
                     <tr key={ass.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
-                          <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-lg border border-purple-100">
+                          <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-black text-xs rounded-lg border border-purple-100">
                             {ass.acronym}
                           </span>
                           <div>
@@ -1673,7 +1399,7 @@ export default function Assessments() {
                       <td className="py-4 px-6 text-xs text-slate-600 font-medium">
                         {ass.questionCount} Questions ({ass.estimatedMinutes || 4} mins)
                       </td>
-                      <td className="py-4 px-6 text-xs font-bold text-emerald-600">{ass.timesCompleted} evaluated</td>
+                      <td className="py-4 px-6 text-xs font-bold text-emerald-600">{ass.timesCompleted} by your clients</td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
@@ -1693,7 +1419,7 @@ export default function Assessments() {
                           <button
                             type="button"
                             onClick={() => openAssignModal(ass)}
-                            className="px-2.5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl transition-colors"
+                            className="px-2.5 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl transition-colors"
                           >
                             Assign
                           </button>
@@ -1722,7 +1448,7 @@ export default function Assessments() {
                     onClick={() => setSubmissionFilter(filterVal)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
                       submissionFilter === filterVal
-                        ? 'bg-[#5e2be2] text-white shadow-sm'
+                        ? 'bg-[#450bc8] text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -1784,7 +1510,7 @@ export default function Assessments() {
                       <button
                         type="button"
                         onClick={() => setSelectedSubmissionModal(sub)}
-                        className="w-full py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                        className="w-full py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
                       >
                         View Answers
                       </button>
@@ -1836,7 +1562,7 @@ export default function Assessments() {
                           <button
                             type="button"
                             onClick={() => setSelectedSubmissionModal(sub)}
-                            className="px-3 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl transition-colors"
+                            className="px-3 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl transition-colors"
                           >
                             View Answers
                           </button>
@@ -1883,7 +1609,7 @@ export default function Assessments() {
                     <div className="flex items-center justify-between text-xs pt-1">
                       <div>
                         <span className="text-slate-400 font-medium block text-[10px] uppercase">Assigned Screener</span>
-                        <span className="px-2.5 py-0.5 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-md border border-purple-100 inline-block mt-0.5">
+                        <span className="px-2.5 py-0.5 bg-purple-50 text-[#450bc8] font-black text-xs rounded-md border border-purple-100 inline-block mt-0.5">
                           {asn.assessmentAcronym}
                         </span>
                       </div>
@@ -1928,7 +1654,7 @@ export default function Assessments() {
                           <span className="font-bold text-slate-900 text-sm whitespace-nowrap">{asn.clientName}</span>
                         </td>
                         <td className="py-4 px-6">
-                          <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-md border border-purple-100">
+                          <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-black text-xs rounded-md border border-purple-100">
                             {asn.assessmentAcronym}
                           </span>
                         </td>
@@ -1966,7 +1692,7 @@ export default function Assessments() {
           <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] my-auto">
             <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-[#5e2be2] text-white font-mono font-extrabold text-xs rounded-lg">
+                <span className="px-3 py-1 bg-[#450bc8] text-white font-mono font-extrabold text-xs rounded-lg">
                   {activeProtocolModal.acronym}
                 </span>
                 <div>
@@ -2059,7 +1785,7 @@ export default function Assessments() {
                           )}
                         </div>
                         {q.subtext && (
-                          <p className="text-[11px] text-[#5e2be2] font-semibold">{q.subtext}</p>
+                          <p className="text-[11px] text-[#450bc8] font-semibold">{q.subtext}</p>
                         )}
                         <div className="flex flex-wrap gap-2 pt-1">
                           {q.options.map((opt, oIdx) => (
@@ -2106,7 +1832,7 @@ export default function Assessments() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] my-auto">
             {/* Modal Header */}
-            <div className="p-6 bg-gradient-to-r from-[#4f28d9] to-[#5e2be2] text-white flex items-center justify-between">
+            <div className="p-6 bg-gradient-to-r from-[#3a0aa8] to-[#450bc8] text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white font-mono font-extrabold text-xs rounded-lg border border-white/20">
                   {activeRunnerModal.acronym}
@@ -2138,7 +1864,7 @@ export default function Assessments() {
                     </div>
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#5e2be2] transition-all duration-300"
+                        className="h-full bg-[#450bc8] transition-all duration-300"
                         style={{
                           width: `${(runnerCurrentStep / (activeRunnerModal.questions?.length || 1)) * 100}%`
                         }}
@@ -2177,14 +1903,14 @@ export default function Assessments() {
                               onClick={() => handleRunnerSelectAnswer(currentQId, opt.value)}
                               className={`w-full p-4 rounded-2xl border text-left font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
                                 isSelected
-                                  ? 'bg-purple-50 border-[#5e2be2] text-[#5e2be2] shadow-xs'
+                                  ? 'bg-purple-50 border-[#450bc8] text-[#450bc8] shadow-xs'
                                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                               }`}
                             >
                               <span>{cleanOptionLabel(opt.label)}</span>
                               <div
                                 className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                                  isSelected ? 'border-[#5e2be2] bg-[#5e2be2] text-white' : 'border-slate-300'
+                                  isSelected ? 'border-[#450bc8] bg-[#450bc8] text-white' : 'border-slate-300'
                                 }`}
                               >
                                 {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -2258,7 +1984,7 @@ export default function Assessments() {
                         calculateResultsWithAnswers(runnerAnswers);
                       }
                     }}
-                    className="px-6 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-6 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <span>
                       {activeRunnerModal.questions && runnerCurrentStep === activeRunnerModal.questions.length - 1
@@ -2272,7 +1998,7 @@ export default function Assessments() {
                 <button
                   type="button"
                   onClick={() => setActiveRunnerModal(null)}
-                  className="w-full py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer text-center"
+                  className="w-full py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer text-center"
                 >
                   Close Simulator
                 </button>
@@ -2299,7 +2025,7 @@ export default function Assessments() {
                     : `Configure individual assessment frequencies for each assigned client.`}
                 </p>
               </div>
-              <span className="text-xs font-extrabold text-[#5e2be2] bg-purple-50 px-3 py-1 rounded-full border border-purple-100 shrink-0">
+              <span className="text-xs font-extrabold text-[#450bc8] bg-purple-50 px-3 py-1 rounded-full border border-purple-100 shrink-0">
                 Step {assignStep} of 2
               </span>
             </div>
@@ -2311,16 +2037,30 @@ export default function Assessments() {
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Clients ({selectedClientsToAssign.length} selected)
                   </span>
-                  <button
-                    type="button"
-                    onClick={toggleSelectAllClients}
-                    className="text-xs font-bold text-[#5e2be2] hover:underline cursor-pointer"
-                  >
-                    {selectedClientsToAssign.length === clientList.length ? "Deselect All" : "Select All"}
-                  </button>
+                  {clientList.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={toggleSelectAllClients}
+                      className="text-xs font-bold text-[#450bc8] hover:underline cursor-pointer"
+                    >
+                      {selectedClientsToAssign.length === clientList.length ? "Deselect All" : "Select All"}
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {clientList.length === 0 && (
+                    <div className="p-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
+                      <p className="text-sm font-bold text-slate-700">
+                        {clientsLoaded ? 'You have no clients yet' : 'Loading your clients…'}
+                      </p>
+                      {clientsLoaded && (
+                        <p className="text-xs text-slate-500 font-medium mt-1">
+                          Clients assigned to you will appear here, and you can then send them assessments.
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {clientList.map((client) => {
                     const isChecked = selectedClientsToAssign.includes(client);
                     return (
@@ -2329,7 +2069,7 @@ export default function Assessments() {
                         onClick={() => toggleClientSelection(client)}
                         className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none ${
                           isChecked
-                            ? "bg-purple-50/80 border-[#5e2be2]/40 text-[#5e2be2] font-semibold"
+                            ? "bg-purple-50/80 border-[#450bc8]/40 text-[#450bc8] font-semibold"
                             : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                         }`}
                       >
@@ -2337,7 +2077,7 @@ export default function Assessments() {
                           <div
                             className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
                               isChecked
-                                ? "bg-[#5e2be2] border-[#5e2be2] text-white"
+                                ? "bg-[#450bc8] border-[#450bc8] text-white"
                                 : "border-slate-300 bg-white"
                             }`}
                           >
@@ -2366,7 +2106,7 @@ export default function Assessments() {
                         key={f}
                         type="button"
                         onClick={() => applyFrequencyToAll(f)}
-                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-slate-700 hover:text-[#5e2be2] border border-slate-200 hover:border-[#5e2be2]/30 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-white hover:bg-purple-50 text-slate-700 hover:text-[#450bc8] border border-slate-200 hover:border-[#450bc8]/30 transition-colors cursor-pointer"
                       >
                         {f}
                       </button>
@@ -2393,7 +2133,7 @@ export default function Assessments() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-purple-100 text-[#5e2be2] font-bold flex items-center justify-center text-xs shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-purple-100 text-[#450bc8] font-bold flex items-center justify-center text-xs shrink-0">
                               {initials}
                             </div>
                             <div>
@@ -2401,7 +2141,7 @@ export default function Assessments() {
                               <p className="text-[11px] text-slate-500 font-medium mt-0.5">Individual Schedule</p>
                             </div>
                           </div>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#5e2be2] border border-purple-100">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#450bc8] border border-purple-100">
                             {currentConfig.frequency}
                           </span>
                         </div>
@@ -2414,7 +2154,7 @@ export default function Assessments() {
                             <select
                               value={currentConfig.frequency}
                               onChange={(e) => updateClientFrequency(clientName, e.target.value)}
-                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#5e2be2] focus:outline-none"
+                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#450bc8] focus:outline-none"
                             >
                               {FREQUENCY_OPTIONS.map((opt) => (
                                 <option key={opt.id} value={opt.id}>
@@ -2431,7 +2171,7 @@ export default function Assessments() {
                             <select
                               value={currentConfig.timeOfDay}
                               onChange={(e) => updateClientTimeOfDay(clientName, e.target.value)}
-                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#5e2be2] focus:outline-none"
+                              className="w-full h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#450bc8] focus:outline-none"
                             >
                               {TIME_OPTIONS.map((t) => (
                                 <option key={t} value={t}>
@@ -2477,7 +2217,7 @@ export default function Assessments() {
                     type="button"
                     disabled={selectedClientsToAssign.length === 0}
                     onClick={() => setAssignStep(2)}
-                    className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <span>Next: Configure Schedule</span>
                     <ChevronRight className="w-4 h-4" />
@@ -2486,10 +2226,11 @@ export default function Assessments() {
                   <button
                     type="button"
                     onClick={handleConfirmAssignment}
-                    className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    disabled={isAssigning || selectedClientsToAssign.length === 0}
+                    className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Check className="w-4 h-4 stroke-[3]" />
-                    <span>Confirm Assignment</span>
+                    <span>{isAssigning ? 'Assigning…' : 'Confirm Assignment'}</span>
                   </button>
                 )}
               </div>
@@ -2505,7 +2246,7 @@ export default function Assessments() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 bg-purple-50 text-[#5e2be2] font-black text-xs rounded-md border border-purple-100">
+                  <span className="px-2.5 py-0.5 bg-purple-50 text-[#450bc8] font-black text-xs rounded-md border border-purple-100">
                     {selectedSubmissionModal.assessmentAcronym || 'ASSESSMENT'}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">{selectedSubmissionModal.assessmentTitle}</span>
@@ -2548,7 +2289,7 @@ export default function Assessments() {
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Itemized Responses</span>
-                <span className="text-xs font-semibold text-[#5e2be2]">
+                <span className="text-xs font-semibold text-[#450bc8]">
                   {Array.isArray(selectedSubmissionModal.answers) && selectedSubmissionModal.answers.length > 0 
                     ? `${selectedSubmissionModal.answers.length} Questions Answered`
                     : 'Standardized Response Profile'}
@@ -2610,7 +2351,7 @@ export default function Assessments() {
 
             {/* Clinical Action Note */}
             <div className="p-3.5 bg-purple-50/60 rounded-2xl border border-purple-100 text-xs">
-              <span className="font-extrabold text-[#5e2be2] uppercase tracking-wider text-[10px] block mb-1">Note &amp; Impression</span>
+              <span className="font-extrabold text-[#450bc8] uppercase tracking-wider text-[10px] block mb-1">Note &amp; Impression</span>
               <p className="text-slate-700 font-medium leading-relaxed">
                 {selectedSubmissionModal.notes || `Client completed standardized ${selectedSubmissionModal.assessmentAcronym} screener with score of ${selectedSubmissionModal.totalScore}/${selectedSubmissionModal.maxScore}. Routine follow-up and CBT integration indicated.`}
               </p>
@@ -2621,7 +2362,7 @@ export default function Assessments() {
               <button
                 type="button"
                 onClick={() => setSelectedSubmissionModal(null)}
-                className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
               >
                 Close Report
               </button>
@@ -2629,227 +2370,6 @@ export default function Assessments() {
           </div>
         </div>,
         document.body
-      )}
-      {/* Create Assessment Modal */}
-      {isCreateAssessmentOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full max-h-[85vh] overflow-y-auto shadow-2xl space-y-5 border border-slate-200 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#5e2be2] flex items-center justify-center font-bold">
-                  <Plus className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-extrabold text-slate-900">Create New Assessment</h3>
-                  <p className="text-xs text-slate-500 font-medium">Build a custom rating scale or assessment protocol</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCreateAssessmentOpen(false);
-                  setNewQuestions(['']);
-                }}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateAssessment} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Assessment Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="e.g. Generalized Anxiety Disorder Scale"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Acronym *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAcronym}
-                    onChange={(e) => setNewAcronym(e.target.value)}
-                    placeholder="e.g. GAD-7"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
-                  >
-                    <option value="Anxiety">Anxiety</option>
-                    <option value="Depression">Depression</option>
-                    <option value="Stress">Stress</option>
-                    <option value="Well-Being">Well-Being</option>
-                    <option value="PTSD & Trauma">PTSD & Trauma</option>
-                    <option value="Sleep">Sleep</option>
-                    <option value="General Mental Health">General Mental Health</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Target Condition</label>
-                  <input
-                    type="text"
-                    value={newCondition}
-                    onChange={(e) => setNewCondition(e.target.value)}
-                    placeholder="e.g. Anxiety Severity"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Description</label>
-                <textarea
-                  rows={3}
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Provide a brief summary and scoring criteria..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2] resize-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Est. Duration (minutes)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={newEstimatedMinutes}
-                  onChange={(e) => setNewEstimatedMinutes(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
-                />
-              </div>
-
-              {/* Rating Scale Section */}
-              <div className="space-y-2 pt-3 border-t border-slate-100">
-                <label className="text-xs font-bold text-slate-700">Rating Scale</label>
-                <select
-                  value={optionScalePreset}
-                  onChange={(e) => setOptionScalePreset(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
-                >
-                  <option value="0-3">0 – 3 Scale</option>
-                  <option value="0-4">0 – 4 Scale</option>
-                  <option value="yes-no">Yes / No</option>
-                  <option value="custom">Custom</option>
-                </select>
-
-                {optionScalePreset === 'custom' && (
-                  <div className="space-y-2 pt-1 pl-2 border-l-2 border-purple-300 bg-purple-50/40 p-3 rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-[#5e2be2]">Custom Option Labels</span>
-                      <button
-                        type="button"
-                        onClick={addCustomOption}
-                        className="text-[11px] text-[#5e2be2] font-extrabold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Add Option</span>
-                      </button>
-                    </div>
-                    {customOptions.map((optVal, oIdx) => (
-                      <div key={oIdx} className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-slate-400 w-8 text-right">Val {oIdx}:</span>
-                        <input
-                          type="text"
-                          required
-                          value={optVal}
-                          onChange={(e) => updateCustomOption(oIdx, e.target.value)}
-                          placeholder={`Option ${oIdx} label`}
-                          className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:border-[#5e2be2]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeCustomOption(oIdx)}
-                          disabled={customOptions.length <= 2}
-                          className="p-1 text-slate-400 hover:text-rose-600 disabled:opacity-30 rounded hover:bg-rose-50 cursor-pointer"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Questions Builder Section */}
-              <div className="space-y-2.5 pt-3 border-t border-slate-100">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700">
-                    Assessment Question Items ({newQuestions.length})
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addQuestionField}
-                    className="text-xs text-[#5e2be2] hover:text-[#431bb5] font-extrabold flex items-center gap-1 cursor-pointer bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Question Item</span>
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {newQuestions.map((qText, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-400 w-6 shrink-0 text-right">Q{idx + 1}.</span>
-                      <input
-                        type="text"
-                        required
-                        value={qText}
-                        onChange={(e) => updateQuestionField(idx, e.target.value)}
-                        placeholder="Enter question here..."
-                        className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeQuestionField(idx)}
-                        disabled={newQuestions.length <= 1}
-                        className="p-2 text-slate-400 hover:text-rose-600 disabled:opacity-30 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Remove question"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCreateAssessmentOpen(false);
-                    setNewQuestions(['']);
-                  }}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>Create Assessment</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </div>
   );

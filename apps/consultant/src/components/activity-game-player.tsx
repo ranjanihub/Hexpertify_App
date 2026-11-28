@@ -802,7 +802,7 @@ function GenericExercisePlayer({ activity, onComplete }: { activity: any; onComp
             onClick={() => {
               if (onComplete) onComplete({ completedSteps: completedSteps.length });
             }}
-            className="rounded-full bg-[#5e2be2] hover:bg-[#4d1fc4] text-white font-bold text-xs px-6 h-10 shadow-md gap-1.5 cursor-pointer"
+            className="rounded-full bg-[#450bc8] hover:bg-[#4d1fc4] text-white font-bold text-xs px-6 h-10 shadow-md gap-1.5 cursor-pointer"
           >
             <Check className="w-4 h-4 stroke-[3]" />
             <span>Complete Exercise</span>

@@ -96,7 +96,7 @@ export function ClientSessionFeedback({ clientId, clientEmail, clientName }: { c
     <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-5">
       <div className="flex items-start justify-between flex-wrap gap-3 border-b border-slate-100 pb-4">
         <div className="flex items-center gap-2">
-          <span className="p-2 rounded-xl bg-purple-100 text-[#5e2be2]">
+          <span className="p-2 rounded-xl bg-purple-100 text-[#450bc8]">
             <MessageSquareQuote className="w-5 h-5" />
           </span>
           <div>
@@ -113,7 +113,7 @@ export function ClientSessionFeedback({ clientId, clientEmail, clientName }: { c
               Latest {latest.totalScore}/30
             </Badge>
           )}
-          <Badge className="bg-purple-50 text-[#5e2be2] border border-purple-200 font-bold gap-1">
+          <Badge className="bg-purple-50 text-[#450bc8] border border-purple-200 font-bold gap-1">
             <Lock className="w-3 h-3" /> Only visible to you
           </Badge>
         </div>
@@ -153,7 +153,7 @@ export function ClientSessionFeedback({ clientId, clientEmail, clientName }: { c
                   <Line
                     type="monotone"
                     dataKey="totalScore"
-                    stroke="#5e2be2"
+                    stroke="#450bc8"
                     strokeWidth={3}
                     dot={(props: any) => {
                       const lvl = props?.payload?.level as FeedbackLevel;

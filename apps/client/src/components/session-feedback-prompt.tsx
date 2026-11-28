@@ -138,7 +138,7 @@ export function SessionFeedbackPrompt() {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) handleLater(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">How was your session today?</DialogTitle>
           <DialogDescription>

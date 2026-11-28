@@ -11,8 +11,9 @@ import { getAuthUser } from "@/lib/auth";
 
 export default function Reviews() {
   const authUser = getAuthUser();
-  const consultantName = authUser?.name || 'Sadaf Bhimani';
-  const consultantId = authUser?.id || '';
+  // Reviews are looked up by the signed-in therapist's own id only, never by a name or a stand-in person
+  const consultantId = String(authUser?.id || '').trim();
+  const [loadProblem, setLoadProblem] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   // No placeholder rating: until real reviews arrive there is nothing to show
@@ -53,17 +54,26 @@ export default function Reviews() {
   useEffect(() => {
     let isMounted = true;
     async function loadReviews() {
+      // Without an id the API would return every therapist's reviews, so nothing is requested
+      if (!consultantId) {
+        setLoadProblem("We couldn't find your therapist profile. Please sign out and sign in again.");
+        setLoading(false);
+        return;
+      }
       try {
-        const res = await fetch(`/api/reviews?consultantName=${encodeURIComponent(consultantName)}&consultantId=${encodeURIComponent(consultantId)}`);
-        if (res.ok && isMounted) {
-          const data = await res.json();
-          if (data.success) {
-            setSummary(data.summary || {});
-            setReviewsList(Array.isArray(data.reviews) ? data.reviews : []);
-          }
+        setLoadProblem(null);
+        const res = await fetch(`/api/reviews?consultantId=${encodeURIComponent(consultantId)}`);
+        if (!isMounted) return;
+        const data = res.ok ? await res.json().catch(() => null) : null;
+        if (data?.success) {
+          setSummary(data.summary || {});
+          setReviewsList(Array.isArray(data.reviews) ? data.reviews : []);
+        } else {
+          setLoadProblem("We couldn't load your reviews right now. Please try again later.");
         }
       } catch (err) {
         console.error('Failed to load reviews:', err);
+        if (isMounted) setLoadProblem("We couldn't load your reviews right now. Please try again later.");
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -71,7 +81,7 @@ export default function Reviews() {
 
     loadReviews();
     return () => { isMounted = false; };
-  }, [consultantName, consultantId]);
+  }, [consultantId]);
 
   return (
     <div className="space-y-6 pb-10">
@@ -81,6 +91,12 @@ export default function Reviews() {
         badge="CLIENT FEEDBACK"
         icon={<Star className="w-4 h-4 text-purple-200" />}
       />
+
+      {!loading && loadProblem && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          {loadProblem}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <Card className="shadow-sm border-border bg-gradient-to-b from-amber-50/50 to-white">

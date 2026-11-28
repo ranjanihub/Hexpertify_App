@@ -172,7 +172,7 @@ export default function TherapistMatchHero({
 
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-8 mb-3">
           <div className="relative pt-10 sm:pt-8 lg:pt-4">
-            <h1 className="text-[30px] font-bold leading-[1.05] tracking-normal text-neutral-900 sm:text-5xl lg:text-[56px]">
+            <h1 className="text-[30px] font-bold leading-[1.05] tracking-normal text-neutral-900 sm:text-5xl xl:text-[56px]">
               <span className="bg-gradient-to-r from-[#3D2386] to-[#6C3DEC] bg-clip-text text-transparent">
                 {titlePrefix}
               </span>
@@ -196,7 +196,7 @@ export default function TherapistMatchHero({
               {description}
             </p>
 
-            <ul className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-4 sm:gap-x-4">
+            <ul className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-4 sm:gap-x-4">
               {features.map((feature, index) => (
                 <li key={feature.label2} className="flex items-center">
                   <div className="flex items-center gap-2.5">
@@ -216,7 +216,7 @@ export default function TherapistMatchHero({
                     </span>
                   </div>
                   {index < features.length - 1 ? (
-                    <span className="ml-3 h-9 w-px bg-neutral-200 sm:ml-4" />
+                    <span className="ml-3 hidden h-9 w-px bg-neutral-200 sm:ml-4 sm:block" />
                   ) : null}
                 </li>
               ))}
@@ -235,7 +235,7 @@ export default function TherapistMatchHero({
               {displayTherapists.map((therapist, index) => (
                 <div
                   key={`${therapist.alt}-${index}`}
-                  className="relative h-[62px] w-[62px] overflow-hidden rounded-full shadow-[0_6px_16px_rgba(0,0,0,0.15)] ring-[3px] ring-white sm:h-24 sm:w-24 sm:ring-4 lg:h-32 lg:w-32"
+                  className="relative h-[62px] w-[62px] overflow-hidden rounded-full shadow-[0_6px_16px_rgba(0,0,0,0.15)] ring-[3px] ring-white sm:h-24 sm:w-24 sm:ring-4 lg:h-20 lg:w-20 xl:h-32 xl:w-32"
                   style={{ zIndex: index + 1 }}
                 >
                   {typeof therapist.src === "string" ? (
@@ -299,7 +299,7 @@ export default function TherapistMatchHero({
                 />
               </span>
               {/* sm:text-lg lg:text-xl */}
-              <span className="relative w-full text-center text-[22px] font-semibold sm:text-[24px]">
+              <span className="relative w-full whitespace-nowrap text-center text-lg font-semibold min-[360px]:text-[22px] sm:text-[24px]">
                 {ctaLabel}
               </span>
             </button>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import Container from "./Container";
 import { getConsultantByIdentifier } from "./actions";
 import NotificationTitleBar from "@/components/NotificationTitleBar";
@@ -176,13 +177,8 @@ export default async function ConsultantPage({ params }: PageProps) {
   const { id, "consultant-id": consultantId } = await params;
   const data = await getConsultantByIdentifier(id, consultantId);
 
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-xl text-muted-foreground">Consultant not found</p>
-      </div>
-    );
-  }
+  // Unknown (or hidden) consultant: the site's 404 page with a real 404 status
+  if (!data) notFound();
 
   const { consultant, services, profession, faqs, seoMeta } = data;
 

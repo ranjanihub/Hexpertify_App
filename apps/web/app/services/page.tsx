@@ -14,14 +14,14 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Services - Hexpertify",
   description:
-    "Explore all services on Hexpertify including doctors, mental health counsellors, fitness coaches, and career coaches.",
+    "Explore online therapy and counselling on Hexpertify: individual, couple and teen therapy with verified mental health professionals.",
   alternates: {
     canonical: "https://hexpertify.com/services",
   },
   openGraph: {
     title: "Services - Hexpertify",
     description:
-      "Discover expert services on Hexpertify — connect with doctors, mental health counsellors, fitness coaches, and career coaches.",
+      "Explore online therapy and counselling on Hexpertify: individual, couple and teen therapy with verified mental health professionals.",
     url: "https://hexpertify.com/services",
     siteName: "Hexpertify",
     type: "website",
@@ -65,7 +65,7 @@ export default async function ServicesPage({
   const professions = await getPublicProfessions();
 
   return (
-    <div className="p-4 md:p-6 lg:p-[50px] w-full">
+    <div className="p-4 md:p-6 lg:p-[50px] w-full min-[2000px]:mx-auto min-[2000px]:max-w-[1900px]">
       <ExploreConsultant
         data={professions?.map((value) => ({
           title: value?.name || "",
@@ -87,11 +87,11 @@ export default async function ServicesPage({
           process:
         </p>
       </div>
-      <div className="flex flex-wrap basis-3 gap-x-[90px] gap-y-[60px] justify-center mt-[20px] mb-[50px]">
+      <div className="flex flex-wrap basis-3 gap-x-6 gap-y-8 sm:gap-y-12 md:gap-y-[60px] lg:gap-x-[90px] justify-center mt-[20px] mb-[50px]">
         {consultantProcess?.map((item: any, index: any) => (
           <div
             key={index}
-            className="rounded-[35px] p-[30px] w-[340px] h-[196px] shadow-[0_0_15px_0_rgba(0,0,0,0.5)] flex flex-col justify-center items-center"
+            className="rounded-[35px] p-6 sm:p-[30px] w-full max-w-[340px] min-h-[196px] shadow-[0_0_15px_0_rgba(0,0,0,0.5)] flex flex-col justify-center items-center"
           >
             <Image
               src={item?.icon}
@@ -100,7 +100,7 @@ export default async function ServicesPage({
               className="rounded-[30px]"
               alt={"Image"}
             />
-            <p className="text-[20px] font-semibold text-[700] text-[rgba(8, 26, 61, 1)]">
+            <p className="text-center text-lg sm:text-[20px] font-semibold text-[700] text-[rgba(8, 26, 61, 1)]">
               {item?.title}
             </p>
             <div className="text-[16px] font-normal text-center leading-normal">

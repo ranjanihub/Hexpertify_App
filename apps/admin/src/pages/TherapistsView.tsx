@@ -95,7 +95,7 @@ const RichCodeEditor: React.FC<RichCodeEditorProps> = ({
   };
 
   return (
-    <div className="w-full border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs focus-within:border-[#5e2be2] focus-within:ring-1 focus-within:ring-[#5e2be2]/10 transition-all">
+    <div className="w-full border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs focus-within:border-[#450bc8] focus-within:ring-1 focus-within:ring-[#450bc8]/10 transition-all">
       {/* Editor toolbar */}
       <div className="bg-slate-50 border-b border-slate-150 px-4 py-2.5 flex items-center justify-between gap-2 overflow-x-auto">
         <div className="flex items-center gap-1">
@@ -243,7 +243,7 @@ const RichCodeEditor: React.FC<RichCodeEditorProps> = ({
           onClick={() => setIsPreview(!isPreview)}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition-all ${
             isPreview
-              ? 'bg-[#5e2be2] text-white'
+              ? 'bg-[#450bc8] text-white'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
           }`}
         >
@@ -1224,22 +1224,22 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       )}
 
       {/* Hero Header */}
-      <div className="relative rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-5 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
           <span className="px-3.5 py-1.5 bg-white/15 backdrop-blur-md rounded-full text-xs font-bold tracking-wide uppercase text-purple-200 border border-white/20">
             Therapist Directory
           </span>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-3">Practitioner Management</h1>
-          <p className="text-purple-100 text-sm mt-1 max-w-xl">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-3">Practitioner Management</h1>
+          <p className="text-purple-100 text-xs sm:text-sm mt-1 max-w-xl">
             Configure therapist profiles, platform session fees individually per consultant, manage credentials, and inspect outcome workspace.
           </p>
         </div>
 
-        <div className="relative z-10 flex items-center gap-4">
+        <div className="relative z-10 flex flex-wrap items-center gap-4">
           <button
             onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 px-5 py-3 bg-white text-[#5e2be2] hover:bg-purple-50 rounded-2xl font-extrabold text-sm shadow-xl transition-all hover:scale-105 active:scale-95"
+            className="flex items-center gap-2 whitespace-nowrap px-5 py-3 bg-white text-[#450bc8] hover:bg-purple-50 rounded-2xl font-extrabold text-sm shadow-xl transition-all hover:scale-105 active:scale-95"
           >
             <UserPlus className="w-5 h-5" />
             <span>Create Consultant</span>
@@ -1256,7 +1256,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
           {/* Search Input */}
           <div className="relative w-full sm:w-80">
@@ -1266,7 +1266,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search therapist name or specialization..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
             />
           </div>
 
@@ -1276,7 +1276,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
             <select
               value={selectedProfession}
               onChange={(e) => setSelectedProfession(e.target.value)}
-              className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-extrabold text-slate-800 outline-none focus:border-[#5e2be2] focus:bg-white appearance-none cursor-pointer transition-all"
+              className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-extrabold text-slate-800 outline-none focus:border-[#450bc8] focus:bg-white appearance-none cursor-pointer transition-all"
             >
               <option value="All">All Professions</option>
               {uniqueProfessions.map((prof) => (
@@ -1294,7 +1294,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
         <div className="flex items-center gap-3 w-full md:w-auto justify-end">
           <button
             onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 px-4 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-2xl font-bold text-xs shadow-md shadow-[#5e2be2]/20 transition-all md:hidden"
+            className="flex items-center gap-2 px-4 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-2xl font-bold text-xs shadow-md shadow-[#450bc8]/20 transition-all md:hidden"
           >
             <Plus className="w-4 h-4" />
             <span>Create</span>
@@ -1303,7 +1303,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
       </div>
 
       {/* Therapist Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {filteredTherapists.map((t) => {
           const isDropdownOpen = activeDropdownId === t.id;
           return (
@@ -1389,9 +1389,9 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 photo: t.photo
                               });
                             }}
-                            className="w-full px-3.5 py-2 text-left hover:bg-purple-50 flex items-center gap-2.5 text-[#5e2be2] font-bold transition-colors"
+                            className="w-full px-3.5 py-2 text-left hover:bg-purple-50 flex items-center gap-2.5 text-[#450bc8] font-bold transition-colors"
                           >
-                            <ExternalLink className="w-4 h-4 text-[#5e2be2]" />
+                            <ExternalLink className="w-4 h-4 text-[#450bc8]" />
                             <span>Launch Consultant Suite</span>
                           </button>
 
@@ -1516,7 +1516,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   </button>
                   <button
                     onClick={() => handleStartEdit(t)}
-                    className="flex-1 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-bold text-xs shadow-md shadow-[#5e2be2]/20 transition-all text-center"
+                    className="flex-1 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-bold text-xs shadow-md shadow-[#450bc8]/20 transition-all text-center"
                   >
                     Edit Profile
                   </button>
@@ -1570,7 +1570,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                       photo: selectedTherapist.photo
                     });
                   }}
-                  className="px-4 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#5e2be2]/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+                  className="px-4 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#450bc8]/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Launch Workspace</span>
@@ -1841,7 +1841,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-5xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 my-auto max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="p-5 bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] text-white flex items-center justify-between">
+            <div className="p-5 bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] text-white flex items-center justify-between">
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200">Admin Mirror View</span>
                 <h3 className="text-lg font-extrabold">{selectedTherapist.name}'s Client Workspace</h3>
@@ -1976,7 +1976,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {/* SECTION 1: BASIC INFO */}
               {activeSection === 'basic' && (
                 <div id="sec-basic" className="space-y-6 pt-2 pb-8 animate-slide-in">
-                  <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                  <div className="flex items-center gap-2.5 text-[#450bc8]">
                     <FileText className="w-5 h-5" />
                     <div>
                       <h3 className="text-lg font-extrabold text-slate-900">Basic Information</h3>
@@ -1992,7 +1992,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g., John Doe"
                         value={formData.name}
                         onChange={(e) => handleNameChange(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2003,7 +2003,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="john@example.com"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2014,7 +2014,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g., john-doe"
                         value={formData.identifier}
                         onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2025,7 +2025,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g., 1 (Top Ranking)"
                         value={formData.sequence}
                         onChange={(e) => setFormData({ ...formData, sequence: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2036,7 +2036,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="Title used for notifications"
                         value={formData.notificationTitle}
                         onChange={(e) => setFormData({ ...formData, notificationTitle: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2048,7 +2048,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                           const prof = professions.find((p) => p.id === e.target.value);
                           setFormData({ ...formData, professionId: prof?.id || '', profession: prof?.name || '' });
                         }}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       >
                         <option value="">
                           {formData.profession && !formData.professionId
@@ -2081,7 +2081,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                           placeholder="Upload a photo, or paste its link"
                           value={formData.photo}
                           onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
-                          className="flex-1 min-w-0 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                          className="flex-1 min-w-0 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                         />
                         <ImageUploadButton
                           assetType="Consultant"
@@ -2098,7 +2098,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="Description of the photo"
                         value={formData.photoAltText}
                         onChange={(e) => setFormData({ ...formData, photoAltText: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
                   </div>
@@ -2110,7 +2110,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                       placeholder="Tell us about this consultant..."
                       value={formData.about}
                       onChange={(e) => setFormData({ ...formData, about: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all resize-none"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all resize-none"
                     />
                   </div>
                 </div>
@@ -2119,7 +2119,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {/* SECTION 2: DETAILS */}
               {activeSection === 'details' && (
                 <div id="sec-details" className="space-y-6 pt-2 pb-8 animate-slide-in">
-                  <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                  <div className="flex items-center gap-2.5 text-[#450bc8]">
                     <Briefcase className="w-5 h-5" />
                     <div>
                       <h3 className="text-lg font-extrabold text-slate-900">Professional Details</h3>
@@ -2136,7 +2136,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="0"
                         value={formData.experienceYears}
                         onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2148,7 +2148,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="0"
                         value={formData.clientsServed}
                         onChange={(e) => setFormData({ ...formData, clientsServed: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
                   </div>
@@ -2160,7 +2160,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         id="isCertifiedCheckboxAligned"
                         checked={formData.isCertified}
                         onChange={(e) => setFormData({ ...formData, isCertified: e.target.checked })}
-                        className="w-4 h-4 text-[#5e2be2] rounded focus:ring-[#5e2be2]"
+                        className="w-4 h-4 text-[#450bc8] rounded focus:ring-[#450bc8]"
                       />
                       <label htmlFor="isCertifiedCheckboxAligned" className="text-xs font-bold text-slate-800 cursor-pointer">
                         Is Certified
@@ -2174,7 +2174,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="https://youtube.com/..."
                         value={formData.youtubeUrl}
                         onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
                   </div>
@@ -2191,7 +2191,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             placeholder="e.g., English"
                             value={lang}
                             onChange={(e) => handleUpdateLanguage(idx, e.target.value)}
-                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white"
+                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white"
                           />
                           {formData.languages.length > 1 && (
                             <button
@@ -2224,7 +2224,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             placeholder="e.g., Web Development or CBT"
                             value={spec}
                             onChange={(e) => handleUpdateSpecialty(idx, e.target.value)}
-                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white"
+                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white"
                           />
                           {formData.specialties.length > 1 && (
                             <button
@@ -2253,7 +2253,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {/* SECTION 3: CREDENTIALS */}
               {activeSection === 'credentials' && (
                 <div id="sec-credentials" className="space-y-6 pt-2 pb-8 animate-slide-in">
-                  <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                  <div className="flex items-center gap-2.5 text-[#450bc8]">
                     <Award className="w-5 h-5" />
                     <div>
                       <h3 className="text-lg font-extrabold text-slate-900">Credentials</h3>
@@ -2272,7 +2272,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             placeholder="e.g., Bachelor's in Computer Science"
                             value={qual}
                             onChange={(e) => handleUpdateQualification(idx, e.target.value)}
-                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white"
+                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white"
                           />
                           {formData.qualifications.length > 1 && (
                             <button
@@ -2308,7 +2308,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 placeholder="e.g. APA Specialist"
                                 value={cert.name}
                                 onChange={(e) => handleUpdateCertificateName(idx, e.target.value)}
-                                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-[#5e2be2]"
+                                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-[#450bc8]"
                               />
                             </div>
                             <div className="space-y-1">
@@ -2318,7 +2318,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 placeholder="https://..."
                                 value={cert.url}
                                 onChange={(e) => handleUpdateCertificateUrl(idx, e.target.value)}
-                                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-[#5e2be2]"
+                                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-[#450bc8]"
                               />
                             </div>
                           </div>
@@ -2396,7 +2396,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               type="button"
                               onClick={() => handlePlatformFeeChange(formData.platformFeePerSession, type)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition-colors ${
-                                formData.platformFeeType === type ? 'bg-[#5e2be2] text-white' : 'text-slate-500 hover:text-slate-800'
+                                formData.platformFeeType === type ? 'bg-[#450bc8] text-white' : 'text-slate-500 hover:text-slate-800'
                               }`}
                             >
                               {type === 'Fixed' ? '₹ Amount' : '% Percent'}
@@ -2413,7 +2413,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             onChange={(e) => handlePlatformFeeChange(e.target.value, formData.platformFeeType as 'Fixed' | 'Percentage')}
                             placeholder={feeIsPercent ? '20' : '500'}
                             aria-label="Hexpertify's fee"
-                            className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-[#5e2be2]"
+                            className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-[#450bc8]"
                           />
                         </div>
                       </div>
@@ -2441,7 +2441,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                   placeholder="Service name, e.g. 1-on-1 Therapy"
                                   value={srv.serviceName}
                                   onChange={(e) => handleUpdateServiceField(srv.id, 'serviceName', e.target.value)}
-                                  className="flex-1 min-w-0 px-3 py-2 bg-transparent border border-slate-200 hover:border-slate-300 focus:border-[#5e2be2] rounded-xl text-base font-extrabold text-slate-900 outline-none placeholder:font-semibold placeholder:text-slate-400"
+                                  className="flex-1 min-w-0 px-3 py-2 bg-transparent border border-slate-200 hover:border-slate-300 focus:border-[#450bc8] rounded-xl text-base font-extrabold text-slate-900 outline-none placeholder:font-semibold placeholder:text-slate-400"
                                 />
                                 <button
                                   type="button"
@@ -2465,7 +2465,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                       min="0"
                                       value={srv.sessionFee}
                                       onChange={(e) => handleUpdateServiceField(srv.id, 'sessionFee', Number(e.target.value))}
-                                      className="w-full pl-7 pr-2 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-extrabold text-emerald-700 outline-none focus:border-[#5e2be2] focus:bg-white"
+                                      className="w-full pl-7 pr-2 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-extrabold text-emerald-700 outline-none focus:border-[#450bc8] focus:bg-white"
                                     />
                                   </div>
                                 </label>
@@ -2495,7 +2495,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                   <select
                                     value={srv.platform || 'Google Meet'}
                                     onChange={(e) => handleUpdateServiceField(srv.id, 'platform', e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#5e2be2] focus:bg-white"
+                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#450bc8] focus:bg-white"
                                   >
                                     <option value="Google Meet">Google Meet</option>
                                     <option value="Zoom">Zoom</option>
@@ -2508,7 +2508,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               {/* Who gets what, in one line */}
                               <p className="text-xs text-slate-500 pt-2.5 border-t border-slate-100 flex flex-wrap gap-x-3 gap-y-1">
                                 <span>Client pays <b className="text-slate-900">{rupees(price)}</b></span>
-                                <span>Hexpertify <b className="text-[#5e2be2]">{rupees(fee)}</b></span>
+                                <span>Hexpertify <b className="text-[#450bc8]">{rupees(fee)}</b></span>
                                 <span>Therapist gets <b className="text-emerald-700">{rupees(price - fee)}</b></span>
                               </p>
                             </div>
@@ -2520,7 +2520,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                     <button
                       type="button"
                       onClick={handleAddService}
-                      className="w-full flex items-center justify-center gap-1.5 py-3 border-2 border-dashed border-slate-300 hover:border-[#5e2be2] hover:text-[#5e2be2] rounded-2xl text-sm font-bold text-slate-600 transition-colors"
+                      className="w-full flex items-center justify-center gap-1.5 py-3 border-2 border-dashed border-slate-300 hover:border-[#450bc8] hover:text-[#450bc8] rounded-2xl text-sm font-bold text-slate-600 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Add service
@@ -2533,7 +2533,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {activeSection === 'reviews' && (
                 <div id="sec-reviews" className="space-y-6 pt-2 pb-8 animate-slide-in">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                    <div className="flex items-center gap-2.5 text-[#450bc8]">
                       <Star className="w-5 h-5" />
                       <div>
                         <h3 className="text-lg font-extrabold text-slate-900">Client Reviews</h3>
@@ -2544,7 +2544,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                     <button
                       type="button"
                       onClick={handleAddReview}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl text-xs font-extrabold shadow-md transition-all active:scale-95 shrink-0"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl text-xs font-extrabold shadow-md transition-all active:scale-95 shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Add Review</span>
@@ -2586,7 +2586,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         >
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-purple-100 text-[#5e2be2] flex items-center justify-center text-[10px]">
+                              <span className="w-5 h-5 rounded-full bg-purple-100 text-[#450bc8] flex items-center justify-center text-[10px]">
                                 {index + 1}
                               </span>
                               Review #{index + 1}
@@ -2612,7 +2612,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 placeholder="e.g., Jane Smith"
                                 value={rev.clientName}
                                 onChange={(e) => handleUpdateReviewField(rev.id, 'clientName', e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] text-slate-800 placeholder:text-slate-400"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] text-slate-800 placeholder:text-slate-400"
                               />
                             </div>
 
@@ -2625,7 +2625,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 placeholder="e.g., CEO at Tech Com"
                                 value={rev.clientTitle || ''}
                                 onChange={(e) => handleUpdateReviewField(rev.id, 'clientTitle', e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] text-slate-800 placeholder:text-slate-400"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] text-slate-800 placeholder:text-slate-400"
                               />
                             </div>
                           </div>
@@ -2639,7 +2639,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               <select
                                 value={rev.rating}
                                 onChange={(e) => handleUpdateReviewField(rev.id, 'rating', Number(e.target.value))}
-                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] text-slate-800"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] text-slate-800"
                               >
                                 <option value={5}>5 Stars - Excellent</option>
                                 <option value={4}>4 Stars - Very Good</option>
@@ -2655,7 +2655,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 type="date"
                                 value={rev.date ? rev.date.split('T')[0] : ''}
                                 onChange={(e) => handleUpdateReviewField(rev.id, 'date', e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] text-slate-800"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] text-slate-800"
                               />
                             </div>
                           </div>
@@ -2670,7 +2670,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               placeholder="Write the review comment..."
                               value={rev.comment}
                               onChange={(e) => handleUpdateReviewField(rev.id, 'comment', e.target.value)}
-                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] text-slate-800 placeholder:text-slate-400 leading-relaxed resize-y"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] text-slate-800 placeholder:text-slate-400 leading-relaxed resize-y"
                             />
                             <p className="text-[11px] text-slate-500 font-medium">
                               {(rev.comment || '').length} characters
@@ -2693,7 +2693,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                       placeholder="https://..."
                                       value={imgUrl}
                                       onChange={(e) => handleUpdateReviewImage(rev.id, imgIdx, e.target.value)}
-                                      className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 outline-none focus:border-[#5e2be2]"
+                                      className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 outline-none focus:border-[#450bc8]"
                                     />
                                     {imgUrl && (
                                       <img
@@ -2731,7 +2731,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                       <button
                         type="button"
                         onClick={handleAddReview}
-                        className="w-full py-3.5 border-2 border-dashed border-[#5e2be2]/30 hover:border-[#5e2be2]/60 text-[#5e2be2] hover:bg-purple-50/40 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all"
+                        className="w-full py-3.5 border-2 border-dashed border-[#450bc8]/30 hover:border-[#450bc8]/60 text-[#450bc8] hover:bg-purple-50/40 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all"
                       >
                         <Plus className="w-4 h-4" />
                         <span>Add Another Client Review</span>
@@ -2744,7 +2744,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {/* SECTION 6: FAQS */}
               {activeSection === 'faqs' && (
                 <div id="sec-faqs" className="space-y-6 pt-2 pb-8 animate-slide-in">
-                  <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                  <div className="flex items-center gap-2.5 text-[#450bc8]">
                     <HelpCircle className="w-5 h-5" />
                     <div>
                       <h3 className="text-lg font-extrabold text-slate-900">Frequently Asked Questions</h3>
@@ -2779,7 +2779,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         {isEditing ? (
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <h4 className="text-xs font-extrabold text-[#5e2be2]">Edit FAQ Item</h4>
+                              <h4 className="text-xs font-extrabold text-[#450bc8]">Edit FAQ Item</h4>
                               <button
                                 type="button"
                                 onClick={() => setEditingFAQId(null)}
@@ -2794,7 +2794,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 type="text"
                                 value={f.question}
                                 onChange={(e) => handleUpdateFAQField(f.id, 'question', e.target.value)}
-                                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#5e2be2]"
+                                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#450bc8]"
                               />
                             </div>
                             <div className="space-y-1">
@@ -2803,14 +2803,14 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 rows={3}
                                 value={f.answer}
                                 onChange={(e) => handleUpdateFAQField(f.id, 'answer', e.target.value)}
-                                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-[#5e2be2] resize-y"
+                                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-[#450bc8] resize-y"
                               />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
                               <button
                                 type="button"
                                 onClick={() => setEditingFAQId(null)}
-                                className="px-4 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white text-xs font-extrabold rounded-xl transition-colors shadow-xs"
+                                className="px-4 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white text-xs font-extrabold rounded-xl transition-colors shadow-xs"
                               >
                                 Save Changes
                               </button>
@@ -2826,7 +2826,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setEditingFAQId(f.id)}
-                                className="p-1.5 hover:bg-purple-50 text-slate-400 hover:text-[#5e2be2] rounded-lg transition-colors"
+                                className="p-1.5 hover:bg-purple-50 text-slate-400 hover:text-[#450bc8] rounded-lg transition-colors"
                                 title="Edit FAQ"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
@@ -2854,14 +2854,14 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="Question (e.g. What is your cancellation policy?)"
                         value={newFAQ.question}
                         onChange={(e) => setNewFAQ({ ...newFAQ, question: e.target.value })}
-                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#5e2be2]"
+                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#450bc8]"
                       />
                       <textarea
                         rows={2}
                         placeholder="Answer details..."
                         value={newFAQ.answer}
                         onChange={(e) => setNewFAQ({ ...newFAQ, answer: e.target.value })}
-                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#5e2be2] resize-none"
+                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#450bc8] resize-none"
                       />
                       <div className="flex justify-end gap-2">
                         <button
@@ -2874,7 +2874,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         <button
                           type="button"
                           onClick={handleSaveFAQ}
-                          className="px-4 py-1.5 bg-[#5e2be2] text-white text-xs font-bold rounded-xl"
+                          className="px-4 py-1.5 bg-[#450bc8] text-white text-xs font-bold rounded-xl"
                         >
                           Save FAQ
                         </button>
@@ -2887,7 +2887,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {/* SECTION: BANKING & PAYOUT */}
               {activeSection === 'banking' && (
                 <div id="sec-banking" className="space-y-6 pt-2 pb-8 animate-slide-in">
-                  <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                  <div className="flex items-center gap-2.5 text-[#450bc8]">
                     <Building2 className="w-5 h-5" />
                     <div>
                       <h3 className="text-lg font-extrabold text-slate-900">Banking & Payout Details</h3>
@@ -2903,7 +2903,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g. HDFC Bank, State Bank of India, ICICI Bank"
                         value={formData.bankName}
                         onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2914,7 +2914,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g. 50100429182371"
                         value={formData.bankAccountNumber}
                         onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2925,7 +2925,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g. HDFC0001234"
                         value={formData.bankIfsc}
                         onChange={(e) => setFormData({ ...formData, bankIfsc: e.target.value.toUpperCase() })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold uppercase outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold uppercase outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2936,7 +2936,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g. Dr. Marcus Vance"
                         value={formData.accountHolderName}
                         onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                     </div>
 
@@ -2947,7 +2947,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                         placeholder="e.g. drmarcusvance@okaxis or 9876543210@upi"
                         value={formData.upiId}
                         onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                       />
                       <p className="text-[11px] text-slate-400 font-medium">
                         Used for instant real-time transfers via NPCI clearance when UPI disbursal mode is selected.
@@ -2961,14 +2961,14 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
               {activeSection === 'seo' && (
                 <div id="sec-seo" className="space-y-8 pt-2 pb-6 animate-slide-in">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <div className="flex items-center gap-2.5 text-[#5e2be2]">
+                    <div className="flex items-center gap-2.5 text-[#450bc8]">
                       <Globe className="w-5 h-5" />
                       <div>
                         <h3 className="text-lg font-extrabold text-slate-900">SEO Settings</h3>
                         <p className="text-xs text-slate-500 font-medium">Search engine optimization and social sharing configuration for consultant landing page</p>
                       </div>
                     </div>
-                    <span className="px-3 py-1 bg-purple-50 text-[#5e2be2] rounded-full text-[10px] font-extrabold uppercase tracking-wide border border-purple-100">
+                    <span className="px-3 py-1 bg-purple-50 text-[#450bc8] rounded-full text-[10px] font-extrabold uppercase tracking-wide border border-purple-100">
                       Search & Social
                     </span>
                   </div>
@@ -2990,7 +2990,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             placeholder="e.g. Dr. John Doe | Psychologist in New York"
                             value={formData.seo.metaTitle}
                             onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, metaTitle: e.target.value } })}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all font-medium text-slate-800"
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all font-medium text-slate-800"
                           />
                         </div>
 
@@ -3001,7 +3001,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             placeholder="Book therapy sessions with Dr. John Doe..."
                             value={formData.seo.metaDescription}
                             onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, metaDescription: e.target.value } })}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all resize-none font-medium text-slate-800"
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all resize-none font-medium text-slate-800"
                           />
                         </div>
 
@@ -3013,7 +3013,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               placeholder="e.g. psychologist, CBT, anxiety"
                               value={formData.seo.keywords}
                               onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, keywords: e.target.value } })}
-                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all font-medium text-slate-800"
+                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all font-medium text-slate-800"
                             />
                           </div>
 
@@ -3024,7 +3024,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               placeholder="https://hexpertify.com/consultants/john-doe"
                               value={formData.seo.canonicalUrl}
                               onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, canonicalUrl: e.target.value } })}
-                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all font-medium text-slate-800"
+                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all font-medium text-slate-800"
                             />
                           </div>
                         </div>
@@ -3047,7 +3047,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                 ogDescription: formData.seo.ogDescription || formData.seo.metaDescription || (formData.about ? formData.about.trim().slice(0, 150) + '...' : '')
                               }
                             })}
-                            className="flex items-center gap-1 text-[10px] font-extrabold text-[#5e2be2] bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg border border-purple-100 transition-all active:scale-95"
+                            className="flex items-center gap-1 text-[10px] font-extrabold text-[#450bc8] bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg border border-purple-100 transition-all active:scale-95"
                           >
                             <RefreshCw className="w-3 h-3" />
                             Sync from Meta Tags
@@ -3061,7 +3061,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             placeholder="Social share title..."
                             value={formData.seo.ogTitle}
                             onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, ogTitle: e.target.value } })}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all font-medium text-slate-800"
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all font-medium text-slate-800"
                           />
                         </div>
 
@@ -3072,7 +3072,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                             placeholder="Social share description..."
                             value={formData.seo.ogDescription}
                             onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, ogDescription: e.target.value } })}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all resize-none font-medium text-slate-800"
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all resize-none font-medium text-slate-800"
                           />
                         </div>
 
@@ -3089,7 +3089,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                                     ogImageUrl: formData.photo || ''
                                   }
                                 })}
-                                className="text-[10px] font-bold text-[#5e2be2] hover:underline"
+                                className="text-[10px] font-bold text-[#450bc8] hover:underline"
                               >
                                 Use Profile Photo
                               </button>
@@ -3099,7 +3099,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               placeholder="https://..."
                               value={formData.seo.ogImageUrl}
                               onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, ogImageUrl: e.target.value } })}
-                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all font-medium text-slate-800"
+                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all font-medium text-slate-800"
                             />
                           </div>
 
@@ -3110,7 +3110,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                               placeholder="Image description..."
                               value={formData.seo.ogImageAltText}
                               onChange={(e) => setFormData({ ...formData, seo: { ...formData.seo, ogImageAltText: e.target.value } })}
-                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#5e2be2] focus:bg-white transition-all font-medium text-slate-800"
+                              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#450bc8] focus:bg-white transition-all font-medium text-slate-800"
                             />
                           </div>
                         </div>
@@ -3214,8 +3214,8 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
 
                       {/* SEO Quality Helper Card */}
                       <div className="bg-gradient-to-r from-purple-50/70 via-indigo-50/50 to-blue-50/70 p-5 rounded-2xl border border-purple-100 space-y-3">
-                        <h5 className="text-[11px] font-extrabold text-[#5e2be2] uppercase tracking-wider flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-[#5e2be2]" />
+                        <h5 className="text-[11px] font-extrabold text-[#450bc8] uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#450bc8]" />
                           SEO Excellence Checklist
                         </h5>
                         <ul className="space-y-2 text-[11px] text-slate-655 font-medium">
@@ -3292,7 +3292,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="px-8 py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs shadow-lg shadow-[#5e2be2]/30 transition-all hover:scale-[1.02] active:scale-95"
+                    className="px-8 py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-lg shadow-[#450bc8]/30 transition-all hover:scale-[1.02] active:scale-95"
                   >
                     Next
                   </button>
@@ -3300,7 +3300,7 @@ export const TherapistsView: React.FC<TherapistsViewProps> = ({
                   <button
                     type="submit"
                     form="create-consultant-form"
-                    className="px-8 py-3 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs shadow-lg shadow-[#5e2be2]/30 transition-all hover:scale-[1.02] active:scale-95"
+                    className="px-8 py-3 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-lg shadow-[#450bc8]/30 transition-all hover:scale-[1.02] active:scale-95"
                   >
                     {editingTherapistId ? 'Update Profile' : 'Create Consultant'}
                   </button>

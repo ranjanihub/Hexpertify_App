@@ -33,10 +33,10 @@ export const ExposureHierarchyLadder: React.FC<BaseActivityComponentProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Plus_Jakarta_Sans']">
+    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-md space-y-5 font-['Open_Sans']">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div>
-          <span className="px-2.5 py-1 bg-purple-50 text-[#5e2be2] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
+          <span className="px-2.5 py-1 bg-purple-50 text-[#450bc8] font-extrabold text-[10px] rounded-full border border-purple-100 uppercase tracking-wider">
             Coded Component · ACT-04
           </span>
           <h3 className="text-xl font-extrabold text-slate-900 mt-1">{activityName}</h3>
@@ -48,7 +48,7 @@ export const ExposureHierarchyLadder: React.FC<BaseActivityComponentProps> = ({
         {steps.map((step, idx) => (
           <div key={step.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-xl bg-purple-100 text-[#5e2be2] font-mono font-extrabold text-xs flex items-center justify-center shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-purple-100 text-[#450bc8] font-mono font-extrabold text-xs flex items-center justify-center shrink-0">
                 #{idx + 1}
               </span>
               <div>
@@ -95,7 +95,7 @@ export const ExposureHierarchyLadder: React.FC<BaseActivityComponentProps> = ({
               <button
                 type="button"
                 onClick={handleAddStep}
-                className="flex-1 py-2.5 bg-[#5e2be2] text-white font-extrabold text-xs rounded-xl shadow-xs"
+                className="flex-1 py-2.5 bg-[#450bc8] text-white font-extrabold text-xs rounded-xl shadow-xs"
               >
                 Add Step
               </button>

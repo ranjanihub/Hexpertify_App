@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CareProviderAvatars } from "@/components/care-provider-avatars";
+import { finishLoginLoader, startLoginLoader } from "@/lib/login-loader";
+import { ForgotPassword, ResetPasswordPanel } from "@/components/password-reset";
 import { 
   Lock, 
   Eye, 
@@ -70,21 +72,54 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const [role, setRole] = useState<PublicRole>("client");
+  // /login?role=therapist (e.g. from /consultant/login) opens on the therapist tab
+  const [role, setRole] = useState<PublicRole>(() => {
+    try {
+      const wanted = new URLSearchParams(window.location.search).get("role");
+      return wanted === "therapist" || wanted === "consultant" ? "therapist" : "client";
+    } catch {
+      return "client";
+    }
+  });
 
-  // Clean any role= query parameters from browser URL to keep it clean
+  // Sent back here from a panel (e.g. the session was refused): play out a sign-in loader still showing
+  useEffect(() => {
+    finishLoginLoader();
+  }, []);
+
+  // ?returnTo=/services/... (from the website's booking pop-up): after creating an account the visitor goes back
+  // there to sign in and finish booking. Only a path on this site is accepted (never another website).
+  const [returnTo] = useState<string | null>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("returnTo") || "";
+      return v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\") ? v : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Clean the role=, mode= and returnTo= query parameters from the browser URL once read
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
-      if (url.searchParams.has("role")) {
+      if (url.searchParams.has("role") || url.searchParams.has("mode") || url.searchParams.has("returnTo")) {
         url.searchParams.delete("role");
+        url.searchParams.delete("mode");
+        url.searchParams.delete("returnTo");
         const newSearch = url.searchParams.toString();
         window.history.replaceState({}, document.title, url.pathname + (newSearch ? `?${newSearch}` : ""));
       }
     } catch {}
   }, []);
 
-  const [clientMode, setClientMode] = useState<"signin" | "signup">("signin");
+  // The website's "Signup" button links here with ?mode=signup: open the account creation form
+  const [clientMode, setClientMode] = useState<"signin" | "signup">(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "signin";
+    } catch {
+      return "signin";
+    }
+  });
   
   // Client Form State
   const [fullName, setFullName] = useState("");
@@ -104,6 +139,8 @@ export default function Login() {
     const liveSiteUrl = data.redirectUrl || "http://localhost:3000";
     // Signed API token used for payments and admin-only endpoints
     setApiToken(data.token);
+    // The loading screen stays up through the page load into the panel, until the panel is ready
+    startLoginLoader();
 
     if (data.role === "super_admin" || data.role === "admin" || data.redirectUrl === "/admin") {
       setAdminAuth(data.user);
@@ -194,6 +231,7 @@ export default function Login() {
   // Initialize Google One Tap & Google Identity Services (exact match to hexpertify.com)
   useEffect(() => {
     let timer: NodeJS.Timeout;
+    let resizeObserver: ResizeObserver | null = null;
 
     const initGsi = () => {
       if (window.google?.accounts?.id && !gsiInitializedRef.current) {
@@ -210,19 +248,37 @@ export default function Login() {
           // Display Google One Tap prompt in top right corner (matches hexpertify.com)
           window.google.accounts.id.prompt();
 
-          // Render official Google Sign In button (opens native GIS popup, no redirect URI needed)
+          // Render official Google Sign In button (opens native GIS popup, no redirect URI needed).
+          // Google draws it at a fixed pixel width, so it is drawn again when its box changes size
+          // (phone turned, window resized) instead of sticking out of narrow screens.
           const btnContainer = document.getElementById("google-signin-btn-container");
           if (btnContainer) {
-            btnContainer.innerHTML = "";
-            window.google.accounts.id.renderButton(btnContainer, {
-              type: "standard",
-              theme: "outline",
-              size: "large",
-              text: "signin_with",
-              shape: "rectangular",
-              logo_alignment: "left",
-              width: btnContainer.clientWidth || 380,
-            });
+            let drawnWidth = 0;
+            const draw = () => {
+              // Google accepts 200–400px
+              const width = Math.max(200, Math.min(400, Math.floor(btnContainer.clientWidth || 380)));
+              if (Math.abs(width - drawnWidth) < 8 || !window.google?.accounts?.id?.renderButton) return;
+              drawnWidth = width;
+              btnContainer.innerHTML = "";
+              window.google.accounts.id.renderButton(btnContainer, {
+                type: "standard",
+                theme: "outline",
+                size: "large",
+                text: "signin_with",
+                shape: "rectangular",
+                logo_alignment: "left",
+                width,
+              });
+            };
+            draw();
+            if (typeof ResizeObserver !== "undefined") {
+              let raf = 0;
+              resizeObserver = new ResizeObserver(() => {
+                cancelAnimationFrame(raf);
+                raf = requestAnimationFrame(draw);
+              });
+              resizeObserver.observe(btnContainer);
+            }
           }
         } catch (err) {
           console.error("Failed to initialize Google Identity Services:", err);
@@ -262,6 +318,7 @@ export default function Login() {
 
     return () => {
       if (timer) clearTimeout(timer);
+      resizeObserver?.disconnect();
       try {
         window.google?.accounts?.id?.cancel();
       } catch {}
@@ -385,6 +442,17 @@ export default function Login() {
       return;
     }
 
+    // Same rules as the server: a real name, and an optional phone of 10 to 15 digits
+    const trimmedName = fullName.trim();
+    if (trimmedName.length < 2 || !/\p{L}/u.test(trimmedName)) {
+      toast({ title: "Check your name", description: "Please enter your full name.", variant: "destructive" });
+      return;
+    }
+    if (clientPhone.trim() && !/^\+?\d{10,15}$/.test(clientPhone.trim().replace(/[\s\-()]/g, ""))) {
+      toast({ title: "Check your phone number", description: "Use 10 to 15 digits, e.g. +91 98765 43210, or leave it empty.", variant: "destructive" });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await authApiFetch("/api/users", {
@@ -402,6 +470,12 @@ export default function Login() {
       if (res.ok && data?.success) {
         // A new client's portal opens after their first completed session: sign in from here afterwards
         if (data.clientPanelAccess === false || !data.ssoTicket) {
+          if (returnTo) {
+            // Came from the booking pop-up: back there to sign in with the new account and finish booking
+            toast({ title: "Account created", description: "Taking you back to finish your booking. Sign in there with your new email and password." });
+            setTimeout(() => { window.location.href = returnTo; }, 1800);
+            return;
+          }
           toast({
             title: "Registration Successful",
             description: data.notice || "Your account has been created. Your client portal opens after your first completed session.",
@@ -439,7 +513,16 @@ export default function Login() {
 
   return (
     // Laptop/desktop: exactly one screen tall, never scrolls (short screens drop the optional hero blocks below)
-    <div className="min-h-dvh lg:h-dvh lg:overflow-hidden grid grid-cols-1 lg:grid-cols-12 bg-slate-50 font-['Plus_Jakarta_Sans'] antialiased">
+    <div className="login-classic min-h-dvh lg:h-dvh lg:overflow-hidden grid grid-cols-1 lg:grid-cols-12 bg-slate-50 font-['Plus_Jakarta_Sans'] antialiased">
+      {/* Opened from the emailed reset link (/login?reset=<token>): choose a new password */}
+      <ResetPasswordPanel
+        onDone={(message) => {
+          toast({ title: "Password changed", description: message });
+          setRole("client");
+          setClientMode("signin");
+        }}
+      />
+
       {/* Left Column - Hero Visual Presentation */}
       <div className="hidden lg:flex lg:col-span-7 bg-[#5e2be2] flex-col justify-between p-8 xl:p-12 text-white relative overflow-hidden">
         {/* Background decorative elements */}
@@ -527,7 +610,7 @@ export default function Login() {
             <button
               type="button"
               onClick={() => handleSelectRole("client")}
-              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-2.5 sm:py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 role === "client"
                   ? "bg-white text-[#5e2be2] shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -539,7 +622,7 @@ export default function Login() {
             <button
               type="button"
               onClick={() => handleSelectRole("therapist")}
-              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-2.5 sm:py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 role === "therapist"
                   ? "bg-white text-[#5e2be2] shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -588,7 +671,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute right-0.5 top-0.5 p-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -596,15 +679,15 @@ export default function Login() {
               </div>
 
               {/* Quick Auto-Fill Demo Pill: a therapist registered in the Super Admin panel */}
-              <div className="px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
-                <span className="text-[11px] text-purple-900 font-medium">Demo: marcus.vance@hexpertify.com</span>
+              <div className="px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-purple-900 font-medium min-w-0 [overflow-wrap:anywhere]">Demo: marcus.vance@hexpertify.com</span>
                 <button
                   type="button"
                   onClick={() => {
                     setTherapistEmail("marcus.vance@hexpertify.com");
                     setTherapistPassword("password123");
                   }}
-                  className="text-[11px] text-[#5e2be2] font-bold hover:underline cursor-pointer"
+                  className="text-[11px] text-[#5e2be2] font-bold hover:underline cursor-pointer px-1.5 -mx-1.5 py-2 -my-2 sm:py-1 sm:-my-1 shrink-0"
                 >
                   Auto Fill
                 </button>
@@ -629,7 +712,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setClientMode("signin")}
-                  className={`pb-2 transition-all cursor-pointer ${
+                  className={`pt-2 -mt-2 pb-2 transition-all cursor-pointer ${
                     clientMode === "signin"
                       ? "text-[#5e2be2] border-b-2 border-[#5e2be2]"
                       : "text-slate-400 hover:text-slate-600"
@@ -640,7 +723,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setClientMode("signup")}
-                  className={`pb-2 transition-all cursor-pointer ${
+                  className={`pt-2 -mt-2 pb-2 transition-all cursor-pointer ${
                     clientMode === "signup"
                       ? "text-[#5e2be2] border-b-2 border-[#5e2be2]"
                       : "text-slate-400 hover:text-slate-600"
@@ -719,7 +802,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-0.5 top-0.5 p-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -732,7 +815,7 @@ export default function Login() {
                     disabled={isLoading}
                     className="w-full h-10 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {isLoading ? "Creating Account..." : "Create Client Account & Sign In"}
+                    {isLoading ? "Creating Account..." : "Create Account"}
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </form>
@@ -774,23 +857,24 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-0.5 top-0.5 p-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    <ForgotPassword initialEmail={clientEmail} />
                   </div>
 
                   {/* Quick Auto-Fill Demo Pill */}
-                  <div className="px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
-                    <span className="text-[11px] text-purple-900 font-medium">Demo: ranjaniranjani5694@gmail.com</span>
+                  <div className="px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-purple-900 font-medium min-w-0 [overflow-wrap:anywhere]">Demo: ranjaniranjani5694@gmail.com</span>
                     <button
                       type="button"
                       onClick={() => {
                         setClientEmail("ranjaniranjani5694@gmail.com");
                         setClientPassword("client123");
                       }}
-                      className="text-[11px] text-[#5e2be2] font-bold hover:underline cursor-pointer"
+                      className="text-[11px] text-[#5e2be2] font-bold hover:underline cursor-pointer px-1.5 -mx-1.5 py-2 -my-2 sm:py-1 sm:-my-1 shrink-0"
                     >
                       Auto Fill
                     </button>

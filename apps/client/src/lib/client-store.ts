@@ -102,10 +102,12 @@ export async function syncUserSessions(): Promise<SessionItem[]> {
     const data = await res.json();
     const raw = Array.isArray(data?.bookings) ? data.bookings : Array.isArray(data) ? data : [];
     {
-      // Matched by the client's email or id only (never by name)
+      // Matched by the client's email or id only (never by name); sessions the client removed from their list stay hidden
       const matched = raw.filter((b: any) =>
-        (clientEmail && b.clientEmail && String(b.clientEmail).toLowerCase().trim() === clientEmail) ||
-        (clientId && (String(b.clientId || '') === String(clientId) || String(b.userId || '') === String(clientId)))
+        !b.hiddenByClient && (
+          (clientEmail && b.clientEmail && String(b.clientEmail).toLowerCase().trim() === clientEmail) ||
+          (clientId && (String(b.clientId || '') === String(clientId) || String(b.userId || '') === String(clientId)))
+        )
       );
 
       const mappedSessions: SessionItem[] = matched.map((b: any) => {
@@ -117,8 +119,10 @@ export async function syncUserSessions(): Promise<SessionItem[]> {
           : b.scheduledAt || (b.date ? `${b.date}T00:00:00+05:30` : "");
         const isCancelled = bookingStatus === "CANCELLED" || bookingStatus === "EXPIRED";
         const isFinished = bookingStatus === "COMPLETED" || bookingStatus === "NO_SHOW_CLIENT" || bookingStatus === "NO_SHOW_CONSULTANT";
-        const isPast = !isCancelled && (isFinished ||
-          (!toBeScheduled && !!scheduledDate && new Date(scheduledDate).getTime() < Date.now() - 86400000));
+        // A session is past once it has ended (start + its length), not a day later
+        const durationMinutes = Number(b.durationMinutes || b.duration) || 50;
+        const endsAt = scheduledDate ? new Date(scheduledDate).getTime() + durationMinutes * 60000 : NaN;
+        const isPast = !isCancelled && (isFinished || (!toBeScheduled && !Number.isNaN(endsAt) && endsAt < Date.now()));
 
         let therapist = b.consultantName || b.therapistName || "";
         let serviceTitle = b.serviceTitle || "";
@@ -143,11 +147,24 @@ export async function syncUserSessions(): Promise<SessionItem[]> {
           therapistName: therapist,
           therapistAvatarUrl: b.consultantAvatar || b.therapistAvatar || user?.assignedTherapistPhoto || "",
           therapistTitle: serviceTitle || "Individual Therapy Consultation",
-          joinUrl: b.meetingLink || "https://meet.google.com/hex-pert-ify",
+          // Only the real meeting link the therapist or team set; none means "link available soon"
+          joinUrl: b.meetingLink || b.meetLink || null,
           notes: b.notes || `Consultation session for ${b.clientName || 'Client'}.`,
           clientName: b.clientName || user?.name || "Client",
           clientEmail: b.clientEmail || clientEmail
         };
+      });
+
+      // Soonest upcoming first (unscheduled ones last); past and cancelled newest first
+      const timeOf = (s: SessionItem) => (s.scheduledAt ? new Date(s.scheduledAt).getTime() : NaN);
+      mappedSessions.sort((x, y) => {
+        const a = timeOf(x), c = timeOf(y);
+        if (x.status === "upcoming" && y.status === "upcoming") {
+          if (Number.isNaN(a)) return Number.isNaN(c) ? 0 : 1;
+          if (Number.isNaN(c)) return -1;
+          return a - c;
+        }
+        return (Number.isNaN(c) ? 0 : c) - (Number.isNaN(a) ? 0 : a);
       });
 
       // The server's list replaces the cached copy, even when it is empty
@@ -198,7 +215,7 @@ export function addUserSession(sessionData: Partial<SessionItem>, options: { per
     therapistName: therapist,
     therapistAvatarUrl: sessionData.therapistAvatarUrl || user?.assignedTherapistPhoto || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
     therapistTitle: sessionData.therapistTitle || "Mental Health Consultation",
-    joinUrl: sessionData.joinUrl || "https://meet.google.com/hex-pert-ify",
+    joinUrl: sessionData.joinUrl || null,
     notes: sessionData.notes || `Virtual appointment booked for ${user?.name || "Client"}.`,
     clientName: user?.name || "Client",
     clientEmail: user?.email || "",
@@ -239,37 +256,52 @@ export function addUserSession(sessionData: Partial<SessionItem>, options: { per
   return newSession;
 }
 
-export function cancelUserSession(sessionId: number | string): void {
-  const sessions = getUserSessions();
-  const idStr = String(sessionId);
-  const updated = sessions.map(s => String(s.id) === idStr ? { ...s, status: "cancelled" as const } : s);
-  saveUserSessions(updated);
-
-  // Live cancel on MongoDB Atlas API
-  fetch(`/api/bookings/${encodeURIComponent(idStr)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "CANCELLED" }),
-  }).catch(() => {
-    fetch(`/api/bookings/cancel`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: idStr, status: "CANCELLED" }),
-    }).catch(() => {});
-  });
+export interface SessionChangeResult {
+  ok: boolean;
+  /** Why the change did not happen, in words for the client */
+  error?: string;
 }
 
-export function deleteUserSession(sessionId: number | string): void {
-  const sessions = getUserSessions();
-  const idStr = String(sessionId);
-  const updated = sessions.filter(s => String(s.id) !== idStr);
-  saveUserSessions(updated);
+/** Sends a change of the client's own booking; the list is refreshed from the server only when it succeeds */
+async function changeUserSession(sessionId: number | string, body: Record<string, unknown>): Promise<SessionChangeResult> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { ok: false, error: "You are offline. Please reconnect and try again." };
+  }
+  try {
+    const res = await fetch(`/api/bookings/${encodeURIComponent(String(sessionId))}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getApiAuthHeaders() },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || data?.success === false) {
+      return { ok: false, error: data?.error || `The change could not be saved (error ${res.status}). Please try again.` };
+    }
+    await syncUserSessions();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: "Hexpertify could not be reached. Please check your connection and try again." };
+  }
+}
 
-  // Live delete on MongoDB Atlas API
-  Promise.all([
-    fetch(`/api/bookings/${encodeURIComponent(idStr)}`, { method: "DELETE" }),
-    fetch(`/api/availability?id=${encodeURIComponent(idStr)}`, { method: "DELETE" }),
-  ]).catch(() => {});
+/** Cancels an upcoming session (the server applies the 3-hour rule) */
+export function cancelUserSession(sessionId: number | string): Promise<SessionChangeResult> {
+  return changeUserSession(sessionId, { status: "CANCELLED" });
+}
+
+/** Moves an upcoming session to another offered slot of the same therapist (no new payment) */
+export function rescheduleUserSession(sessionId: number | string, slot: { date: string; time: string }): Promise<SessionChangeResult> {
+  return changeUserSession(sessionId, { date: slot.date, time: slot.time });
+}
+
+/** Removes a past or cancelled session from this client's list only; the booking itself stays on record */
+export function hideUserSession(sessionId: number | string): Promise<SessionChangeResult> {
+  return changeUserSession(sessionId, { hiddenByClient: true });
+}
+
+/** Releases the slot held for a payment the client did not complete (payment window closed) */
+export function releaseUnpaidSession(sessionId: number | string): Promise<SessionChangeResult> {
+  return changeUserSession(sessionId, { status: "EXPIRED" });
 }
 
 // ----------------------------------------------------
@@ -279,6 +311,14 @@ export function deleteUserSession(sessionId: number | string): void {
 // ----------------------------------------------------
 const ACTIVITIES_KEY = "hexpertify_assigned_activities";
 const COMPLETIONS_KEY = "hexpertify_activity_completions";
+
+/**
+ * A localStorage key that belongs to the signed-in client only (their email or id is part of it),
+ * so two people using the same device never see each other's saved data.
+ */
+export function getUserStorageKey(prefix: string): string {
+  return getUserKey(prefix);
+}
 
 export function getUserActivities(): ActivityStoreItem[] {
   try {
@@ -501,47 +541,70 @@ export function markUserMessagesRead(consultantId?: string): void {
   }).catch(() => {});
 }
 
-export function sendUserMessage(content: string, consultantInfo?: { consultantId?: string; consultantName?: string; consultantEmail?: string }): MessageItem {
-  const messages = getUserMessages();
+export interface SendMessageResult {
+  ok: boolean;
+  /** The message as the server stored it (only when ok) */
+  message?: MessageItem;
+  /** Why it was not sent, in words for the client */
+  error?: string;
+}
+
+/**
+ * Sends a message to the client's therapist. It is added to the cached conversation only after the
+ * server stored it, so a failed or offline send is never shown as delivered.
+ */
+export async function sendUserMessage(content: string, consultantInfo?: { consultantId?: string; consultantName?: string; consultantEmail?: string }): Promise<SendMessageResult> {
   const user = getClientAuth();
   const clientName = user?.name || "Client";
   const clientEmail = (user?.email || "").toLowerCase();
   const clientAvatar = user?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
 
-  const newMsg: MessageItem = {
-    id: Date.now(),
-    type: "text",
-    senderRole: 'client',
-    senderId: user?.id || "client-1",
-    senderName: clientName,
-    senderAvatarUrl: clientAvatar,
-    content,
-    sentAt: new Date().toISOString(),
-    isRead: true,
-  };
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { ok: false, error: "You are offline. Reconnect to the internet and press Retry." };
+  }
 
-  const updated = [...messages, newMsg];
-  saveUserMessages(updated);
+  try {
+    const res = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderRole: 'client',
+        senderName: clientName,
+        senderEmail: clientEmail,
+        clientName: clientName,
+        clientEmail: clientEmail,
+        clientId: user?.id || '',
+        consultantId: consultantInfo?.consultantId || user?.assignedTherapistId || '',
+        consultantName: consultantInfo?.consultantName || user?.assignedTherapistName || '',
+        consultantEmail: consultantInfo?.consultantEmail || '',
+        content
+      })
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || data?.success === false) {
+      return { ok: false, error: data?.error || `The message could not be sent (error ${res.status}). Please press Retry.` };
+    }
 
-  // Persist live to MongoDB Atlas API
-  fetch('/api/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    const saved = data?.message || {};
+    const newMsg: MessageItem = {
+      id: saved.id || saved._id || Date.now(),
+      type: "text",
       senderRole: 'client',
+      senderId: user?.id || "client-1",
       senderName: clientName,
-      senderEmail: clientEmail,
-      clientName: clientName,
-      clientEmail: clientEmail,
-      clientId: user?.id || '',
-      consultantId: consultantInfo?.consultantId || user?.assignedTherapistId || '',
-      consultantName: consultantInfo?.consultantName || user?.assignedTherapistName || '',
-      consultantEmail: consultantInfo?.consultantEmail || '',
-      content
-    })
-  }).catch(() => {});
-
-  return newMsg;
+      senderAvatarUrl: clientAvatar,
+      content,
+      sentAt: saved.createdAt ? new Date(saved.createdAt).toISOString() : new Date().toISOString(),
+      isRead: true,
+    };
+    const messages = getUserMessages();
+    if (!messages.some((m) => String(m.id) === String(newMsg.id))) {
+      saveUserMessages([...messages, newMsg]);
+    }
+    return { ok: true, message: newMsg };
+  } catch (e) {
+    return { ok: false, error: "Hexpertify could not be reached. Check your connection and press Retry." };
+  }
 }
 
 // ----------------------------------------------------
@@ -551,37 +614,14 @@ export function getUserAssessments(): AssessmentResult[] {
   const key = getUserKey("hexpertify_assessments");
   try {
     const data = localStorage.getItem(key);
-    if (data) return JSON.parse(data);
-  } catch (e) {}
-
-  const initialAssessments: AssessmentResult[] = [
-    {
-      id: 1,
-      type: "GAD-7",
-      title: "Generalized Anxiety Disorder Scale",
-      score: 8,
-      maxScore: 21,
-      severity: "Mild",
-      completedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-      notes: "Significant reduction from baseline (16 -> 8 points)."
-    },
-    {
-      id: 2,
-      type: "PHQ-9",
-      title: "Patient Health Questionnaire",
-      score: 6,
-      maxScore: 27,
-      severity: "Mild",
-      completedAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-      notes: "Mood stability improved with consistent sleep hygiene."
+    if (data) {
+      const parsed = JSON.parse(data);
+      // Drop the sample scores that used to be seeded for every client (ids 1 and 2)
+      if (Array.isArray(parsed)) return parsed.filter((a) => a && a.id !== 1 && a.id !== 2);
     }
-  ];
-
-  try {
-    localStorage.setItem(key, JSON.stringify(initialAssessments));
   } catch (e) {}
-
-  return initialAssessments;
+  // Nothing is seeded: a client who has not taken an assessment has no scores
+  return [];
 }
 
 export function saveUserAssessments(assessments: AssessmentResult[]): void {
@@ -592,8 +632,15 @@ export function saveUserAssessments(assessments: AssessmentResult[]): void {
   } catch (e) {}
 }
 
-export function saveUserAssessmentScore(result: Omit<AssessmentResult, "id" | "completedAt">): AssessmentResult {
-  const assessments = getUserAssessments();
+export interface SaveScoreResult {
+  ok: boolean;
+  result?: AssessmentResult;
+  /** Why the score did not reach the therapist, in words for the client */
+  error?: string;
+}
+
+/** Saves a score on the server (which notifies the therapist); it is cached locally only once the server confirmed it */
+export async function saveUserAssessmentScore(result: Omit<AssessmentResult, "id" | "completedAt">): Promise<SaveScoreResult> {
   const user = getClientAuth();
   const newAssessment: AssessmentResult = {
     ...result,
@@ -601,31 +648,41 @@ export function saveUserAssessmentScore(result: Omit<AssessmentResult, "id" | "c
     completedAt: new Date().toISOString(),
   };
 
-  const updated = [newAssessment, ...assessments];
-  saveUserAssessments(updated);
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { ok: false, error: "You are offline, so your result was not sent to your therapist. Reconnect and try again." };
+  }
 
-  // Live save to AssessmentScore collection in MongoDB Atlas
-  fetch('/api/assessments/score', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      type: result.type,
-      assessmentAcronym: result.type,
-      title: result.title,
-      assessmentTitle: result.title,
-      score: result.score,
-      totalScore: result.score,
-      maxScore: result.maxScore,
-      severity: result.severity,
-      severityLabel: result.severity,
-      clientId: user?.id || '',
-      clientName: user?.name || 'Client',
-      clientEmail: user?.email || '',
-      consultantId: user?.assignedTherapistId || '',
-      consultantName: user?.assignedTherapistName || '',
-      notes: result.notes || `Completed ${result.type} assessment.`
-    })
-  }).catch(() => {});
+  let res: Response;
+  try {
+    res = await fetch('/api/assessments/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: result.type,
+        assessmentAcronym: result.type,
+        title: result.title,
+        assessmentTitle: result.title,
+        score: result.score,
+        totalScore: result.score,
+        maxScore: result.maxScore,
+        severity: result.severity,
+        severityLabel: result.severity,
+        clientId: user?.id || '',
+        clientName: user?.name || 'Client',
+        clientEmail: user?.email || '',
+        consultantId: user?.assignedTherapistId || '',
+        consultantName: user?.assignedTherapistName || '',
+        notes: result.notes || `Completed ${result.type} assessment.`
+      })
+    });
+  } catch (e) {
+    return { ok: false, error: "Hexpertify could not be reached, so your result was not sent to your therapist. Check your connection and try again." };
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || data?.success === false) {
+    return { ok: false, error: data?.error || `Your result could not be sent to your therapist (error ${res.status}). Please try again.` };
+  }
 
-  return newAssessment;
+  saveUserAssessments([newAssessment, ...getUserAssessments()]);
+  return { ok: true, result: newAssessment };
 }

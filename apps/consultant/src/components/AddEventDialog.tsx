@@ -46,17 +46,40 @@ function toMinutes(label: string): number {
 
 const DURATIONS = ["30 min", "50 min", "60 min", "80 min", "90 min", "120 min"];
 
+const SESSION_TYPES = ["Individual Therapy", "CBT", "EMDR", "ACT", "DBT", "Couples Therapy", "Intake", "Crisis Check-in", "Group Therapy"];
+
+/** Today's date in India time (sessions are scheduled in IST whatever the browser's timezone) */
+function todayIST(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+/** The instant of an IST date + minutes after midnight, in ms */
+function istMs(date: string, minutes: number): number | null {
+  const m = String(date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m || minutes < 0) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3]) + (minutes - 330) * 60_000;
+}
+
+/** One of the therapist's existing sessions, used to refuse a double booking */
+export interface BusySession { startMs: number; endMs: number; client: string; label: string }
+
+export interface NewSlot { date: string; time: string; endTime?: string; title: string; client: string; type: string; duration: string; status: "booked" | "available" | "blocked" }
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate?: string; // e.g. "2026-07-27"
-  onAddSlot?: (slot: { date: string; time: string; endTime?: string; title: string; client: string; type: string; duration: string; status: "booked" | "available" | "blocked" }) => void;
+  /** Saves the event; resolves to an error message, or null when the server accepted it */
+  onAddSlot?: (slot: NewSlot) => Promise<string | null>;
+  /** The therapist's active sessions (for the overlap check) */
+  sessions?: BusySession[];
 }
 
-export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddSlot }: Props) {
+export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddSlot, sessions = [] }: Props) {
   const authUser = getAuthUser();
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
+  const [error,  setError]  = useState("");
   const [clients, setClients] = useState<{ id: string; name: string; email: string }[]>([]);
 
   useEffect(() => {
@@ -84,61 +107,106 @@ export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddS
       .catch(() => {});
   }, [authUser?.id, authUser?.name]);
 
+  // A past day selected on the calendar opens on today instead
+  const startDate = () => {
+    const today = todayIST();
+    return defaultDate && defaultDate >= today ? defaultDate : today;
+  };
+
   const [form, setForm] = useState({
-    type:     "session",
-    client:   "",
-    date:     defaultDate ?? new Date().toISOString().slice(0, 10),
-    start:    "10:00 AM",
-    end:      "11:00 AM",
-    duration: "50 min",
-    title:    "Psychology Consultation",
+    type:        "session",
+    client:      "",
+    date:        startDate(),
+    start:       "10:00 AM",
+    end:         "11:00 AM",
+    duration:    "50 min",
+    title:       "Psychology Consultation",
+    sessionType: "Individual Therapy",
   });
 
   useEffect(() => {
-    if (defaultDate) {
-      setForm(prev => ({ ...prev, date: defaultDate }));
+    if (open) {
+      setForm(prev => ({ ...prev, date: startDate() }));
+      setError("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultDate, open]);
 
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: string) => {
+    setForm(p => ({ ...p, [k]: v }));
+    setError("");
+  };
 
   const isSession = form.type === "session";
 
   const handleClose = () => {
+    if (saving) return; // the save is still running; its result decides what happens next
     onOpenChange(false);
     setTimeout(() => {
       setSaved(false);
-      setForm({ type: "session", client: clients[0]?.name || "", date: defaultDate ?? new Date().toISOString().slice(0, 10), start: "10:00 AM", end: "11:00 AM", duration: "50 min", title: "Psychology Consultation" });
+      setError("");
+      setForm({ type: "session", client: clients[0]?.name || "", date: startDate(), start: "10:00 AM", end: "11:00 AM", duration: "50 min", title: "Psychology Consultation", sessionType: "Individual Therapy" });
     }, 300);
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 200));
+  // Checked here so the therapist sees the reason before anything is sent (the server checks again)
+  const problem = (() => {
+    if (!form.date) return "";
+    if (form.date < todayIST()) return "That date has already passed. Pick today or a later date.";
+    const from = istMs(form.date, toMinutes(form.start));
+    if (from === null) return "";
+    const now = Date.now();
+    if (isSession) {
+      if (from <= now) return `${form.start} today has already passed. Pick a later time.`;
+      const to = from + (parseInt(form.duration) || 50) * 60_000;
+      const clash = sessions.find(s => s.startMs < to && s.endMs > from);
+      if (clash) return `This overlaps your session with ${clash.client} (${clash.label}). Pick another time.`;
+      return "";
+    }
+    const end = istMs(form.date, toMinutes(form.end));
+    if (end !== null && end > from && end <= now) return "That time has already passed. Pick a later time.";
+    return "";
+  })();
 
-    if (onAddSlot) {
-      onAddSlot({
+  const handleSave = async () => {
+    if (!onAddSlot || problem) return;
+    setSaving(true);
+    setError("");
+    let failure: string | null;
+    try {
+      failure = await onAddSlot({
         date: form.date,
         time: form.start,
         endTime: isSession ? undefined : form.end,
         title: form.title,
         client: isSession ? (form.client || "Client Record") : (form.type === "blocked" ? "Blocked Time Slot" : "Open Consultation Slot"),
-        type: isSession ? "Individual Therapy" : form.title,
+        type: isSession ? form.sessionType : form.title,
         duration: form.duration,
         status: form.type === "blocked" ? "blocked" : form.type === "available" ? "available" : "booked",
       });
+    } catch (e: any) {
+      failure = e?.message || "Could not save. Please try again.";
     }
-
     setSaving(false);
+
+    // Keep the dialog open with the reason so nothing the therapist entered is lost
+    if (failure) {
+      setError(failure);
+      return;
+    }
     setSaved(true);
     setTimeout(() => {
-      handleClose();
+      onOpenChange(false);
+      setTimeout(() => {
+        setSaved(false);
+        setForm(p => ({ ...p, start: "10:00 AM", end: "11:00 AM" }));
+      }, 300);
     }, 400);
   };
 
-  const canSave = isSession
+  const canSave = !problem && (isSession
     ? form.client && form.date && form.start && form.duration
-    : form.date && form.start && toMinutes(form.end) > toMinutes(form.start);
+    : form.date && form.start && toMinutes(form.end) > toMinutes(form.start));
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -177,7 +245,7 @@ export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddS
         </div>
 
         {/* Form body */}
-        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-4 sm:space-y-5 flex-1 overflow-y-auto max-h-[60vh]">
+        <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-4 sm:space-y-5 flex-1 min-h-0 overflow-y-auto max-h-[60vh]">
           {isSession ? (
             <div className="space-y-1.5">
               <Label>Client <span className="text-destructive">*</span></Label>
@@ -210,6 +278,7 @@ export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddS
             <Label>Date <span className="text-destructive">*</span></Label>
             <Input
               type="date"
+              min={todayIST()}
               value={form.date}
               onChange={e => set("date", e.target.value)}
             />
@@ -251,21 +320,30 @@ export default function AddEventDialog({ open, onOpenChange, defaultDate, onAddS
           {isSession && (
             <div className="space-y-1.5">
               <Label>Session type</Label>
-              <Select defaultValue="CBT">
+              <Select value={form.sessionType} onValueChange={v => set("sessionType", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["CBT","EMDR","ACT","DBT","Couples Therapy","Intake","Crisis Check-in","Group Therapy"].map(s =>
+                  {SESSION_TYPES.map(s =>
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
             </div>
           )}
+
+          {!isSession && toMinutes(form.end) <= toMinutes(form.start) && (
+            <p className="text-xs font-semibold text-destructive">The end time must be after the start time.</p>
+          )}
+          {(error || problem) && (
+            <p className="p-3 rounded-xl text-xs font-semibold text-destructive bg-destructive/5 border border-destructive/20">
+              {error || problem}
+            </p>
+          )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-t border-border bg-secondary/30 shrink-0">
-          <Button variant="ghost" onClick={handleClose} className="text-muted-foreground">
+          <Button variant="ghost" onClick={handleClose} disabled={saving} className="text-muted-foreground">
             Cancel
           </Button>
           <Button

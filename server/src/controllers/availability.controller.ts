@@ -1,13 +1,46 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
-import { isAdminUser } from '../middlewares/auth.middleware';
+import { isAdminUser, isInternalRequest } from '../middlewares/auth.middleware';
 import { BookingInputError, createBooking } from '../services/booking-create';
 import { resolveConsultant } from '../services/booking-refs';
 import { getDaySlots, getRangeSlots } from '../services/booking-slots';
 import { bookingInstant, isDateLabel, istLabels, weekdayOf } from '../services/booking-time';
+import { bookingAccess, refuseBookingChange } from '../services/booking-access';
+import { resolveClientViewer } from '../services/client-access';
+import { canEditConsultant } from './consultants.controller';
 
 const DAYS_MAP = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * True when the caller may change this therapist's calendar: an admin, the server itself, or that therapist
+ * (identified by their signed API token). Otherwise sends 401 (not signed in), 404 (unknown therapist) or
+ * 403 (someone else's calendar) and returns false.
+ */
+async function mayEditCalendar(req: Request, res: Response, ref: { id?: unknown; email?: unknown }): Promise<boolean> {
+  if (isInternalRequest(req) || isAdminUser(req.user)) return true;
+  if (!req.user) {
+    res.status(401).json({ success: false, error: 'Please sign in to change therapist hours.' });
+    return false;
+  }
+  const consultant = await resolveConsultant(ref);
+  if (!consultant) {
+    res.status(404).json({ success: false, error: 'Therapist not found' });
+    return false;
+  }
+  if (!(await canEditConsultant(req, consultant))) {
+    res.status(403).json({ success: false, error: 'You can only change your own calendar.' });
+    return false;
+  }
+  return true;
+}
+
+/** Finds a slot (Availability) by its custom id or ObjectId */
+async function findSlot(id: string): Promise<any | null> {
+  if (!id) return null;
+  const query: any = ObjectId.isValid(id) ? { $or: [{ id }, { _id: new ObjectId(id) }] } : { id };
+  return getDatabase().collection('Availability').findOne(query).catch(() => null);
+}
 
 function parseTimeToMinutes(t: string): number {
   if (!t) return 0;
@@ -180,6 +213,7 @@ export class AvailabilityController {
     try {
       const db = getDatabase();
       const body = req.body || {};
+      if (!(await mayEditCalendar(req, res, { id: body.therapistId || body.consultantId, email: body.consultantEmail }))) return;
 
       const newSlot = {
         id: body.id || `SLOT-${Date.now().toString().slice(-6)}`,
@@ -219,9 +253,11 @@ export class AvailabilityController {
       const db = getDatabase();
       const body = req.body || {};
       const { slotId, clientName, clientEmail } = body;
+      if (!(await mayEditCalendar(req, res, { id: body.consultantId || body.therapistId, email: body.consultantEmail }))) return;
 
       // Same path as POST /api/bookings: real consultant/client/service ids, server price, both collections, notifications.
       // An assigned slot is unpaid unless the admin records a payment.
+      const viewer = await resolveClientViewer(req);
       const { booking, duplicate } = await createBooking(
         {
           ...body,
@@ -229,7 +265,13 @@ export class AvailabilityController {
           consultantName: body.consultantName || body.therapistName,
           paymentStatus: body.paymentStatus || 'UNPAID'
         },
-        { canSetPayment: isAdminUser(req.user), requireBookable: !isAdminUser(req.user) && !req.isInternal, overrides: slotId ? { slotId } : undefined }
+        {
+          canSetPayment: isAdminUser(req.user),
+          requireBookable: !isAdminUser(req.user) && !req.isInternal,
+          actorIds: viewer.kind === 'therapist' ? viewer.ids : undefined,
+          requireFutureFreeTime: !isAdminUser(req.user) && !req.isInternal,
+          overrides: slotId ? { slotId } : undefined
+        }
       );
 
       if (slotId) {
@@ -301,7 +343,10 @@ export class AvailabilityController {
     try {
       const db = getDatabase();
       const { isBlocked, therapistName, date, time } = req.body || {};
-      const therapistId = req.body?.therapistId || req.body?.consultantId;
+      // A block named only by its slot id belongs to the therapist stored on that slot
+      const storedSlot = !req.body?.therapistId && !req.body?.consultantId ? await findSlot(String(req.body?.slotId || '')) : null;
+      const therapistId = req.body?.therapistId || req.body?.consultantId || storedSlot?.therapistId || storedSlot?.consultantId;
+      if (!(await mayEditCalendar(req, res, { id: therapistId }))) return;
       // Blocks are keyed per consultant, day and time so a later unblock finds the same record
       const slotId = req.body?.slotId || (therapistId && date ? `BLOCK-${therapistId}-${date}-${String(time || 'all-day').replace(/\s+/g, '')}` : '');
       if (!slotId) {
@@ -357,6 +402,29 @@ export class AvailabilityController {
       if (!id) {
         res.status(400).json({ success: false, error: 'Slot ID is required' });
         return;
+      }
+
+      // A slot belongs to its therapist; the same id may also name a booking (clients remove a session this way)
+      const slot = await findSlot(id);
+      if (slot) {
+        if (!(await mayEditCalendar(req, res, { id: slot.therapistId || slot.consultantId }))) return;
+      } else {
+        const bookingQuery: any = { $or: [{ id }, { _id: id as any }, ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : [])] };
+        const booking = await db.collection('Booking').findOne(bookingQuery) || await db.collection('bookings').findOne(bookingQuery);
+        const access = await bookingAccess(req, booking || {});
+        if (access === 'anonymous') {
+          res.status(401).json({ success: false, error: 'Please sign in to change therapist hours.' });
+          return;
+        }
+        if (!booking) {
+          res.status(404).json({ success: false, error: 'Slot not found' });
+          return;
+        }
+        if (refuseBookingChange(res, access)) return;
+        if (access === 'client') {
+          res.status(403).json({ success: false, error: 'Sessions cannot be deleted. Cancel it, or remove a past session from your list.' });
+          return;
+        }
       }
 
       let query: any = { id };

@@ -288,23 +288,23 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
   const reliefPercent = Math.round((emotionRelief / thoughtData.initialEmotionIntensity) * 100);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="w-full max-w-4xl mx-auto space-y-4 font-['Open_Sans',sans-serif]">
       {/* ─────────────────────────────────────────────────────────────
           1. CLEAN, VIEWPORT-FITTED 6-STEP CBT THOUGHT RECORD CARD
          ───────────────────────────────────────────────────────────── */}
       <div className="w-full rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-lg shadow-purple-500/5 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden p-4 sm:p-5 select-none">
         {/* Soft Ambient Glows */}
         <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-purple-500/5 dark:bg-purple-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#5e2be2]/5 dark:bg-[#5e2be2]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 rounded-full bg-[#450bc8]/5 dark:bg-[#450bc8]/10 blur-3xl pointer-events-none" />
 
         {/* Top Controls Bar */}
         <div className="relative z-10 flex items-center justify-end mb-2.5">
           <button
             onClick={handleToggleVoice}
-            className="px-3 py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+            className="px-3 py-2 sm:py-1 rounded-full text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             title="Toggle Voice Guidance"
           >
-            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#5e2be2]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+            {voiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#450bc8]" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
             <span>{voiceEnabled ? 'Voice On' : 'Muted'}</span>
           </button>
         </div>
@@ -318,11 +318,11 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
             {step === 1 && (
               <div className="space-y-3.5 animate-fade-in max-w-2xl mx-auto">
                 <div className="text-center space-y-1">
-                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
+                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
                     Step 1 of 6
                   </span>
                   <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
-                    <Info className="w-4 h-4 text-[#5e2be2]" />
+                    <Info className="w-4 h-4 text-[#450bc8]" />
                     What situation triggered this feeling?
                   </h3>
                 </div>
@@ -334,7 +334,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                     placeholder="e.g. Preparing for a presentation, receiving critical feedback, an unanswered text..."
                     value={thoughtData.situation}
                     onChange={(e) => setThoughtData({ ...thoughtData, situation: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#5e2be2] font-medium shadow-xs"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#450bc8] font-medium shadow-xs"
                   />
 
                   {/* 1-Click Situation Presets */}
@@ -347,7 +347,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                           audioEngine.playSfx('tactile_tap');
                           setThoughtData({ ...thoughtData, situation: p });
                         }}
-                        className="text-[11px] px-2.5 py-1.5 bg-white hover:bg-purple-50 dark:bg-slate-800 dark:hover:bg-purple-950/50 text-slate-700 dark:text-slate-300 hover:text-[#5e2be2] dark:hover:text-purple-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-purple-300 transition-all text-left font-medium cursor-pointer shadow-xs truncate block w-full"
+                        className="text-[11px] px-2.5 py-1.5 bg-white hover:bg-purple-50 dark:bg-slate-800 dark:hover:bg-purple-950/50 text-slate-700 dark:text-slate-300 hover:text-[#450bc8] dark:hover:text-purple-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-purple-300 transition-all text-left font-medium cursor-pointer shadow-xs truncate block w-full"
                       >
                         📌 {p}
                       </button>
@@ -373,7 +373,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                           }}
                           className={`py-1.5 px-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 shadow-xs ${
                             isSel
-                              ? 'bg-purple-50 dark:bg-purple-950/70 border-[#5e2be2] ring-1 ring-[#5e2be2] text-[#5e2be2] dark:text-purple-300 font-black'
+                              ? 'bg-purple-50 dark:bg-purple-950/70 border-[#450bc8] ring-1 ring-[#450bc8] text-[#450bc8] dark:text-purple-300 font-black'
                               : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 font-medium'
                           }`}
                         >
@@ -389,9 +389,9 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1">
-                      <Sliders className="w-3.5 h-3.5 text-[#5e2be2]" /> Emotion Intensity (1 to 10 scale):
+                      <Sliders className="w-3.5 h-3.5 text-[#450bc8]" /> Emotion Intensity (1 to 10 scale):
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[11px] font-black">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[11px] font-black">
                       {thoughtData.initialEmotionIntensity} / 10 ({thoughtData.initialEmotionIntensity >= 8 ? 'Very Intense' : thoughtData.initialEmotionIntensity >= 5 ? 'Moderate' : 'Mild'})
                     </span>
                   </div>
@@ -401,7 +401,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                     max="10"
                     value={thoughtData.initialEmotionIntensity}
                     onChange={(e) => setThoughtData({ ...thoughtData, initialEmotionIntensity: Number(e.target.value) })}
-                    className="w-full accent-[#5e2be2] cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                    className="w-full accent-[#450bc8] cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
                   />
                   <div className="flex justify-between text-[9.5px] font-bold text-slate-400">
                     <span>1 (Mild Discomfort)</span>
@@ -415,7 +415,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   <button
                     disabled={!thoughtData.situation.trim()}
                     onClick={() => handleStepAdvance(2)}
-                    className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                   >
                     <span>Next: Name Negative Thought</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -430,7 +430,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
             {step === 2 && (
               <div className="space-y-3.5 animate-fade-in max-w-2xl mx-auto">
                 <div className="text-center space-y-1">
-                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
+                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
                     Step 2 of 6
                   </span>
                   <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
@@ -445,7 +445,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                     placeholder="Type the exact automatic negative sentence you told yourself..."
                     value={thoughtData.automaticThought}
                     onChange={(e) => setThoughtData({ ...thoughtData, automaticThought: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#5e2be2] focus:bg-white dark:focus:bg-slate-900 font-medium leading-relaxed transition-all shadow-xs"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#450bc8] focus:bg-white dark:focus:bg-slate-900 font-medium leading-relaxed transition-all shadow-xs"
                   />
 
                   {/* 1-Click Example Thoughts */}
@@ -458,7 +458,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                           audioEngine.playSfx('tactile_tap');
                           setThoughtData({ ...thoughtData, automaticThought: p });
                         }}
-                        className="text-[11px] px-2.5 py-1.5 bg-white hover:bg-purple-50 dark:bg-slate-800 dark:hover:bg-purple-950/50 text-slate-700 dark:text-slate-300 hover:text-[#5e2be2] dark:hover:text-purple-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-purple-300 transition-all text-left font-medium cursor-pointer shadow-xs truncate block w-full"
+                        className="text-[11px] px-2.5 py-1.5 bg-white hover:bg-purple-50 dark:bg-slate-800 dark:hover:bg-purple-950/50 text-slate-700 dark:text-slate-300 hover:text-[#450bc8] dark:hover:text-purple-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-purple-300 transition-all text-left font-medium cursor-pointer shadow-xs truncate block w-full"
                       >
                         "{p}"
                       </button>
@@ -472,7 +472,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                     <span className="text-xs font-bold text-slate-800 dark:text-white">
                       How strongly do you believe this thought right now?
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#5e2be2] dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[11px] font-black">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-[#450bc8] dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[11px] font-black">
                       {thoughtData.initialBelief}%
                     </span>
                   </div>
@@ -482,7 +482,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                     max="100"
                     value={thoughtData.initialBelief}
                     onChange={(e) => setThoughtData({ ...thoughtData, initialBelief: Number(e.target.value) })}
-                    className="w-full accent-[#5e2be2] cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                    className="w-full accent-[#450bc8] cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
                   />
                   <div className="flex justify-between text-[9.5px] font-bold text-slate-400">
                     <span>10% (Slight Doubt)</span>
@@ -503,7 +503,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   <button
                     disabled={!thoughtData.automaticThought.trim()}
                     onClick={() => handleStepAdvance(3)}
-                    className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                   >
                     <span>Next: Challenge Thought</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -518,11 +518,11 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
             {step === 3 && (
               <div className="space-y-3.5 animate-fade-in max-w-2xl mx-auto">
                 <div className="text-center space-y-1">
-                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
+                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
                     Step 3 of 6
                   </span>
                   <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
-                    <Gavel className="w-4 h-4 text-[#5e2be2]" />
+                    <Gavel className="w-4 h-4 text-[#450bc8]" />
                     Put it on trial — Identify the thinking trap
                   </h3>
                 </div>
@@ -538,15 +538,15 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                         onClick={() => handleSelectDistortion(d.name)}
                         className={`p-2.5 px-3 rounded-xl border text-left transition-all cursor-pointer relative shadow-xs ${
                           isSelected
-                            ? 'bg-purple-50/90 dark:bg-purple-950/70 border-[#5e2be2] dark:border-purple-500 ring-2 ring-[#5e2be2]/30'
+                            ? 'bg-purple-50/90 dark:bg-purple-950/70 border-[#450bc8] dark:border-purple-500 ring-2 ring-[#450bc8]/30'
                             : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:bg-slate-50'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
-                          <span className={`font-black text-xs ${isSelected ? 'text-[#5e2be2] dark:text-purple-300' : 'text-slate-900 dark:text-white'}`}>
+                          <span className={`font-black text-xs ${isSelected ? 'text-[#450bc8] dark:text-purple-300' : 'text-slate-900 dark:text-white'}`}>
                             {d.name}
                           </span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-[#5e2be2] dark:text-purple-300 shrink-0" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-[#450bc8] dark:text-purple-300 shrink-0" />}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
                           {d.desc}
@@ -583,7 +583,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   <button
                     type="button"
                     onClick={() => handleStepAdvance(4)}
-                    className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                   >
                     <span>Next: Evidence Against</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -598,7 +598,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
             {step === 4 && (
               <div className="space-y-3 animate-fade-in max-w-2xl mx-auto">
                 <div className="text-center space-y-1">
-                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
+                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
                     Step 4 of 6
                   </span>
                   <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
@@ -667,14 +667,14 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                 {/* The Bupa Hallmark: "The Friend Question" */}
                 <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800 space-y-1.5 shadow-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-[#5e2be2] dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <MessageSquareHeart className="w-3.5 h-3.5 text-[#5e2be2]" />
+                    <span className="text-[11px] font-black text-[#450bc8] dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <MessageSquareHeart className="w-3.5 h-3.5 text-[#450bc8]" />
                       The Friend Question: What would you tell a friend?
                     </span>
                     <button
                       type="button"
                       onClick={() => setShowFriendPrompt(!showFriendPrompt)}
-                      className="text-[10.5px] font-bold text-[#5e2be2] dark:text-purple-300 hover:underline cursor-pointer"
+                      className="text-[10.5px] font-bold text-[#450bc8] dark:text-purple-300 hover:underline cursor-pointer"
                     >
                       {showFriendPrompt ? 'Hide' : 'Suggestions'}
                     </button>
@@ -685,7 +685,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                     placeholder="If someone you cared about was in this situation, what would you say to them?..."
                     value={thoughtData.friendAdvice}
                     onChange={(e) => setThoughtData({ ...thoughtData, friendAdvice: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#5e2be2] font-medium shadow-xs"
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#450bc8] font-medium shadow-xs"
                   />
 
                   {/* 1-Click Friend Advice Options */}
@@ -720,7 +720,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   <button
                     type="button"
                     onClick={() => handleStepAdvance(5)}
-                    className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                   >
                     <span>Next: Balanced Thought</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -735,7 +735,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
             {step === 5 && (
               <div className="space-y-3.5 animate-fade-in max-w-2xl mx-auto">
                 <div className="text-center space-y-1">
-                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
+                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
                     Step 5 of 6
                   </span>
                   <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
@@ -804,7 +804,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                   <button
                     type="button"
                     onClick={() => handleStepAdvance(6)}
-                    className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                   >
                     <span>Next: Check How You Feel</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -819,7 +819,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
             {step === 6 && (
               <div className="space-y-3.5 animate-fade-in max-w-2xl mx-auto">
                 <div className="text-center space-y-1">
-                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#5e2be2] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
+                  <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-[#450bc8] dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 inline-block shadow-xs">
                     Step 6 of 6
                   </span>
                   <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
@@ -948,8 +948,8 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
             {/* Friend Advice Highlight */}
             {thoughtData.friendAdvice.trim() && (
               <div className="p-2.5 rounded-xl bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800 text-left space-y-0.5 shadow-xs">
-                <span className="text-[9px] font-black uppercase text-[#5e2be2] dark:text-purple-300 block flex items-center gap-1">
-                  <Heart className="w-3 h-3 text-[#5e2be2]" /> Compassionate Friend Insight:
+                <span className="text-[9px] font-black uppercase text-[#450bc8] dark:text-purple-300 block flex items-center gap-1">
+                  <Heart className="w-3 h-3 text-[#450bc8]" /> Compassionate Friend Insight:
                 </span>
                 <p className="text-[11px] text-slate-800 dark:text-slate-200 italic font-medium">
                   "{thoughtData.friendAdvice}"
@@ -969,7 +969,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               </div>
               <div>
                 <span className="text-[9px] font-bold text-slate-400 uppercase block">Total Relief</span>
-                <span className="text-xs font-black text-[#5e2be2]">+{reliefPercent}%</span>
+                <span className="text-xs font-black text-[#450bc8]">+{reliefPercent}%</span>
               </div>
             </div>
 
@@ -984,7 +984,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
                 onClick={() => {
                   if (onComplete) onComplete(thoughtData);
                 }}
-                className="flex-1 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1"
+                className="flex-1 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center justify-center gap-1"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" /> Return to Activities
               </button>
@@ -1011,7 +1011,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
         <div className="space-y-3">
           <div>
             <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-              <Gavel className="w-4 h-4 text-[#5e2be2]" />
+              <Gavel className="w-4 h-4 text-[#450bc8]" />
               <span>The 6-Step Thought Record Protocol</span>
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1020,10 +1020,10 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1">
-                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">1</span>
+                <span className="text-[11px] font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">1</span>
                   Identify Situation & Emotion
                 </span>
               </div>
@@ -1032,10 +1032,10 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1">
-                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">2</span>
+                <span className="text-[11px] font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">2</span>
                   Name the Negative Thought
                 </span>
               </div>
@@ -1044,10 +1044,10 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1">
-                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">3</span>
+                <span className="text-[11px] font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">3</span>
                   Challenge with Facts
                 </span>
               </div>
@@ -1056,10 +1056,10 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1">
-                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">4</span>
+                <span className="text-[11px] font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">4</span>
                   Evidence Against & Friend View
                 </span>
               </div>
@@ -1068,10 +1068,10 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1">
-                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">5</span>
+                <span className="text-[11px] font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">5</span>
                   Find a Balanced Thought
                 </span>
               </div>
@@ -1080,10 +1080,10 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-1.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-[#5e2be2] uppercase tracking-wider flex items-center gap-1">
-                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">6</span>
+                <span className="text-[11px] font-black text-[#450bc8] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[9px] font-bold">6</span>
                   Check Back In
                 </span>
               </div>
@@ -1098,7 +1098,7 @@ function CbtBupaThoughtRecordPlayer({ activityName, onComplete }: { activityName
         <div className="space-y-3">
           <div>
             <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-[#5e2be2]" />
+              <Sparkles className="w-4 h-4 text-[#450bc8]" />
               <span>When to Use this Technique</span>
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1140,7 +1140,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="w-full max-w-4xl mx-auto space-y-4 font-['Open_Sans',sans-serif]">
       {/* ─────────────────────────────────────────────────────────────
           1. INTERACTIVE WORRY VAULT CONTAINER
          ───────────────────────────────────────────────────────────── */}
@@ -1178,7 +1178,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
               <div className="space-y-1">
                 <label className="text-[10.5px] font-bold text-slate-600 dark:text-slate-300">Container Status:</label>
-                <div className="px-2.5 py-1.5 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-[#5e2be2] dark:text-purple-300 font-black">
+                <div className="px-2.5 py-1.5 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-[#450bc8] dark:text-purple-300 font-black">
                   {vaultPulse ? 'ENCRYPTING...' : 'AWAITING LOCK'}
                 </div>
               </div>
@@ -1235,7 +1235,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>How It Works</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1244,12 +1244,12 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   1
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Externalize the Worry
                 </span>
               </div>
@@ -1258,12 +1258,12 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   2
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Set a Review Window
                 </span>
               </div>
@@ -1272,12 +1272,12 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between space-y-2.5 hover:border-[#450bc8]/40 transition-colors shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                   3
                 </span>
-                <span className="text-xs font-black text-[#5e2be2] uppercase tracking-wider">
+                <span className="text-xs font-black text-[#450bc8] uppercase tracking-wider">
                   Lock & Disengage
                 </span>
               </div>
@@ -1292,7 +1292,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#5e2be2]" />
+              <Sparkles className="w-5 h-5 text-[#450bc8]" />
               <span>Benefits</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-justify">
@@ -1301,8 +1301,8 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Brain className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1313,8 +1313,8 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1325,8 +1325,8 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Clock className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1337,8 +1337,8 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#5e2be2]/40 transition-colors shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#5e2be2] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3 hover:border-[#450bc8]/40 transition-colors shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-[#450bc8] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-xs">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -1353,7 +1353,7 @@ function HolographicWorryVault({ activityName, onComplete }: { activityName?: st
 
         {/* Section 4: Closing Takeaway */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-purple-500/10 border border-purple-200/80 dark:border-purple-800/60 flex items-start gap-3.5">
-          <div className="w-7 h-7 rounded-full bg-[#5e2be2] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[#450bc8] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium text-justify">

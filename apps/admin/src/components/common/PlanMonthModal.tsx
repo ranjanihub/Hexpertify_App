@@ -39,13 +39,13 @@ const DEFAULT_WEEK: WeekHours = {
   wednesday: { enabled: true, slots: [{ start: '9:00 AM', end: '6:00 PM' }] },
   thursday: { enabled: true, slots: [{ start: '9:00 AM', end: '6:00 PM' }] },
   friday: { enabled: true, slots: [{ start: '9:00 AM', end: '5:00 PM' }] },
-  saturday: { enabled: true, slots: [{ start: '10:00 AM', end: '2:00 PM' }] },
-  sunday: { enabled: true, slots: [{ start: '10:00 AM', end: '2:00 PM' }] }
+  saturday: { enabled: false, slots: [{ start: '10:00 AM', end: '2:00 PM' }] },
+  sunday: { enabled: false, slots: [{ start: '10:00 AM', end: '2:00 PM' }] }
 };
 
 const SHORT_DAY: Record<string, string> = Object.fromEntries(WEEK_DAYS.map((d) => [d.key, d.short]));
 const selectClass =
-  'h-8 px-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-[#5e2be2] cursor-pointer';
+  'h-8 px-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-[#450bc8] cursor-pointer';
 
 export const PlanMonthModal: React.FC<Props> = ({ open, onClose, consultantId, consultantName, initialMonth, onSaved }) => {
   const thisMonth = monthOf(new Date());
@@ -177,7 +177,7 @@ export const PlanMonthModal: React.FC<Props> = ({ open, onClose, consultantId, c
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white w-full sm:max-w-3xl max-h-[94dvh] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-fade-in">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#431bb5] via-[#5e2be2] to-[#361394] px-4 sm:px-6 pt-5 pb-4 text-white shrink-0">
+        <div className="bg-gradient-to-r from-[#431bb5] via-[#450bc8] to-[#361394] px-4 sm:px-6 pt-5 pb-4 text-white shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-lg sm:text-xl font-extrabold">Plan Month</h3>
@@ -262,7 +262,7 @@ export const PlanMonthModal: React.FC<Props> = ({ open, onClose, consultantId, c
                                       slots: e.target.checked && !prev?.slots?.length ? [{ start: '10:00 AM', end: '1:00 PM' }] : prev?.slots || []
                                     }))
                                   }
-                                  className="w-4 h-4 accent-[#5e2be2] cursor-pointer"
+                                  className="w-4 h-4 accent-[#450bc8] cursor-pointer"
                                 />
                               )}
                               <span className={`text-sm font-bold ${day?.enabled ? 'text-slate-800' : 'text-slate-400'}`}>
@@ -321,7 +321,7 @@ export const PlanMonthModal: React.FC<Props> = ({ open, onClose, consultantId, c
                                 <button
                                   type="button"
                                   onClick={() => setDay(i, d.dayKey, (prev) => ({ ...prev, slots: [...prev.slots, { start: '4:00 PM', end: '7:00 PM' }] }))}
-                                  className="flex items-center gap-1 text-xs font-bold text-[#5e2be2] w-fit"
+                                  className="flex items-center gap-1 text-xs font-bold text-[#450bc8] w-fit"
                                 >
                                   <Plus className="w-3 h-3" /> Add hours
                                 </button>
@@ -334,7 +334,7 @@ export const PlanMonthModal: React.FC<Props> = ({ open, onClose, consultantId, c
 
                     {isCustom && i < rows.length - 1 && (
                       <div className="px-3 sm:px-4 py-2 border-t border-slate-100 bg-slate-50/60 rounded-b-2xl">
-                        <button type="button" onClick={() => copyToFollowing(i)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#5e2be2]">
+                        <button type="button" onClick={() => copyToFollowing(i)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#450bc8]">
                           <Copy className="w-3 h-3" /> Use these hours for all weeks after this
                         </button>
                       </div>
@@ -387,7 +387,7 @@ export const PlanMonthModal: React.FC<Props> = ({ open, onClose, consultantId, c
               onClick={() => save(!!conflicts?.length)}
               disabled={saving || loading || !weeks.length}
               className={`px-5 py-2.5 rounded-xl text-white font-extrabold text-xs shadow-md disabled:opacity-50 ${
-                conflicts?.length ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#5e2be2] hover:bg-[#4f28d9] shadow-[#5e2be2]/20'
+                conflicts?.length ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#450bc8] hover:bg-[#3a0aa8] shadow-[#450bc8]/20'
               }`}
             >
               {saving ? 'Saving…' : conflicts?.length ? 'Save anyway' : `Save ${monthName(month)}`}

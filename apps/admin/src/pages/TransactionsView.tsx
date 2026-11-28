@@ -80,7 +80,7 @@ const DetailRow: React.FC<{ label: string; value?: React.ReactNode; copy?: strin
                 setTimeout(() => setCopied(false), 1500);
               }).catch(() => {});
             }}
-            className="ml-1.5 inline-flex align-middle text-slate-400 hover:text-[#5e2be2] cursor-pointer"
+            className="ml-1.5 inline-flex align-middle text-slate-400 hover:text-[#450bc8] cursor-pointer"
             aria-label={`Copy ${label}`}
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -184,7 +184,7 @@ export const TransactionsView: React.FC = () => {
     () => [
       { label: 'Collected', value: formatINR(summary?.collected || 0), icon: Wallet, tone: 'bg-emerald-50 text-emerald-600' },
       { label: 'Refunded', value: formatINR(summary?.refunded || 0), icon: Undo2, tone: 'bg-rose-50 text-rose-600' },
-      { label: 'Net Revenue', value: formatINR(summary?.net || 0), icon: ShieldCheck, tone: 'bg-purple-50 text-[#5e2be2]' },
+      { label: 'Net Revenue', value: formatINR(summary?.net || 0), icon: ShieldCheck, tone: 'bg-purple-50 text-[#450bc8]' },
       { label: 'Failed Payments', value: String(summary?.failedCount || 0), icon: XCircle, tone: 'bg-amber-50 text-amber-600' }
     ],
     [summary]
@@ -199,7 +199,7 @@ export const TransactionsView: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">
             Customer payments collected through the payment gateway
             {data?.activeProvider && (
-              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-[#5e2be2] font-bold border border-purple-100 capitalize">
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-[#450bc8] font-bold border border-purple-100 capitalize">
                 <CreditCard className="w-3 h-3" /> {data.activeProvider}
               </span>
             )}
@@ -240,20 +240,20 @@ export const TransactionsView: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search client, therapist, booking or payment ID"
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20"
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="min-w-0 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20 lg:col-span-3"
+            className="min-w-0 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20 lg:col-span-3"
           >
             <option value="">All statuses</option>
             {(Object.keys(STATUS_LABELS) as GatewayPaymentStatus[]).map((s) => (
               <option key={s} value={s}>{STATUS_LABELS[s]}</option>
             ))}
           </select>
-          <div className="grid min-w-0 grid-cols-2 gap-2 lg:col-span-4">
+          <div className="grid min-w-0 grid-cols-1 min-[360px]:grid-cols-2 gap-2 lg:col-span-4">
             <label className="relative min-w-0">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-wider text-slate-400 pointer-events-none">From</span>
               <input
@@ -262,7 +262,7 @@ export const TransactionsView: React.FC = () => {
                 max={toDate || undefined}
                 onChange={(e) => setFromDate(e.target.value)}
                 aria-label="From date"
-                className="w-full min-w-0 pl-12 pr-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20"
+                className="w-full min-w-0 pl-12 pr-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20"
               />
             </label>
             <label className="relative min-w-0">
@@ -273,7 +273,7 @@ export const TransactionsView: React.FC = () => {
                 min={fromDate || undefined}
                 onChange={(e) => setToDate(e.target.value)}
                 aria-label="To date"
-                className="w-full min-w-0 pl-9 pr-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20"
+                className="w-full min-w-0 pl-9 pr-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20"
               />
             </label>
           </div>
@@ -286,7 +286,7 @@ export const TransactionsView: React.FC = () => {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[640px] text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-extrabold text-[10px] bg-slate-50/50">
                 <th className="py-3 px-4 rounded-l-xl">No.</th>
@@ -312,9 +312,9 @@ export const TransactionsView: React.FC = () => {
                   onClick={() => setDetailsTarget(p)}
                   className="border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer"
                 >
-                  <td className="py-3 px-4 font-mono font-bold text-[#5e2be2] whitespace-nowrap">{transactionNo(p)}</td>
+                  <td className="py-3 px-4 font-mono font-bold text-[#450bc8] whitespace-nowrap">{transactionNo(p)}</td>
                   <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{formatDateTime(p.paidAt || p.createdAt)}</td>
-                  <td className="py-3 px-4 font-bold text-slate-900">{p.clientName || 'Client'}</td>
+                  <td className="py-3 px-4 font-bold text-slate-900 min-w-[120px]">{p.clientName || 'Client'}</td>
                   <td className="py-3 px-4 whitespace-nowrap font-mono font-extrabold text-slate-900">{formatINR(p.amount)}</td>
                   <td className="py-3 px-4">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${STATUS_STYLES[p.status] || 'bg-slate-100 text-slate-700'}`}>
@@ -325,7 +325,7 @@ export const TransactionsView: React.FC = () => {
                     <div className="inline-flex items-center gap-2">
                       <button
                         onClick={() => setDetailsTarget(p)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#5e2be2]/10 text-[#5e2be2] border border-[#5e2be2]/15 font-bold hover:bg-[#5e2be2]/15 cursor-pointer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#450bc8]/10 text-[#450bc8] border border-[#450bc8]/15 font-bold hover:bg-[#450bc8]/15 cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" /> View
                       </button>
@@ -350,7 +350,7 @@ export const TransactionsView: React.FC = () => {
       {/* Transaction details */}
       {detailsTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm"
           onClick={() => setDetailsTarget(null)}
         >
           <div
@@ -360,7 +360,7 @@ export const TransactionsView: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
           >
-            <div className="bg-gradient-to-r from-[#5e2be2] to-[#804bee] p-5 text-white flex items-start justify-between gap-4">
+            <div className="bg-gradient-to-r from-[#450bc8] to-[#804bee] p-5 text-white flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-purple-100">
                   Transaction {transactionNo(detailsTarget) !== '—' ? transactionNo(detailsTarget) : ''}
@@ -483,8 +483,8 @@ export const TransactionsView: React.FC = () => {
 
       {/* Refund dialog */}
       {refundTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <form onSubmit={submitRefund} className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+          <form onSubmit={submitRefund} className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-4 my-auto max-h-[90dvh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-lg font-extrabold text-slate-900">Refund payment</h2>
@@ -504,7 +504,7 @@ export const TransactionsView: React.FC = () => {
                   type="button"
                   onClick={() => setRefundType(type)}
                   className={`py-2.5 rounded-xl text-xs font-bold border cursor-pointer ${
-                    refundType === type ? 'bg-[#5e2be2] text-white border-[#5e2be2]' : 'bg-white text-slate-700 border-slate-200'
+                    refundType === type ? 'bg-[#450bc8] text-white border-[#450bc8]' : 'bg-white text-slate-700 border-slate-200'
                   }`}
                 >
                   {type === 'full' ? `Full (${formatINR(maxRefund)})` : 'Partial'}
@@ -523,7 +523,7 @@ export const TransactionsView: React.FC = () => {
                   value={refundAmount}
                   onChange={(e) => setRefundAmount(e.target.value)}
                   placeholder={`Up to ${maxRefund}`}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#5e2be2] focus:bg-white"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#450bc8] focus:bg-white"
                 />
               </div>
             )}
@@ -535,7 +535,7 @@ export const TransactionsView: React.FC = () => {
                 onChange={(e) => setRefundReason(e.target.value)}
                 rows={2}
                 placeholder="e.g. Session cancelled by therapist"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#5e2be2] focus:bg-white resize-none"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#450bc8] focus:bg-white resize-none"
               />
             </div>
 

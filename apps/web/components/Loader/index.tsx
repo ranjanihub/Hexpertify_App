@@ -1,12 +1,27 @@
 "use client";
-import React from "react";
 
+import { useEffect, useState } from "react";
+import LoaderScene from "./LoaderScene";
+
+/**
+ * Route loading screen (app/loading.tsx): the same scene as the first-visit intro. How long a page takes is
+ * unknown, so the ring creeps towards 95% and the screen is replaced as soon as the page is ready.
+ */
 const Loader = () => {
-  return (
-    <div className="fixed w-full inset-0 z-[9999] flex items-center justify-center bg-white/80 backdrop-blur-sm">
-      <div className="h-12 w-12 border-4 border-[#450BC8] border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      setProgress(95 * (1 - Math.exp(-(now - start) / 1400)));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return <LoaderScene variant="route" progress={progress} />;
 };
 
 export default Loader;

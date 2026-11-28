@@ -55,7 +55,7 @@ export const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({
         disabled={uploading}
         title="Upload an image from your computer. It is saved to Assets and its URL is filled in."
         className={`shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-colors ${
-          uploading ? 'bg-purple-100 text-purple-500 cursor-wait' : 'bg-purple-50 text-[#5e2be2] hover:bg-purple-100 border border-purple-200'
+          uploading ? 'bg-purple-100 text-purple-500 cursor-wait' : 'bg-purple-50 text-[#450bc8] hover:bg-purple-100 border border-purple-200'
         } ${className}`}
       >
         {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}

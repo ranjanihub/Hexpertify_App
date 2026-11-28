@@ -78,8 +78,8 @@ export default function AboutUsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-screen py-20 px-6">
-        <div className="">
+      <div className="min-h-screen py-12 md:py-20 px-5 sm:px-6">
+        <div className="mx-auto max-w-[1600px]">
           {/* UPDATED LAYOUT:
                    1. flex-col: Stacks items vertically on mobile.
                    2. md:flex-row: Keeps them side-by-side on laptop (md+).
@@ -87,7 +87,7 @@ export default function AboutUsPage() {
                    4. items-center: Centers items on mobile.
                    5. md:items-start: Aligns items to top on desktop.
                 */}
-          <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-10 md:gap-0">
+          <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-10 md:gap-8">
             {/* Added w-full to ensure text takes full width on mobile */}
             <div className="flex-1 w-full">
               <h1 className="text-4xl md:text-5xl font-bold mb-8 text-gray-900">
@@ -139,7 +139,7 @@ export default function AboutUsPage() {
                 // w-40 (160px) on mobile
                 // md:w-72 (288px) on tablet/laptop
                 // lg:w-96 (384px) on large screens
-                className="cursor-pointer w-40 md:w-72 lg:w-96 h-auto object-contain rounded-lg "
+                className="cursor-pointer w-48 sm:w-60 md:w-72 lg:w-96 h-auto object-contain rounded-lg "
               />
             </div>
           </div>

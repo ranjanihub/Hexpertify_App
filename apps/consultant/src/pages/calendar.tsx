@@ -3,7 +3,7 @@ import { useGetCalendarEvents } from "@workspace/api-client-react";
 import SetAvailabilityDialog from "@/components/SetAvailabilityDialog";
 import PlanMonthDialog from "@/components/PlanMonthDialog";
 import { monthName, monthOf, shiftMonth } from "@/lib/month-plan";
-import AddEventDialog from "@/components/AddEventDialog";
+import AddEventDialog, { type NewSlot } from "@/components/AddEventDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -57,38 +57,44 @@ const MONTHS = ["January", "February", "March", "April", "May", "June",
 function startOfMonth(y: number, m: number) { return new Date(y, m, 1).getDay(); }
 function daysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
 
-function checkCanCancelSlot(key: string, timeStr: string): { canCancel: boolean; hoursLeft: number } {
-  try {
-    const parts = key.split("-");
-    if (parts.length !== 3) return { canCancel: true, hoursLeft: 24 };
+/* All session times are India time (IST, UTC+5:30), whatever timezone the therapist's browser is in */
+const IST_OFFSET_MIN = 330;
+const HOUR_MS = 60 * 60 * 1000;
+/** Sessions can be cancelled or moved up to this many hours before they start */
+const CHANGE_CUTOFF_HOURS = 3;
 
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10) - 1;
-    const d = parseInt(parts[2], 10);
-
-    const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (!match) return { canCancel: true, hoursLeft: 24 };
-
-    let h = parseInt(match[1], 10);
-    const min = parseInt(match[2], 10);
-    const ampm = match[3].toUpperCase();
-
-    if (ampm === "PM" && h < 12) h += 12;
-    if (ampm === "AM" && h === 12) h = 0;
-
-    const slotDate = new Date(y, m, d, h, min);
-    const now = new Date();
-
-    const diffHours = (slotDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    return {
-      canCancel: diffHours >= 3,
-      hoursLeft: Math.max(0, Math.round(diffHours * 10) / 10),
-    };
-  } catch {
-    return { canCancel: true, hoursLeft: 24 };
-  }
+/** Today's date in India time, "2026-11-28" */
+function todayIST(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
+
+/** The instant (ms) of an India-time date "2026-11-28" plus minutes after midnight */
+function istMs(date: string, minutes: number): number | null {
+  const m = String(date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3]) + (minutes - IST_OFFSET_MIN) * 60_000;
+}
+
+/** When a booking starts (ms): its stored instant, else its date + time read as India time */
+function bookingStartMs(b: any): number | null {
+  const t = b?.scheduledAt ? new Date(b.scheduledAt).getTime() : NaN;
+  if (!isNaN(t)) return t;
+  const min = minutesOf(b?.time);
+  return min === null ? null : istMs(String(b?.date || ''), min);
+}
+
+/** "45 minutes" / "2.5 hours" */
+function timeLeftLabel(ms: number): string {
+  const minutes = Math.max(1, Math.round(ms / 60_000));
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  const hours = Math.round((ms / HOUR_MS) * 10) / 10;
+  return `${hours} hour${hours === 1 ? '' : 's'}`;
+}
+
+/** Booking statuses that are not a real session: never counted as booked */
+const NOT_A_SESSION = new Set(['CANCELLED', 'EXPIRED', 'PENDING_PAYMENT']);
+/** Sessions the therapist can still act on (complete, no-show, cancel, reschedule) */
+const ACTIVE_STATUSES = new Set(['CONFIRMED', 'RESCHEDULED', 'PENDING']);
 
 export type SessionStatus = "booked" | "available" | "blocked";
 
@@ -114,6 +120,32 @@ export interface SessionSlot {
   past?: boolean;
   /** Covered by a whole-day block */
   dayBlocked?: boolean;
+  /** A booking's start instant (ms) and length, for the IST time rules */
+  startMs?: number;
+  durationMin?: number;
+}
+
+/** A real client session: a booking that is not cancelled, expired, an unpaid checkout or an old placeholder */
+function isRealSession(s: SessionSlot): boolean {
+  return s.status === 'booked' && !s.legacyPlaceholder && !NOT_A_SESSION.has(String(s.bookingStatus || 'CONFIRMED'));
+}
+
+/** The session has started (India time); only then can it be completed or marked as a no-show */
+function hasStarted(s: SessionSlot): boolean {
+  return s.startMs !== undefined && s.startMs <= Date.now();
+}
+
+/** Why a session can no longer be cancelled or rescheduled ("" when it still can) */
+function changeBlockedReason(s: SessionSlot, action: 'cancelled' | 'rescheduled'): string {
+  if (s.startMs === undefined) return '';
+  const now = Date.now();
+  const end = s.startMs + (s.durationMin || 50) * 60_000;
+  if (now >= end) return 'This session has already ended. Mark it as completed or as a no-show instead.';
+  if (now >= s.startMs) return `This session has already started, so it can no longer be ${action}.`;
+  if (s.startMs - now < CHANGE_CUTOFF_HOURS * HOUR_MS) {
+    return `Sessions can only be ${action} at least ${CHANGE_CUTOFF_HOURS} hours before they start. This one starts in ${timeLeftLabel(s.startMs - now)}.`;
+  }
+  return '';
 }
 
 const DEFAULT_DAY_SLOTS: SessionSlot[] = [];
@@ -174,14 +206,19 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
   NO_SHOW_CLIENT: 'No-show (client)',
-  NO_SHOW_CONSULTANT: 'No-show (therapist)'
+  NO_SHOW_CONSULTANT: 'No-show (therapist)',
+  PENDING_PAYMENT: 'Awaiting payment',
+  EXPIRED: 'Expired'
 };
+
+/** How many rows the bookings log adds per "Show more" */
+const LOG_PAGE = 15;
 
 /* Session dot indicator colours */
 function dotColor(count: number) {
-  if (count >= 5) return "bg-[#5e2be2]";
-  if (count >= 3) return "bg-[#5e2be2]/60";
-  return "bg-[#5e2be2]/30";
+  if (count >= 5) return "bg-[#450bc8]";
+  if (count >= 3) return "bg-[#450bc8]/60";
+  return "bg-[#450bc8]/30";
 }
 
 /* ─── component ───────────────────────────────────────────── */
@@ -206,6 +243,8 @@ export default function Calendar() {
   const [allRawBookings, setAllRawBookings] = useState<any[]>([]);
   const [dbConsultants, setDbConsultants] = useState<{ id: string; _id?: string; name: string; email?: string; specialty?: string }[]>([]);
   const [selectedConsultantId, setSelectedConsultantId] = useState<string>("");
+  // The signed-in therapist has no matching consultant profile: the calendar can't be planned or booked
+  const [profileMissing, setProfileMissing] = useState(false);
   const [isDbLoading, setIsDbLoading] = useState(true);
   const [dbClients, setDbClients] = useState<{ id: string; name: string; email: string }[]>([]);
 
@@ -237,7 +276,10 @@ export default function Calendar() {
 
         // The logged-in therapist's Consultant record, matched by email (the login id is a User id, not a consultant id)
         const mine = findMyConsultant(loadedConsultants, authUser);
-        if (isMounted) setSelectedConsultantId(mine?.id || '');
+        if (isMounted) {
+          setSelectedConsultantId(mine?.id || '');
+          setProfileMissing(!mine);
+        }
         if (!mine) {
           if (isMounted) {
             setAllRawBookings([]);
@@ -336,10 +378,13 @@ export default function Calendar() {
         time: b.time || (b.scheduledAt ? new Date(b.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : ''),
         type: b.serviceTitle || 'Individual Therapy',
         duration: `${b.durationMinutes || b.duration || 50} min`,
+        // A cancelled or expired booking frees its hour
         status: isPlaceholder
           ? (status === 'BLOCKED' || b.clientName === 'Blocked Time Slot' ? 'blocked' : 'available')
-          : status === 'CANCELLED' ? 'available' : 'booked',
+          : status === 'CANCELLED' || status === 'EXPIRED' ? 'available' : 'booked',
         bookingStatus: status,
+        startMs: bookingStartMs(b) ?? undefined,
+        durationMin: Number(b.durationMinutes || b.duration) || 50,
         bookingId: b.id || b._id,
         consultantId: b.consultantId || b.therapistId,
         consultantName: b.consultantName || b.therapistName,
@@ -380,6 +425,29 @@ export default function Calendar() {
       });
   }, [allRawBookings]);
 
+  // The bookings log shows a page at a time
+  const [logLimit, setLogLimit] = useState(LOG_PAGE);
+  const shownBookings = therapistBookingsList.slice(0, logLimit);
+
+  // Sessions that hold the therapist's time, for Add Event's double-booking check
+  const busySessions = useMemo(() => allRawBookings
+    .filter((b: any) => !isPlaceholderBooking(b) && !b.toBeScheduled && !['CANCELLED', 'EXPIRED'].includes(String(b.status || '').toUpperCase()))
+    .map((b: any) => {
+      const startMs = bookingStartMs(b);
+      if (startMs === null) return null;
+      return {
+        startMs,
+        endMs: startMs + (Number(b.durationMinutes) || 50) * 60_000,
+        client: b.clientName || 'a client',
+        label: `${b.date || new Date(startMs).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })}, ${b.time || ''}`.replace(/,\s*$/, '')
+      };
+    })
+    .filter((s): s is { startMs: number; endMs: number; client: string; label: string } => s !== null),
+  [allRawBookings]);
+
+  // Blocks being saved, keyed "date|time", so a slot cannot be clicked twice while the server answers
+  const [pendingBlocks, setPendingBlocks] = useState<Set<string>>(new Set());
+
   const handleJumpToBookingDate = (dateStr: string) => {
     try {
       const m = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -402,14 +470,26 @@ export default function Calendar() {
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [rescheduleTarget, setRescheduleTarget] = useState<{ key: string; index: number; session: SessionSlot } | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
-  const [rescheduleTime, setRescheduleTime] = useState("10:00 AM");
-  const [rescheduleReason, setRescheduleReason] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  // The therapist's offered slots on the chosen reschedule date (null while loading)
+  const [rescheduleSlots, setRescheduleSlots] = useState<{ time: string; start?: string; startAt: string; available: boolean }[] | null>(null);
+  const [rescheduleSlotsError, setRescheduleSlotsError] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
+
+  // Cancel booking dialog
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  // "Mark as completed" / "Mark as no-show" confirmation
+  const [statusConfirm, setStatusConfirm] = useState<{ session: SessionSlot; status: 'COMPLETED' | 'NO_SHOW_CLIENT' } | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   // Assign client dialog state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<{ key: string; index: number; slot: SessionSlot } | null>(null);
   const [assignClientName, setAssignClientName] = useState("");
   const [assignType, setAssignType] = useState("Individual Therapy");
+  const [assigning, setAssigning] = useState(false);
 
   const sessionKey = `${year}-${month + 1}-${selectedDay}`;
   const selectedDate = keyToDate(sessionKey);
@@ -501,7 +581,16 @@ export default function Calendar() {
   }, [sessionData, sessionKey, offeredByDate, selectedDate]);
 
   const bookedSessions = daySessions.filter(s => s.status === 'booked');
-  const bookedCount = bookedSessions.length;
+  const bookedCount = bookedSessions.filter(isRealSession).length;
+  // The day's list: booked sessions plus the open hours a client can still be booked into
+  const listedSessions = daySessions.filter(s => s.status === 'booked' || (s.status === 'available' && !s.past && !s.dayBlocked));
+
+  // Dots and the monthly counter count real sessions only (no blocks, open hours, cancelled or unpaid bookings)
+  const realCountOf = (key: string) => (sessionData[key] ?? DEFAULT_DAY_SLOTS).filter(isRealSession).length;
+  const monthBookedCount = Object.keys(sessionData).reduce((sum, key) => {
+    const parts = key.split('-').map(Number);
+    return parts[0] === year && parts[1] === month + 1 ? sum + realCountOf(key) : sum;
+  }, 0);
   const availableCount = daySessions.filter(s => s.status === 'available' && !s.past && !s.dayBlocked).length;
   const blockedCount = daySessions.filter(s => s.status === 'blocked' || s.dayBlocked).length;
   const openFutureCount = availableCount;
@@ -527,50 +616,75 @@ export default function Calendar() {
   const isToday = (d: number) =>
     d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
-  /** Blocks or opens a time in the Availability collection (the same records the admin panel toggles) */
-  const saveTimeBlock = (date: string, rawTime: string, isBlocked: boolean, slotId?: string) => {
+  /**
+   * Blocks or opens a time in the Availability collection (the same records the admin panel toggles).
+   * The calendar changes only after the server accepts it; resolves to an error message, or null on success.
+   */
+  const saveTimeBlock = async (date: string, rawTime: string, isBlocked: boolean, slotId?: string): Promise<string | null> => {
     const status = isBlocked ? 'Blocked' : 'Available';
     // Same label as the slot list ("09:00 AM"); an empty time is the whole day
     const min = minutesOf(rawTime);
     const time = min === null ? '' : labelOf(min);
-    const localId = slotId || `BLOCK-${selectedConsultantId}-${date}-${String(time || 'all-day').replace(/\s+/g, '')}`;
-    setAvailabilityItems(prev => {
-      const others = prev.filter(a => (a.id || a._id) !== localId);
-      return [...others, { id: localId, therapistId: selectedConsultantId, therapistName: activeConsultant?.name, date, time, status }];
-    });
-    fetch('/api/availability/toggle-block', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...(slotId ? { slotId } : {}),
-        isBlocked,
-        therapistId: selectedConsultantId,
-        therapistName: activeConsultant?.name || authUser?.name || 'Therapist',
-        date,
-        time
-      })
-    })
-      .then(res => (res.ok ? refreshSlots() : Promise.reject(new Error('Request failed'))))
-      .catch(() => toast({ title: "Could not update the time slot", description: "Please try again.", variant: "destructive" }));
+    const pendingKey = `${date}|${time}`;
+    setPendingBlocks(prev => new Set(prev).add(pendingKey));
+    try {
+      const res = await fetch('/api/availability/toggle-block', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(slotId ? { slotId } : {}),
+          isBlocked,
+          therapistId: selectedConsultantId,
+          therapistName: activeConsultant?.name || authUser?.name || 'Therapist',
+          date,
+          time
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        return data?.error || 'The change was not saved. Please try again.';
+      }
+      const id = data?.slotId || slotId || `BLOCK-${selectedConsultantId}-${date}-${String(time || 'all-day').replace(/\s+/g, '')}`;
+      setAvailabilityItems(prev => {
+        const others = prev.filter(a => (a.id || a._id) !== id && (!slotId || (a.id || a._id) !== slotId));
+        return [...others, { id, therapistId: selectedConsultantId, therapistName: activeConsultant?.name, date, time, status }];
+      });
+      refreshSlots();
+      return null;
+    } catch {
+      return 'Could not reach the server. Check your connection and try again.';
+    } finally {
+      setPendingBlocks(prev => {
+        const next = new Set(prev);
+        next.delete(pendingKey);
+        return next;
+      });
+    }
   };
 
   /** Blocks or reopens the whole selected day */
-  const handleToggleDayBlock = () => {
+  const handleToggleDayBlock = async () => {
     if (!selectedConsultantId) {
       toast({ title: "Therapist profile not found", description: "Your consultant profile could not be loaded. Please sign in again.", variant: "destructive" });
       return;
     }
+    if (pendingBlocks.has(`${selectedDate}|`)) return;
     const unblock = Boolean(dayBlock);
-    saveTimeBlock(selectedDate, '', !unblock, dayBlock?.slotId);
+    const dayLabel = `${MONTHS[month]} ${selectedDay}`;
+    const failure = await saveTimeBlock(selectedDate, '', !unblock, dayBlock?.slotId);
+    if (failure) {
+      toast({ title: unblock ? "Could not reopen the day" : "Could not block the day", description: failure, variant: "destructive" });
+      return;
+    }
     toast({
       title: unblock ? "Day reopened" : "Whole day blocked",
       description: unblock
-        ? `Clients can book your open hours on ${MONTHS[month]} ${selectedDay} again.`
-        : `Clients cannot book any time on ${MONTHS[month]} ${selectedDay}. Booked sessions stay as they are.`,
+        ? `Clients can book your open hours on ${dayLabel} again.`
+        : `Clients cannot book any time on ${dayLabel}. Booked sessions stay as they are.`,
     });
   };
 
-  const handleToggleBlockSlot = (key: string, index: number) => {
+  const handleToggleBlockSlot = async (key: string, index: number) => {
     const slot = daySessions[index];
     if (!slot) return;
 
@@ -591,18 +705,26 @@ export default function Calendar() {
     }
 
     const isCurrentlyBlocked = slot.status === "blocked";
-    const newStatus = isCurrentlyBlocked ? "available" : "blocked";
     if (!selectedConsultantId) {
       toast({ title: "Therapist profile not found", description: "Your consultant profile could not be loaded. Please sign in again.", variant: "destructive" });
       return;
     }
+    const date = keyToDate(key);
+    const min = minutesOf(slot.time);
+    if (pendingBlocks.has(`${date}|${min === null ? '' : labelOf(min)}`)) return; // already being saved
 
-    // Old placeholders stored as bookings are replaced by an Availability entry
+    const failure = await saveTimeBlock(date, slot.time, !isCurrentlyBlocked, slot.slotId);
+    if (failure) {
+      // Nothing changed on screen, so the slot keeps its old state
+      toast({ title: isCurrentlyBlocked ? "Could not open this time" : "Could not block this time", description: failure, variant: "destructive" });
+      return;
+    }
+
+    // Old placeholders stored as bookings are replaced by the Availability entry just saved
     if (slot.legacyPlaceholder && slot.bookingId) {
       setAllRawBookings(prev => prev.filter(b => b.id !== slot.bookingId && b._id !== slot.bookingId));
       fetch(`/api/bookings/${slot.bookingId}`, { method: 'DELETE' }).catch(() => {});
     }
-    saveTimeBlock(keyToDate(key), slot.time, newStatus === "blocked", slot.slotId);
 
     toast({
       title: isCurrentlyBlocked ? "Slot Unblocked" : "Slot Blocked",
@@ -612,8 +734,8 @@ export default function Calendar() {
     });
   };
 
-  /** Creates a confirmed session for this therapist; returns the stored booking or null (after a toast) */
-  const createBookingInDb = async (fields: Record<string, any>, viaSlotId?: string): Promise<any | null> => {
+  /** Creates a confirmed session for this therapist: the stored booking, or the server's reason it was refused */
+  const createBookingInDb = async (fields: Record<string, any>, viaSlotId?: string): Promise<{ booking: any | null; error?: string }> => {
     try {
       const body = {
         ...fields,
@@ -627,85 +749,140 @@ export default function Calendar() {
         body: JSON.stringify(viaSlotId ? { ...body, slotId: viaSlotId } : body)
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.booking) throw new Error(data?.error || 'Request failed');
+      // e.g. 400/409 when the time is in the past or overlaps another session
+      if (!res.ok || data?.success === false || !data?.booking) throw new Error(data?.error || 'The session was not saved. Please try again.');
       setAllRawBookings(prev => [data.booking, ...prev.filter(b => b.id !== data.booking.id)]);
       if (viaSlotId) setAvailabilityItems(prev => prev.filter(a => (a.id || a._id) !== viaSlotId));
-      return data.booking;
+      refreshSlots();
+      return { booking: data.booking };
     } catch (e: any) {
       console.error('Error saving booking to DB:', e);
-      toast({ title: "Could not book the session", description: e?.message || "Please try again.", variant: "destructive" });
-      return null;
+      return { booking: null, error: e?.message || 'Could not reach the server. Please try again.' };
     }
   };
 
-  const handleAddSlotFromDialog = async (newSlot: { date: string; time: string; endTime?: string; title: string; client: string; type: string; duration: string; status: SessionStatus }) => {
-    const parts = newSlot.date.split("-");
-    if (parts.length === 3) {
-      setYear(parseInt(parts[0]));
-      setMonth(parseInt(parts[1]) - 1);
-      setSelectedDay(parseInt(parts[2]));
+  /** Saves an event from the Add Event dialog; resolves to an error message (shown in the dialog) or null */
+  const handleAddSlotFromDialog = async (newSlot: NewSlot): Promise<string | null> => {
+    if (!selectedConsultantId) {
+      return "Your consultant profile could not be loaded. Please sign in again.";
     }
 
-    if (!selectedConsultantId) {
-      toast({ title: "Therapist profile not found", description: "Your consultant profile could not be loaded. Please sign in again.", variant: "destructive" });
-      return;
-    }
+    const focusDate = () => {
+      const parts = newSlot.date.split("-");
+      if (parts.length === 3) {
+        setYear(parseInt(parts[0]));
+        setMonth(parseInt(parts[1]) - 1);
+        setSelectedDay(parseInt(parts[2]));
+      }
+    };
 
     // Blocked / open time lives in the Availability collection, not in bookings
     if (newSlot.status === 'blocked' || newSlot.status === 'available') {
-      // One entry per hour from the start time up to the end time
       const from = minutesOf(newSlot.time);
       const to = minutesOf(newSlot.endTime);
-      if (from === null) return;
-      const starts: number[] = [];
-      for (let m = from; to !== null && m + 60 <= to; m += 60) starts.push(m);
-      if (!starts.length) starts.push(from);
-      starts.forEach((m) => saveTimeBlock(newSlot.date, labelOf(m), newSlot.status === 'blocked'));
-      toast({
-        title: newSlot.status === 'blocked' ? "Time blocked" : "Extra hours opened",
-        description: `${labelOf(from)} – ${labelOf(starts[starts.length - 1] + 60)} on ${newSlot.date} ${newSlot.status === 'blocked' ? 'is blocked for clients' : 'is open for client booking'}.`,
-      });
-      return;
-    } else {
-      const matchedClient = dbClients.find(c => c.name === newSlot.client || c.email === newSlot.client);
-      // The Backend resolves ids, price and the India-time scheduledAt from date + time
-      const created = await createBookingInDb({
-        clientId: matchedClient?.id || undefined,
-        clientName: newSlot.client,
-        clientEmail: matchedClient?.email || undefined,
-        serviceTitle: newSlot.type || newSlot.title || 'Individual Therapy',
-        date: newSlot.date,
-        time: newSlot.time,
-        durationMinutes: parseInt(newSlot.duration) || 50
-      });
-      if (!created) return;
+      if (from === null || to === null || to <= from) return "The end time must be after the start time.";
+      const blocking = newSlot.status === 'blocked';
+
+      let labels: string[] = [];
+      if (blocking) {
+        // Block every offered one-hour slot that overlaps the range (10:30–12:00 blocks 10:00 and 11:00),
+        // using the slots' own labels so each block matches a slot clients see
+        try {
+          const res = await fetch(`/api/availability/slots?consultantId=${encodeURIComponent(selectedConsultantId)}&date=${newSlot.date}`);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !Array.isArray(data?.slots)) throw new Error(data?.error || 'Could not load your hours for that day.');
+          const now = Date.now();
+          labels = data.slots
+            .filter((s: any) => {
+              const start = minutesOf(s.start || s.time);
+              return start !== null && start < to && start + 60 > from && new Date(s.startAt).getTime() > now;
+            })
+            .map((s: any) => labelOf(minutesOf(s.start || s.time) as number));
+        } catch (e: any) {
+          return e?.message || 'Could not load your hours for that day. Please try again.';
+        }
+        if (!labels.length) {
+          return `You have no upcoming bookable hours between ${labelOf(from)} and ${labelOf(to)} on ${newSlot.date}, so there is nothing to block.`;
+        }
+      } else {
+        // Open one-hour slots from the start time up to the end time
+        for (let m = from; m + 60 <= to; m += 60) labels.push(labelOf(m));
+        if (!labels.length) return "Open at least one full hour (the end time must be an hour or more after the start).";
+      }
+
+      const results = await Promise.all(labels.map((label) => saveTimeBlock(newSlot.date, label, blocking)));
+      const failed = results.filter((r): r is string => Boolean(r));
+      const done = labels.length - failed.length;
+      if (done > 0) {
+        focusDate();
+        toast({
+          title: blocking ? `${done} hour${done === 1 ? '' : 's'} blocked` : `${done} extra hour${done === 1 ? '' : 's'} opened`,
+          description: `${labels.filter((_, i) => !results[i]).join(', ')} on ${newSlot.date} ${blocking ? (done === 1 ? 'is' : 'are') + ' blocked for clients' : (done === 1 ? 'is' : 'are') + ' open for client booking'}.`,
+        });
+      }
+      if (failed.length) {
+        return `${done ? `${done} of ${labels.length} hours were saved, but ` : ''}${failed.length} could not be saved: ${failed[0]}`;
+      }
+      return null;
     }
 
-    toast({
-      title: "Session Slot Added! 📅",
-      description: `Successfully added ${newSlot.status} slot for ${newSlot.client} at ${newSlot.time} on ${newSlot.date}.`,
+    const matchedClient = dbClients.find(c => c.name === newSlot.client || c.email === newSlot.client);
+    // The Backend resolves ids, price and the India-time scheduledAt from date + time
+    const { booking, error } = await createBookingInDb({
+      clientId: matchedClient?.id || undefined,
+      clientName: newSlot.client,
+      clientEmail: matchedClient?.email || undefined,
+      serviceTitle: newSlot.type || newSlot.title || 'Individual Therapy',
+      date: newSlot.date,
+      time: newSlot.time,
+      durationMinutes: parseInt(newSlot.duration) || 50
     });
+    if (!booking) return error || 'The session was not saved. Please try again.';
+
+    focusDate();
+    toast({
+      title: "Session booked 📅",
+      description: `${newSlot.client} is booked for ${newSlot.type} at ${newSlot.time} on ${newSlot.date}.`,
+    });
+    return null;
+  };
+
+  /** Opens the cancel confirmation, unless the 3-hour rule (India time) or the session's start rules it out */
+  const handleOpenCancel = (key: string, index: number, session: SessionSlot) => {
+    const reason = changeBlockedReason(session, 'cancelled');
+    if (reason) {
+      toast({ variant: "destructive", title: "This session can't be cancelled", description: reason });
+      return;
+    }
+    setRescheduleTarget({ key, index, session });
+    setCancelReason("");
+    setConfirmRescheduleOpen(true);
   };
 
   const handleConfirmCancelBooking = async () => {
-    if (!rescheduleTarget) return;
-
+    if (!rescheduleTarget || cancelling) return;
     const { session } = rescheduleTarget;
+    if (!session.bookingId) return;
 
-    if (session.bookingId) {
-      try {
-        await fetch(`/api/bookings/${session.bookingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'CANCELLED' })
-        });
-      } catch (e) {
-        console.error('Error cancelling booking in DB:', e);
-      }
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/bookings/${session.bookingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELLED', cancellationReason: cancelReason.trim() || 'Cancelled by therapist' })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) throw new Error(data?.error || 'The booking was not cancelled. Please try again.');
+    } catch (e: any) {
+      console.error('Error cancelling booking in DB:', e);
+      toast({ title: "Could not cancel the booking", description: e?.message || "Please try again.", variant: "destructive" });
+      return;
+    } finally {
+      setCancelling(false);
     }
 
     setAllRawBookings(prev => prev.map(b => (b.id === session.bookingId || b._id === session.bookingId) ? { ...b, status: 'CANCELLED' } : b));
-
+    refreshSlots();
     setConfirmRescheduleOpen(false);
     setRescheduleTarget(null);
 
@@ -715,96 +892,132 @@ export default function Calendar() {
     });
   };
 
+  /** Asks before marking a session as completed or as a client no-show (only once it has started) */
+  const handleOpenStatusChange = (session: SessionSlot, status: 'COMPLETED' | 'NO_SHOW_CLIENT') => {
+    if (!hasStarted(session)) {
+      toast({ title: "This session hasn't started yet", description: "You can mark it once its start time has passed." });
+      return;
+    }
+    setStatusConfirm({ session, status });
+  };
+
   // Completing a session asks the client for post-session feedback on their next visit
-  const handleMarkCompleted = async (session: SessionSlot) => {
+  const handleConfirmStatusChange = async () => {
+    if (!statusConfirm || statusSaving) return;
+    const { session, status } = statusConfirm;
     if (!session.bookingId) return;
+
+    setStatusSaving(true);
     try {
       const res = await fetch(`/api/bookings/${session.bookingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'COMPLETED' })
+        body: JSON.stringify({ status })
       });
-      if (!res.ok) throw new Error('Request failed');
-    } catch (e) {
-      console.error('Error completing booking in DB:', e);
-      toast({ title: "Could not update session", description: "Please try again.", variant: "destructive" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) throw new Error(data?.error || 'The session was not updated. Please try again.');
+    } catch (e: any) {
+      console.error('Error updating booking status in DB:', e);
+      toast({ title: "Could not update session", description: e?.message || "Please try again.", variant: "destructive" });
       return;
+    } finally {
+      setStatusSaving(false);
     }
 
-    setAllRawBookings(prev => prev.map(b => (b.id === session.bookingId || b._id === session.bookingId) ? { ...b, status: 'COMPLETED' } : b));
+    setAllRawBookings(prev => prev.map(b => (b.id === session.bookingId || b._id === session.bookingId) ? { ...b, status } : b));
+    setStatusConfirm(null);
 
-    toast({
-      title: "Session Completed ✅",
-      description: `${session.client} will be asked for feedback on today's session.`,
-    });
+    toast(status === 'COMPLETED'
+      ? { title: "Session Completed ✅", description: `${session.client} will be asked for feedback on this session.` }
+      : { title: "Marked as no-show", description: `${session.client}'s session at ${session.time} is recorded as a client no-show.` });
   };
 
+  /** Opens the reschedule dialog for an upcoming session */
   const handleOpenReschedule = (key: string, index: number, session: SessionSlot) => {
-    const { canCancel, hoursLeft } = checkCanCancelSlot(key, session.time);
-
-    if (!canCancel) {
-      toast({
-        variant: "destructive",
-        title: "Cancellation Policy Restriction",
-        description: `Sessions can only be cancelled at least 3 hours before start time. (Session starts in ${hoursLeft > 0 ? `${hoursLeft} hrs` : "less than 3 hrs"}).`,
-      });
+    const reason = changeBlockedReason(session, 'rescheduled');
+    if (reason) {
+      toast({ variant: "destructive", title: "This session can't be rescheduled", description: reason });
       return;
     }
-
+    const today = todayIST();
     setRescheduleTarget({ key, index, session });
-    setRescheduleTime(session.time);
-    setRescheduleDate(`${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`);
-    setRescheduleReason("");
-    setConfirmRescheduleOpen(true);
+    setRescheduleDate(selectedDate >= today ? selectedDate : today);
+    setRescheduleTime("");
+    setRescheduleModalOpen(true);
   };
+
+  // The free slots on the chosen reschedule date (this therapist's offered hours that nobody holds)
+  useEffect(() => {
+    if (!rescheduleModalOpen || !selectedConsultantId || !/^\d{4}-\d{2}-\d{2}$/.test(rescheduleDate)) return;
+    let active = true;
+    setRescheduleSlots(null);
+    setRescheduleSlotsError("");
+    setRescheduleTime("");
+    fetch(`/api/availability/slots?consultantId=${encodeURIComponent(selectedConsultantId)}&date=${rescheduleDate}`)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !Array.isArray(data?.slots)) throw new Error(data?.error || 'Could not load your free times.');
+        return data.slots;
+      })
+      .then((slots) => { if (active) setRescheduleSlots(slots); })
+      .catch((e: any) => {
+        if (!active) return;
+        setRescheduleSlots([]);
+        setRescheduleSlotsError(e?.message || 'Could not load your free times.');
+      });
+    return () => { active = false; };
+  }, [rescheduleModalOpen, rescheduleDate, selectedConsultantId]);
+
+  const freeRescheduleSlots = (rescheduleSlots || []).filter(s => s.available && new Date(s.startAt).getTime() > Date.now());
 
   const handleConfirmReschedule = async () => {
-    if (!rescheduleTarget) return;
-
+    if (!rescheduleTarget || rescheduling) return;
     const { session } = rescheduleTarget;
+    const slot = freeRescheduleSlots.find(s => s.time === rescheduleTime);
+    if (!session.bookingId || !slot) return;
 
-    if (session.bookingId) {
-      try {
-        // The Backend computes the India-time scheduledAt from the date + time label
-        const res = await fetch(`/api/bookings/${session.bookingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: rescheduleDate,
-            time: rescheduleTime
-          })
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data?.error || 'Request failed');
-        }
-      } catch (e: any) {
-        console.error('Error rescheduling booking in DB:', e);
-        toast({ title: "Could not reschedule", description: e?.message || "Please try again.", variant: "destructive" });
-        return;
-      }
+    setRescheduling(true);
+    try {
+      // The Backend computes the India-time scheduledAt from the date + time label
+      const res = await fetch(`/api/bookings/${session.bookingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: rescheduleDate, time: slot.time })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) throw new Error(data?.error || 'The session was not moved. Please try again.');
+    } catch (e: any) {
+      console.error('Error rescheduling booking in DB:', e);
+      toast({ title: "Could not reschedule", description: e?.message || "Please try again.", variant: "destructive" });
+      return;
+    } finally {
+      setRescheduling(false);
     }
 
-    setAllRawBookings(prev => prev.map(b => (b.id === session.bookingId || b._id === session.bookingId) ? { ...b, scheduledAt: null, toBeScheduled: false, date: rescheduleDate, time: rescheduleTime } : b));
-
+    setAllRawBookings(prev => prev.map(b => (b.id === session.bookingId || b._id === session.bookingId) ? { ...b, scheduledAt: slot.startAt, toBeScheduled: false, date: rescheduleDate, time: slot.time } : b));
+    refreshSlots();
     setRescheduleModalOpen(false);
     setRescheduleTarget(null);
 
     toast({
       title: "Session Rescheduled! 📅",
-      description: `Successfully rescheduled session for ${session.client} to ${rescheduleDate} at ${rescheduleTime}.`,
+      description: `${session.client}'s session is now on ${rescheduleDate} at ${slot.time}.`,
     });
   };
 
   const handleOpenAssignClient = (key: string, index: number, slot: SessionSlot) => {
+    if (slot.past) {
+      toast({ title: "This time has passed", description: "Pick an upcoming open slot." });
+      return;
+    }
     setAssignTarget({ key, index, slot });
-    setAssignClientName(dbClients[0]?.name || "Client Record");
+    setAssignClientName(dbClients[0]?.name || "");
     setAssignType("Individual Therapy");
     setAssignModalOpen(true);
   };
 
   const handleConfirmAssignClient = async () => {
-    if (!assignTarget) return;
+    if (!assignTarget || assigning) return;
     const { key, slot } = assignTarget;
 
     if (!selectedConsultantId) {
@@ -812,6 +1025,26 @@ export default function Calendar() {
       return;
     }
     const matchedClient = dbClients.find(c => c.name === assignClientName);
+    if (!matchedClient) {
+      toast({ title: "Choose a client", description: "Pick one of your clients to book into this slot.", variant: "destructive" });
+      return;
+    }
+
+    setAssigning(true);
+    const { booking, error } = await createBookingInDb({
+      clientId: matchedClient.id,
+      clientName: matchedClient.name,
+      clientEmail: matchedClient.email || undefined,
+      serviceTitle: assignType || 'Individual Therapy',
+      date: keyToDate(key),
+      time: slot.time,
+      durationMinutes: 50
+    }, slot.slotId);
+    setAssigning(false);
+    if (!booking) {
+      toast({ title: "Could not book the session", description: error || "Please try again.", variant: "destructive" });
+      return;
+    }
 
     // An old placeholder booking is replaced by the real session
     if (slot.legacyPlaceholder && slot.bookingId) {
@@ -819,23 +1052,12 @@ export default function Calendar() {
       fetch(`/api/bookings/${slot.bookingId}`, { method: 'DELETE' }).catch(() => {});
     }
 
-    const created = await createBookingInDb({
-      clientId: matchedClient?.id || undefined,
-      clientName: assignClientName,
-      clientEmail: matchedClient?.email || undefined,
-      serviceTitle: assignType || 'Individual Therapy',
-      date: keyToDate(key),
-      time: slot.time,
-      durationMinutes: parseInt(slot.duration) || 50
-    }, slot.slotId);
-    if (!created) return;
-
     setAssignModalOpen(false);
     setAssignTarget(null);
 
     toast({
       title: "Client Booked! 📅",
-      description: `Assigned ${assignClientName} to open slot at ${slot.time}.`,
+      description: `Assigned ${matchedClient.name} to open slot at ${slot.time}.`,
     });
   };
 
@@ -859,6 +1081,7 @@ export default function Calendar() {
             type="button"
             onClick={() => openPlan(monthOf(new Date(year, month, 1)) >= monthOf(new Date()) ? monthOf(new Date(year, month, 1)) : undefined)}
             disabled={!selectedConsultantId}
+            title={profileMissing ? "Your therapist profile couldn't be found. Please contact the admin team." : undefined}
             className="bg-white text-primary hover:bg-white/90 font-bold text-xs px-3.5 py-2 rounded-full cursor-pointer shadow-xs"
           >
             Plan Month
@@ -886,13 +1109,13 @@ export default function Calendar() {
         </div>
       )}
 
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 min-h-[600px]">
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden grid grid-cols-1 xl:grid-cols-12 divide-y xl:divide-y-0 xl:divide-x divide-slate-100 xl:min-h-[600px]">
 
-        <div className="lg:col-span-5 p-5 xl:p-6 bg-white flex flex-col justify-between">
+        <div className="xl:col-span-5 p-4 sm:p-5 xl:p-6 bg-white flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Select Date</span>
-              <span className="text-xs font-bold text-[#5e2be2] bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
+              <span className="text-xs font-bold text-[#450bc8] bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
                 {MONTHS[month]} {year}
               </span>
             </div>
@@ -900,14 +1123,14 @@ export default function Calendar() {
             <div className="flex items-center justify-between mb-4 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
               <button
                 onClick={prevMonth}
-                className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
+                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="font-extrabold text-sm text-slate-900">{MONTHS[month]} {year}</span>
               <button
                 onClick={nextMonth}
-                className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
+                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shadow-2xs cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -925,7 +1148,7 @@ export default function Calendar() {
               {cells.map((day, idx) => {
                 if (!day) return <div key={`empty-${idx}`} />;
                 const key = `${year}-${month + 1}-${day}`;
-                const count = (sessionData[key] ?? DEFAULT_DAY_SLOTS).length;
+                const count = realCountOf(key);
                 const sel = day === selectedDay;
                 const tod = isToday(day);
 
@@ -935,8 +1158,8 @@ export default function Calendar() {
                     onClick={() => setSelectedDay(day)}
                     className={cn(
                       "relative flex flex-col items-center justify-center rounded-2xl h-10 w-full text-xs font-bold transition-all cursor-pointer",
-                      sel && "bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20 scale-105 z-10",
-                      !sel && tod && "border-2 border-[#5e2be2] text-[#5e2be2] bg-purple-50/50 font-extrabold",
+                      sel && "bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20 scale-105 z-10",
+                      !sel && tod && "border-2 border-[#450bc8] text-[#450bc8] bg-purple-50/50 font-extrabold",
                       !sel && !tod && "text-slate-700 hover:bg-slate-100/80",
                     )}
                   >
@@ -957,7 +1180,7 @@ export default function Calendar() {
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Monthly Capacity & Status</span>
               {activeConsultant && (
-                <span className="text-[10px] font-bold text-[#5e2be2] truncate max-w-[150px]">
+                <span className="text-[10px] font-bold text-[#450bc8] truncate max-w-[150px]">
                   {activeConsultant.name}
                 </span>
               )}
@@ -965,14 +1188,8 @@ export default function Calendar() {
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="flex flex-col justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1.5">
                 <span className="text-slate-500 font-medium text-[11px]">{MONTHS[month]} Bookings</span>
-                <span className="font-extrabold text-sm text-[#5e2be2] bg-purple-100/80 text-purple-900 px-2.5 py-1 rounded-xl w-fit border border-purple-200">
-                  {Object.keys(sessionData).reduce((sum, key) => {
-                    const parts = key.split('-').map(Number);
-                    if (parts[0] === year && parts[1] === month + 1) {
-                      return sum + (sessionData[key] || []).length;
-                    }
-                    return sum;
-                  }, 0)} Booked
+                <span className="font-extrabold text-sm text-[#450bc8] bg-purple-100/80 text-purple-900 px-2.5 py-1 rounded-xl w-fit border border-purple-200">
+                  {monthBookedCount} Booked
                 </span>
               </div>
               <div className="flex flex-col justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1.5">
@@ -987,7 +1204,7 @@ export default function Calendar() {
           </div>
         </div>
 
-        <div className="lg:col-span-7 p-5 xl:p-6 bg-slate-50/30 flex flex-col">
+        <div className="xl:col-span-7 p-4 sm:p-5 xl:p-6 bg-slate-50/30 flex flex-col min-w-0">
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
               <div>
@@ -1011,8 +1228,9 @@ export default function Calendar() {
                     <button
                       type="button"
                       onClick={handleToggleDayBlock}
+                      disabled={pendingBlocks.has(`${selectedDate}|`)}
                       className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-extrabold cursor-pointer transition-colors",
+                        "inline-flex items-center gap-1 px-2.5 sm:px-2 py-1.5 sm:py-0.5 rounded-md border text-[10px] font-extrabold cursor-pointer transition-colors",
                         dayBlock
                           ? "border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100"
                           : "border-slate-300 text-slate-700 bg-white hover:bg-slate-100"
@@ -1023,9 +1241,9 @@ export default function Calendar() {
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-bold">
-                  <span className="flex items-center gap-1 text-[#5e2be2] bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
-                    <span className="w-2 h-2 rounded-full bg-[#5e2be2]" />
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
+                  <span className="flex items-center gap-1 text-[#450bc8] bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                    <span className="w-2 h-2 rounded-full bg-[#450bc8]" />
                     Booked
                   </span>
                   <span className="flex items-center gap-1 text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">
@@ -1053,14 +1271,16 @@ export default function Calendar() {
                   ) : (
                     <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200">
                       <span className="text-xs text-slate-500 font-medium">
-                        {dayBlock ? "This whole day is blocked." : `You have no working hours on ${new Date(year, month, selectedDay).toLocaleDateString("en-US", { weekday: "long" })}s.`}
+                        {profileMissing
+                          ? "We couldn't find your therapist profile, so your calendar can't be shown or changed. Please contact the admin team."
+                          : dayBlock ? "This whole day is blocked." : `You have no working hours on ${new Date(year, month, selectedDay).toLocaleDateString("en-US", { weekday: "long" })}s.`}
                       </span>
-                      {!dayBlock && (
+                      {!dayBlock && !profileMissing && (
                         <Button
                           type="button"
                           size="sm"
                           onClick={() => setAvailabilityOpen(true)}
-                          className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-[11px] h-7 px-3 rounded-lg cursor-pointer"
+                          className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-[11px] h-9 sm:h-7 px-3 rounded-lg cursor-pointer"
                         >
                           Set weekly hours
                         </Button>
@@ -1073,11 +1293,15 @@ export default function Calendar() {
                     const isBlocked = slot.status === "blocked" || Boolean(slot.dayBlocked);
                     const isAvailable = slot.status === "available" && !slot.dayBlocked;
                     const locked = isBooked || slot.past || slot.dayBlocked;
+                    // Waiting for the server: the slot keeps its colour until the change is saved
+                    const pending = slot.startMin !== undefined && pendingBlocks.has(`${selectedDate}|${labelOf(slot.startMin)}`);
 
                     return (
                       <button
                         key={`${slot.time}-${index}`}
                         type="button"
+                        disabled={pending}
+                        aria-busy={pending}
                         onClick={() => handleToggleBlockSlot(sessionKey, index)}
                         title={
                           isBooked
@@ -1091,13 +1315,14 @@ export default function Calendar() {
                                   : `Click to block ${slot.time}`
                         }
                         className={cn(
-                          "group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all border shadow-2xs",
+                          "group relative inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-black transition-all border shadow-2xs",
                           locked ? "cursor-default" : "cursor-pointer active:scale-95",
-                          isBooked && "bg-purple-50 text-[#5e2be2] border-purple-200",
+                          isBooked && "bg-purple-50 text-[#450bc8] border-purple-200",
                           isAvailable && !slot.past && "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-300",
                           isBlocked && !slot.past && "bg-slate-100 text-slate-700 border-slate-300",
                           isBlocked && !locked && "hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300",
-                          !isBooked && slot.past && "bg-white text-slate-300 border-slate-200 line-through"
+                          !isBooked && slot.past && "bg-white text-slate-300 border-slate-200 line-through",
+                          pending && "opacity-60 cursor-wait"
                         )}
                       >
                         {isBooked ? (
@@ -1110,7 +1335,9 @@ export default function Calendar() {
 
                         <span>{slot.time}</span>
 
-                        {!locked && (
+                        {pending ? (
+                          <span className="text-[9px] font-black ml-0.5">Saving…</span>
+                        ) : !locked && (
                           <span className="hidden group-hover:inline-block text-[9px] font-black ml-0.5 underline">
                             {isBlocked ? "Open" : "Block"}
                           </span>
@@ -1124,38 +1351,42 @@ export default function Calendar() {
 
             <button
               onClick={() => setAddEventOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300 bg-white text-[#5e2be2] text-xs font-extrabold py-3 hover:bg-purple-50/80 transition-all cursor-pointer shadow-2xs"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300 bg-white text-[#450bc8] text-xs font-extrabold py-3 hover:bg-purple-50/80 transition-all cursor-pointer shadow-2xs"
             >
               <Plus className="w-4 h-4" />
               <span>Book a Session / Block or Open Time</span>
             </button>
 
-            <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase pt-1">Booked Sessions</h4>
-            {bookedSessions.length === 0 ? (
+            <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase pt-1">Sessions & Open Slots</h4>
+            {listedSessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center p-6 bg-white rounded-2xl border border-dashed border-slate-200">
                 <CalendarDays className="w-8 h-8 text-slate-300 mb-2" />
                 <p className="text-sm font-extrabold text-slate-800">No sessions booked on this day</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-xs">Clients can book any green time above.</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">There are no open hours left to book a client into.</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {bookedSessions.map((s) => {
+                {listedSessions.map((s) => {
                   const i = daySessions.indexOf(s);
-                  const isBooked = true;
+                  const isBooked = s.status === 'booked';
                   const isBlocked = false;
-                  const isAvailable = false;
+                  const isAvailable = s.status === 'available';
+                  const status = String(s.bookingStatus || 'CONFIRMED');
+                  // Actions follow the session's state and its India-time start
+                  const actionable = isBooked && Boolean(s.bookingId) && ACTIVE_STATUSES.has(status);
+                  const started = hasStarted(s);
 
                   return (
                     <div
                       key={i}
                       className={cn(
-                        "group flex items-center justify-between gap-3 rounded-2xl border p-3.5 transition-all bg-white shadow-2xs hover:shadow-md",
+                        "group flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 sm:p-3.5 transition-all bg-white shadow-2xs hover:shadow-md",
                         isBooked && "border-slate-200/80 hover:border-slate-300",
                         isAvailable && "border-dashed border-emerald-300 bg-emerald-50/20 hover:bg-emerald-50/50",
                         isBlocked && "border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100/60"
                       )}
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex items-center gap-3 min-w-0 flex-1 basis-52">
                         <div className={cn(
                           "shrink-0 w-22 text-center py-2 rounded-xl text-xs font-black transition-all",
                           isBooked && "bg-slate-100 text-slate-700 border border-slate-200",
@@ -1180,7 +1411,7 @@ export default function Calendar() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 ml-auto">
                         {isBooked ? (
                           s.bookingStatus === 'COMPLETED' ? (
                             <Badge className="bg-emerald-100 text-emerald-800 border-0 text-[10px] font-extrabold px-2.5 py-0.5">
@@ -1205,7 +1436,7 @@ export default function Calendar() {
                               type="button"
                               size="sm"
                               onClick={() => handleOpenAssignClient(sessionKey, i, s)}
-                              className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-[11px] h-7 px-2.5 rounded-lg shadow-2xs cursor-pointer"
+                              className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-[11px] h-9 sm:h-7 px-2.5 rounded-lg shadow-2xs cursor-pointer"
                             >
                               + Book Client
                             </Button>
@@ -1217,15 +1448,15 @@ export default function Calendar() {
                             <button
                               type="button"
                               title="More Options"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
+                              className="p-2.5 sm:p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
                             >
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 rounded-xl p-1 shadow-lg border-slate-200">
-                            {isBooked && s.bookingId && s.bookingStatus !== 'COMPLETED' && (
+                            {actionable && started && (
                               <DropdownMenuItem
-                                onClick={() => handleMarkCompleted(s)}
+                                onClick={() => handleOpenStatusChange(s, 'COMPLETED')}
                                 className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -1233,13 +1464,39 @@ export default function Calendar() {
                               </DropdownMenuItem>
                             )}
 
-                            {isBooked && s.bookingStatus !== 'COMPLETED' && (
+                            {actionable && started && (
+                              <DropdownMenuItem
+                                onClick={() => handleOpenStatusChange(s, 'NO_SHOW_CLIENT')}
+                                className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 rounded-lg cursor-pointer"
+                              >
+                                <User className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Mark as no-show</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {actionable && !started && (
                               <DropdownMenuItem
                                 onClick={() => handleOpenReschedule(sessionKey, i, s)}
+                                className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-[#450bc8] hover:bg-purple-50 rounded-lg cursor-pointer"
+                              >
+                                <CalendarIcon className="w-3.5 h-3.5 text-[#450bc8]" />
+                                <span>Reschedule</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {actionable && !started && (
+                              <DropdownMenuItem
+                                onClick={() => handleOpenCancel(sessionKey, i, s)}
                                 className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
                               >
                                 <Ban className="w-3.5 h-3.5 text-rose-600" />
                                 <span>Cancel Booking</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {isBooked && !actionable && (
+                              <DropdownMenuItem disabled className="px-2.5 py-1.5 text-xs font-semibold text-slate-400 rounded-lg">
+                                No actions for this session
                               </DropdownMenuItem>
                             )}
 
@@ -1279,11 +1536,11 @@ export default function Calendar() {
         <div className="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-[#5e2be2]" />
+              <CalendarDays className="w-4 h-4 text-[#450bc8]" />
               {activeConsultant ? `${activeConsultant.name}'s Consultation History & Bookings` : 'All Session Bookings Log'}
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Showing {therapistBookingsList.length} real appointments recorded in MongoDB Atlas. Click "Focus Date" to view any past or upcoming day on the calendar above.
+              Showing {shownBookings.length} of {therapistBookingsList.length} bookings, newest first. Click "Focus Date" to view any past or upcoming day on the calendar above.
             </p>
           </div>
           <Badge className="bg-purple-100 text-purple-900 border border-purple-200 font-extrabold text-xs px-3 py-1">
@@ -1311,7 +1568,7 @@ export default function Calendar() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {therapistBookingsList.slice(0, 15).map((b: any, idx: number) => {
+                {shownBookings.map((b: any, idx: number) => {
                   // Website bookings are paid first and scheduled later: no session date yet (never the purchase time)
                   const unscheduled = Boolean(b.toBeScheduled) || (!b.date && !b.scheduledAt);
                   const dayMatch = String(b.date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -1331,14 +1588,14 @@ export default function Calendar() {
                       <td className="py-3 px-4 whitespace-nowrap font-bold text-slate-700 font-mono">
                         {dateStr}
                       </td>
-                      <td className="py-3 px-4 whitespace-nowrap font-extrabold text-[#5e2be2]">
+                      <td className="py-3 px-4 whitespace-nowrap font-extrabold text-[#450bc8]">
                         {timeStr}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <Badge className={cn(
                           "border-0 text-[10px] font-extrabold px-2.5 py-0.5",
                           status === 'COMPLETED' && "bg-emerald-100 text-emerald-800",
-                          (status === 'CONFIRMED' || status === 'RESCHEDULED') && "bg-purple-100 text-[#5e2be2]",
+                          (status === 'CONFIRMED' || status === 'RESCHEDULED') && "bg-purple-100 text-[#450bc8]",
                           status === 'PENDING' && "bg-amber-100 text-amber-800",
                           (status === 'CANCELLED' || status.startsWith('NO_SHOW')) && "bg-rose-100 text-rose-800"
                         )}>
@@ -1352,9 +1609,9 @@ export default function Calendar() {
                           variant="outline"
                           disabled={unscheduled || !bDate}
                           onClick={() => handleJumpToBookingDate(bDate)}
-                          className="text-[11px] font-bold h-7 px-2.5 rounded-lg border-purple-200 text-[#5e2be2] hover:bg-purple-50 cursor-pointer inline-flex items-center gap-1.5"
+                          className="text-[11px] font-bold h-7 px-2.5 rounded-lg border-purple-200 text-[#450bc8] hover:bg-purple-50 cursor-pointer inline-flex items-center gap-1.5"
                         >
-                          <CalendarIcon className="w-3 h-3 text-[#5e2be2]" />
+                          <CalendarIcon className="w-3 h-3 text-[#450bc8]" />
                           Focus Date
                         </Button>
                       </td>
@@ -1363,6 +1620,26 @@ export default function Calendar() {
                 })}
               </tbody>
             </table>
+            {therapistBookingsList.length > shownBookings.length && (
+              <div className="flex items-center justify-center gap-3 pt-3">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setLogLimit(n => n + LOG_PAGE)}
+                  className="text-[11px] font-bold h-8 px-3 rounded-lg border-purple-200 text-[#450bc8] hover:bg-purple-50 cursor-pointer"
+                >
+                  Show {Math.min(LOG_PAGE, therapistBookingsList.length - shownBookings.length)} more
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setLogLimit(therapistBookingsList.length)}
+                  className="text-[11px] font-bold text-slate-500 hover:text-[#450bc8] cursor-pointer"
+                >
+                  Show all {therapistBookingsList.length}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1372,7 +1649,7 @@ export default function Calendar() {
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md rounded-3xl p-4 sm:p-6 border-0 shadow-2xl max-h-[92vh] overflow-y-auto">
           <DialogHeader className="space-y-1">
             <DialogTitle className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-[#5e2be2]" />
+              <Plus className="w-5 h-5 text-[#450bc8]" />
               Book Client into Available Slot
             </DialogTitle>
             <p className="text-xs text-slate-500 font-medium">
@@ -1383,31 +1660,31 @@ export default function Calendar() {
           {assignTarget && (
             <div className="space-y-4 py-2">
               <div className="p-3.5 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-1 text-xs">
-                <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase tracking-wider block">Target Slot</span>
+                <span className="text-[10px] font-extrabold text-[#450bc8] uppercase tracking-wider block">Target Slot</span>
                 <p className="font-extrabold text-slate-900 text-sm">Time: {assignTarget.slot.time}</p>
                 <p className="text-slate-600 font-medium">{assignTarget.slot.duration} Session</p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-700 block">Select Client</label>
-                <Select value={assignClientName} onValueChange={setAssignClientName}>
-                  <SelectTrigger className="rounded-xl border-slate-200 text-xs h-10">
-                    <SelectValue placeholder="Select client from database" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dbClients.length > 0 ? (
-                      dbClients.map((client) => (
+                {dbClients.length > 0 ? (
+                  <Select value={assignClientName} onValueChange={setAssignClientName}>
+                    <SelectTrigger className="rounded-xl border-slate-200 text-xs h-10">
+                      <SelectValue placeholder="Select your client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dbClients.map((client) => (
                         <SelectItem key={client.id} value={client.name} className="text-xs">
                           {client.name}
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="Client Record" className="text-xs">
-                        Default Client Record
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-medium">
+                    You have no clients yet. When clients book sessions with you, you can book them into open slots here.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -1433,16 +1710,17 @@ export default function Calendar() {
             <Button
               type="button"
               onClick={handleConfirmAssignClient}
-              className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 cursor-pointer"
+              disabled={assigning || !dbClients.some(c => c.name === assignClientName)}
+              className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 cursor-pointer"
             >
-              Confirm Booking
+              {assigning ? "Booking…" : "Confirm Booking"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Cancel Booking Confirmation Popup (Cancel / Yes) */}
-      <AlertDialog open={confirmRescheduleOpen} onOpenChange={setConfirmRescheduleOpen}>
+      <AlertDialog open={confirmRescheduleOpen} onOpenChange={(o) => { if (!cancelling) setConfirmRescheduleOpen(o); }}>
         <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-3xl p-4 sm:p-6 border-0 shadow-2xl bg-white max-h-[92vh] overflow-y-auto">
           <AlertDialogHeader className="space-y-2">
             <AlertDialogTitle className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -1451,37 +1729,92 @@ export default function Calendar() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-slate-600 font-medium leading-relaxed space-y-2">
               <span>
-                Are you sure you want to cancel the booking for <strong className="text-slate-900">{rescheduleTarget?.session.client}</strong> scheduled at <strong className="text-[#5e2be2]">{rescheduleTarget?.session.time}</strong>? This will release the slot back as an available consultation slot.
+                Are you sure you want to cancel the booking for <strong className="text-slate-900">{rescheduleTarget?.session.client}</strong> scheduled at <strong className="text-[#450bc8]">{rescheduleTarget?.session.time}</strong>? This will release the slot back as an available consultation slot.
               </span>
               <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50/90 p-2.5 rounded-xl border border-amber-200 mt-2.5">
                 <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>Cancellation Policy: Allowed up to 3 hours before session start time.</span>
+                <span>Cancellation Policy: Allowed up to 3 hours before session start time (India time).</span>
               </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-slate-700 block">Reason (optional, shared with the client)</label>
+            <Input
+              placeholder="e.g. I'm unwell today"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="rounded-xl border-slate-200 text-xs h-10"
+            />
+          </div>
+          <AlertDialogFooter className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+            <AlertDialogCancel
+              disabled={cancelling}
+              onClick={() => setConfirmRescheduleOpen(false)}
+              className="rounded-xl text-xs font-extrabold border-slate-200 hover:bg-slate-100 cursor-pointer"
+            >
+              Keep booking
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={cancelling}
+              onClick={(e) => {
+                // Stay open until the server answers; it closes only after a successful cancel
+                e.preventDefault();
+                handleConfirmCancelBooking();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-rose-600/20 cursor-pointer"
+            >
+              {cancelling ? "Cancelling…" : "Yes, cancel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mark as completed / no-show confirmation */}
+      <AlertDialog open={Boolean(statusConfirm)} onOpenChange={(o) => { if (!o && !statusSaving) setStatusConfirm(null); }}>
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-3xl p-4 sm:p-6 border-0 shadow-2xl bg-white max-h-[92vh] overflow-y-auto">
+          <AlertDialogHeader className="space-y-2">
+            <AlertDialogTitle className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              {statusConfirm?.status === 'COMPLETED'
+                ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                : <User className="w-5 h-5 text-amber-600" />}
+              {statusConfirm?.status === 'COMPLETED' ? "Mark session as completed?" : "Mark as client no-show?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-600 font-medium leading-relaxed">
+              {statusConfirm?.status === 'COMPLETED'
+                ? <>The session with <strong className="text-slate-900">{statusConfirm?.session.client}</strong> at <strong className="text-[#450bc8]">{statusConfirm?.session.time}</strong> will be recorded as completed, and the client will be asked for feedback.</>
+                : <>The session with <strong className="text-slate-900">{statusConfirm?.session.client}</strong> at <strong className="text-[#450bc8]">{statusConfirm?.session.time}</strong> will be recorded as a no-show because the client did not attend.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
             <AlertDialogCancel
-              onClick={() => setConfirmRescheduleOpen(false)}
+              disabled={statusSaving}
               className="rounded-xl text-xs font-extrabold border-slate-200 hover:bg-slate-100 cursor-pointer"
             >
-              Cancel
+              Go back
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmCancelBooking}
-              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-rose-600/20 cursor-pointer"
+              disabled={statusSaving}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmStatusChange();
+              }}
+              className={cn(
+                "text-white text-xs font-extrabold rounded-xl shadow-md cursor-pointer",
+                statusConfirm?.status === 'COMPLETED' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"
+              )}
             >
-              Yes
+              {statusSaving ? "Saving…" : statusConfirm?.status === 'COMPLETED' ? "Mark completed" : "Mark no-show"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Reschedule Session Dialog Modal */}
-      <Dialog open={rescheduleModalOpen} onOpenChange={setRescheduleModalOpen}>
+      <Dialog open={rescheduleModalOpen} onOpenChange={(o) => { if (!rescheduling) setRescheduleModalOpen(o); }}>
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md rounded-3xl p-4 sm:p-6 border-0 shadow-2xl max-h-[92vh] overflow-y-auto">
           <DialogHeader className="space-y-1">
             <DialogTitle className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-[#5e2be2]" />
+              <CalendarIcon className="w-5 h-5 text-[#450bc8]" />
               Reschedule Session Slot
             </DialogTitle>
             <p className="text-xs text-slate-500 font-medium">
@@ -1492,16 +1825,17 @@ export default function Calendar() {
           {rescheduleTarget && (
             <div className="space-y-4 py-2">
               <div className="p-3.5 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-1 text-xs">
-                <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase tracking-wider block">Current Booking</span>
+                <span className="text-[10px] font-extrabold text-[#450bc8] uppercase tracking-wider block">Current Booking</span>
                 <p className="font-extrabold text-slate-900 text-sm">{rescheduleTarget.session.client} ({rescheduleTarget.session.initials})</p>
                 <p className="text-slate-600 font-medium">{rescheduleTarget.session.type} · {rescheduleTarget.session.duration}</p>
-                <p className="text-[#5e2be2] font-extrabold mt-1">Current Time: {rescheduleTarget.session.time}</p>
+                <p className="text-[#450bc8] font-extrabold mt-1">Current Time: {rescheduleTarget.session.time}</p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-700 block">Select New Date</label>
                 <Input
                   type="date"
+                  min={todayIST()}
                   value={rescheduleDate}
                   onChange={(e) => setRescheduleDate(e.target.value)}
                   className="rounded-xl border-slate-200 text-xs h-10"
@@ -1510,28 +1844,28 @@ export default function Calendar() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-slate-700 block">Select New Time Slot</label>
-                <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
-                  <SelectTrigger className="rounded-xl border-slate-200 text-xs h-10">
-                    <SelectValue placeholder="Select new time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "11:30 AM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"].map((t) => (
-                      <SelectItem key={t} value={t} className="text-xs">
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-slate-700 block">Reschedule Reason / Note (Optional)</label>
-                <Input
-                  placeholder="e.g. Client requested time shift"
-                  value={rescheduleReason}
-                  onChange={(e) => setRescheduleReason(e.target.value)}
-                  className="rounded-xl border-slate-200 text-xs h-10"
-                />
+                {rescheduleDate < todayIST() ? (
+                  <p className="text-xs font-semibold text-rose-600">That date has passed. Pick today or a later date.</p>
+                ) : rescheduleSlots === null ? (
+                  <p className="text-xs text-slate-400 font-medium italic">Loading your free times…</p>
+                ) : rescheduleSlotsError ? (
+                  <p className="text-xs font-semibold text-rose-600">{rescheduleSlotsError}</p>
+                ) : freeRescheduleSlots.length === 0 ? (
+                  <p className="text-xs text-slate-500 font-medium">You have no free hours on this date. Pick another date.</p>
+                ) : (
+                  <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
+                    <SelectTrigger className="rounded-xl border-slate-200 text-xs h-10">
+                      <SelectValue placeholder="Select new time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {freeRescheduleSlots.map((s) => (
+                        <SelectItem key={s.time} value={s.time} className="text-xs">
+                          {s.time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           )}
@@ -1541,6 +1875,7 @@ export default function Calendar() {
               type="button"
               variant="outline"
               onClick={() => setRescheduleModalOpen(false)}
+              disabled={rescheduling}
               className="rounded-xl text-xs font-bold border-slate-200 cursor-pointer"
             >
               Cancel
@@ -1548,9 +1883,10 @@ export default function Calendar() {
             <Button
               type="button"
               onClick={handleConfirmReschedule}
-              className="bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 cursor-pointer"
+              disabled={rescheduling || !freeRescheduleSlots.some(s => s.time === rescheduleTime)}
+              className="bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 cursor-pointer"
             >
-              Confirm Reschedule
+              {rescheduling ? "Saving…" : "Confirm Reschedule"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1565,6 +1901,7 @@ export default function Calendar() {
         onOpenChange={setAddEventOpen}
         defaultDate={`${year}-${String(month + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`}
         onAddSlot={handleAddSlotFromDialog}
+        sessions={busySessions}
       />
     </div>
   );

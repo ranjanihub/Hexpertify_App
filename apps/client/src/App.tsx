@@ -26,14 +26,17 @@ function PageFallback() {
     </div>
   );
 }
-import { 
-  isClientAuthenticated, 
+import {
+  isClientAuthenticated,
   getClientAuth,
   setClientAuth,
-  DEFAULT_CLIENT,
-  isAuthenticated as isConsultantAuthenticated, 
-  isAdminAuthenticated 
+  logoutClient,
+  redeemSsoTicket,
+  verifyApiSession,
+  isAuthenticated as isConsultantAuthenticated,
+  isAdminAuthenticated
 } from '@/lib/auth';
+import { finishLoginLoader } from '@/lib/login-loader';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,32 +50,44 @@ const queryClient = new QueryClient({
 
 function ClientAuthGuard({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
-  const [state, setState] = useState<'loading' | 'allowed' | 'denied' | 'unauthenticated'>('loading');
+  const [state, setState] = useState<'loading' | 'allowed' | 'denied' | 'unauthenticated' | 'error'>('loading');
   const [deniedMessage, setDeniedMessage] = useState<string>('');
   const [redirectTarget, setRedirectTarget] = useState<string>('');
+  const [attempt, setAttempt] = useState(0);
+
+  // The sign-in loading screen (from the login page) plays out once there is something to show
+  useEffect(() => {
+    if (state === 'allowed' || state === 'denied' || state === 'error') finishLoginLoader();
+  }, [state]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const verifyAccess = async () => {
-      let client = getClientAuth();
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const signInAgain = () => {
+      logoutClient();
+      if (isMounted) {
+        setState('unauthenticated');
+        setLocation('/login');
+      }
+    };
 
-      if (!client && isLocalDev) {
-        // Local dev only: fall back to the demo client so direct navigation works without signing in.
-        // On the live site a signed-out visitor goes to the login page instead of the demo account.
-        const stored = localStorage.getItem('hexpertify_client_auth');
-        if (!stored) {
-          setClientAuth(DEFAULT_CLIENT, false);
-          client = DEFAULT_CLIENT;
-        }
+    // Only a session the server confirms opens the panel; when the check cannot be made, nothing opens
+    const verifyAccess = async () => {
+      await redeemSsoTicket();
+      const client = getClientAuth();
+      if (!client) {
+        signInAgain();
+        return;
       }
 
-      if (!client) {
-        if (isMounted) {
-          setState('unauthenticated');
-          setLocation('/login');
-        }
+      const session = await verifyApiSession(['client']);
+      if (!isMounted) return;
+      if (session === 'invalid') {
+        signInAgain();
+        return;
+      }
+      if (session === 'error') {
+        setState('error');
         return;
       }
 
@@ -84,7 +99,12 @@ function ClientAuthGuard({ children }: { children: React.ReactNode }) {
 
         if (!isMounted) return;
 
-        if ((res.status === 403 || data.hasConfirmedBooking === false) && !isLocalDev) {
+        if (res.status === 401) {
+          signInAgain();
+          return;
+        }
+
+        if (res.status === 403 || data.hasConfirmedBooking === false) {
           setState('denied');
           setDeniedMessage(
             data.error || 
@@ -112,15 +132,66 @@ function ClientAuthGuard({ children }: { children: React.ReactNode }) {
           }
           setState('allowed');
         } else {
-          setState('allowed');
+          setState('error');
         }
       } catch (err) {
-        if (isMounted) setState('allowed');
+        if (isMounted) setState('error');
       }
     };
 
+    // Most reads still answer (with less data) when the token has expired, so a 401 alone can't be relied on:
+    // re-check the sign-in when the client comes back to the tab and every few minutes while it stays open.
+    // Only a definite "invalid" signs out; a failed check (offline) is left for the next one.
+    let lastRecheck = Date.now();
+    const recheck = async (force = false) => {
+      if (!getClientAuth()) return;
+      if (!force && Date.now() - lastRecheck < 30_000) return;
+      lastRecheck = Date.now();
+      if ((await verifyApiSession(['client'])) === 'invalid' && isMounted) signInAgain();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void recheck();
+    };
+    const onFocus = () => void recheck();
+    const interval = window.setInterval(() => void recheck(true), 5 * 60_000);
+
+    setState('loading');
     verifyAccess();
-  }, [setLocation]);
+    // The sign-in ended while the panel was open (expired or revoked): back to the login page
+    window.addEventListener('hexpertify_session_expired', signInAgain);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+      window.removeEventListener('hexpertify_session_expired', signInAgain);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [setLocation, attempt]);
+
+  if (state === 'error') {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center text-white gap-4">
+        <h2 className="text-xl font-bold">We couldn&apos;t check your sign-in</h2>
+        <p className="text-sm text-slate-400 max-w-sm">
+          Hexpertify could not be reached just now. Check your connection and try again.
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setAttempt((n) => n + 1)}
+            className="py-2.5 px-6 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-semibold cursor-pointer"
+          >
+            Try again
+          </button>
+          <a href="/login" className="py-2.5 px-6 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium border border-slate-700">
+            Back to Login
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (state === 'loading') {
     return (

@@ -76,7 +76,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden mt-2 sm:mt-8 max-h-[88vh] flex flex-col">
         {/* Search Header */}
         <div className="p-4 border-b border-slate-100 flex items-center gap-3">
-          <Search className="w-5 h-5 text-[#5e2be2]" />
+          <Search className="w-5 h-5 text-[#450bc8]" />
           <input
             type="text"
             autoFocus
@@ -124,11 +124,11 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                         <div className="flex items-center gap-3">
                           <img src={t.photo} alt={t.name} className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-100" />
                           <div>
-                            <p className="text-sm font-bold text-slate-900 group-hover:text-[#5e2be2]">{t.name}</p>
+                            <p className="text-sm font-bold text-slate-900 group-hover:text-[#450bc8]">{t.name}</p>
                             <p className="text-xs text-slate-500">{t.profession}</p>
                           </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#5e2be2] transition-colors" />
+                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#450bc8] transition-colors" />
                       </div>
                     ))}
                   </div>
@@ -154,11 +154,11 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                         <div className="flex items-center gap-3">
                           <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-100" />
                           <div>
-                            <p className="text-sm font-bold text-slate-900 group-hover:text-[#5e2be2]">{c.name}</p>
+                            <p className="text-sm font-bold text-slate-900 group-hover:text-[#450bc8]">{c.name}</p>
                             <p className="text-xs text-slate-500">{c.email}</p>
                           </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#5e2be2] transition-colors" />
+                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#450bc8] transition-colors" />
                       </div>
                     ))}
                   </div>
@@ -211,10 +211,10 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                         className="p-3 bg-slate-50 hover:bg-purple-50/60 rounded-2xl border border-slate-100 flex items-center justify-between cursor-pointer group transition-colors"
                       >
                         <div>
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#5e2be2]">{r.title}</p>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#450bc8]">{r.title}</p>
                           <p className="text-xs text-slate-500 line-clamp-1">{r.description}</p>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-100 text-[#5e2be2]">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-100 text-[#450bc8]">
                           {r.typeLabel}
                         </span>
                       </div>

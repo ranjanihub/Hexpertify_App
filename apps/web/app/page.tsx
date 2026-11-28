@@ -280,9 +280,9 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <Header />
-      <main className="h-[calc(100vh-56px)] overflow-y-scroll md:h-[calc(100vh-92px)]">
+      <main className="h-[calc(100vh-56px)] overflow-y-scroll md:h-[calc(100vh-92px)] supports-[height:100dvh]:h-[calc(100dvh-56px)] md:supports-[height:100dvh]:h-[calc(100dvh-92px)]">
         <NotificationTitleBar title={metaData?.notificationTitle} />
-        <div className="p-4 md:p-6 lg:p-[50px] w-full">
+        <div className="p-4 md:p-6 lg:p-[50px] w-full min-[2000px]:mx-auto min-[2000px]:max-w-[1900px]">
         
           <CarouselCommon
             HeroBanner={metaData}
@@ -345,11 +345,11 @@ export default async function HomePage() {
               competence, and client care.
             </p>
           </div>
-          <div className="mx-auto  grid max-w-[1290px] grid-cols-1 gap-y-[60px] md:grid-cols-2 lg:grid-cols-6">
+          <div className="mx-auto  grid max-w-[1290px] grid-cols-1 gap-y-8 sm:gap-y-12 md:grid-cols-2 md:gap-y-[60px] lg:grid-cols-6">
             {consultantProcess?.map((item: any, index: any) => (
               <div
                 key={index}
-                className={`flex h-[196px] w-full max-w-[340px] flex-col items-center justify-center justify-self-center rounded-[35px] p-[30px] shadow-[0_0_15px_0_rgba(0,0,0,0.5)] lg:col-span-2 ${consultantProcessGridPositions[index]}`}
+                className={`flex min-h-[196px] w-full max-w-[340px] flex-col items-center justify-center justify-self-center rounded-[35px] p-6 sm:p-[30px] shadow-[0_0_15px_0_rgba(0,0,0,0.5)] lg:col-span-2 ${consultantProcessGridPositions[index]}`}
               >
                 <Image
                   src={item?.icon}
@@ -358,7 +358,7 @@ export default async function HomePage() {
                   className="rounded-[30px]"
                   alt={"Image"}
                 />
-                <p className="text-[20px] font-semibold text-[700] text-[rgba(8, 26, 61, 1)]">
+                <p className="text-center text-lg sm:text-[20px] font-semibold text-[700] text-[rgba(8, 26, 61, 1)]">
                   {item?.title}
                 </p>
                 <div className="text-[16px] font-normal text-center leading-normal">
@@ -368,7 +368,7 @@ export default async function HomePage() {
             ))}
           </div>
         </div>
-        <div className="p-4 md:p-6 lg:p-[50px] lg:pt-[0px] md:pt-[0px]">
+        <div className="p-4 md:p-6 lg:p-[50px] lg:pt-[0px] md:pt-[0px] min-[2000px]:mx-auto min-[2000px]:max-w-[1900px]">
           <div className="flex flex-col justify-center items-center my-8 md:my-[20px] px-4">
             <p className="text-3xl md:text-[48px] w-full font-semibold text-center text-[black] my-4 md:my-[20px] [text-shadow:0_2px_4px_#00000040]">
               <span className="text-primary">Evidence-Based </span>Insights From
@@ -386,7 +386,7 @@ export default async function HomePage() {
           </div>
           <BlogGridContainer />
         </div>
-        <div className="p-4 md:p-6 lg:p-[50px]">
+        <div className="p-4 md:p-6 lg:p-[50px] min-[2000px]:mx-auto min-[2000px]:max-w-[1900px]">
           <div className="flex flex-col justify-center items-center my-8 md:my-[20px] px-4">
             <p className="text-3xl md:text-[48px] w-full font-semibold text-center text-[black] my-4 md:my-[20px] [text-shadow:0_2px_4px_#00000040]">
               <span className="text-primary">Our Services</span>
@@ -411,7 +411,7 @@ export default async function HomePage() {
           />
         </div>
 
-        <div className="bg-primary-foreground p-4 md:p-6 lg:p-[50px]">
+        <div className="bg-primary-foreground p-4 md:p-6 lg:p-[50px] min-[2000px]:px-[calc((100%-1800px)/2)]">
           <Testimonial data={TestimonialData} />
           <FAQ data={faqs} />
         </div>

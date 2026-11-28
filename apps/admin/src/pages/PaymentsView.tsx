@@ -532,7 +532,7 @@ export const PaymentsView: React.FC = () => {
       )}
 
       {/* Hero Header */}
-      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 space-y-1">
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Therapist Payout & Commission Portal</h1>
@@ -544,9 +544,9 @@ export const PaymentsView: React.FC = () => {
         <div className="relative z-10 flex flex-wrap items-center gap-3 shrink-0">
           <button
             onClick={handleExportCSV}
-            className="w-full sm:w-auto justify-center px-4 sm:px-5 py-2.5 sm:py-3 bg-white text-[#4f28d9] rounded-xl sm:rounded-2xl font-extrabold text-xs flex items-center gap-2 shadow-lg hover:bg-purple-50 transition-all active:scale-95"
+            className="w-full sm:w-auto justify-center px-4 sm:px-5 py-2.5 sm:py-3 bg-white text-[#3a0aa8] rounded-xl sm:rounded-2xl font-extrabold text-xs flex items-center gap-2 shadow-lg hover:bg-purple-50 transition-all active:scale-95"
           >
-            <Download className="w-4 h-4 text-[#4f28d9]" />
+            <Download className="w-4 h-4 text-[#3a0aa8]" />
             Export Statement CSV
           </button>
         </div>
@@ -589,27 +589,27 @@ export const PaymentsView: React.FC = () => {
         </div>
 
         {/* Card 3: Platform Commission */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:shadow-lg transition-all duration-300 space-y-4 group">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-sm hover:shadow-lg transition-all duration-300 space-y-3 sm:space-y-4 group sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Platform Commission</span>
-            <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-              <PieChart className="w-5 h-5" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-slate-500 uppercase tracking-wider">Platform Commission</span>
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+              <PieChart className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
           <div>
-            <h3 className="text-2xl sm:text-3xl font-black text-blue-600 tracking-tight">₹{totalPlatformCommissions.toLocaleString('en-IN')}</h3>
+            <h3 className="text-xl sm:text-3xl font-black text-blue-600 tracking-tight">₹{totalPlatformCommissions.toLocaleString('en-IN')}</h3>
           </div>
         </div>
       </div>
 
       {/* Main Tab Navigation Bar */}
       <div className="bg-white rounded-3xl p-2 border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto p-1">
+        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:flex sm:items-center gap-1.5 overflow-x-auto p-1 w-full sm:w-auto">
           <button
             onClick={() => setActiveTab('wizard')}
-            className={`px-5 py-3 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition-all ${
+            className={`px-3 sm:px-5 py-3 rounded-2xl font-extrabold text-xs flex items-center justify-center sm:justify-start text-center gap-2 transition-all ${
               activeTab === 'wizard'
-                ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20'
+                ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -618,9 +618,9 @@ export const PaymentsView: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-5 py-3 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition-all ${
+            className={`px-3 sm:px-5 py-3 rounded-2xl font-extrabold text-xs flex items-center justify-center sm:justify-start text-center gap-2 transition-all ${
               activeTab === 'history'
-                ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20'
+                ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -632,24 +632,24 @@ export const PaymentsView: React.FC = () => {
 
       {/* TAB 1: RELEASE PAYOUT WORKFLOW */}
       {activeTab === 'wizard' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
               <h3 className="text-lg font-extrabold text-slate-900">Interactive 3-Step Disbursal Wizard</h3>
               <p className="text-xs text-slate-500">Audit session reports, select line items, and execute verified bank transfers</p>
             </div>
 
             {/* Stepper Indicator */}
-            <div className="flex items-center gap-2 text-xs font-bold overflow-x-auto pb-1 md:pb-0">
-              <span className={`px-3.5 py-1.5 rounded-xl transition-all ${activeStep === 1 ? 'bg-[#5e2be2] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
+            <div className="flex items-center gap-2 text-xs font-bold overflow-x-auto pb-1 lg:pb-0">
+              <span className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 transition-all ${activeStep === 1 ? 'bg-[#450bc8] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
                 1. Select Therapist
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-              <span className={`px-3.5 py-1.5 rounded-xl transition-all ${activeStep === 2 ? 'bg-[#5e2be2] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 transition-all ${activeStep === 2 ? 'bg-[#450bc8] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
                 2. Audit Sessions
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-              <span className={`px-3.5 py-1.5 rounded-xl transition-all ${activeStep === 3 ? 'bg-[#5e2be2] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`px-3.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 transition-all ${activeStep === 3 ? 'bg-[#450bc8] text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
                 3. Confirm & Transfer
               </span>
             </div>
@@ -666,7 +666,7 @@ export const PaymentsView: React.FC = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search therapist by name or profession..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-800 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-800 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                 />
               </div>
 
@@ -677,7 +677,7 @@ export const PaymentsView: React.FC = () => {
                   <p className="text-xs text-slate-400 mt-1">There are no pending session reports waiting for disbursal.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                   {filteredPayouts.map((p) => {
                     const currentSessions = p.unpaidSessions || [];
                     return (
@@ -688,18 +688,18 @@ export const PaymentsView: React.FC = () => {
                           setSelectedSessionIds(currentSessions.map((s) => s.id));
                           setActiveStep(2);
                         }}
-                        className="p-6 bg-slate-50/70 hover:bg-purple-50/40 border border-slate-200/80 hover:border-[#5e2be2] rounded-3xl cursor-pointer transition-all hover:shadow-md space-y-4 group"
+                        className="p-4 sm:p-6 bg-slate-50/70 hover:bg-purple-50/40 border border-slate-200/80 hover:border-[#450bc8] rounded-3xl cursor-pointer transition-all hover:shadow-md space-y-4 group"
                       >
                         <div className="flex items-center gap-3">
                           {p.therapistAvatar ? (
                             <img src={p.therapistAvatar} alt={p.therapistName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-purple-100 shrink-0" />
                           ) : (
-                            <div className="w-12 h-12 rounded-2xl bg-purple-100 text-[#5e2be2] font-extrabold text-lg flex items-center justify-center ring-2 ring-purple-100 shrink-0">
+                            <div className="w-12 h-12 rounded-2xl bg-purple-100 text-[#450bc8] font-extrabold text-lg flex items-center justify-center ring-2 ring-purple-100 shrink-0">
                               {(p.therapistName || 'T').charAt(0).toUpperCase()}
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-[#5e2be2] transition-colors truncate">
+                            <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-[#450bc8] transition-colors truncate">
                               {p.therapistName}
                             </h4>
                             <p className="text-xs text-slate-500 font-medium truncate">{p.profession}</p>
@@ -719,7 +719,7 @@ export const PaymentsView: React.FC = () => {
                           </div>
                         </div>
 
-                        <button className="w-full py-2.5 bg-[#5e2be2] group-hover:bg-[#4f28d9] text-white rounded-2xl font-extrabold text-xs shadow-md shadow-[#5e2be2]/20 flex items-center justify-center gap-1.5 transition-all">
+                        <button className="w-full py-2.5 bg-[#450bc8] group-hover:bg-[#3a0aa8] text-white rounded-2xl font-extrabold text-xs shadow-md shadow-[#450bc8]/20 flex items-center justify-center gap-1.5 transition-all">
                           <span>Inspect Unpaid Sessions</span>
                           <ArrowRight className="w-4 h-4" />
                         </button>
@@ -734,12 +734,12 @@ export const PaymentsView: React.FC = () => {
           {/* STEP 2: Session Checkbox Selection */}
           {activeStep === 2 && selectedTherapist && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between bg-purple-50/70 border border-purple-100 p-4 rounded-2xl">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-purple-50/70 border border-purple-100 p-4 rounded-2xl">
+                <div className="flex items-center gap-3 min-w-0">
                   {selectedTherapist.therapistAvatar ? (
                     <img src={selectedTherapist.therapistAvatar} alt={selectedTherapist.therapistName} className="w-10 h-10 rounded-2xl object-cover ring-2 ring-purple-200" />
                   ) : (
-                    <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#5e2be2] font-extrabold flex items-center justify-center ring-2 ring-purple-200">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#450bc8] font-extrabold flex items-center justify-center ring-2 ring-purple-200">
                       {(selectedTherapist.therapistName || 'T').charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -754,7 +754,7 @@ export const PaymentsView: React.FC = () => {
                 >
                   {selectedSessionIds.length === (selectedTherapist.unpaidSessions || []).length ? (
                     <>
-                      <CheckSquare className="w-4 h-4 text-[#5e2be2]" />
+                      <CheckSquare className="w-4 h-4 text-[#450bc8]" />
                       <span>Deselect All</span>
                     </>
                   ) : (
@@ -767,7 +767,7 @@ export const PaymentsView: React.FC = () => {
               </div>
 
               <div className="overflow-x-auto border border-slate-100 rounded-2xl">
-                <table className="w-full text-left text-xs text-slate-600">
+                <table className="w-full min-w-[760px] whitespace-nowrap text-left text-xs text-slate-600">
                   <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
                     <tr>
                       <th className="p-4 w-12">Select</th>
@@ -792,7 +792,7 @@ export const PaymentsView: React.FC = () => {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => toggleSession(s.id)}
-                              className="w-4 h-4 accent-[#5e2be2] cursor-pointer rounded"
+                              className="w-4 h-4 accent-[#450bc8] cursor-pointer rounded"
                             />
                           </td>
                           <td className="p-4 font-bold text-slate-900 whitespace-nowrap">{s.sessionDate}</td>
@@ -813,7 +813,7 @@ export const PaymentsView: React.FC = () => {
                 </table>
               </div>
 
-              <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+              <div className="flex flex-col-reverse sm:flex-row justify-between sm:items-center gap-3 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => setActiveStep(1)}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl transition-colors"
@@ -823,7 +823,7 @@ export const PaymentsView: React.FC = () => {
                 <button
                   disabled={selectedSessionIds.length === 0}
                   onClick={() => setActiveStep(3)}
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-50 text-white font-extrabold text-xs rounded-2xl shadow-md shadow-[#5e2be2]/20 flex items-center gap-2"
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 text-white font-extrabold text-xs rounded-2xl shadow-md shadow-[#450bc8]/20 flex items-center justify-center text-center gap-2"
                 >
                   <span>Proceed to Payment Summary ({selectedSessionIds.length} Selected)</span>
                   <ArrowRight className="w-4 h-4" />
@@ -892,7 +892,7 @@ export const PaymentsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsEditingDetailsModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] font-extrabold text-xs rounded-xl border border-purple-200 transition-colors shadow-2xs self-start sm:self-auto"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#450bc8] font-extrabold text-xs rounded-xl border border-purple-200 transition-colors shadow-2xs self-start sm:self-auto"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     <span>Configure / Edit Details</span>
@@ -912,7 +912,7 @@ export const PaymentsView: React.FC = () => {
                     onClick={() => setDisbursalMethod('Bank Transfer')}
                     className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${
                       disbursalMethod === 'Bank Transfer'
-                        ? 'border-[#5e2be2] bg-purple-50/50 shadow-sm'
+                        ? 'border-[#450bc8] bg-purple-50/50 shadow-sm'
                         : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
                     }`}
                   >
@@ -920,7 +920,7 @@ export const PaymentsView: React.FC = () => {
                       <div className="flex items-center gap-2.5">
                         <div
                           className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                            disbursalMethod === 'Bank Transfer' ? 'bg-[#5e2be2] text-white' : 'bg-slate-200 text-slate-600'
+                            disbursalMethod === 'Bank Transfer' ? 'bg-[#450bc8] text-white' : 'bg-slate-200 text-slate-600'
                           }`}
                         >
                           <Building2 className="w-5 h-5" />
@@ -932,10 +932,10 @@ export const PaymentsView: React.FC = () => {
                       </div>
                       <div
                         className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          disbursalMethod === 'Bank Transfer' ? 'border-[#5e2be2]' : 'border-slate-300'
+                          disbursalMethod === 'Bank Transfer' ? 'border-[#450bc8]' : 'border-slate-300'
                         }`}
                       >
-                        {disbursalMethod === 'Bank Transfer' && <div className="w-2 h-2 rounded-full bg-[#5e2be2]" />}
+                        {disbursalMethod === 'Bank Transfer' && <div className="w-2 h-2 rounded-full bg-[#450bc8]" />}
                       </div>
                     </div>
                     <div className="pt-2 border-t border-slate-200/60 text-[11px] text-slate-600 space-y-0.5">
@@ -955,7 +955,7 @@ export const PaymentsView: React.FC = () => {
                     onClick={() => setDisbursalMethod('UPI')}
                     className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${
                       disbursalMethod === 'UPI'
-                        ? 'border-[#5e2be2] bg-purple-50/50 shadow-sm'
+                        ? 'border-[#450bc8] bg-purple-50/50 shadow-sm'
                         : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
                     }`}
                   >
@@ -963,7 +963,7 @@ export const PaymentsView: React.FC = () => {
                       <div className="flex items-center gap-2.5">
                         <div
                           className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                            disbursalMethod === 'UPI' ? 'bg-[#5e2be2] text-white' : 'bg-slate-200 text-slate-600'
+                            disbursalMethod === 'UPI' ? 'bg-[#450bc8] text-white' : 'bg-slate-200 text-slate-600'
                           }`}
                         >
                           <Smartphone className="w-5 h-5" />
@@ -975,10 +975,10 @@ export const PaymentsView: React.FC = () => {
                       </div>
                       <div
                         className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          disbursalMethod === 'UPI' ? 'border-[#5e2be2]' : 'border-slate-300'
+                          disbursalMethod === 'UPI' ? 'border-[#450bc8]' : 'border-slate-300'
                         }`}
                       >
-                        {disbursalMethod === 'UPI' && <div className="w-2 h-2 rounded-full bg-[#5e2be2]" />}
+                        {disbursalMethod === 'UPI' && <div className="w-2 h-2 rounded-full bg-[#450bc8]" />}
                       </div>
                     </div>
                     <div className="pt-2 border-t border-slate-200/60 text-[11px] text-slate-600 space-y-0.5">
@@ -1031,22 +1031,22 @@ export const PaymentsView: React.FC = () => {
       {/* TAB 2: PAYOUT HISTORY & TRANSACTIONS */}
       {activeTab === 'history' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 className="font-extrabold text-lg text-slate-900">Historical Disbursal Audit Log</h3>
               <p className="text-xs text-slate-500">Complete archive of cleared therapist payouts, tax receipts, and bank transaction reference numbers</p>
             </div>
             <button
               onClick={handleExportCSV}
-              className="px-4 py-2.5 bg-purple-50 text-[#5e2be2] font-extrabold text-xs rounded-2xl flex items-center gap-2 border border-purple-200 hover:bg-[#5e2be2] hover:text-white transition-all"
+              className="px-4 py-2.5 bg-purple-50 text-[#450bc8] font-extrabold text-xs rounded-2xl flex items-center gap-2 border border-purple-200 hover:bg-[#450bc8] hover:text-white transition-all"
             >
               <Download className="w-4 h-4" />
               Export Transaction Logs
             </button>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-600">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[900px] whitespace-nowrap text-left text-xs text-slate-600">
               <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
                 <tr>
                   <th className="p-4">Transaction ID</th>
@@ -1063,7 +1063,7 @@ export const PaymentsView: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {historyList.map((rec) => (
                   <tr key={rec.id} className="hover:bg-slate-50/80 transition-all">
-                    <td className="p-4 font-mono font-bold text-[#5e2be2]">{rec.id}</td>
+                    <td className="p-4 font-mono font-bold text-[#450bc8]">{rec.id}</td>
                     <td className="p-4 font-semibold text-slate-700 whitespace-nowrap">{rec.payoutDate}</td>
                     <td className="p-4">
                       <div>
@@ -1083,7 +1083,7 @@ export const PaymentsView: React.FC = () => {
                     <td className="p-4 text-right">
                       <button
                         onClick={() => setSelectedHistoryModal(rec)}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-[#5e2be2] font-extrabold text-xs rounded-xl transition-all"
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-[#450bc8] font-extrabold text-xs rounded-xl transition-all"
                       >
                         View Receipt
                       </button>
@@ -1145,7 +1145,7 @@ export const PaymentsView: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <Building2 className="w-3.5 h-3.5 text-[#5e2be2] inline" />
+                        <Building2 className="w-3.5 h-3.5 text-[#450bc8] inline" />
                         <span>Bank Transfer</span>
                       </>
                     )}
@@ -1167,7 +1167,7 @@ export const PaymentsView: React.FC = () => {
                       }}
                       className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all ${
                         generatedInvoice.paymentMethod === 'Bank Transfer'
-                          ? 'bg-[#5e2be2] text-white'
+                          ? 'bg-[#450bc8] text-white'
                           : 'bg-slate-200/70 text-slate-500 hover:bg-slate-300'
                       }`}
                     >
@@ -1191,7 +1191,7 @@ export const PaymentsView: React.FC = () => {
                       }}
                       className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all ${
                         generatedInvoice.paymentMethod === 'UPI'
-                          ? 'bg-[#5e2be2] text-white'
+                          ? 'bg-[#450bc8] text-white'
                           : 'bg-slate-200/70 text-slate-500 hover:bg-slate-300'
                       }`}
                     >
@@ -1209,7 +1209,7 @@ export const PaymentsView: React.FC = () => {
 
             {/* Line Items Table */}
             <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full text-left text-xs text-slate-600">
+              <table className="w-full min-w-[560px] whitespace-nowrap text-left text-xs text-slate-600">
                 <thead className="bg-slate-100 text-slate-500 font-extrabold uppercase tracking-wider border-b border-slate-200 text-[10px]">
                   <tr>
                     <th className="p-3">Session Code</th>
@@ -1264,7 +1264,7 @@ export const PaymentsView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResendEmail}
-                className="flex-1 py-3 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] font-extrabold text-xs rounded-2xl border border-purple-200 flex items-center justify-center gap-2 transition-all"
+                className="flex-1 py-3 bg-purple-50 hover:bg-purple-100 text-[#450bc8] font-extrabold text-xs rounded-2xl border border-purple-200 flex items-center justify-center gap-2 transition-all"
               >
                 <Mail className="w-4 h-4" />
                 <span>Resend Email Copy</span>
@@ -1284,8 +1284,8 @@ export const PaymentsView: React.FC = () => {
 
       {/* MODAL: HISTORICAL TRANSACTION RECEIPT DETAILS */}
       {selectedHistoryModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-6 my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-4 sm:p-6 space-y-4 sm:space-y-6 my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <HexpertifyLogo size="sm" />
@@ -1321,7 +1321,7 @@ export const PaymentsView: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <Building2 className="w-3.5 h-3.5 text-[#5e2be2] inline" />
+                      <Building2 className="w-3.5 h-3.5 text-[#450bc8] inline" />
                       <span>Bank Transfer</span>
                     </>
                   )}
@@ -1353,7 +1353,7 @@ export const PaymentsView: React.FC = () => {
 
             <button
               onClick={() => setSelectedHistoryModal(null)}
-              className="w-full py-3 bg-[#5e2be2] text-white font-extrabold text-xs rounded-2xl shadow-md hover:bg-[#4f28d9]"
+              className="w-full py-3 bg-[#450bc8] text-white font-extrabold text-xs rounded-2xl shadow-md hover:bg-[#3a0aa8]"
             >
               Close Receipt Window
             </button>
@@ -1368,7 +1368,7 @@ export const PaymentsView: React.FC = () => {
           <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] animate-scale-up">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-purple-50/50 to-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#5e2be2]/10 text-[#5e2be2] flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-[#450bc8]/10 text-[#450bc8] flex items-center justify-center">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>
@@ -1389,7 +1389,7 @@ export const PaymentsView: React.FC = () => {
 
             <div className="p-6 space-y-4 overflow-y-auto text-xs">
               <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-2xl flex items-start gap-2.5 text-purple-900">
-                <CheckCircle2 className="w-4 h-4 text-[#5e2be2] shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-[#450bc8] shrink-0 mt-0.5" />
                 <p className="leading-relaxed text-[11px]">
                   <strong>Enter once & store:</strong> These details are saved to this consultant's database profile. Subsequent payouts will automatically fetch and use these stored values.
                 </p>
@@ -1397,7 +1397,7 @@ export const PaymentsView: React.FC = () => {
 
               <div className="space-y-3 pt-1">
                 <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-[#5e2be2]" />
+                  <Building2 className="w-3.5 h-3.5 text-[#450bc8]" />
                   <span>Direct Bank Transfer Details</span>
                 </h4>
 
@@ -1408,7 +1408,7 @@ export const PaymentsView: React.FC = () => {
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
                     placeholder="e.g. HDFC Bank, ICICI Bank, State Bank of India"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                   />
                 </div>
 
@@ -1419,7 +1419,7 @@ export const PaymentsView: React.FC = () => {
                     value={bankAccountNumber}
                     onChange={(e) => setBankAccountNumber(e.target.value)}
                     placeholder="e.g. 50100438291032"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                   />
                 </div>
 
@@ -1431,7 +1431,7 @@ export const PaymentsView: React.FC = () => {
                       value={bankIfsc}
                       onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
                       placeholder="e.g. HDFC0001234"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1441,7 +1441,7 @@ export const PaymentsView: React.FC = () => {
                       value={accountHolderName}
                       onChange={(e) => setAccountHolderName(e.target.value)}
                       placeholder={selectedTherapist.therapistName}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                     />
                   </div>
                 </div>
@@ -1460,7 +1460,7 @@ export const PaymentsView: React.FC = () => {
                     value={upiId}
                     onChange={(e) => setUpiId(e.target.value)}
                     placeholder="e.g. therapist@okaxis or 9876543210@upi"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#5e2be2] focus:bg-white transition-all"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-900 outline-none focus:border-[#450bc8] focus:bg-white transition-all"
                   />
                 </div>
               </div>
@@ -1478,7 +1478,7 @@ export const PaymentsView: React.FC = () => {
                 type="button"
                 disabled={isSavingDetails}
                 onClick={handleSavePayoutDetails}
-                className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#5e2be2]/20 flex items-center gap-2 transition-all"
+                className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md shadow-[#450bc8]/20 flex items-center gap-2 transition-all"
               >
                 {isSavingDetails ? (
                   <span>Saving to Database...</span>

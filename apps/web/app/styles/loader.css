@@ -1,0 +1,540 @@
+/*
+ * Hexpertify loading screen (components/Loader). Lives in the global stylesheet so the first-visit intro is
+ * styled from the very first paint, before any JavaScript runs.
+ */
+
+/* The intro only shows when the inline script in the root layout decided so (no JS → never shown) */
+.hxl-intro {
+  display: none;
+}
+html[data-hx-intro="show"] .hxl-intro,
+html[data-hx-intro="done"] .hxl-intro {
+  display: block;
+}
+
+.hxl {
+  --hxl-pad: 40px;
+  --hxl-ink: #1b0f45;
+  --hxl-muted: rgba(27, 15, 69, 0.62);
+  --hxl-line: rgba(27, 15, 69, 0.22);
+  --hxl-brand: #450bc8;
+  --hxl-ease: cubic-bezier(0.76, 0, 0.24, 1);
+  --hxl-out: cubic-bezier(0.22, 1, 0.36, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  background: #f1ebff;
+  color: var(--hxl-ink);
+  /* The website's Open Sans (next/font variable on the website; the panels load it by name) */
+  font-family: var(--font-open-sans, "Open Sans"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+.hxl * {
+  box-sizing: border-box;
+}
+.hxl i {
+  font-style: normal;
+  opacity: 0.4;
+  margin: 0 0.45em;
+}
+
+/* Route loader: fade in after a beat so quick navigations never flash it */
+.hxl-route {
+  animation: hxl-in 280ms ease-out 120ms both;
+}
+
+/*
+ * Failsafe: if the page's JavaScript never takes over (very slow network, a failed chunk), get out of the way.
+ * The animation makes the wrapper a stacking context, so it carries the loader's z-index itself.
+ */
+.hxl-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  animation: hxl-failsafe 500ms ease-out 9s forwards;
+}
+
+/* ── Drifting colour blobs ─────────────────────────────── */
+.hxl-blobs,
+.hxl-blob {
+  position: absolute;
+  pointer-events: none;
+}
+.hxl-blobs {
+  inset: 0;
+}
+.hxl-blob {
+  border-radius: 50%;
+  will-change: transform;
+}
+.hxl-blob-a {
+  width: 70vmax;
+  height: 70vmax;
+  left: -18vmax;
+  top: 18%;
+  background: radial-gradient(circle, rgba(108, 61, 236, 0.5) 0%, rgba(108, 61, 236, 0.22) 32%, rgba(108, 61, 236, 0) 66%);
+  animation: hxl-drift-a 14s ease-in-out infinite alternate;
+}
+.hxl-blob-b {
+  width: 52vmax;
+  height: 52vmax;
+  right: -14vmax;
+  top: -16vmax;
+  background: radial-gradient(circle, rgba(201, 177, 255, 0.95) 0%, rgba(201, 177, 255, 0.4) 38%, rgba(201, 177, 255, 0) 68%);
+  animation: hxl-drift-b 17s ease-in-out infinite alternate;
+}
+.hxl-blob-c {
+  width: 46vmax;
+  height: 46vmax;
+  right: -10vmax;
+  bottom: -20vmax;
+  background: radial-gradient(circle, rgba(69, 11, 200, 0.28) 0%, rgba(69, 11, 200, 0.1) 40%, rgba(69, 11, 200, 0) 68%);
+  animation: hxl-drift-c 12s ease-in-out infinite alternate;
+}
+
+/* ── Top bar ───────────────────────────────────────────── */
+.hxl-top {
+  position: absolute;
+  top: 28px;
+  left: var(--hxl-pad);
+  right: var(--hxl-pad);
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hxl-mono {
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.hxl-mono i {
+  margin: 0 0.3em;
+}
+.hxl-clock {
+  min-width: 9em;
+  color: var(--hxl-muted);
+}
+.hxl-nav {
+  margin-left: auto;
+}
+.hxl-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--hxl-brand);
+  box-shadow: 0 0 0 0 rgba(69, 11, 200, 0.45);
+  animation: hxl-pulse 1.8s ease-out infinite;
+}
+
+/* ── Side labels ───────────────────────────────────────── */
+.hxl-side {
+  position: absolute;
+  top: 50%;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--hxl-muted);
+}
+.hxl-side-l {
+  left: var(--hxl-pad);
+}
+.hxl-side-r {
+  right: var(--hxl-pad);
+}
+
+/* ── Centre: logo, meta, line of copy ─────────────────── */
+.hxl-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(760px, calc(100% - 2 * var(--hxl-pad)));
+  transform: translate(-50%, -58%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* The mask the logo rises out of (and lifts back into on exit) */
+.hxl-word {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  padding: 6px 16px 14px;
+  overflow: hidden;
+}
+.hxl-logo {
+  position: relative;
+  display: block;
+  width: clamp(240px, 44vw, 600px);
+  animation: hxl-rise 1.1s var(--hxl-out) 140ms both;
+}
+.hxl-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* A soft light sweeping across the logo while it loads (masked to the logo's own shape) */
+.hxl-logo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.7) 50%, transparent 65%) 110% 0 / 250% 100% no-repeat;
+  -webkit-mask: url("/hexpertify-logo-tight.png") center / 100% 100% no-repeat;
+  mask: url("/hexpertify-logo-tight.png") center / 100% 100% no-repeat;
+  animation: hxl-shine 2.8s ease-in-out 1.2s infinite;
+  pointer-events: none;
+}
+.hxl-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hxl-muted);
+}
+.hxl-row {
+  width: min(560px, 100%);
+  margin-top: 36px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+.hxl-row p {
+  margin: 0;
+  max-width: 260px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: rgba(27, 15, 69, 0.78);
+}
+.hxl-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  padding: 6px 12px 6px 14px;
+  border: 1.5px solid rgba(27, 15, 69, 0.7);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease;
+}
+.hxl-pill svg {
+  width: 10px;
+  height: 10px;
+}
+.hxl-pill.is-ready {
+  background: var(--hxl-brand);
+  border-color: var(--hxl-brand);
+  color: #fff;
+}
+
+/* ── Bottom left: progress ring ───────────────────────── */
+.hxl-counter {
+  position: absolute;
+  left: var(--hxl-pad);
+  bottom: 30px;
+  width: 168px;
+  height: 168px;
+}
+.hxl-counter svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.hxl-ring-track,
+.hxl-ring-cross {
+  fill: none;
+  stroke: var(--hxl-line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.hxl-ring-arc {
+  fill: none;
+  stroke: var(--hxl-brand);
+  stroke-width: 2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.hxl-counter-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hxl-muted);
+}
+.hxl-counter-label.top {
+  top: 15%;
+}
+.hxl-counter-label.bottom {
+  bottom: 13%;
+}
+.hxl-num {
+  position: absolute;
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.hxl-num.now {
+  left: 21%;
+  top: 30%;
+}
+.hxl-num.total {
+  right: 16%;
+  bottom: 28%;
+  font-size: 22px;
+  color: var(--hxl-muted);
+}
+.hxl-hello {
+  position: absolute;
+  left: calc(var(--hxl-pad) + 168px + 16px);
+  bottom: 32px;
+  max-width: 230px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(27, 15, 69, 0.78);
+}
+
+/* ── Bottom right: badge with a spinning cube ─────────── */
+.hxl-badge {
+  --s: 62px;
+  position: absolute;
+  right: var(--hxl-pad);
+  bottom: 30px;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  perspective: 520px;
+  background: radial-gradient(circle at 30% 25%, #7c4dff 0%, #450bc8 38%, #3d2386 78%, #2a0a7a 100%);
+  box-shadow: 0 24px 60px -24px rgba(42, 10, 122, 0.55);
+}
+.hxl-cube {
+  position: relative;
+  width: var(--s);
+  height: var(--s);
+  transform-style: preserve-3d;
+  animation: hxl-spin 7s linear infinite;
+}
+.hxl-cube span {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.hxl-cube .f1 { background: #ffffff; transform: translateZ(calc(var(--s) / 2)); }
+.hxl-cube .f2 { background: #e9e0ff; transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+.hxl-cube .f3 { background: #b9a2ff; transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
+.hxl-cube .f4 { background: #9b7bff; transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
+.hxl-cube .f5 { background: #f4efff; transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
+.hxl-cube .f6 { background: #6c3dec; transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+
+/* ── Entry ─────────────────────────────────────────────── */
+.hxl-fade {
+  animation: hxl-in 900ms var(--hxl-out) both;
+  animation-delay: 450ms;
+}
+.hxl-counter,
+.hxl-badge {
+  animation: hxl-pop 1s var(--hxl-out) 250ms both;
+}
+
+/*
+ * Picked up on the next page (the panels' sign-in loader, shared/login-loader): no second entry animation,
+ * and the drifting/spinning parts carry on from where they were (--hxl-t is a negative delay).
+ */
+.hxl-resume .hxl-logo,
+.hxl-resume .hxl-fade,
+.hxl-resume .hxl-counter,
+.hxl-resume .hxl-badge {
+  animation: none;
+}
+.hxl-resume .hxl-blob,
+.hxl-resume .hxl-cube,
+.hxl-resume .hxl-dot {
+  animation-delay: var(--hxl-t, 0s);
+}
+.hxl .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Exit: the logo lifts away, then the whole screen wipes up ── */
+.hxl.is-leaving {
+  animation: hxl-wipe 900ms var(--hxl-ease) 380ms forwards;
+}
+.hxl.is-leaving .hxl-logo {
+  animation: hxl-lift 650ms var(--hxl-ease) forwards;
+}
+.hxl.is-leaving .hxl-logo::after {
+  animation: none;
+  opacity: 0;
+}
+.hxl.is-leaving .hxl-fade,
+.hxl.is-leaving .hxl-counter,
+.hxl.is-leaving .hxl-badge {
+  animation: hxl-out 400ms ease-in forwards;
+}
+
+/* ── Small screens ─────────────────────────────────────── */
+@media (max-width: 767px) {
+  .hxl {
+    --hxl-pad: 20px;
+  }
+  .hxl-top {
+    top: 20px;
+    gap: 20px;
+  }
+  .hxl-nav,
+  .hxl-side {
+    display: none;
+  }
+  .hxl-dot {
+    margin-left: auto;
+  }
+  .hxl-center {
+    transform: translate(-50%, -64%);
+  }
+  .hxl-logo {
+    width: min(76vw, 340px);
+  }
+  .hxl-meta {
+    font-size: 11px;
+  }
+  .hxl-row {
+    margin-top: 24px;
+  }
+  .hxl-row p {
+    font-size: 13px;
+  }
+  .hxl-counter,
+  .hxl-badge {
+    width: 116px;
+    height: 116px;
+    bottom: 22px;
+  }
+  .hxl-badge {
+    --s: 42px;
+  }
+  .hxl-num {
+    font-size: 26px;
+  }
+  .hxl-num.total {
+    font-size: 15px;
+  }
+  .hxl-counter-label {
+    font-size: 8px;
+  }
+  .hxl-hello {
+    display: none;
+  }
+}
+@media (max-width: 767px) and (max-height: 620px) {
+  .hxl-row {
+    display: none;
+  }
+}
+
+/* ── Reduced motion: no drifting, spinning or sliding; a plain fade out ── */
+@media (prefers-reduced-motion: reduce) {
+  .hxl-blob,
+  .hxl-cube,
+  .hxl-dot,
+  .hxl-logo,
+  .hxl-fade,
+  .hxl-counter,
+  .hxl-badge {
+    animation: none !important;
+  }
+  .hxl.is-leaving {
+    animation: hxl-out 300ms ease-out forwards;
+  }
+  .hxl-logo::after {
+    display: none;
+  }
+  .hxl.is-leaving .hxl-logo,
+  .hxl.is-leaving .hxl-fade,
+  .hxl.is-leaving .hxl-counter,
+  .hxl.is-leaving .hxl-badge {
+    animation: none;
+  }
+}
+
+@keyframes hxl-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hxl-out {
+  to { opacity: 0; }
+}
+@keyframes hxl-pop {
+  from { opacity: 0; transform: scale(0.85) rotate(-12deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hxl-rise {
+  from { transform: translateY(115%) rotate(6deg); }
+  to { transform: none; }
+}
+@keyframes hxl-lift {
+  from { transform: none; }
+  to { transform: translateY(-115%) rotate(-4deg); }
+}
+@keyframes hxl-shine {
+  0% { background-position: 110% 0; }
+  55%, 100% { background-position: -10% 0; }
+}
+@keyframes hxl-wipe {
+  from { clip-path: inset(0 0 0 0); }
+  to { clip-path: inset(0 0 100% 0); }
+}
+@keyframes hxl-failsafe {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+@keyframes hxl-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(69, 11, 200, 0.45); }
+  80%, 100% { box-shadow: 0 0 0 12px rgba(69, 11, 200, 0); }
+}
+@keyframes hxl-spin {
+  from { transform: rotateX(-28deg) rotateY(45deg); }
+  to { transform: rotateX(-28deg) rotateY(405deg); }
+}
+@keyframes hxl-drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(14vw, -10vh, 0) scale(1.12); }
+}
+@keyframes hxl-drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-12vw, 14vh, 0) scale(0.9); }
+}
+@keyframes hxl-drift-c {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-8vw, -12vh, 0) scale(1.15); }
+}

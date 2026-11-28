@@ -57,7 +57,8 @@ function TherapySectionCard({ item, index }: TherapySectionCardProps) {
               height={item.height ?? item.image.height}
               className="h-auto w-full rounded-[14px] object-cover"
               sizes="(max-width: 768px) 90vw, 40vw"
-              priority={index === 0}
+              // Far down the home page: loaded lazily, so it no longer competes with the hero banner
+              loading="lazy"
             />
           </div>
         </div>

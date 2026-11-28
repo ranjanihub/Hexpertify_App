@@ -366,7 +366,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-fade-in font-['Plus_Jakarta_Sans']">
+    <div className="space-y-8 pb-12 animate-fade-in font-['Open_Sans']">
       {/* Toast Notification */}
       {savedSuccess && (
         <div className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 font-extrabold text-xs animate-in slide-in-from-top duration-300">
@@ -376,11 +376,11 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
       )}
 
       {/* Hero Header */}
-      <div className="relative rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
-          <h1 className="text-3xl font-extrabold tracking-tight">Homepage</h1>
-          <p className="text-purple-100 text-sm mt-1 max-w-xl">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Homepage</h1>
+          <p className="text-purple-100 text-xs sm:text-sm mt-1 max-w-xl">
             Manage general page settings, carousel images, SEO metadata, Open Graph previews, FAQs, and testimonials.
           </p>
         </div>
@@ -394,7 +394,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 ? 'bg-purple-200 text-purple-800 opacity-80 cursor-wait'
                 : isUnsaved
                 ? 'bg-amber-400 text-slate-950 hover:bg-amber-300 ring-4 ring-amber-400/30'
-                : 'bg-white text-[#4f28d9] hover:bg-purple-50'
+                : 'bg-white text-[#3a0aa8] hover:bg-purple-50'
             }`}
           >
             <Save className="w-4 h-4" />
@@ -430,9 +430,9 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
       {/* CMS Form Container */}
       <div className="space-y-8">
         {/* SECTION 1: General Settings */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <div className="w-1.5 h-5 bg-[#5e2be2] rounded-full" />
+            <div className="w-1.5 h-5 bg-[#450bc8] rounded-full" />
             <h3 className="font-extrabold text-slate-900 text-base">General Settings</h3>
           </div>
 
@@ -453,7 +453,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                       }
                     })
                   }
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded-md">SLUG</span>
               </div>
@@ -472,7 +472,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     general: { ...cms.general, notificationTitle: e.target.value }
                   })
                 }
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
               />
               <p className="text-[10px] text-slate-400 font-medium">Top announcement banner title displayed to website visitors.</p>
             </div>
@@ -480,7 +480,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
         </div>
 
         {/* SECTION 2: Carousel Images */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-5 bg-purple-500 rounded-full" />
@@ -493,7 +493,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
             <button
               type="button"
               onClick={() => setIsAddCarouselModalOpen(true)}
-              className="px-4 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+              className="px-4 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Upload Image for Carousel</span>
@@ -506,7 +506,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
               <p className="text-xs font-semibold text-slate-400">No carousel images uploaded yet.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {cms.carouselImages.map((img) => (
                 <div key={img.id} className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden flex flex-col justify-between group">
                   <div className="relative aspect-[16/9] bg-slate-200 overflow-hidden">
@@ -540,7 +540,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteCarouselImage(img.id)}
-                        className="text-rose-600 hover:text-rose-800 flex items-center gap-1 text-[11px] font-bold"
+                        className="text-rose-600 hover:text-rose-800 flex items-center gap-1 py-2 sm:py-0 text-[11px] font-bold"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Remove</span>
@@ -554,7 +554,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
         </div>
 
         {/* SECTION 3: SEO Metadata */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
             <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
@@ -571,7 +571,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 placeholder="e.g. Hexpertify - Premier Online Therapy & Mental Health Platform"
                 value={cms.seo?.metaTitle || ''}
                 onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, metaTitle: e.target.value } })}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
               />
             </div>
 
@@ -582,7 +582,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 placeholder="e.g. Book confidential video consultation sessions with top licensed psychologists..."
                 value={cms.seo?.metaDescription || ''}
                 onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, metaDescription: e.target.value } })}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2] leading-relaxed resize-none"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#450bc8] leading-relaxed resize-none"
               />
             </div>
 
@@ -596,7 +596,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
         </div>
 
         {/* SECTION 4: Open Graph (Social Media) Section */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <div className="w-1.5 h-5 bg-indigo-500 rounded-full" />
             <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
@@ -613,7 +613,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 placeholder="e.g. Hexpertify — Online Therapy & Counseling Services"
                 value={cms.seo?.openGraphTitle || ''}
                 onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, openGraphTitle: e.target.value } })}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
               />
             </div>
 
@@ -625,7 +625,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                   placeholder="Upload an image (1200×630), or paste its link"
                   value={cms.seo?.openGraphImageUrl || ''}
                   onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, openGraphImageUrl: e.target.value } })}
-                  className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                  className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8]"
                 />
                 <ImageUploadButton
                   assetType="Banner"
@@ -644,7 +644,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 placeholder="e.g. Connect with expert psychologists, relationship counselors..."
                 value={cms.seo?.openGraphDescription || ''}
                 onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, openGraphDescription: e.target.value } })}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2] resize-none"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#450bc8] resize-none"
               />
             </div>
 
@@ -655,7 +655,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 placeholder="e.g. Hexpertify mental health platform hero banner preview"
                 value={cms.seo?.openGraphImageAltText || ''}
                 onChange={(e) => setCms({ ...cms, seo: { ...cms.seo, openGraphImageAltText: e.target.value } })}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2] resize-none"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#450bc8] resize-none"
               />
             </div>
           </div>
@@ -725,7 +725,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
         </div>
 
         {/* SECTION 5: FAQs Section */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
@@ -738,7 +738,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
             <button
               type="button"
               onClick={handleAddFAQ}
-              className="px-4 py-2 bg-slate-900 hover:bg-[#5e2be2] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+              className="px-4 py-2 bg-slate-900 hover:bg-[#450bc8] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add FAQ</span>
@@ -755,14 +755,14 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
               {cms.faqs.map((faq, idx) => (
                 <div key={faq.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase tracking-wider font-mono">
+                    <span className="text-[10px] font-extrabold text-[#450bc8] uppercase tracking-wider font-mono">
                       FAQ Item #{idx + 1}
                     </span>
                     <div className="flex items-center gap-4">
                       <button
                         type="button"
                         onClick={() => toggleFaqEditing(faq.id, !editingFaqIds.includes(faq.id))}
-                        className="text-[#5e2be2] hover:text-[#4f28d9] flex items-center gap-1 text-[11px] font-bold"
+                        className="text-[#450bc8] hover:text-[#3a0aa8] flex items-center gap-1 py-2 sm:py-0 text-[11px] font-bold"
                       >
                         {editingFaqIds.includes(faq.id) ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                         <span>{editingFaqIds.includes(faq.id) ? 'Done' : 'Edit'}</span>
@@ -770,7 +770,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteFAQ(faq.id)}
-                        className="text-rose-600 hover:text-rose-800 flex items-center gap-1 text-[11px] font-bold"
+                        className="text-rose-600 hover:text-rose-800 flex items-center gap-1 py-2 sm:py-0 text-[11px] font-bold"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Remove</span>
@@ -796,7 +796,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                           updated[idx] = { ...updated[idx], question: e.target.value };
                           setCms({ ...cms, faqs: updated });
                         }}
-                        className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:border-[#5e2be2]"
+                        className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:border-[#450bc8]"
                       />
                     </div>
 
@@ -811,7 +811,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                           updated[idx] = { ...updated[idx], answer: e.target.value };
                           setCms({ ...cms, faqs: updated });
                         }}
-                        className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-[#5e2be2] leading-relaxed resize-none"
+                        className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-[#450bc8] leading-relaxed resize-none"
                       />
                     </div>
                   </div>
@@ -823,7 +823,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
         </div>
 
         {/* SECTION 6: Testimonials Section */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-5 bg-rose-500 rounded-full" />
@@ -836,7 +836,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
             <button
               type="button"
               onClick={openAddTestimonial}
-              className="px-4 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+              className="px-4 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Testimonial</span>
@@ -855,7 +855,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       {/* The author's photo, or their initial when none is set (or it fails to load) */}
-                      <div className="relative w-11 h-11 shrink-0 rounded-full ring-2 ring-[#5e2be2]/20 bg-purple-100 text-[#5e2be2] font-extrabold text-sm flex items-center justify-center overflow-hidden">
+                      <div className="relative w-11 h-11 shrink-0 rounded-full ring-2 ring-[#450bc8]/20 bg-purple-100 text-[#450bc8] font-extrabold text-sm flex items-center justify-center overflow-hidden">
                         <span>{(item.authorName || '?').trim().charAt(0).toUpperCase()}</span>
                         {item.authorImageUrl && (
                           <img
@@ -889,7 +889,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     <button
                       type="button"
                       onClick={() => openEditTestimonial(item)}
-                      className="text-[#5e2be2] hover:text-[#4f28d9] flex items-center gap-1 text-[11px] font-bold"
+                      className="text-[#450bc8] hover:text-[#3a0aa8] flex items-center gap-1 py-2 sm:py-0 text-[11px] font-bold"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       <span>Edit</span>
@@ -897,7 +897,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteTestimonial(item.id)}
-                      className="text-rose-600 hover:text-rose-800 flex items-center gap-1 text-[11px] font-bold"
+                      className="text-rose-600 hover:text-rose-800 flex items-center gap-1 py-2 sm:py-0 text-[11px] font-bold"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Remove Testimonial</span>
@@ -914,7 +914,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
       {isAddCarouselModalOpen && createPortal(
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[110] flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[94vh] sm:max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
-            <div className="bg-gradient-to-r from-[#4f28d9] to-[#5e2be2] p-4 sm:p-5 text-white flex items-center justify-between">
+            <div className="bg-gradient-to-r from-[#3a0aa8] to-[#450bc8] p-4 sm:p-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-5 h-5" />
                 <h4 className="font-extrabold text-sm sm:text-base">Upload Carousel Image</h4>
@@ -938,7 +938,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     placeholder="Upload an image, or paste its link"
                     value={newCarouselItem.imageUrl}
                     onChange={(e) => setNewCarouselItem({ ...newCarouselItem, imageUrl: e.target.value })}
-                    className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   />
                   <ImageUploadButton
                     assetType="Banner"
@@ -956,7 +956,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                   placeholder="Describe the banner image for accessibility and SEO..."
                   value={newCarouselItem.altText}
                   onChange={(e) => setNewCarouselItem({ ...newCarouselItem, altText: e.target.value })}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#450bc8]"
                 />
               </div>
 
@@ -968,10 +968,10 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     type="checkbox"
                     checked={newCarouselItem.isMobile}
                     onChange={(e) => setNewCarouselItem({ ...newCarouselItem, isMobile: e.target.checked })}
-                    className="w-4 h-4 text-[#5e2be2] rounded focus:ring-[#5e2be2]"
+                    className="w-4 h-4 text-[#450bc8] rounded focus:ring-[#450bc8]"
                   />
                   <span className="font-bold text-slate-700">
-                    Check box if this image belongs to <span className="text-[#5e2be2]">Mobile View</span> (Unchecked = Desktop View)
+                    Check box if this image belongs to <span className="text-[#450bc8]">Mobile View</span> (Unchecked = Desktop View)
                   </span>
                 </label>
               </div>
@@ -1002,7 +1002,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+                  className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Carousel Image</span>
@@ -1018,7 +1018,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
       {isAddTestimonialModalOpen && createPortal(
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[110] flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[94vh] sm:max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
-            <div className="bg-gradient-to-r from-[#4f28d9] to-[#5e2be2] p-4 sm:p-5 text-white flex items-center justify-between">
+            <div className="bg-gradient-to-r from-[#3a0aa8] to-[#450bc8] p-4 sm:p-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Quote className="w-5 h-5" />
                 <h4 className="font-extrabold text-sm sm:text-base">{editingTestimonialId ? 'Edit Testimonial' : 'Add New Testimonial'}</h4>
@@ -1042,7 +1042,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     placeholder="e.g. Sarah Jenkins"
                     value={newTestimonial.authorName}
                     onChange={(e) => setNewTestimonial({ ...newTestimonial, authorName: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
 
@@ -1054,7 +1054,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     placeholder="e.g. Senior Product Designer"
                     value={newTestimonial.profession}
                     onChange={(e) => setNewTestimonial({ ...newTestimonial, profession: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
               </div>
@@ -1068,7 +1068,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                       placeholder="Upload a photo, or paste its link"
                       value={newTestimonial.authorImageUrl}
                       onChange={(e) => setNewTestimonial({ ...newTestimonial, authorImageUrl: e.target.value })}
-                      className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                      className="flex-1 min-w-0 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8]"
                     />
                     <ImageUploadButton
                       assetType="Images"
@@ -1085,7 +1085,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                     placeholder="e.g. Portrait of Sarah Jenkins"
                     value={newTestimonial.authorImageAltText}
                     onChange={(e) => setNewTestimonial({ ...newTestimonial, authorImageAltText: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#450bc8]"
                   />
                 </div>
               </div>
@@ -1098,7 +1098,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                   placeholder="Enter author testimonial quote..."
                   value={newTestimonial.content}
                   onChange={(e) => setNewTestimonial({ ...newTestimonial, content: e.target.value })}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#5e2be2] leading-relaxed resize-none"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 focus:bg-white focus:border-[#450bc8] leading-relaxed resize-none"
                 />
               </div>
 
@@ -1112,7 +1112,7 @@ export const HomepageView: React.FC<HomepageViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+                  className="px-5 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
                 >
                   {editingTestimonialId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                   <span>{editingTestimonialId ? 'Save Testimonial' : 'Add Testimonial'}</span>

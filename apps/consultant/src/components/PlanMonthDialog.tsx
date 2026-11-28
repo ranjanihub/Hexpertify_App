@@ -169,11 +169,17 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
     setMonth((m) => shiftMonth(m, delta));
   };
 
+  // Cancel, X, Esc and clicking outside all land here: unsaved edits are only dropped after a confirm
+  const handleOpenChange = (next: boolean) => {
+    if (!next && dirty && !saving && !window.confirm(`You have unsaved changes to your ${monthName(month)} hours. Close without saving?`)) return;
+    onOpenChange(next);
+  };
+
   const canGoBack = month > thisMonth;
   const canGoForward = month < shiftMonth(thisMonth, 6);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[94dvh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
         {/* Header */}
         <div className="bg-primary px-4 sm:px-8 pt-6 sm:pt-7 pb-4 sm:pb-5 text-white shrink-0">
@@ -360,7 +366,7 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
           <div className="px-4 sm:px-8 py-3 border-t border-amber-200 bg-amber-50 shrink-0 max-h-[30vh] overflow-y-auto">
             <p className="flex items-center gap-2 text-sm font-bold text-amber-900">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              {conflicts.length} booked session{conflicts.length === 1 ? "" : "s"} fall outside these hours
+              {conflicts.length} booked session{conflicts.length === 1 ? " falls" : "s fall"} outside these hours
             </p>
             <ul className="mt-1.5 space-y-0.5 text-xs text-amber-900">
               {conflicts.map((c) => (
@@ -389,7 +395,7 @@ export default function PlanMonthDialog({ open, onOpenChange, consultantId, init
             )}
           </div>
           <div className="flex flex-col-reverse sm:flex-row gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">
+            <Button variant="ghost" onClick={() => handleOpenChange(false)} className="text-muted-foreground">
               Cancel
             </Button>
             <Button

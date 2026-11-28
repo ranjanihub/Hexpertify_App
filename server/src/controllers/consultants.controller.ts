@@ -72,6 +72,17 @@ function summarizeAvailability(availability: any): string {
   return open.map((d) => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(', ');
 }
 
+/**
+ * Fields only the admin team sets. A therapist editing their own profile cannot change their sign-in email,
+ * website address, visibility, booking switches, certification, ordering, account status or any credential.
+ */
+const ADMIN_ONLY_KEYS = [
+  'email', 'identifier', 'sequence', 'accountStatus', 'status', 'isActive', 'isHiddenFromLive', 'isArchived',
+  'isBookingGreyedOut', 'bookingDisabled', 'isBookable', 'isCertified', 'role', 'password', 'consultantPassword',
+  'passwordHash', 'userPassword', 'seo', 'reviews', 'rating', 'reviewCount', 'commission', 'commissionRate',
+  'platformFee', 'payoutPercentage', 'createdAt', 'createdBy'
+];
+
 export async function canEditConsultant(req: Request, consultant: any): Promise<boolean> {
   if (isInternalRequest(req) || isAdminUser(req.user)) return true;
   const viewer = await resolveClientViewer(req);
@@ -329,7 +340,7 @@ export class ConsultantsController {
    */
   static async update(req: Request, res: Response): Promise<void> {
     try {
-      const body = req.body || {};
+      const body = { ...(req.body || {}) };
       const id = String(req.params.id || body.id || body._id || '');
       const db = getDatabase();
 
@@ -348,6 +359,17 @@ export class ConsultantsController {
       if (!(await canEditConsultant(req, existing))) {
         res.status(401).json({ success: false, error: 'You are not allowed to edit this profile. Please sign in again.' });
         return;
+      }
+
+      // A therapist editing their own profile: admin-only fields are refused (email) or ignored (the rest)
+      const byAdmin = isInternalRequest(req) || isAdminUser(req.user) || (await resolveClientViewer(req)).kind === 'admin';
+      if (!byAdmin) {
+        const newEmail = String(body.email ?? '').trim().toLowerCase();
+        if (newEmail && newEmail !== String(existing.email || '').toLowerCase()) {
+          res.status(403).json({ success: false, error: 'To change your sign-in email, contact the admin team.' });
+          return;
+        }
+        ADMIN_ONLY_KEYS.forEach((k) => delete body[k]);
       }
 
       const fields = await consultantFieldsFromAdmin(body);

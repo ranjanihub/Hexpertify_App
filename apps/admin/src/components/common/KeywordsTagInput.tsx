@@ -54,7 +54,7 @@ export const KeywordsTagInput: React.FC<KeywordsTagInputProps> = ({
   };
 
   return (
-    <div className="space-y-2.5 font-['Plus_Jakarta_Sans']">
+    <div className="space-y-2.5 font-['Open_Sans']">
       {label && <label className="font-extrabold text-slate-800 text-xs block">{label}</label>}
 
       {/* Tags Pill Container */}
@@ -69,7 +69,7 @@ export const KeywordsTagInput: React.FC<KeywordsTagInputProps> = ({
               <button
                 type="button"
                 onClick={() => removeTag(idx)}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors focus:outline-none"
+                className="w-7 h-7 -my-1.5 -mr-2 sm:m-0 sm:w-4 sm:h-4 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors focus:outline-none"
                 aria-label={`Remove keyword ${tag}`}
               >
                 <X className="w-3 h-3 stroke-[2.5]" />
@@ -92,13 +92,13 @@ export const KeywordsTagInput: React.FC<KeywordsTagInputProps> = ({
             }
           }}
           placeholder={placeholder}
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs text-slate-800 font-medium focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all placeholder:text-slate-400"
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs text-slate-800 font-medium focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all placeholder:text-slate-400"
         />
         {inputValue.trim() && (
           <button
             type="button"
             onClick={() => addTag(inputValue)}
-            className="absolute right-2 px-2.5 py-1 bg-[#5e2be2] text-white rounded-lg font-bold text-[11px] flex items-center gap-1 hover:bg-[#4f28d9] transition-all"
+            className="absolute right-2 px-2.5 py-1 bg-[#450bc8] text-white rounded-lg font-bold text-[11px] flex items-center gap-1 hover:bg-[#3a0aa8] transition-all"
           >
             <Plus className="w-3 h-3" />
             Add

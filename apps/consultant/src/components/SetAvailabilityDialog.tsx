@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Check, Clock, Copy, Plus, Trash2 } from "lucide-react";
+import { overlappingRanges } from "@/lib/month-plan";
 
 export interface TimeSlot {
   start: string;
@@ -50,15 +51,28 @@ const TIMES = Array.from({ length: 28 }, (_, i) => {
   return `${h12}:${m === 0 ? "00" : "30"} ${ampm}`;
 });
 
+// A new therapist starts on weekdays only; weekends are opt-in so nobody is bookable by surprise
 export const DEFAULT_SCHEDULE: Schedule = {
   monday:    { enabled: true,  slots: [{ start: "9:00 AM", end: "6:00 PM" }] },
   tuesday:   { enabled: true,  slots: [{ start: "9:00 AM", end: "6:00 PM" }] },
   wednesday: { enabled: true,  slots: [{ start: "9:00 AM", end: "6:00 PM" }] },
   thursday:  { enabled: true,  slots: [{ start: "9:00 AM", end: "6:00 PM" }] },
   friday:    { enabled: true,  slots: [{ start: "9:00 AM", end: "5:00 PM" }] },
-  saturday:  { enabled: true,  slots: [{ start: "10:00 AM", end: "2:00 PM" }] },
-  sunday:    { enabled: true,  slots: [{ start: "10:00 AM", end: "2:00 PM" }] },
+  saturday:  { enabled: false, slots: [{ start: "10:00 AM", end: "2:00 PM" }] },
+  sunday:    { enabled: false, slots: [{ start: "10:00 AM", end: "2:00 PM" }] },
 };
+
+/** What is wrong with one day's hours ("" when fine): every range must end after it starts and ranges must not overlap */
+export function dayProblem(cfg: DayConfig): string {
+  if (!cfg?.enabled) return "";
+  for (const s of cfg.slots) {
+    const from = toMinutes(s.start);
+    const to = toMinutes(s.end);
+    if (from === null || to === null || to <= from) return `${s.start} – ${s.end}: the end time must be after the start time.`;
+  }
+  const clash = overlappingRanges(cfg.slots);
+  return clash ? `${clash[0].start} – ${clash[0].end} and ${clash[1].start} – ${clash[1].end} overlap. Change or remove one of them.` : "";
+}
 
 interface Props {
   open: boolean;
@@ -187,14 +201,16 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
       return { ...prev, [day]: { ...prev[day], slots } };
     });
 
+  // New hours start where the day's latest hours end, so adding a range does not create an overlap
   const addSlot = (day: string) =>
-    setSchedule((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        slots: [...prev[day].slots, { start: "9:00 AM", end: "5:00 PM" }],
-      },
-    }));
+    setSchedule((prev) => {
+      const lastEnd = Math.max(...prev[day].slots.map((s) => toMinutes(s.end) ?? 0), 0);
+      const latest = toMinutes(TIMES[TIMES.length - 1]) as number;
+      const next = lastEnd && lastEnd + 60 <= latest
+        ? { start: toLabel(lastEnd), end: toLabel(Math.min(lastEnd + 120, latest)) }
+        : { start: "9:00 AM", end: "5:00 PM" };
+      return { ...prev, [day]: { ...prev[day], slots: [...prev[day].slots, next] } };
+    });
 
   const removeSlot = (day: string, idx: number) =>
     setSchedule((prev) => {
@@ -210,7 +226,12 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
       return next;
     });
 
+  // Problems per day; Save stays disabled while any day has one
+  const problems: Record<string, string> = Object.fromEntries(DAYS.map(({ key }) => [key, dayProblem(schedule[key])]));
+  const invalidDays = DAYS.filter(({ key }) => problems[key]);
+
   const handleSave = async () => {
+    if (invalidDays.length) return;
     setSaving(true);
     setError("");
     try {
@@ -308,14 +329,16 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
                   {/* Slots */}
                   {cfg.enabled ? (
                     <div className="flex flex-col gap-2 flex-1">
-                      {cfg.slots.map((slot, idx) => (
+                      {cfg.slots.map((slot, idx) => {
+                        const backwards = (toMinutes(slot.end) ?? 0) <= (toMinutes(slot.start) ?? 0);
+                        return (
                         <div key={idx} className="flex flex-wrap items-center gap-2">
                           <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0 hidden sm:inline" />
                           <Select
                             value={slot.start}
                             onValueChange={(v) => updateSlot(d.key, idx, "start", v)}
                           >
-                            <SelectTrigger className="h-8 w-[110px] text-xs sm:text-sm">
+                            <SelectTrigger className={cn("h-8 w-[110px] text-xs sm:text-sm", backwards && "border-destructive")}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -329,7 +352,7 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
                             value={slot.end}
                             onValueChange={(v) => updateSlot(d.key, idx, "end", v)}
                           >
-                            <SelectTrigger className="h-8 w-[110px] text-xs sm:text-sm">
+                            <SelectTrigger className={cn("h-8 w-[110px] text-xs sm:text-sm", backwards && "border-destructive")}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -348,7 +371,11 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      ))}
+                        );
+                      })}
+                      {problems[d.key] && (
+                        <p className="text-xs font-semibold text-destructive">{problems[d.key]}</p>
+                      )}
                       <div className="flex items-center gap-4 mt-0.5">
                         <button
                           type="button"
@@ -379,8 +406,10 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
         </div>
 
         {/* Footer */}
-        {error && (
-          <p className="px-4 sm:px-8 py-2.5 text-xs font-semibold text-destructive bg-destructive/5 border-t border-destructive/20 shrink-0">{error}</p>
+        {(error || invalidDays.length > 0) && (
+          <p className="px-4 sm:px-8 py-2.5 text-xs font-semibold text-destructive bg-destructive/5 border-t border-destructive/20 shrink-0">
+            {error || `Fix the hours on ${invalidDays.map((d) => d.label).join(", ")} before saving.`}
+          </p>
         )}
         <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-t border-border bg-secondary/30 shrink-0">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">
@@ -389,7 +418,7 @@ export default function SetAvailabilityDialog({ open, onOpenChange, consultantId
           <Button
             className="bg-primary hover:bg-primary/90 text-white px-8 rounded-xl font-bold shadow-md shadow-primary/20"
             onClick={handleSave}
-            disabled={saving || saved || loading}
+            disabled={saving || saved || loading || invalidDays.length > 0}
           >
             {saved ? (
               <span className="flex items-center gap-2">

@@ -11,8 +11,14 @@ const UserReview = ({ userReview }: any) => {
     (breakdown.threeStar || 0) +
     (breakdown.twoStar || 0) +
     (breakdown.oneStar || 0);
-  if (userReview?.overallRating == 0) {
-    return null;
+  // No reviews yet: keep the section (the "User Reviews" button scrolls here) with a short note
+  if (!totalReviews && !Number(userReview?.overallRating)) {
+    return (
+      <section id="userReview" className="w-full px-4 md:px-0">
+        <p className="text-[24px] font-bold mt-[20px] mb-[10px] max-md:text-[26px]">User Reviews</p>
+        <p className="text-base text-gray-600 mb-[30px]">No reviews yet.</p>
+      </section>
+    );
   }
   return (
     <section id="userReview" className="w-full px-4 md:px-0">

@@ -319,7 +319,7 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[700px] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl bg-white">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[700px] max-h-[90dvh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl bg-white">
         {/* HEADER matching app theme */}
         <div className="bg-secondary/30 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-border flex flex-col gap-3 sm:gap-4 shrink-0">
           <DialogHeader className="text-left space-y-1">
@@ -345,7 +345,7 @@ export function SessionReportDialog({ open, onOpenChange, sessionId, clientName 
         </div>
 
         {/* STEP CONTENT CONTAINER */}
-        <div className="px-4 sm:px-6 py-4 sm:py-6 flex-1 max-h-[60vh] overflow-y-auto">
+        <div className="px-4 sm:px-6 py-4 sm:py-6 flex-1 min-h-0 max-h-[60vh] [@media(max-height:500px)]:max-h-none overflow-y-auto">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 

@@ -451,13 +451,13 @@ export const ZombiView: React.FC = () => {
   const handleInsertHtmlPreset = (preset: 'hero' | 'cta' | 'faq' | 'doctor') => {
     let chunk = '';
     if (preset === 'hero') {
-      chunk = `<section class="zombi-hero bg-gradient-to-br from-[#4f28d9] via-[#5e2be2] to-[#3b1799] text-white p-8 rounded-3xl my-4 shadow-xl">
+      chunk = `<section class="zombi-hero bg-gradient-to-br from-[#3a0aa8] via-[#450bc8] to-[#3b1799] text-white p-8 rounded-3xl my-4 shadow-xl">
   <div class="max-w-2xl">
     <span class="bg-white/20 text-purple-100 text-[11px] px-3 py-1 rounded-full font-bold uppercase tracking-wider border border-white/20">Programmatic SEO Landing</span>
     <h1 class="text-3xl font-extrabold mt-3 tracking-tight">Top Certified Therapy & Counseling Services</h1>
     <p class="text-purple-100 text-xs mt-2 leading-relaxed">Book confidential video consultation sessions with top licensed psychologists on Hexpertify.</p>
     <div class="mt-6 flex flex-wrap gap-3">
-      <a href="/bookings" class="px-5 py-3 bg-white text-[#4f28d9] rounded-xl font-extrabold text-xs shadow-md hover:bg-purple-50 transition-all">Book Instant Session</a>
+      <a href="/bookings" class="px-5 py-3 bg-white text-[#3a0aa8] rounded-xl font-extrabold text-xs shadow-md hover:bg-purple-50 transition-all">Book Instant Session</a>
     </div>
   </div>
 </section>`;
@@ -576,7 +576,7 @@ export const ZombiView: React.FC = () => {
   const currentSeoScore = [currentHasTitle, currentHasDesc, currentHasHtml, currentHasCanonical].filter(Boolean).length;
 
   return (
-    <div className="space-y-8 pb-12 animate-fade-in relative font-['Plus_Jakarta_Sans']">
+    <div className="space-y-8 pb-12 animate-fade-in relative font-['Open_Sans']">
       {/* Toast Notification Banner */}
       {toastMessage && (
         <div
@@ -601,14 +601,14 @@ export const ZombiView: React.FC = () => {
       {viewMode === 'list' && (
         <div className="space-y-8">
           {/* Hero Header */}
-          <div className="relative rounded-[28px] bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="relative rounded-2xl sm:rounded-[28px] bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-5 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
             <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
             <div className="relative z-10">
-              <h1 className="text-3xl font-extrabold tracking-tight">Zombie Pages</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Zombie Pages</h1>
             </div>
 
             {/* Header Actions & Stats */}
-            <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            <div className="relative z-10 grid grid-cols-2 sm:flex sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
               <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-200 block">Total Pages</span>
                 <span className="text-xl font-extrabold text-white">{zombiPagesList.length}</span>
@@ -626,7 +626,7 @@ export const ZombiView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleOpenCreatePage}
-                className="px-5 py-3.5 bg-white text-[#4f28d9] hover:bg-purple-50 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 border border-white/20 whitespace-nowrap"
+                className="col-span-2 sm:col-span-1 px-5 py-3.5 bg-white text-[#3a0aa8] hover:bg-purple-50 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 border border-white/20 whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
                 <span>New Zombie Page</span>
@@ -635,7 +635,7 @@ export const ZombiView: React.FC = () => {
           </div>
 
           {/* Filter & Search Bar */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4 md:space-y-0 md:flex md:items-center md:justify-between gap-4">
+          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4 md:space-y-0 md:flex md:items-center md:justify-between gap-4">
             {/* Search Field */}
             <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -644,7 +644,7 @@ export const ZombiView: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by page title, slug, target URL, or keywords..."
-                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all placeholder:text-slate-400"
+                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all placeholder:text-slate-400"
               />
               {searchTerm && (
                 <button
@@ -667,7 +667,7 @@ export const ZombiView: React.FC = () => {
                     onClick={() => setStatusFilter(status)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20'
+                        ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20'
                         : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60'
                     }`}
                   >
@@ -703,7 +703,7 @@ export const ZombiView: React.FC = () => {
                   {filteredPages.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-16 text-center text-slate-400">
-                        <div className="max-w-xs mx-auto space-y-2">
+                        <div className="sticky left-0 w-[calc(100vw-2.25rem)] md:w-[calc(100vw-4.25rem)] lg:static lg:w-auto"><div className="max-w-xs mx-auto space-y-2 px-4">
                           <FileCode className="w-8 h-8 text-slate-300 mx-auto" />
                           <p className="font-semibold text-slate-600">No Zombie Pages match your filter criteria.</p>
                           <button
@@ -711,11 +711,11 @@ export const ZombiView: React.FC = () => {
                               setSearchTerm('');
                               setStatusFilter('All');
                             }}
-                            className="text-[#5e2be2] font-bold text-xs hover:underline"
+                            className="py-2 sm:py-0 text-[#450bc8] font-bold text-xs hover:underline"
                           >
                             Reset search filters
                           </button>
-                        </div>
+                        </div></div>
                       </td>
                     </tr>
                   ) : (
@@ -731,10 +731,10 @@ export const ZombiView: React.FC = () => {
                           <td className="py-4 px-5 whitespace-nowrap">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 bg-purple-50 text-[#5e2be2] font-mono font-extrabold text-[10px] rounded-md border border-purple-200/60">
+                                <span className="px-2 py-0.5 bg-purple-50 text-[#450bc8] font-mono font-extrabold text-[10px] rounded-md border border-purple-200/60">
                                   {p.id}
                                 </span>
-                                <p className="font-extrabold text-slate-900 group-hover:text-[#5e2be2] transition-colors leading-tight">
+                                <p className="font-extrabold text-slate-900 group-hover:text-[#450bc8] transition-colors leading-tight">
                                   {p.pageTitle}
                                 </p>
                               </div>
@@ -754,7 +754,7 @@ export const ZombiView: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={(e) => handleCopyUrl(p.targetUrl, e)}
-                                  className="p-1 text-slate-400 hover:text-[#5e2be2] rounded-md transition-colors"
+                                  className="p-1 text-slate-400 hover:text-[#450bc8] rounded-md transition-colors"
                                   title="Copy Connected Target URL"
                                 >
                                   {copiedUrl === p.targetUrl ? (
@@ -769,7 +769,7 @@ export const ZombiView: React.FC = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="block text-[10px] text-slate-400 hover:text-[#5e2be2] hover:underline truncate font-mono"
+                                className="block text-[10px] text-slate-400 hover:text-[#450bc8] hover:underline truncate font-mono"
                                 title={p.status === 'Active' ? `Open ${p.targetUrl}` : `${p.targetUrl} (not live until Active)`}
                               >
                                 {p.targetUrl}
@@ -870,7 +870,7 @@ export const ZombiView: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditPage(p)}
-                                className="px-3.5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs flex items-center gap-1 shadow-md shadow-[#5e2be2]/20 transition-all active:scale-95"
+                                className="px-3.5 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs flex items-center gap-1 shadow-md shadow-[#450bc8]/20 transition-all active:scale-95"
                                 title="Edit Zombie Page details, HTML chunk, and SEO settings"
                               >
                                 <Edit className="w-3.5 h-3.5" />
@@ -903,13 +903,13 @@ export const ZombiView: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button disabled className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-300 cursor-not-allowed">
+                <button disabled className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-lg text-slate-300 cursor-not-allowed">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-slate-800 font-extrabold text-xs">
                   Page 1 of 1
                 </span>
-                <button disabled className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-300 cursor-not-allowed">
+                <button disabled className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-lg text-slate-300 cursor-not-allowed">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -936,7 +936,7 @@ export const ZombiView: React.FC = () => {
               </button>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase tracking-wider font-mono">
+                  <span className="text-[10px] font-extrabold text-[#450bc8] uppercase tracking-wider font-mono">
                     {editingPageId ? `Editing Page · ${editingPageId}` : 'Create New Zombie Page'}
                   </span>
                 </div>
@@ -991,7 +991,7 @@ export const ZombiView: React.FC = () => {
                 onClick={() => setEditorSection(sec.id as any)}
                 className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
                   editorSection === sec.id
-                    ? 'bg-[#5e2be2] text-white shadow-sm'
+                    ? 'bg-[#450bc8] text-white shadow-sm'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
                 }`}
               >
@@ -1001,15 +1001,15 @@ export const ZombiView: React.FC = () => {
           </div>
 
           {/* Editor Grid: 2 Columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 items-start">
             {/* Left 2 Columns: Full Form Sections */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="xl:col-span-2 space-y-4 sm:space-y-6 min-w-0">
               {/* SECTION 1: Page Details & Connected Target URL */}
               {(editorSection === 'all' || editorSection === 'details') && (
-                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-4">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#5e2be2] flex items-center justify-center font-bold text-xs">
+                      <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#450bc8] flex items-center justify-center font-bold text-xs">
                         1
                       </div>
                       <div>
@@ -1028,7 +1028,7 @@ export const ZombiView: React.FC = () => {
                         placeholder="e.g. Top CBT Therapists in Delhi NCR"
                         value={formData.pageTitle || ''}
                         onChange={(e) => handleTitleOrSlugChange('pageTitle', e.target.value)}
-                        className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 text-sm focus:bg-white focus:border-[#5e2be2] transition-all"
+                        className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 text-sm focus:bg-white focus:border-[#450bc8] transition-all"
                       />
                     </div>
 
@@ -1041,7 +1041,7 @@ export const ZombiView: React.FC = () => {
                           placeholder="/cbt-therapists-delhi-ncr"
                           value={formData.slug || ''}
                           onChange={(e) => handleTitleOrSlugChange('slug', e.target.value)}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                         />
                       </div>
 
@@ -1050,7 +1050,7 @@ export const ZombiView: React.FC = () => {
                         <select
                           value={formData.status || 'Active'}
                           onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                         >
                           <option value="Active">Active (Published & Indexed)</option>
                           <option value="Draft">Draft (Internal Only)</option>
@@ -1063,7 +1063,7 @@ export const ZombiView: React.FC = () => {
                     <div className="p-4 bg-purple-50/70 border border-purple-100 rounded-2xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-extrabold text-purple-900 flex items-center gap-1.5">
-                          <Globe className="w-4 h-4 text-[#5e2be2]" />
+                          <Globe className="w-4 h-4 text-[#450bc8]" />
                           Connected Desired Target URL
                         </span>
                         <span className="text-[10px] text-purple-700 font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-purple-200">
@@ -1086,10 +1086,10 @@ export const ZombiView: React.FC = () => {
 
               {/* SECTION 2: HTML Chunk Builder */}
               {(editorSection === 'all' || editorSection === 'html') && (
-                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-4">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#5e2be2] flex items-center justify-center font-bold text-xs">
+                      <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#450bc8] flex items-center justify-center font-bold text-xs">
                         2
                       </div>
                       <div>
@@ -1104,7 +1104,7 @@ export const ZombiView: React.FC = () => {
                           type="button"
                           onClick={() => setHtmlPreviewMode('code')}
                           className={`px-3 py-1 rounded-md text-xs font-extrabold transition-all ${
-                            htmlPreviewMode === 'code' ? 'bg-[#5e2be2] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                            htmlPreviewMode === 'code' ? 'bg-[#450bc8] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
                           }`}
                         >
                           Code View
@@ -1113,7 +1113,7 @@ export const ZombiView: React.FC = () => {
                           type="button"
                           onClick={() => setHtmlPreviewMode('rendered')}
                           className={`px-3 py-1 rounded-md text-xs font-extrabold transition-all ${
-                            htmlPreviewMode === 'rendered' ? 'bg-[#5e2be2] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                            htmlPreviewMode === 'rendered' ? 'bg-[#450bc8] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
                           }`}
                         >
                           Live Output Preview
@@ -1128,28 +1128,28 @@ export const ZombiView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleInsertHtmlPreset('hero')}
-                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#5e2be2] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
+                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#450bc8] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
                     >
                       + Hero Banner
                     </button>
                     <button
                       type="button"
                       onClick={() => handleInsertHtmlPreset('cta')}
-                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#5e2be2] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
+                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#450bc8] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
                     >
                       + CTA Section
                     </button>
                     <button
                       type="button"
                       onClick={() => handleInsertHtmlPreset('faq')}
-                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#5e2be2] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
+                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#450bc8] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
                     >
                       + FAQ Accordion
                     </button>
                     <button
                       type="button"
                       onClick={() => handleInsertHtmlPreset('doctor')}
-                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#5e2be2] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
+                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-purple-50 hover:text-[#450bc8] text-slate-700 rounded-xl font-bold text-xs whitespace-nowrap transition-all"
                     >
                       + Doctor Card
                     </button>
@@ -1162,7 +1162,7 @@ export const ZombiView: React.FC = () => {
                         placeholder="<!-- Enter custom HTML snippet code for your Zombie Page here -->"
                         value={formData.htmlChunk || ''}
                         onChange={(e) => setFormData({ ...formData, htmlChunk: e.target.value })}
-                        className="w-full p-4 bg-slate-900 text-purple-200 border border-slate-800 rounded-2xl outline-none font-mono text-xs leading-relaxed focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/20 resize-y"
+                        className="w-full p-4 bg-slate-900 text-purple-200 border border-slate-800 rounded-2xl outline-none font-mono text-xs leading-relaxed focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/20 resize-y"
                       />
                       <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono px-1">
                         <span>Characters: {formData.htmlChunk?.length || 0}</span>
@@ -1182,9 +1182,9 @@ export const ZombiView: React.FC = () => {
 
               {/* SECTION 3: SEO & SERP Settings */}
               {(editorSection === 'all' || editorSection === 'seo') && (
-                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-4">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#5e2be2] flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#450bc8] flex items-center justify-center font-bold text-xs">
                       3
                     </div>
                     <div>
@@ -1212,7 +1212,7 @@ export const ZombiView: React.FC = () => {
                           ...formData,
                           seo: { ...formData.seo!, metaTitle: e.target.value }
                         })}
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                       />
                     </div>
 
@@ -1234,7 +1234,7 @@ export const ZombiView: React.FC = () => {
                           ...formData,
                           seo: { ...formData.seo!, metaDescription: e.target.value }
                         })}
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#5e2be2] resize-none leading-relaxed"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-800 focus:bg-white focus:border-[#450bc8] resize-none leading-relaxed"
                       />
                     </div>
 
@@ -1250,7 +1250,7 @@ export const ZombiView: React.FC = () => {
                             ...formData,
                             seo: { ...formData.seo!, keywords: e.target.value }
                           })}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8]"
                         />
                       </div>
 
@@ -1264,7 +1264,7 @@ export const ZombiView: React.FC = () => {
                             ...formData,
                             seo: { ...formData.seo!, canonicalUrl: e.target.value }
                           })}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#5e2be2]"
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-slate-800 focus:bg-white focus:border-[#450bc8]"
                         />
                       </div>
                     </div>
@@ -1280,7 +1280,7 @@ export const ZombiView: React.FC = () => {
                           ...formData,
                           seo: { ...formData.seo!, structuredData: e.target.value }
                         })}
-                        className="w-full p-3 bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl outline-none font-mono text-[11px] leading-relaxed focus:border-[#5e2be2] resize-none"
+                        className="w-full p-3 bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl outline-none font-mono text-[11px] leading-relaxed focus:border-[#450bc8] resize-none"
                       />
                     </div>
                   </div>
@@ -1289,9 +1289,9 @@ export const ZombiView: React.FC = () => {
             </div>
 
             {/* Right Column: Sticky Inspector Sidebar & Google SERP Preview */}
-            <div className="space-y-6 lg:sticky lg:top-24">
+            <div className="space-y-4 sm:space-y-6 xl:sticky xl:top-24 min-w-0">
               {/* Google SERP Live Card Preview */}
-              <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
+              <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-3">
                 <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800 border-b border-slate-100 pb-2.5">
                   <SearchIcon className="w-4 h-4 text-emerald-600" />
                   Google SERP Live Card Preview
@@ -1311,10 +1311,10 @@ export const ZombiView: React.FC = () => {
               </div>
 
               {/* SEO Health Checklist */}
-              <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
+              <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                   <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-[#5e2be2]" />
+                    <Sparkles className="w-4 h-4 text-[#450bc8]" />
                     SEO Health Index
                   </span>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold ${
@@ -1386,7 +1386,7 @@ export const ZombiView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleOpenEditPage(inspectingPage)}
-                className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+                className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
               >
                 <Edit className="w-3.5 h-3.5" />
                 <span>Edit Zombie Page</span>
@@ -1395,7 +1395,7 @@ export const ZombiView: React.FC = () => {
           </div>
 
           {/* SERP Card Preview */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-3">
             <span className="font-extrabold text-slate-800 uppercase tracking-wider text-xs block">Google SERP Snippet Preview</span>
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-1.5">
               <span className="text-xs text-emerald-700 font-mono font-semibold block">{inspectingPage.targetUrl}</span>
@@ -1405,7 +1405,7 @@ export const ZombiView: React.FC = () => {
           </div>
 
           {/* Page as visitors see it, inside the website header & footer */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-md space-y-3">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-md space-y-3">
             <span className="font-extrabold text-slate-800 uppercase tracking-wider text-xs block">Website Preview (with header & footer)</span>
             <LiveSitePreview htmlChunk={inspectingPage.htmlChunk || ''} pageTitle={inspectingPage.pageTitle} />
           </div>
@@ -1415,7 +1415,7 @@ export const ZombiView: React.FC = () => {
       {/* ── DELETE CONFIRMATION MODAL ─────────────────────────────────── */}
       {deletingPage && createPortal(
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 my-auto animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 my-auto max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <AlertCircle className="w-6 h-6" />
             </div>

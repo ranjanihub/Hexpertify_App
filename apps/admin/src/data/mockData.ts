@@ -834,7 +834,7 @@ export const mockActivities: Activity[] = [
     config: {
       templateType: 'mindfulness_audio',
       instructions: 'Tense each muscle group for 5 seconds, then release completely for 10 seconds.',
-      mediaUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio-[#5e2be2].mp3',
+      mediaUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio-[#450bc8].mp3',
       developerNotes: 'Developer Note: Includes muscular tension guide visualizer component.',
       fields: [
         { id: 'f1', label: 'Pre-Exercise Tension Rating (1-10)', type: 'slider' },

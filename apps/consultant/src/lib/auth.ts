@@ -1,4 +1,4 @@
-import { setApiToken } from "./api-auth";
+import { getApiToken, setApiToken } from "./api-auth";
 
 export interface AuthUser {
   id: string;
@@ -16,102 +16,92 @@ export interface AuthUser {
 
 const STORAGE_KEY = "hexpertify_auth_user";
 
-function checkSsoTransfer(): AuthUser | null {
+/** Removes the given parameters from the address bar */
+function stripParams(...names: string[]): void {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const ssoTicket = params.get("sso_ticket");
-    let ssoRaw = params.get("sso_user") || params.get("sso");
-
-    // 1. Verify signed cryptographic SSO ticket if present
-    if (ssoTicket) {
-      const endpoints = ["/api/auth/sso-verify", "http://localhost:5000/api/auth/sso-verify", "http://localhost:3000/api/auth/sso-verify"];
-      for (const ep of endpoints) {
-        fetch(ep, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticket: ssoTicket }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.success && data?.user) {
-              if (data.token) setApiToken(data.token);
-              const verifiedUser: AuthUser = {
-                id: data.user.id || data.user._id,
-                name: data.user.name,
-                title: data.user.profession || data.user.title || "Licensed Psychologist",
-                email: data.user.email,
-                role: data.user.role || "therapist",
-                avatarInitials: (data.user.name || "TH")
-                  .split(" ")
-                  .map((n: string) => n[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase(),
-                photoUrl: data.user.image || data.user.photoUrl || undefined,
-                image: data.user.image || data.user.photoUrl || undefined
-              };
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(verifiedUser));
-              window.dispatchEvent(new Event("auth_state_change"));
-            }
-          })
-          .catch(() => {});
-      }
-    }
-
-    // 2. Immediate synchronous payload decode
-    if (ssoTicket && !ssoRaw) {
-      try {
-        const b64 = ssoTicket.replace(/-/g, "+").replace(/_/g, "/");
-        const jsonStr = atob(b64);
-        const parsed = JSON.parse(jsonStr);
-        if (parsed?.payload) {
-          ssoRaw = encodeURIComponent(JSON.stringify(parsed.payload));
-        }
-      } catch {}
-    }
-
-    if (ssoRaw || ssoTicket) {
-      // Only a real signed-in therapist is stored; never a placeholder account
-      let user: AuthUser | null = null;
-      if (ssoRaw) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(ssoRaw));
-          const id = parsed.id || parsed._id;
-          if (!id && !parsed.email) throw new Error("No account in the SSO payload");
-          user = {
-            id: id || "",
-            name: parsed.name || parsed.email || "",
-            title: parsed.profession || parsed.title || "",
-            email: parsed.email || "",
-            role: "therapist",
-            avatarInitials: (parsed.name || "TH")
-              .split(" ")
-              .map((n: string) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase(),
-            photoUrl: parsed.image || parsed.photo || parsed.photoUrl || undefined,
-            image: parsed.image || parsed.photo || parsed.photoUrl || undefined
-          };
-        } catch {}
-      }
-
-      if (user) localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-      const url = new URL(window.location.href);
-      url.searchParams.delete("sso_ticket");
-      url.searchParams.delete("sso_user");
-      url.searchParams.delete("sso");
-      window.history.replaceState({}, document.title, url.pathname + url.search);
-      return user;
-    }
+    const url = new URL(window.location.href);
+    if (!names.some((n) => url.searchParams.has(n))) return;
+    names.forEach((n) => url.searchParams.delete(n));
+    window.history.replaceState({}, document.title, url.pathname + url.search);
   } catch (e) {}
+}
+
+/**
+ * A therapist in the address (?sso_user=… / ?sso=…) is never trusted: anyone can type it. It is only removed.
+ * Signing in happens through a signed ?sso_ticket=, which redeemSsoTicket() checks with the server.
+ */
+function checkSsoTransfer(): null {
+  stripParams("sso_user", "sso");
   return null;
+}
+
+let ssoRedeem: Promise<boolean> | null = null;
+
+/**
+ * Exchanges a signed single-use ?sso_ticket= (from the sign-in redirect or an admin "Launch" button) for the
+ * therapist account and API token, using only this site's server. Runs once per page load.
+ */
+export function redeemSsoTicket(): Promise<boolean> {
+  if (ssoRedeem) return ssoRedeem;
+  ssoRedeem = (async () => {
+    const ticket = new URLSearchParams(window.location.search).get("sso_ticket");
+    checkSsoTransfer();
+    if (!ticket) return false;
+    stripParams("sso_ticket", "google_auth");
+    try {
+      const res = await fetch("/api/auth/sso-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticket }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success || !data?.user || !data?.token || data.user.role !== "therapist") return false;
+      setApiToken(data.token);
+      const verifiedUser: AuthUser = {
+        id: data.user.id || data.user._id,
+        name: data.user.name,
+        title: data.user.profession || data.user.title || "",
+        email: data.user.email,
+        role: "therapist",
+        avatarInitials: (data.user.name || "TH")
+          .split(" ")
+          .map((n: string) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+        photoUrl: data.user.image || data.user.photoUrl || undefined,
+        image: data.user.image || data.user.photoUrl || undefined
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(verifiedUser));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  })();
+  return ssoRedeem;
+}
+
+/**
+ * Checks the stored API token with the server. "ok": a signed-in therapist; "invalid": no token, a forged or
+ * expired one, or another role; "error": the check itself could not be made (network, server).
+ */
+export async function verifyApiSession(): Promise<"ok" | "invalid" | "error"> {
+  const token = getApiToken();
+  if (!token) return "invalid";
+  try {
+    const res = await fetch("/api/auth/whoami", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    if (res.status === 401 || res.status === 403) return "invalid";
+    if (!res.ok) return "error";
+    const data = await res.json().catch(() => null);
+    return data?.user?.role === "therapist" ? "ok" : "invalid";
+  } catch (e) {
+    return "error";
+  }
 }
 
 export function getAuthUser(): AuthUser | null {
   try {
-    const ssoUser = checkSsoTransfer();
-    if (ssoUser) return ssoUser;
+    checkSsoTransfer();
     // Nobody signed in: no user (pages are behind the AuthGuard, which sends visitors to login)
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return null;
@@ -131,7 +121,7 @@ export function setAuthUser(user: AuthUser): void {
 
 export function isAuthenticated(): boolean {
   try {
-    if (checkSsoTransfer()) return true;
+    checkSsoTransfer();
     const data = localStorage.getItem(STORAGE_KEY);
     return !!data;
   } catch (e) {
@@ -144,8 +134,6 @@ export function logoutUser(): void {
     localStorage.removeItem(STORAGE_KEY);
     setApiToken(null);
     window.dispatchEvent(new Event("auth_state_change"));
-    fetch('http://localhost:5000/api/auth/logout', { method: 'POST' }).catch(() => {
-      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    });
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   } catch (e) {}
 }

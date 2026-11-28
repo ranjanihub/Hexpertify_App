@@ -29,14 +29,21 @@ export function formatNotificationTime(value: string): string {
 
 export function useServerNotifications() {
   const [notifications, setNotifications] = useState<ServerNotification[]>([]);
+  // True when the last load failed, so the bell can say so instead of showing an empty list
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const refresh = useCallback(() => {
     fetch("/api/notifications?role=CONSULTANT")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.success && Array.isArray(data.notifications)) setNotifications(data.notifications);
+        if (data?.success && Array.isArray(data.notifications)) {
+          setNotifications(data.notifications);
+          setLoadFailed(false);
+        } else {
+          setLoadFailed(true);
+        }
       })
-      .catch(() => {});
+      .catch(() => setLoadFailed(true));
   }, []);
 
   useEffect(() => {
@@ -65,5 +72,5 @@ export function useServerNotifications() {
     }).catch(() => {});
   };
 
-  return { notifications, unreadCount: notifications.filter((n) => !n.read).length, markRead, markAllRead, refresh };
+  return { notifications, unreadCount: notifications.filter((n) => !n.read).length, markRead, markAllRead, refresh, loadFailed };
 }

@@ -6,11 +6,10 @@ import { ArrowRight } from "lucide-react";
 import { hexpertify } from "@/asset/images";
 
 /**
- * The panels' font (admin, consultant and client load Plus Jakarta Sans from Google Fonts the same way).
- * Not next/font: its Google loader in this Next version fails the build on this font's extension-less file URLs.
+ * The website's font, Open Sans, loaded here by its real name: the canvas cannot use the next/font variable.
  */
-const FONT_HREF = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";
-const FONT_FAMILY = "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif";
+const FONT_HREF = "https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap";
+const FONT_FAMILY = "'Open Sans', ui-sans-serif, system-ui, sans-serif";
 
 const BALLS = 5;
 const LABELS = ["", "4", "0", "4", ""];
@@ -48,12 +47,29 @@ function useCradle(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
       ? null
       : { index: 0, start: last + 1200, to: -0.75 };
 
+    // A phone or tablet held sideways puts the cradle beside the text, as on desktop (same media query as the CSS)
+    const sidewaysQuery = window.matchMedia("(orientation: landscape) and (min-width: 560px)");
+
     const geometry = () => {
       const desktop = w >= 1024;
-      const r = desktop ? Math.min(w * 0.024, h * 0.045, 34) : Math.min(w * 0.065, 26);
-      const cx = desktop ? w * 0.72 : w / 2;
-      const top = desktop ? h * 0.2 : Math.max(96, h * 0.12);
-      const length = desktop ? Math.min(h * 0.4, 300) : Math.min(h * 0.24, 200);
+      const sideways = !desktop && sidewaysQuery.matches;
+      // Below desktop the cradle is sized to the screen, not to the (possibly taller, scrolling) page
+      const vh = Math.min(h, window.innerHeight || h);
+      const tablet = w >= 640;
+      const r = desktop
+        ? Math.min(w * 0.024, h * 0.045, 34)
+        : sideways
+          ? Math.min(w * 0.03, vh * 0.05, 30)
+          : tablet
+            ? Math.min(w * 0.05, 40)
+            : Math.min(w * 0.065, 26);
+      const cx = desktop || sideways ? w * 0.72 : w / 2;
+      const top = desktop ? h * 0.2 : sideways ? Math.max(56, vh * 0.18) : Math.max(96, vh * 0.12);
+      const length = desktop
+        ? Math.min(h * 0.4, 300)
+        : sideways
+          ? Math.min(vh * 0.38, 260)
+          : Math.min(vh * (tablet ? 0.3 : 0.24), tablet ? 300 : 200);
       const anchors = Array.from({ length: BALLS }, (_, i) => cx + (i - (BALLS - 1) / 2) * 2 * r);
       return { r, cx, top, length, anchors };
     };
@@ -141,7 +157,7 @@ function useCradle(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
       const barW = (BALLS - 1) * 2 * g.r + g.r * 5;
       const barH = Math.max(8, g.r * 0.42);
       const bar = ctx.createLinearGradient(0, g.top - barH, 0, g.top);
-      bar.addColorStop(0, "#5e2be2");
+      bar.addColorStop(0, "#450bc8");
       bar.addColorStop(1, "#2a0a7a");
       ctx.beginPath();
       ctx.roundRect(g.cx - barW / 2, g.top - barH, barW, barH, barH / 2);
@@ -172,7 +188,7 @@ function useCradle(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
         const active = drag?.index === i || hover === i;
         const fill = ctx.createRadialGradient(b.x - g.r * 0.35, b.y - g.r * 0.4, g.r * 0.1, b.x, b.y, g.r);
         fill.addColorStop(0, active ? "#b39cff" : "#9b7bff");
-        fill.addColorStop(0.55, "#5e2be2");
+        fill.addColorStop(0.55, "#450bc8");
         fill.addColorStop(1, "#450bc8");
         ctx.beginPath();
         ctx.arc(b.x, b.y, g.r, 0, Math.PI * 2);
@@ -348,7 +364,7 @@ export default function NotFoundScene({ fullScreen = true }: { fullScreen?: bool
     <div
       style={{ fontFamily: FONT_FAMILY }}
       className={`relative isolate flex flex-col overflow-hidden bg-[radial-gradient(ellipse_at_70%_45%,#efe9ff_0%,#f8f6ff_45%,#ffffff_100%)] ${
-        fullScreen ? "min-h-screen" : "min-h-[calc(100vh-110px)]"
+        fullScreen ? "min-h-screen [--hx404-head:60px] md:[--hx404-head:68px]" : "min-h-[calc(100vh-110px)]"
       }`}
     >
       {/* React hoists this stylesheet into <head> once */}
@@ -374,13 +390,15 @@ export default function NotFoundScene({ fullScreen = true }: { fullScreen?: bool
         </header>
       )}
 
-      <section className="container pointer-events-none relative z-10 mx-auto flex flex-1 items-end px-5 lg:items-center lg:px-10">
-        <div className="pointer-events-auto flex w-full flex-col gap-6 pb-[8vh] lg:max-w-[46%] lg:pb-0">
+      {/* Upright phones/tablets: the text sits under the cradle, and the top padding (the cradle's height, from the
+          same formula as geometry()) keeps it from riding up over the balls on short screens. Sideways: side by side. */}
+      <section className="container pointer-events-none relative z-10 mx-auto flex flex-1 items-end px-5 lg:items-center lg:px-10 min-[560px]:landscape:items-center max-lg:portrait:pt-[calc(max(96px,12vh)_+_min(24vh,200px)_+_min(26vw,104px)_+_8px_-_var(--hx404-head,0px))] sm:max-lg:portrait:pt-[calc(max(96px,12vh)_+_min(30vh,300px)_+_min(20vw,160px)_+_8px_-_var(--hx404-head,0px))]">
+        <div className="pointer-events-auto flex w-full flex-col gap-6 pb-[8vh] lg:max-w-[46%] lg:pb-0 min-[560px]:landscape:max-w-[46%] min-[560px]:landscape:pb-0 max-lg:landscape:gap-4 max-lg:landscape:py-6">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#450bc8]">
             <Reveal text="Error 404 · Page not found" step={12} />
           </p>
 
-          <h1 className="text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 lg:text-6xl">
+          <h1 className="text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 max-lg:landscape:text-3xl lg:text-6xl">
             <Reveal text="Oops! This page is missing." start={250} step={22} />
           </h1>
 
@@ -391,7 +409,7 @@ export default function NotFoundScene({ fullScreen = true }: { fullScreen?: bool
           <div className="hx404-fade flex flex-wrap items-center gap-4 pt-2" style={{ animationDelay: "1100ms" }}>
             <Link
               href="/"
-              className="group relative isolate inline-flex items-center rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-[padding] duration-[450ms] ease-[cubic-bezier(0.625,0.05,0,1)] hover:pr-11 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#450bc8] before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-[#450bc8] before:transition-[inset,background-color] before:duration-[450ms] before:ease-[cubic-bezier(0.625,0.05,0,1)] hover:before:-inset-1 hover:before:bg-[#5e2be2] active:before:inset-0"
+              className="group relative isolate inline-flex items-center rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-[padding] duration-[450ms] ease-[cubic-bezier(0.625,0.05,0,1)] hover:pr-11 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#450bc8] before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-[#450bc8] before:transition-[inset,background-color] before:duration-[450ms] before:ease-[cubic-bezier(0.625,0.05,0,1)] hover:before:-inset-1 hover:before:bg-[#450bc8] active:before:inset-0"
             >
               Back to home
               <ArrowRight

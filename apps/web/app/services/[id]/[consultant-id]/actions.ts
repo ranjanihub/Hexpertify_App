@@ -14,29 +14,31 @@ export const getConsultantByIdentifier = cache(async (
 ) => {
   if (!professionIdentifier || !identifier) return null;
 
-  const consultant = await prisma.consultant.findFirst({
-    where: {
-      identifier,
-      profession: {
-        identifier: professionIdentifier,
-      },
-    },
-    include: {
-      profession: {
-        include: { seoMeta: true },
-      },
-      seoMeta: true,
-      services: true,
-      reviews: {
-        include: {
-          author: true,
-        },
-      },
-    },
-  });
+  // 3 database round trips instead of 6 (one nested include ran them one after another): the therapist and
+  // the profession together, then the SEO records, plans and reviews together.
+  const [candidates, foundProfession] = await Promise.all([
+    prisma.consultant.findMany({ where: { identifier } }),
+    prisma.profession.findUnique({ where: { identifier: professionIdentifier } }),
+  ]);
+  // The therapist with this identifier in this profession
+  const found = foundProfession ? candidates.find((c) => c.professionId === foundProfession.id) : undefined;
 
   // Hidden, archived or inactive profiles (and hidden professions) are not public
-  if (!consultant || !isConsultantPublic(consultant) || !isProfessionPublic(consultant.profession)) return null;
+  if (!found || !foundProfession || !isConsultantPublic(found) || !isProfessionPublic(foundProfession)) return null;
+
+  const [professionSeoMeta, seoMeta, allServices, reviews] = await Promise.all([
+    foundProfession.seoMetaId ? prisma.seoMeta.findUnique({ where: { id: foundProfession.seoMetaId } }) : null,
+    found.seoMetaId ? prisma.seoMeta.findUnique({ where: { id: found.seoMetaId } }) : null,
+    prisma.service.findMany({ where: { consultantId: found.id } }),
+    prisma.review.findMany({ where: { consultantId: found.id }, include: { author: true } }),
+  ]);
+  const consultant = {
+    ...found,
+    profession: { ...foundProfession, seoMeta: professionSeoMeta },
+    seoMeta,
+    services: allServices,
+    reviews,
+  };
   const services = activeServices(consultant.services);
   const ratingBreakdown = {
     fiveStar: consultant.reviews.filter((r) => r.rating === 5).length,

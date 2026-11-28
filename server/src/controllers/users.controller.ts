@@ -19,7 +19,10 @@ import {
   resolveClientConsultant,
   resolveClientViewer
 } from '../services/client-access';
-import { verifyAuthToken } from '../utils/jwt';
+import { isAdminUser, isInternalRequest } from '../middlewares/auth.middleware';
+import { numberMissing } from '../services/sequence';
+import { bookingStatusOf, UPCOMING_STATUSES } from '../services/booking-status';
+import { bookingInstant } from '../services/booking-time';
 
 /**
  * Strips email, phone number, and private contact info from client records when viewed by a consultant.
@@ -74,21 +77,91 @@ function userIdQuery(id: string): any {
   return { $or: or };
 }
 
-/**
- * Older clients send the user's email or id as the bearer value. A signed API token is resolved
- * to the client's email; staff tokens never act as a client identity.
- */
-function legacyBearerIdentity(authHeader: string): string {
-  const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (bearer.split('.').length !== 3) return bearer;
-  const payload = verifyAuthToken(bearer);
-  return payload?.role === 'client' ? payload.email : '';
+/** Logs the real error server-side and answers with a generic message (internals never reach the caller) */
+function serverError(res: Response, err: unknown, message: string, extra: Record<string, unknown> = {}): void {
+  console.error(`[users] ${message}:`, err);
+  res.status(500).json({ success: false, ...extra, error: message });
 }
 
-/** Client self-service endpoints stay open to the client panel; staff only get basic details unless assigned */
-async function protectForStaff(req: Request, client: any): Promise<any> {
+/** Staff only get basic details unless assigned; a client record never carries its password hash */
+function protectForStaff(viewer: ClientViewer, client: any): any {
+  const { password: _password, ...safe } = client || {};
+  return viewer.kind === 'admin' || viewer.kind === 'therapist' ? applyClientPrivacy(viewer, safe) : safe;
+}
+
+/** The client record a request names in its query string (never from headers or a bearer email) */
+function requestedClient(req: Request): { email: string; id: string } {
+  const q: any = req.query || {};
+  return {
+    email: String(q.email || q.clientEmail || '').trim().toLowerCase(),
+    id: String(q.id || q.clientId || q.userId || '').trim()
+  };
+}
+
+async function findUserBy(query: any): Promise<any | null> {
+  const db = getDatabase();
+  return await db.collection('User').findOne(query) || await db.collection('users').findOne(query);
+}
+
+interface ClientTarget {
+  viewer: ClientViewer;
+  user: any | null;
+  email: string;
+  id: string;
+}
+
+/**
+ * The client a per-client read is for, or null once a refusal was sent. Who asks comes from the API token
+ * only: a client reads their own record, a therapist their assigned clients, an admin or the server any.
+ */
+async function resolveClientTarget(req: Request, res: Response): Promise<ClientTarget | null> {
   const viewer = await resolveClientViewer(req);
-  return viewer.kind === 'admin' || viewer.kind === 'therapist' ? applyClientPrivacy(viewer, client) : client;
+  if (viewer.kind === 'anonymous') {
+    res.status(401).json({ success: false, error: 'Please sign in to view this profile.' });
+    return null;
+  }
+  const asked = requestedClient(req);
+
+  if (viewer.kind === 'client') {
+    const ids = [...viewer.ids];
+    const tokenEmail = ids.find((v) => v.includes('@')) || '';
+    const tokenId = ids.find((v) => !v.includes('@')) || '';
+    // By id first: after an email change the token still carries the old address
+    const user = (tokenId ? await findUserBy(userIdQuery(tokenId)) : null) ||
+                 (tokenEmail ? await findUserBy(emailFilter(tokenEmail)) : null);
+    const ownValues = [user?.email, user?.id, user?._id, tokenEmail, tokenId]
+      .filter(Boolean).map((v) => String(v).toLowerCase().trim());
+    const asksForOther = (asked.email && !ownValues.includes(asked.email)) ||
+                         (asked.id && !ownValues.includes(asked.id.toLowerCase()));
+    if (asksForOther || (user && !canViewFullClient(viewer, user))) {
+      res.status(403).json({ success: false, error: 'You can only view your own profile.' });
+      return null;
+    }
+    return {
+      viewer,
+      user,
+      email: String(user?.email || tokenEmail).toLowerCase().trim(),
+      id: user ? String(user.id || user._id) : tokenId
+    };
+  }
+
+  if (!asked.email && !asked.id) {
+    res.status(400).json({ success: false, error: 'Client id or email is required' });
+    return null;
+  }
+  const or: any[] = [...(asked.id ? userIdQuery(asked.id).$or : []), ...(asked.email ? [emailFilter(asked.email)] : [])];
+  const user = await findUserBy({ $or: or });
+
+  if (viewer.kind === 'therapist' && (!user || !canViewFullClient(viewer, user))) {
+    res.status(403).json({ success: false, error: 'You can only view your own clients.' });
+    return null;
+  }
+  return {
+    viewer,
+    user,
+    email: String(user?.email || asked.email).toLowerCase().trim(),
+    id: user ? String(user.id || user._id) : asked.id
+  };
 }
 
 export class UsersController {
@@ -103,6 +176,8 @@ export class UsersController {
       const isConsultantView = Boolean(therapistId || therapistName);
 
       const cacheKey = `users:all:${therapistId}:${therapistName}:${roleFilter}`;
+      // Older clients get their running numbers (CL-00001…, in sign-up order) the first time they are listed
+      await numberMissing('client').catch((err) => console.warn('[users] numbering failed:', err?.message || err));
 
       const responseData = await cacheService.wrap(cacheKey, ['users', 'consultants', 'bookings'], 15, async () => {
         const db = getDatabase();
@@ -196,7 +271,7 @@ export class UsersController {
       const viewer = await resolveClientViewer(req);
       res.json({ ...responseData, users: responseData.users.map((u: any) => protectClient(viewer, u, isConsultantView)) });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch users' });
+      serverError(res, error, 'Failed to fetch users');
     }
   }
 
@@ -227,7 +302,7 @@ export class UsersController {
         user: protectClient(await resolveClientViewer(req), formattedUser, Boolean(consultantId))
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch user' });
+      serverError(res, error, 'Failed to fetch user');
     }
   }
 
@@ -259,6 +334,21 @@ export class UsersController {
       }
 
       const cleanEmail = String(email).toLowerCase().trim();
+      // The forms check these too, but a request can skip the form
+      const cleanName = String(name).trim().replace(/\s+/g, ' ');
+      if (cleanName.length < 2 || !/\p{L}/u.test(cleanName)) {
+        res.status(400).json({ success: false, error: 'Please enter your full name.' });
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+        return;
+      }
+      const typedPhone = String(body.phone || body.phoneNumber || '').trim();
+      if (typedPhone && !/^\+?\d{10,15}$/.test(typedPhone.replace(/[\s\-()]/g, ''))) {
+        res.status(400).json({ success: false, error: 'Please enter a valid phone number (10 to 15 digits, e.g. +91 98765 43210).' });
+        return;
+      }
       const db = getDatabase();
 
       const existingUser = await db.collection('User').findOne(emailFilter(cleanEmail)) ||
@@ -287,7 +377,7 @@ export class UsersController {
       const newUser: any = {
         _id: userId,
         id: userId,
-        name: String(name).trim(),
+        name: cleanName,
         email: cleanEmail,
         password: hashedPassword,
         role: isUserRole ? 'USER' : 'ADMIN',
@@ -317,6 +407,10 @@ export class UsersController {
 
       await db.collection('User').insertOne(newUser);
       await db.collection('users').insertOne(newUser).catch(() => {});
+      // Running client number (CL-00001), given once the account is stored
+      if (isUserRole) {
+        await numberMissing('client', true).catch((err) => console.warn('[users] numbering failed:', err?.message || err));
+      }
 
       // Invalidate caches
       cacheService.invalidateTags(['users', 'stats', 'bookings']);
@@ -352,7 +446,7 @@ export class UsersController {
         message: isUserRole ? 'Client registered successfully in MongoDB Atlas' : 'Administrator created successfully'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to create user' });
+      serverError(res, error, 'Failed to create user');
     }
   }
 
@@ -361,10 +455,23 @@ export class UsersController {
    */
   static async update(req: Request, res: Response): Promise<void> {
     try {
+      // Only a signed-in admin (or the server itself) may edit any account; a signed-in client only their own
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ success: false, error: 'Please sign in to change a profile.' });
+        return;
+      }
+      if (viewer.kind === 'therapist') {
+        res.status(403).json({ success: false, error: 'Therapists cannot change client accounts.' });
+        return;
+      }
+      const isPrivileged = viewer.kind === 'admin' || viewer.kind === 'internal';
+
       const body = req.body || {};
+      // A client's account comes from their sign-in token: the body email may be the new address
+      const tokenEmail = viewer.kind === 'client' ? [...viewer.ids].find((v) => v.includes('@')) || '' : '';
       const id = String(req.params.id || body.id || body._id || req.query.id || '').trim();
-      const bearerIdentity = legacyBearerIdentity(String(req.headers.authorization || '').trim());
-      const lookupEmail = String(body.email || req.query.email || (bearerIdentity.includes('@') ? bearerIdentity : '')).toLowerCase().trim();
+      const lookupEmail = String(isPrivileged ? (body.email || req.query.email || '') : tokenEmail).toLowerCase().trim();
 
       if (!id && !lookupEmail) {
         res.status(400).json({ success: false, error: 'User ID or email is required' });
@@ -383,6 +490,10 @@ export class UsersController {
         res.status(404).json({ success: false, error: 'User not found' });
         return;
       }
+      if (!isPrivileged && ![target.id, target._id, target.email].some((v) => v && viewer.ids.has(String(v).toLowerCase().trim()))) {
+        res.status(403).json({ success: false, error: 'You can only change your own profile.' });
+        return;
+      }
 
       const updates: any = { ...body };
       delete updates.id;
@@ -390,8 +501,6 @@ export class UsersController {
       delete updates.createdAt;
 
       // Role, password and therapist assignment are staff-only (clients update their own profile here)
-      const viewer = await resolveClientViewer(req);
-      const isPrivileged = viewer.kind === 'admin' || viewer.kind === 'internal';
       if (!isPrivileged) {
         for (const key of STAFF_ONLY_FIELDS) delete updates[key];
       } else if (updates.password) {
@@ -473,7 +582,7 @@ export class UsersController {
         message: 'User updated successfully in MongoDB Atlas'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to update user' });
+      serverError(res, error, 'Failed to update user');
     }
   }
 
@@ -482,6 +591,10 @@ export class UsersController {
    */
   static async delete(req: Request, res: Response): Promise<void> {
     try {
+      if (!isInternalRequest(req) && !isAdminUser(req.user)) {
+        res.status(401).json({ success: false, error: 'Administrator authentication required. Please sign in again.' });
+        return;
+      }
       const id = String(req.params.id || req.query.id || req.body?.id || req.body?._id || '').trim();
       const email = String(req.query.email || req.body?.email || '').toLowerCase().trim();
 
@@ -507,6 +620,36 @@ export class UsersController {
 
       const query = { $or: orClauses };
 
+      // A client with a session still to come is not deleted: the therapist would be left with an unknown client.
+      // Past bookings and payments are kept (they carry the client's name and email) for the records.
+      const targets = [
+        ...(await db.collection('User').find(query).toArray()),
+        ...(await db.collection('users').find(query).toArray().catch(() => []))
+      ];
+      if (!targets.length) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+      const emails = [...new Set(targets.map((u: any) => String(u.email || '').toLowerCase().trim()).filter(Boolean))];
+      const ids = [...new Set(targets.flatMap((u: any) => [u.id, u._id]).filter(Boolean).map(String))];
+      const bookingOr: any[] = [];
+      if (emails.length) bookingOr.push({ clientEmail: { $in: emails } });
+      if (ids.length) bookingOr.push({ clientId: { $in: ids } }, { userId: { $in: ids } });
+      const now = Date.now();
+      const upcoming = bookingOr.length
+        ? (await db.collection('Booking').find({ $or: bookingOr }).toArray()).filter((b: any) => {
+            const at = bookingInstant(b);
+            return UPCOMING_STATUSES.has(bookingStatusOf(b)) && (!at || at.getTime() > now);
+          }).length
+        : 0;
+      if (upcoming) {
+        res.status(409).json({
+          success: false,
+          error: `This client has ${upcoming} upcoming session(s). Cancel them first, then delete the client.`
+        });
+        return;
+      }
+
       await db.collection('User').deleteMany(query);
       await db.collection('users').deleteMany(query).catch(() => {});
 
@@ -515,10 +658,10 @@ export class UsersController {
 
       res.json({
         success: true,
-        message: 'User removed successfully from MongoDB Atlas'
+        message: 'User deleted'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to delete user' });
+      serverError(res, error, 'Failed to delete user');
     }
   }
 
@@ -527,47 +670,10 @@ export class UsersController {
    */
   static async getClientProfile(req: Request, res: Response): Promise<void> {
     try {
-      const db = getDatabase();
-      const authHeader = String(req.headers.authorization || '').trim();
-      const bearerToken = legacyBearerIdentity(authHeader);
-
-      const email = String(
-        req.query.email || 
-        req.headers['x-user-email'] || 
-        req.headers['x-client-email'] || 
-        (bearerToken.includes('@') ? bearerToken : '')
-      ).trim().toLowerCase();
-
-      const id = String(
-        req.query.id || 
-        req.headers['x-user-id'] || 
-        req.headers['x-client-id'] || 
-        (!bearerToken.includes('@') ? bearerToken : '')
-      ).trim();
-
-      let query: any = {};
-      const orClauses: any[] = [];
-      if (id) {
-        orClauses.push({ _id: id }, { id });
-        if (ObjectId.isValid(id)) {
-          try { orClauses.push({ _id: new ObjectId(id) }); } catch {}
-        }
-      }
-      if (email) {
-        orClauses.push({ email });
-      }
-
-      // Without an id or email there is no client to show (never fall back to some other client)
-      if (orClauses.length === 0) {
-        res.status(400).json({ success: false, error: 'Client id or email is required' });
-        return;
-      }
-      query = { $or: orClauses };
-
-      let user = await db.collection('User').findOne(query);
-      if (!user) {
-        user = await db.collection('users').findOne(query);
-      }
+      // Signed-in client: their own record; their assigned therapist, an admin or the server: the named client
+      const target = await resolveClientTarget(req, res);
+      if (!target) return;
+      const user = target.user;
 
       if (!user) {
         res.status(404).json({ success: false, error: 'Client profile not found' });
@@ -576,13 +682,13 @@ export class UsersController {
 
       res.json({
         success: true,
-        user: await protectForStaff(req, {
+        user: protectForStaff(target.viewer, {
           ...user,
           id: user.id || String(user._id)
         })
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error?.message || 'Failed to fetch client profile' });
+      serverError(res, error, 'Failed to fetch client profile');
     }
   }
 
@@ -595,23 +701,10 @@ export class UsersController {
    */
   static async getClientData(req: Request, res: Response): Promise<void> {
     try {
-      const authHeader = String(req.headers.authorization || '').trim();
-      const bearerToken = legacyBearerIdentity(authHeader);
-
-      const email = String(
-        req.query.email ||
-        req.query.clientEmail ||
-        req.headers['x-user-email'] ||
-        (bearerToken.includes('@') ? bearerToken : '')
-      ).trim().toLowerCase();
-
-      const id = String(
-        req.query.id ||
-        req.query.clientId ||
-        req.query.userId ||
-        req.headers['x-user-id'] ||
-        (!bearerToken.includes('@') ? bearerToken : '')
-      ).trim();
+      // Same rule as /client/me: the client themself (from the token), their assigned therapist, an admin or the server
+      const target = await resolveClientTarget(req, res);
+      if (!target) return;
+      const { email, id } = target;
 
       const reqOrigin = String(req.headers.origin || (req.headers.referer ? new URL(String(req.headers.referer)).origin : '') || '').trim();
       const isLocalReq = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
@@ -752,15 +845,11 @@ export class UsersController {
 
       const body: any = { ...responseData.body }; // copy: responseData is shared through the cache
       if (body.client) {
-        body.client = await protectForStaff(req, body.client);
+        body.client = protectForStaff(target.viewer, body.client);
       }
       res.status(responseData.status).json(body);
     } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        hasConfirmedBooking: false,
-        error: error?.message || 'Failed to verify client consultation data'
-      });
+      serverError(res, error, 'Failed to verify client consultation data', { hasConfirmedBooking: false });
     }
   }
 }

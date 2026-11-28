@@ -196,7 +196,6 @@ export default function ProgressPage() {
 
       const clientEmail = current.email.toLowerCase().trim();
       const clientId = String(current.id || '');
-      const clientName = (current.name || '').toLowerCase().trim();
 
       // 2. Fetch client profile
       try {
@@ -226,8 +225,8 @@ export default function ProgressPage() {
                 if (!asn) return false;
                 const aEmail = (asn.clientEmail || '').toLowerCase().trim();
                 const aId = String(asn.clientId || '');
-                const aName = (asn.clientName || '').toLowerCase().trim();
-                return (clientEmail && aEmail === clientEmail) || (clientId && aId === clientId) || (clientName && aName === clientName);
+                // By email or id only: another client can have the same name
+                return (clientEmail && aEmail === clientEmail) || (clientId && aId === clientId);
               });
               setClientAssignments(myAssignments);
             }
@@ -236,8 +235,7 @@ export default function ProgressPage() {
                 if (!sub) return false;
                 const sEmail = (sub.clientEmail || '').toLowerCase().trim();
                 const sId = String(sub.clientId || '');
-                const sName = (sub.clientName || '').toLowerCase().trim();
-                return (clientEmail && sEmail === clientEmail) || (clientId && sId === clientId) || (clientName && sName === clientName);
+                return (clientEmail && sEmail === clientEmail) || (clientId && sId === clientId);
               });
               setClientSubmissions(mySubmissions);
             }
@@ -257,10 +255,8 @@ export default function ProgressPage() {
 
   // Compute completed sessions accurately across storage, bookings & user profile
   const completedSessionsCount = useMemo(() => {
-    const pastCount = sessions.filter(s => 
-      s.status === 'past' || 
-      (s.scheduledAt && new Date(s.scheduledAt).getTime() < Date.now() - 1000 * 60 * 60)
-    ).length;
+    // Only sessions the server marked COMPLETED count (not cancelled or no-show ones whose time has passed)
+    const pastCount = sessions.filter(s => s.bookingStatus === 'COMPLETED').length;
     const profileCompleted = authUser?.completedSessionsCount ?? 0;
     const historyCount = authUser?.sessionHistory?.length ?? 0;
 
@@ -324,7 +320,7 @@ export default function ProgressPage() {
         categoryColor: 'text-primary',
         Icon: Brain,
         iconBgClass: 'bg-primary/10 text-primary',
-        chartColor: '#5e2be2',
+        chartColor: '#450bc8',
         maxScore: 21
       };
       const attempts = attemptsFor(canonicalAcronym);
@@ -378,15 +374,15 @@ export default function ProgressPage() {
       />
 
       {/* ── 3-SESSION MILESTONE CLINICAL OUTCOME SECTION ── */}
-      <div className="hex-card !p-6 md:!p-8 space-y-6 shadow-sm border border-border">
+      <div className="hex-card !p-4 sm:!p-6 md:!p-8 space-y-6 shadow-sm border border-border">
         {/* Section Header */}
         <div className="flex items-center justify-between border-b border-border pb-4 flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span className={`p-2.5 rounded-2xl ${isMetricsUnlocked ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+          <div className="flex items-center gap-3 min-w-0">
+            <span className={`p-2.5 shrink-0 rounded-2xl ${isMetricsUnlocked ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
               {isMetricsUnlocked ? <Activity className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
             </span>
             <div>
-              <h3 className="text-xl font-extrabold text-foreground">Outcomes &amp; Assessments</h3>
+              <h3 className="text-lg sm:text-xl font-extrabold text-foreground">Outcomes &amp; Assessments</h3>
               <p className="text-xs text-muted-foreground font-medium">
                 Standardized outcome evaluations &amp; assigned assessments for {clientName}
               </p>
@@ -412,12 +408,12 @@ export default function ProgressPage() {
           /* LOCKED STATE / 3-SESSION MILESTONE ROADMAP (< 3 SESSIONS) */
           <div className="space-y-6">
             {/* Informational Guidance Banner */}
-            <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-5 md:p-6 space-y-4">
-              <div className="flex items-start gap-3.5">
+            <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 md:p-6 space-y-4">
+              <div className="flex items-start gap-3 sm:gap-3.5">
                 <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <h4 className="text-base font-bold text-foreground">
                     Outcome Metrics Unlock After 3 Completed Sessions
                   </h4>
@@ -429,7 +425,7 @@ export default function ProgressPage() {
 
               {/* Visual 3-Session Milestone Tracker */}
               <div className="pt-2 space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-foreground">
                   <span>Session Progress Toward Evaluation</span>
                   <span className="text-amber-600 dark:text-amber-400 font-mono">
                     {completedSessionsCount} of 3 Sessions Completed ({sessionsRemainingForUnlock} more needed)
@@ -445,7 +441,7 @@ export default function ProgressPage() {
                 </div>
 
                 {/* Step indicators */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 pt-2">
                   {/* Step 1 */}
                   <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs ${
                     completedSessionsCount >= 1 
@@ -515,7 +511,7 @@ export default function ProgressPage() {
                 </Link>
                 <Link
                   href="/assessments"
-                  className="px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ml-auto"
+                  className="px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-[#450bc8] font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ml-auto"
                 >
                   <span>Go to Assessments Library</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -524,20 +520,20 @@ export default function ProgressPage() {
             </div>
 
             {/* Individual Separate Locked Cards (< 3 Sessions) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {assessmentMetrics.map((item) => {
                 const ItemIcon = item.Icon;
                 return (
                   <div 
                     key={item.id}
-                    className="relative overflow-hidden p-6 rounded-2xl border border-border bg-card/60 backdrop-blur-sm space-y-4 shadow-2xs flex flex-col justify-between opacity-85 hover:opacity-100 transition-opacity"
+                    className="relative overflow-hidden p-4 sm:p-6 rounded-2xl border border-border bg-card/60 backdrop-blur-sm space-y-4 shadow-2xs flex flex-col justify-between opacity-85 hover:opacity-100 transition-opacity"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-sm font-extrabold text-foreground">{item.title}</h4>
                           {item.isAssigned ? (
-                            <span className="px-2 py-0.5 bg-purple-50 text-[#5e2be2] border border-purple-200 rounded-md text-[10px] font-extrabold">
+                            <span className="px-2 py-0.5 bg-purple-50 text-[#450bc8] border border-purple-200 rounded-md text-[10px] font-extrabold">
                               Assigned
                             </span>
                           ) : (
@@ -569,7 +565,7 @@ export default function ProgressPage() {
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                    <div className="pt-3 border-t border-border flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-semibold text-muted-foreground">
                       <span>Category: <strong className={`${item.categoryColor} font-extrabold`}>{item.category}</strong></span>
                       <span className="text-muted-foreground/70">{item.intervalTag}</span>
                     </div>
@@ -595,18 +591,18 @@ export default function ProgressPage() {
             </div>
 
             {/* Individual Side-by-Side Graph Cards for Every General & Assigned Assessment */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {assessmentMetrics.map((item) => (
                 <div 
                   key={item.id}
-                  className="p-5 rounded-2xl border border-border bg-gradient-to-b from-card/80 via-background to-background space-y-4 shadow-2xs flex flex-col justify-between"
+                  className="p-4 sm:p-5 rounded-2xl border border-border bg-gradient-to-b from-card/80 via-background to-background space-y-4 shadow-2xs flex flex-col justify-between"
                 >
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex flex-col items-start gap-1.5">
                         <h4 className="text-sm font-extrabold text-foreground leading-snug">{item.title}</h4>
                         {item.isAssigned && (
-                          <span className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-[#5e2be2] border border-purple-200 rounded-md text-[10px] leading-4 font-extrabold">
+                          <span className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-[#450bc8] border border-purple-200 rounded-md text-[10px] leading-4 font-extrabold">
                             Assigned
                           </span>
                         )}
@@ -632,7 +628,7 @@ export default function ProgressPage() {
                     <div className="h-48 w-full flex flex-col items-center justify-center text-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 px-4">
                       <p className="text-xs font-bold text-foreground">Not taken yet</p>
                       <p className="text-[11px] text-muted-foreground max-w-[220px]">Your score will appear here after you complete this assessment.</p>
-                      <Link href="/assessments" className="text-[11px] font-bold text-[#5e2be2] hover:underline">Go to Assessments →</Link>
+                      <Link href="/assessments" className="text-[11px] font-bold text-[#450bc8] hover:underline py-2 sm:py-0">Go to Assessments →</Link>
                     </div>
                   ) : (
                   <div className="h-48 w-full pt-2">
@@ -672,7 +668,7 @@ export default function ProgressPage() {
                   </div>
                   )}
 
-                  <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                  <div className="pt-3 border-t border-border flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-semibold text-muted-foreground">
                     <span>Category: <strong className={`${item.categoryColor} font-extrabold`}>{item.category}</strong></span>
                     <span className="text-muted-foreground/70">{item.intervalTag}</span>
                   </div>

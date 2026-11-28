@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '../db/mongodb';
 import { createNotifications, emailNotification, NewNotification } from '../services/notification.service';
+import { ClientViewer, resolveClientViewer } from '../services/client-access';
+import { escapeRegex, ownConsultant, serverError } from '../services/clinical-access';
 
 export interface BlogPostDocument {
   _id?: ObjectId;
@@ -181,6 +183,55 @@ async function notifyAuthor(
   }
 }
 
+/** Statuses the public may read */
+const PUBLISHED = ['published', 'approved'];
+const POST_STATUSES = ['pending', 'submitted', 'published', 'approved', 'rejected', 'draft'] as const;
+const postStatusOf = (value: unknown): BlogPostDocument['status'] =>
+  (POST_STATUSES as readonly string[]).includes(String(value)) ? (value as BlogPostDocument['status']) : 'pending';
+
+const canSeeAllPosts = (viewer: ClientViewer) => viewer.kind === 'admin' || viewer.kind === 'internal';
+
+/** The emails a therapist writes under (their posts and outlines carry it as authorEmail) */
+const authorEmailsOf = (viewer: ClientViewer) =>
+  viewer.kind === 'therapist' ? [...viewer.ids].filter((v) => v.includes('@')) : [];
+
+type BlogAuthor = { name: string; email: string; role: string; avatar: string; consultantId: string; trusted: boolean };
+
+/**
+ * Who is submitting a post or outline: a signed-in therapist (identity from their Consultant record)
+ * or the admin team (`trusted`: may set the status). The website's server code (internal) keeps the
+ * author it sends. Anyone else is refused.
+ */
+async function blogAuthor(req: Request, body: any): Promise<BlogAuthor | { status: number; error: string }> {
+  const viewer = await resolveClientViewer(req);
+  const text = (v: unknown, max = 300) => String(v ?? '').trim().slice(0, max);
+  if (viewer.kind === 'anonymous') return { status: 401, error: 'Please sign in to submit to the blog.' };
+  if (viewer.kind === 'internal') {
+    return {
+      name: text(body.author || body.authorName), email: text(body.authorEmail).toLowerCase(), role: text(body.authorRole),
+      avatar: text(body.authorAvatar, 2000), consultantId: text(body.consultantId), trusted: true
+    };
+  }
+  const email = [...viewer.ids].find((v) => v.includes('@')) || '';
+  if (viewer.kind === 'admin') {
+    return {
+      name: text(body.author || body.authorName) || 'Hexpertify Editorial', email, role: text(body.authorRole) || 'Admin',
+      avatar: text(body.authorAvatar, 2000), consultantId: '', trusted: true
+    };
+  }
+  if (viewer.kind !== 'therapist') return { status: 403, error: 'Only therapists and the admin team can submit to the blog.' };
+  const consultant: any = await ownConsultant(getDatabase(), viewer);
+  return {
+    name: text(consultant?.name) || text(body.author || body.authorName),
+    email: String(consultant?.email || email).toLowerCase().trim(),
+    // Display details (job title, photo) may come from the panel; the identity never does
+    role: text(body.authorRole || consultant?.title || consultant?.profession),
+    avatar: text(consultant?.photoUrl || consultant?.photo || consultant?.image || body.authorAvatar, 2000),
+    consultantId: consultant ? String(consultant.id || consultant._id) : '',
+    trusted: false
+  };
+}
+
 export class BlogController {
   /**
    * GET /api/blog/posts
@@ -210,17 +261,24 @@ export class BlogController {
       }
 
       if (category && category !== 'all') {
-        query.category = { $regex: new RegExp(String(category), 'i') };
+        query.category = { $regex: escapeRegex(category), $options: 'i' };
       }
 
       if (search) {
-        const searchRegex = new RegExp(String(search), 'i');
+        const searchRegex = { $regex: escapeRegex(search), $options: 'i' };
         query.$or = [
           { title: searchRegex },
           { category: searchRegex },
           { tags: searchRegex },
           { author: searchRegex },
         ];
+      }
+
+      // Published posts are public; unpublished ones only for the admin team and their own author
+      const viewer = await resolveClientViewer(req);
+      if (!canSeeAllPosts(viewer)) {
+        const own = authorEmailsOf(viewer);
+        query.$and = [{ $or: [{ status: { $in: PUBLISHED } }, ...(own.length ? [{ authorEmail: { $in: own } }] : [])] }];
       }
 
       const posts = await db
@@ -245,7 +303,7 @@ export class BlogController {
       res.json(formatted);
     } catch (error: any) {
       console.error('[BlogController.getAllPosts] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to fetch blog posts' });
+      serverError(res, 'blog', error, 'Failed to fetch blog posts', 'plain');
     }
   }
 
@@ -265,7 +323,12 @@ export class BlogController {
       }
 
       const post = await db.collection('BlogPost').findOne(query);
-      if (!post) {
+      const viewer = await resolveClientViewer(req);
+      const visible = post && (
+        PUBLISHED.includes(String(post.status)) || canSeeAllPosts(viewer) ||
+        authorEmailsOf(viewer).includes(String(post.authorEmail || '').toLowerCase())
+      );
+      if (!post || !visible) {
         res.status(404).json({ error: 'Blog post not found' });
         return;
       }
@@ -280,7 +343,7 @@ export class BlogController {
       });
     } catch (error: any) {
       console.error('[BlogController.getPostById] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to fetch blog post' });
+      serverError(res, 'blog', error, 'Failed to fetch blog post', 'plain');
     }
   }
 
@@ -293,13 +356,20 @@ export class BlogController {
       const db = getDatabase();
       const body = req.body || {};
 
+      // A signed-in therapist or the admin team; the author is the signed-in account
+      const author = await blogAuthor(req, body);
+      if ('status' in author) {
+        res.status(author.status).json({ error: author.error });
+        return;
+      }
+
       const now = new Date().toISOString();
       const numericId = Date.now();
 
       const file = describeAttachment(body, body.content);
 
       const newPost: BlogPostDocument = {
-        id: body.id || numericId,
+        id: author.trusted && body.id ? body.id : numericId,
         title: body.title || 'Untitled Article',
         category: body.category || 'General Psychology',
         tags: Array.isArray(body.tags)
@@ -314,17 +384,17 @@ export class BlogController {
         fileType: file.fileType,
         fileSize: body.fileSize || null,
         isPdf: file.isPdf,
-        status: body.status || 'pending', // Consultant submits -> defaults to pending review!
-        // The author is the signed-in therapist the panel sends; no placeholder author
-        author: String(body.author || body.authorName || '').trim(),
-        authorEmail: String(body.authorEmail || '').toLowerCase().trim(),
-        authorRole: String(body.authorRole || '').trim(),
-        authorAvatar: body.authorAvatar || '',
-        consultantId: String(body.consultantId || '').trim(),
+        // Only the admin team publishes: a therapist's post always waits for review
+        status: author.trusted ? postStatusOf(body.status) : 'pending',
+        author: author.name,
+        authorEmail: author.email,
+        authorRole: author.role,
+        authorAvatar: author.avatar,
+        consultantId: author.consultantId,
         reviewNotes: '',
         reviewedBy: '',
         reviewedAt: null,
-        createdAt: body.createdAt || now,
+        createdAt: author.trusted && body.createdAt ? body.createdAt : now,
         updatedAt: now,
       };
 
@@ -338,7 +408,7 @@ export class BlogController {
       });
     } catch (error: any) {
       console.error('[BlogController.createPost] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to submit blog post' });
+      serverError(res, 'blog', error, 'Failed to submit blog post', 'plain');
     }
   }
 
@@ -396,7 +466,7 @@ export class BlogController {
       });
     } catch (error: any) {
       console.error('[BlogController.reviewPost] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to review blog post' });
+      serverError(res, 'blog', error, 'Failed to review blog post', 'plain');
     }
   }
 
@@ -437,7 +507,7 @@ export class BlogController {
       res.json(result);
     } catch (error: any) {
       console.error('[BlogController.updatePost] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to update blog post' });
+      serverError(res, 'blog', error, 'Failed to update blog post', 'plain');
     }
   }
 
@@ -469,7 +539,7 @@ export class BlogController {
       res.json({ success: true, message: 'Blog post deleted successfully' });
     } catch (error: any) {
       console.error('[BlogController.deletePost] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to delete blog post' });
+      serverError(res, 'blog', error, 'Failed to delete blog post', 'plain');
     }
   }
 
@@ -481,6 +551,21 @@ export class BlogController {
       const db = getDatabase();
       const query: any = {};
       if (req.query.authorEmail) query.authorEmail = String(req.query.authorEmail).toLowerCase().trim();
+
+      // Outlines are unpublished pitches: the admin team sees all, a therapist only their own
+      const viewer = await resolveClientViewer(req);
+      if (viewer.kind === 'anonymous') {
+        res.status(401).json({ error: 'Please sign in to see blog outlines.' });
+        return;
+      }
+      if (!canSeeAllPosts(viewer)) {
+        const own = authorEmailsOf(viewer);
+        if (!own.length) {
+          res.status(403).json({ error: 'Only therapists and the admin team can see blog outlines.' });
+          return;
+        }
+        query.$and = [{ authorEmail: { $in: own } }];
+      }
       const outlines = await db
         .collection('BlogOutline')
         .find(query)
@@ -501,7 +586,7 @@ export class BlogController {
       );
     } catch (error: any) {
       console.error('[BlogController.getAllOutlines] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to fetch blog outlines' });
+      serverError(res, 'blog', error, 'Failed to fetch blog outlines', 'plain');
     }
   }
 
@@ -514,10 +599,17 @@ export class BlogController {
       const body = req.body || {};
       const now = new Date().toISOString();
 
+      // A signed-in therapist or the admin team; the author is the signed-in account
+      const author = await blogAuthor(req, body);
+      if ('status' in author) {
+        res.status(author.status).json({ error: author.error });
+        return;
+      }
+
       const file = describeAttachment(body, body.notes);
 
       const newOutline: BlogOutlineDocument = {
-        id: body.id || Date.now(),
+        id: author.trusted && body.id ? body.id : Date.now(),
         proposedTitle: body.proposedTitle || 'Untitled Outline',
         keyPoints: Array.isArray(body.keyPoints) ? body.keyPoints : [String(body.keyPoints || '')],
         targetAudience: body.targetAudience || 'General Audience',
@@ -532,11 +624,12 @@ export class BlogController {
         fileType: file.fileType,
         fileSize: body.fileSize || null,
         isPdf: file.isPdf,
-        status: body.status || 'pending',
-        author: String(body.author || body.authorName || '').trim(),
-        authorEmail: String(body.authorEmail || '').toLowerCase().trim(),
-        authorRole: String(body.authorRole || '').trim(),
-        ...(body.consultantId ? { consultantId: String(body.consultantId).trim() } : {}),
+        // Only the admin team approves outlines
+        status: author.trusted && ['pending', 'approved', 'rejected'].includes(String(body.status)) ? body.status : 'pending',
+        author: author.name,
+        authorEmail: author.email,
+        authorRole: author.role,
+        ...(author.consultantId ? { consultantId: author.consultantId } : {}),
         reviewNotes: '',
         reviewedAt: null,
         createdAt: now,
@@ -551,7 +644,7 @@ export class BlogController {
       });
     } catch (error: any) {
       console.error('[BlogController.createOutline] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to submit blog outline' });
+      serverError(res, 'blog', error, 'Failed to submit blog outline', 'plain');
     }
   }
 
@@ -593,7 +686,7 @@ export class BlogController {
       res.json({ success: true, outline: result });
     } catch (error: any) {
       console.error('[BlogController.reviewOutline] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to review outline' });
+      serverError(res, 'blog', error, 'Failed to review outline', 'plain');
     }
   }
 
@@ -617,7 +710,7 @@ export class BlogController {
       res.json({ success: true, message: 'Outline deleted successfully' });
     } catch (error: any) {
       console.error('[BlogController.deleteOutline] Error:', error);
-      res.status(500).json({ error: error?.message || 'Failed to delete outline' });
+      serverError(res, 'blog', error, 'Failed to delete outline', 'plain');
     }
   }
 }

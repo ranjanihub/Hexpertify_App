@@ -81,7 +81,10 @@ export default function Dashboard() {
   
   // Real dynamic computations
   const upcomingSessions = sessions.filter(s => s.status === 'upcoming');
-  const upcomingSession = upcomingSessions[0] || null;
+  // Next session: the soonest one that has a time (sessions still being scheduled are not "next")
+  const upcomingSession = upcomingSessions
+    .filter(s => s.scheduledAt && !Number.isNaN(new Date(s.scheduledAt).getTime()))
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0] || null;
   const completedActivitiesCount = activities.filter(a => a.status === 'completed').length;
   const streakDays = computeStreak(completions);
 
@@ -127,8 +130,6 @@ export default function Dashboard() {
       label: 'Activities Done',
       value: completedActivitiesCount,
       sub: `${completedActivitiesCount} of ${activities.length} finished`,
-      delta: completedActivitiesCount > 0 ? `+${completedActivitiesCount}` : '0',
-      plus: completedActivitiesCount > 0,
       iconColor: 'text-blue-500',
     },
     {
@@ -136,8 +137,6 @@ export default function Dashboard() {
       label: 'Activity Streak',
       value: `${streakDays}d`,
       sub: streakDays > 0 ? 'Keep it going!' : 'Start your first task',
-      delta: streakDays > 0 ? `+${streakDays}` : '0',
-      plus: streakDays > 0,
       iconColor: 'text-violet-500',
     },
     {
@@ -145,8 +144,6 @@ export default function Dashboard() {
       label: 'Upcoming Sessions',
       value: upcomingSessions.length,
       sub: upcomingSessions.length === 1 ? '1 session booked' : `${upcomingSessions.length} sessions booked`,
-      delta: upcomingSessions.length > 0 ? `+${upcomingSessions.length}` : '0',
-      plus: upcomingSessions.length > 0,
       iconColor: 'text-teal-500',
     },
   ];
@@ -155,7 +152,7 @@ export default function Dashboard() {
     <motion.div {...pageTransition} className="space-y-5 pb-12">
 
       {/* ── Hero Banner ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-4 sm:p-5 md:p-6 text-white shadow-lg overflow-hidden relative">
+      <div className="rounded-2xl bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-4 sm:p-5 md:p-6 text-white shadow-lg overflow-hidden relative">
         <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="absolute bottom-0 left-1/4 w-48 h-48 bg-black/10 rounded-full blur-3xl translate-y-1/2" />
         <div className="relative z-10 flex flex-col lg:flex-row gap-4 sm:gap-5 justify-between items-start lg:items-center">
@@ -221,7 +218,7 @@ export default function Dashboard() {
                   href={upcomingSession.joinUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors border border-transparent min-h-9 px-4 py-2 w-full rounded-full bg-white text-[#4f28d9] hover:bg-white/90 font-bold h-9 text-xs cursor-pointer shadow-md"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors border border-transparent min-h-9 px-4 py-2 w-full rounded-full bg-white text-[#3a0aa8] hover:bg-white/90 font-bold h-9 text-xs cursor-pointer shadow-md"
                 >
                   <Video className="w-3.5 h-3.5 mr-1" aria-hidden="true" />
                   Join session
@@ -229,7 +226,7 @@ export default function Dashboard() {
               ) : (
                 <div className="inline-flex items-center justify-center gap-2 whitespace-nowrap border border-white/20 min-h-9 px-4 py-2 w-full rounded-full bg-white/20 text-white font-bold h-9 text-xs opacity-75">
                   <Video className="w-3.5 h-3.5 mr-1" aria-hidden="true" />
-                  Confirmed
+                  Meeting link coming soon
                 </div>
               )}
             </div>
@@ -244,7 +241,7 @@ export default function Dashboard() {
                 onClick={() => {
                   sessionStorage.setItem('hexpertify_open_booking', 'true');
                 }}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors min-h-9 px-4 py-2 w-full rounded-full bg-white text-[#4f28d9] hover:bg-white/90 font-bold h-9 text-xs cursor-pointer shadow-md"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors min-h-9 px-4 py-2 w-full rounded-full bg-white text-[#3a0aa8] hover:bg-white/90 font-bold h-9 text-xs cursor-pointer shadow-md"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" />
                 Book a Session
@@ -259,19 +256,11 @@ export default function Dashboard() {
         {stats.map((stat, i) => (
           <div key={i} className="hex-card !p-3 sm:!p-5 flex flex-col justify-between">
             <div className="flex items-center justify-between gap-1 mb-2">
+              {/* No "+N" badge: there is no earlier figure to compare with, so it only repeated the total */}
               <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.iconColor} shrink-0`} strokeWidth={2} />
-              <span
-                className={`text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                  stat.plus
-                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                {stat.delta}
-              </span>
             </div>
             <div>
-              <p className="text-[11px] sm:text-sm text-muted-foreground font-medium truncate mb-0.5">{stat.label}</p>
+              <p className="text-[11px] sm:text-sm text-muted-foreground font-medium leading-tight break-words sm:leading-normal sm:truncate mb-0.5">{stat.label}</p>
               <p className="text-lg sm:text-[2rem] font-extrabold text-foreground leading-none mb-1">{stat.value}</p>
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate hidden xs:block">{stat.sub}</p>
             </div>
@@ -286,7 +275,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 hex-card">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-[15px] font-bold text-foreground">Today's Focus</h2>
+              <h2 className="text-[15px] font-bold text-foreground">{scheduleTab === 'today' ? "Today's Focus" : scheduleTab === 'week' ? "This Week's Focus" : "This Month's Focus"}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {focusActivities.length} {focusActivities.length === 1 ? 'task' : 'tasks'} &middot; {focusCompletedCount} completed
               </p>
@@ -297,7 +286,7 @@ export default function Dashboard() {
                 <button
                   key={tab}
                   onClick={() => setScheduleTab(tab.toLowerCase() as 'today' | 'week' | 'month')}
-                  className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-3 py-2 sm:py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                     scheduleTab === tab.toLowerCase()
                       ? 'bg-white text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
@@ -312,7 +301,7 @@ export default function Dashboard() {
           <div className="space-y-1">
             {focusActivities.length > 0 ? (
               focusActivities.slice(0, 6).map(task => (
-                <Link key={task.id} href="/activities" className="block">
+                <Link key={task.id} href={`/client/activities/${encodeURIComponent(String(task.id))}`} className="block">
                   <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors cursor-pointer group">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                       task.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-accent text-primary'
@@ -371,14 +360,14 @@ export default function Dashboard() {
                   Unread
                 </span>
               )}
-              <Link href="/messages" className="text-xs font-semibold text-primary hover:underline">
+              <Link href="/client/messages" className="text-xs font-semibold text-primary hover:underline py-2 sm:py-0">
                 Open
               </Link>
             </div>
           </div>
 
           {recentMessage ? (
-            <Link href="/messages" className="block flex-1">
+            <Link href="/client/messages" className="block flex-1">
               <div className="space-y-3 cursor-pointer group">
                 <div className="flex items-center gap-3">
                   {recentMessage.senderAvatarUrl ? (
@@ -421,19 +410,18 @@ export default function Dashboard() {
           {/* Resources teaser */}
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-foreground">Recommended</p>
-              <Link href="/resources" className="text-[11px] text-primary font-medium hover:underline flex items-center gap-0.5">
-                View all <ExternalLink className="w-3 h-3" />
-              </Link>
+              <p className="text-xs font-semibold text-foreground">Resources</p>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-accent text-primary flex items-center justify-center shrink-0">
-                  <BookOpen className="w-3.5 h-3.5" />
-                </div>
-                <p className="text-xs text-foreground line-clamp-1 font-medium">Somatic Breathing & Nervous System Regulation</p>
+            {/* A real link to the client's resources (there is no per-client recommendation to show here) */}
+            <Link href="/client/resources" className="flex items-center gap-2.5 group">
+              <div className="w-7 h-7 rounded-lg bg-accent text-primary flex items-center justify-center shrink-0">
+                <BookOpen className="w-3.5 h-3.5" />
               </div>
-            </div>
+              <p className="text-xs text-foreground font-medium group-hover:text-primary">
+                Guides and exercises your therapist shares
+              </p>
+              <ExternalLink className="w-3 h-3 text-primary ml-auto shrink-0" />
+            </Link>
           </div>
         </div>
       </div>

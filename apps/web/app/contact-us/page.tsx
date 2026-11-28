@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 
 export default function ContactUsPage() {
   return (
-    <div className="flex flex-col items-center pt-24 bg-white px-4">
+    <div className="flex flex-col items-center pt-16 md:pt-24 pb-12 bg-white px-4">
       {/* Main Container */}
       <div className="w-full max-w-2xl text-center flex flex-col items-center">
         {/* Heading */}

@@ -15,13 +15,38 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import type { Client } from '../types';
 
 export const ClientsView: React.FC = () => {
-  const { clients, therapists, assignClientTherapist } = useAppContext();
+  const { clients, therapists, assignClientTherapist, deleteClient } = useAppContext();
+  // Client awaiting delete confirmation, and the result of the last delete
+  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deletingClient) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteClient(deletingClient.id);
+      if (selectedClient?.id === deletingClient.id) setSelectedClient(null);
+      setToast(`${deletingClient.name} deleted.`);
+      setTimeout(() => setToast(null), 4000);
+      setDeletingClient(null);
+    } catch (err: any) {
+      // Not deleted (e.g. upcoming sessions): keep the dialog open and say why
+      setDeleteError(err?.message || 'Could not delete this client. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -37,6 +62,7 @@ export const ClientsView: React.FC = () => {
       (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.phone && c.phone.includes(searchTerm)) ||
+      (c.clientNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.assignedTherapistName || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
@@ -56,7 +82,7 @@ export const ClientsView: React.FC = () => {
   return (
     <div className="space-y-8 pb-12 animate-fade-in">
       {/* Hero Header matching Home Page card gradient */}
-      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 space-y-1 sm:space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] sm:text-xs font-bold tracking-wide uppercase text-purple-200">
@@ -87,7 +113,7 @@ export const ClientsView: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by client name, email, phone, ID, or therapist..."
-            className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs font-medium text-slate-800 outline-none focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10"
+            className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs font-medium text-slate-800 outline-none focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10"
           />
         </div>
 
@@ -98,7 +124,7 @@ export const ClientsView: React.FC = () => {
               onClick={() => setStatusFilter(status)}
               className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
                 statusFilter === status
-                  ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/20'
+                  ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/20'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -137,6 +163,9 @@ export const ClientsView: React.FC = () => {
                         <div className="font-bold text-slate-900 text-sm">
                           {c.name || 'Client User'}
                         </div>
+                        {c.clientNumber && (
+                          <div className="font-mono text-[11px] font-bold text-[#450bc8]">{c.clientNumber}</div>
+                        )}
                       </td>
                       <td className="py-4 px-6 space-y-0.5 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-1.5 font-semibold text-slate-800 text-xs">
@@ -150,7 +179,7 @@ export const ClientsView: React.FC = () => {
                       </td>
                       <td className="py-4 px-6 font-bold text-slate-800 whitespace-nowrap text-center">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 font-bold text-slate-800 text-xs">
-                          <UserCheck className="w-3.5 h-3.5 text-[#5e2be2] shrink-0" />
+                          <UserCheck className="w-3.5 h-3.5 text-[#450bc8] shrink-0" />
                           <span>{c.assignedTherapistName || 'Not assigned'}</span>
                         </div>
                       </td>
@@ -174,7 +203,7 @@ export const ClientsView: React.FC = () => {
                             onClick={() => {
                               setSelectedClient(c);
                             }}
-                            className="px-3.5 py-1.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white font-bold text-xs rounded-xl shadow-sm shadow-[#5e2be2]/20 transition-all active:scale-95 cursor-pointer"
+                            className="px-3.5 py-1.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white font-bold text-xs rounded-xl shadow-sm shadow-[#450bc8]/20 transition-all active:scale-95 cursor-pointer"
                           >
                             View Record
                           </button>
@@ -184,11 +213,22 @@ export const ClientsView: React.FC = () => {
                               const currentMatch = therapists.find(t => t.name.toLowerCase().includes((c.assignedTherapistName || '').toLowerCase()) || t.id === c.assignedTherapistId);
                               setSelectedTherapistId(currentMatch?.id || therapists[0]?.id || '');
                             }}
-                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#5e2be2] hover:text-[#4f28d9] font-bold text-xs rounded-xl border border-purple-200 transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#450bc8] hover:text-[#3a0aa8] font-bold text-xs rounded-xl border border-purple-200 transition-all active:scale-95 cursor-pointer flex items-center gap-1"
                             title="Assign or Change Exclusive Consultant"
                           >
                             <ArrowRightLeft className="w-3 h-3" />
                             <span>Assign</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeleteError(null);
+                              setDeletingClient(c);
+                            }}
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl border border-rose-200 transition-all active:scale-95 cursor-pointer"
+                            title="Delete client"
+                            aria-label={`Delete ${c.name || 'client'}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -206,7 +246,7 @@ export const ClientsView: React.FC = () => {
             <div className="text-slate-500 font-semibold text-center sm:text-left">
               Showing <span className="text-slate-900 font-extrabold">{startIndex + 1}</span> to{' '}
               <span className="text-slate-900 font-extrabold">{Math.min(startIndex + itemsPerPage, filteredClients.length)}</span> of{' '}
-              <span className="text-[#5e2be2] font-extrabold">{filteredClients.length}</span> clients
+              <span className="text-[#450bc8] font-extrabold">{filteredClients.length}</span> clients
               <span className="ml-2 text-slate-400 font-normal">(10 per page)</span>
             </div>
 
@@ -260,7 +300,7 @@ export const ClientsView: React.FC = () => {
                         onClick={() => setCurrentPage(pNum)}
                         className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           isActive
-                            ? 'bg-[#5e2be2] text-white shadow-md shadow-[#5e2be2]/25'
+                            ? 'bg-[#450bc8] text-white shadow-md shadow-[#450bc8]/25'
                             : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
@@ -305,8 +345,8 @@ export const ClientsView: React.FC = () => {
               <div className="space-y-1.5 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">{selectedClient.name}</h2>
-                  <span className="px-2.5 py-0.5 bg-purple-100 text-[#5e2be2] font-mono font-bold text-[11px] sm:text-xs rounded-full shrink-0">
-                    ID: #{selectedClient.id}
+                  <span className="px-2.5 py-0.5 bg-purple-100 text-[#450bc8] font-mono font-bold text-[11px] sm:text-xs rounded-full shrink-0">
+                    {selectedClient.clientNumber || `ID: #${selectedClient.id}`}
                   </span>
                   <span className="text-[11px] sm:text-xs px-2.5 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded-full shrink-0">
                     {selectedClient.status}
@@ -330,7 +370,7 @@ export const ClientsView: React.FC = () => {
                         const currentMatch = therapists.find(t => t.name.toLowerCase().includes((selectedClient.assignedTherapistName || '').toLowerCase()) || t.id === selectedClient.assignedTherapistId);
                         setSelectedTherapistId(currentMatch?.id || therapists[0]?.id || '');
                       }}
-                      className="ml-2 px-2 py-0.5 text-[10px] bg-purple-100 hover:bg-purple-200 text-[#5e2be2] rounded-lg font-bold border border-purple-200 cursor-pointer inline-flex items-center gap-1 transition-colors"
+                      className="ml-2 px-2 py-0.5 text-[10px] bg-purple-100 hover:bg-purple-200 text-[#450bc8] rounded-lg font-bold border border-purple-200 cursor-pointer inline-flex items-center gap-1 transition-colors"
                       title="Reassign to another single consultant"
                     >
                       <ArrowRightLeft className="w-2.5 h-2.5" />
@@ -354,7 +394,7 @@ export const ClientsView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { label: 'Full Name', value: selectedClient.name },
-                  { label: 'Client ID', value: selectedClient.id },
+                  { label: 'Client ID', value: selectedClient.clientNumber || selectedClient.id },
                   { label: 'Email', value: selectedClient.email },
                   { label: 'Phone', value: selectedClient.phone },
                   { label: 'Status', value: selectedClient.status },
@@ -381,7 +421,7 @@ export const ClientsView: React.FC = () => {
           <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-5 animate-scale-up my-auto max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
               <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#5e2be2] uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#450bc8] uppercase tracking-wider">
                   <ShieldCheck className="w-4 h-4" />
                   <span>Consultant Assignment Hub</span>
                 </div>
@@ -403,7 +443,7 @@ export const ClientsView: React.FC = () => {
             {/* Strict Policy Notice */}
             <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs text-purple-900 space-y-1">
               <p className="font-bold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#5e2be2]" />
+                <Sparkles className="w-3.5 h-3.5 text-[#450bc8]" />
                 <span>Strict 1:1 Consultant Assignment Rule</span>
               </p>
               <p className="text-[11px] text-purple-700 leading-relaxed">
@@ -421,7 +461,7 @@ export const ClientsView: React.FC = () => {
                   placeholder="Filter consultants by name or profession..."
                   value={therapistSearch}
                   onChange={(e) => setTherapistSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-[#5e2be2]"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-[#450bc8]"
                 />
               </div>
             </div>
@@ -439,7 +479,7 @@ export const ClientsView: React.FC = () => {
                       onClick={() => setSelectedTherapistId(t.id)}
                       className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
                         isSelected
-                          ? 'border-[#5e2be2] bg-purple-50/50 shadow-sm'
+                          ? 'border-[#450bc8] bg-purple-50/50 shadow-sm'
                           : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/50'
                       }`}
                     >
@@ -462,7 +502,7 @@ export const ClientsView: React.FC = () => {
 
                       <div className="shrink-0">
                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          isSelected ? 'border-[#5e2be2] bg-[#5e2be2]' : 'border-slate-300'
+                          isSelected ? 'border-[#450bc8] bg-[#450bc8]' : 'border-slate-300'
                         }`}>
                           {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                         </div>
@@ -508,7 +548,7 @@ export const ClientsView: React.FC = () => {
                     setIsAssigning(false);
                   }
                 }}
-                className="px-5 py-2 text-xs font-bold text-white bg-[#5e2be2] hover:bg-[#4f28d9] rounded-xl shadow-md shadow-[#5e2be2]/25 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                className="px-5 py-2 text-xs font-bold text-white bg-[#450bc8] hover:bg-[#3a0aa8] rounded-xl shadow-md shadow-[#450bc8]/25 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
                 {isAssigning ? (
                   <span>Saving Assignment...</span>
@@ -523,6 +563,59 @@ export const ClientsView: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Delete confirmation */}
+      {deletingClient && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div role="dialog" aria-modal="true" className="w-full max-w-md bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-6 space-y-4 my-auto max-h-[90dvh] overflow-y-auto">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-extrabold text-slate-900">Delete {deletingClient.name || 'this client'}?</h3>
+                <p className="text-xs text-slate-500 font-medium break-words">
+                  {[deletingClient.clientNumber, deletingClient.email].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              The client's account is removed and they can no longer sign in. Past bookings and payments stay in the records.
+              This cannot be undone.
+            </p>
+            {deleteError && (
+              <div role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setDeletingClient(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm disabled:opacity-60 cursor-pointer"
+              >
+                {isDeleting ? 'Deleting…' : 'Delete client'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {toast && (
+        <div className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500 animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-white" />
+          <span className="font-bold text-xs">{toast}</span>
+        </div>
       )}
     </div>
   );

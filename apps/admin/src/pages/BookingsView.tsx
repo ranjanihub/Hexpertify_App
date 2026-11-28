@@ -654,7 +654,7 @@ export const BookingsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in relative font-['Plus_Jakarta_Sans']">
+    <div className="space-y-6 pb-12 animate-fade-in relative font-['Open_Sans']">
       {/* Toast Notification Banner */}
       {toastMessage && (
         <div
@@ -674,7 +674,7 @@ export const BookingsView: React.FC = () => {
       )}
 
       {/* Hero Header */}
-      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#4f28d9] via-[#5e2be2] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#3a0aa8] via-[#450bc8] to-[#3b1799] p-4 sm:p-8 text-white shadow-xl overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6">
         <div className="absolute -right-12 -top-12 w-96 h-96 bg-white/5 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 space-y-1 sm:space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] sm:text-xs font-bold tracking-wide uppercase text-purple-200">
@@ -687,7 +687,7 @@ export const BookingsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="relative z-10 flex flex-wrap items-center gap-2.5 sm:gap-3 xl:shrink-0">
           {/* Total Sessions Metric Pill */}
           <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl px-4 py-2.5 text-left min-w-[100px]">
             <span className="text-[10px] font-bold tracking-wider uppercase text-purple-200 block">TOTAL SESSIONS</span>
@@ -714,7 +714,7 @@ export const BookingsView: React.FC = () => {
           {/* New Booking Button */}
           <button
             onClick={() => setIsNewBookingModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#4f28d9] hover:bg-purple-50 font-extrabold text-xs rounded-xl sm:rounded-2xl shadow-lg transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#3a0aa8] hover:bg-purple-50 font-extrabold text-xs rounded-xl sm:rounded-2xl shadow-lg transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>New Booking</span>
@@ -735,7 +735,7 @@ export const BookingsView: React.FC = () => {
               setCurrentPage(1);
             }}
             placeholder="Search booking code, client, therapist, or service..."
-            className="w-full pl-11 pr-10 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all placeholder:text-slate-400"
+            className="w-full pl-11 pr-10 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-800 outline-none focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all placeholder:text-slate-400"
           />
           {searchTerm && (
             <button
@@ -760,7 +760,7 @@ export const BookingsView: React.FC = () => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-extrabold text-slate-800 outline-none focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 appearance-none cursor-pointer transition-all"
+              className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-extrabold text-slate-800 outline-none focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 appearance-none cursor-pointer transition-all"
             >
               {['All', 'Scheduled', 'Completed', 'Rescheduled', 'Cancelled', 'No Show - Client', 'No Show - Consultant'].map((status) => {
                 const count = getStatusCount(status);
@@ -782,7 +782,7 @@ export const BookingsView: React.FC = () => {
             className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-xl font-extrabold text-xs flex items-center gap-1.5 border border-slate-200/80 transition-all shadow-2xs shrink-0 whitespace-nowrap active:scale-95"
             title="Export current view to CSV file"
           >
-            <Download className="w-3.5 h-3.5 text-[#5e2be2]" />
+            <Download className="w-3.5 h-3.5 text-[#450bc8]" />
             <span>Export CSV</span>
           </button>
         </div>
@@ -791,7 +791,7 @@ export const BookingsView: React.FC = () => {
       {/* Visually Appealing Reference Styled Table */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse table-fixed">
+          <table className="w-full min-w-[860px] text-left border-collapse table-fixed">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
                 <th className="py-3.5 px-4 w-[22%]">
@@ -839,7 +839,7 @@ export const BookingsView: React.FC = () => {
                           setStatusFilter('All');
                           setCurrentPage(1);
                         }}
-                        className="text-[#5e2be2] font-bold text-xs hover:underline"
+                        className="text-[#450bc8] font-bold text-xs hover:underline"
                       >
                         Reset filters
                       </button>
@@ -856,7 +856,7 @@ export const BookingsView: React.FC = () => {
                     {/* Client Name & ID/Email */}
                     <td className="py-4 px-4">
                       <div className="truncate">
-                        <p className="font-extrabold text-slate-900 group-hover:text-[#5e2be2] transition-colors leading-snug truncate">
+                        <p className="font-extrabold text-slate-900 group-hover:text-[#450bc8] transition-colors leading-snug truncate">
                           {b.clientName}
                         </p>
                         <span className="text-[10px] text-slate-400 font-medium block mt-0.5 truncate">
@@ -905,7 +905,7 @@ export const BookingsView: React.FC = () => {
                         </p>
                         {!b.toBeScheduled && b.time && (
                           <p className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 whitespace-nowrap">
-                            <Clock className="w-3 h-3 text-[#5e2be2]" />
+                            <Clock className="w-3 h-3 text-[#450bc8]" />
                             <span>{b.time}</span>
                           </p>
                         )}
@@ -919,7 +919,7 @@ export const BookingsView: React.FC = () => {
                           b.status === 'Completed'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                             : b.status === 'Scheduled'
-                            ? 'bg-purple-50 text-[#5e2be2] border border-purple-200/60'
+                            ? 'bg-purple-50 text-[#450bc8] border border-purple-200/60'
                             : b.status === 'Rescheduled'
                             ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
                             : b.status === 'No Show - Client'
@@ -934,7 +934,7 @@ export const BookingsView: React.FC = () => {
                             b.status === 'Completed'
                               ? 'bg-emerald-500'
                               : b.status === 'Scheduled'
-                              ? 'bg-[#5e2be2]'
+                              ? 'bg-[#450bc8]'
                               : b.status === 'Rescheduled'
                               ? 'bg-amber-500'
                               : b.status === 'No Show - Client'
@@ -966,7 +966,7 @@ export const BookingsView: React.FC = () => {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#5e2be2] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#450bc8] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
               title="Previous Page"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -977,7 +977,7 @@ export const BookingsView: React.FC = () => {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#5e2be2] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              className="p-2.5 sm:p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-[#450bc8] hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
               title="Next Page"
             >
               <ChevronRight className="w-4 h-4" />
@@ -993,11 +993,11 @@ export const BookingsView: React.FC = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-purple-50 text-[#5e2be2] flex items-center justify-center font-extrabold border border-purple-100 shrink-0">
+                <div className="w-9 h-9 rounded-2xl bg-purple-50 text-[#450bc8] flex items-center justify-center font-extrabold border border-purple-100 shrink-0">
                   {isEditingSelectedBooking ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </div>
                 <div>
-                  <span className="text-[10px] font-extrabold text-[#5e2be2] uppercase tracking-wider block">
+                  <span className="text-[10px] font-extrabold text-[#450bc8] uppercase tracking-wider block">
                     {isEditingSelectedBooking ? 'Editing Booking Details' : 'Booking Inspection'}
                   </span>
                   <h3 className="text-xl font-extrabold text-slate-900 leading-snug">{selectedBooking.bookingCode}</h3>
@@ -1016,7 +1016,7 @@ export const BookingsView: React.FC = () => {
                   className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-2xs ${
                     isEditingSelectedBooking
                       ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                      : 'bg-purple-50 text-[#5e2be2] hover:bg-purple-100 border border-purple-200/80'
+                      : 'bg-purple-50 text-[#450bc8] hover:bg-purple-100 border border-purple-200/80'
                   }`}
                 >
                   {isEditingSelectedBooking ? (
@@ -1056,7 +1056,7 @@ export const BookingsView: React.FC = () => {
                           setEditBookingData({ ...selectedBooking });
                           setIsEditingSelectedBooking(true);
                         }}
-                        className="text-xs text-[#5e2be2] font-extrabold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                        className="text-xs text-[#450bc8] font-extrabold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
                       >
                         <Edit className="w-3 h-3" /> Edit
                       </button>
@@ -1074,7 +1074,7 @@ export const BookingsView: React.FC = () => {
                           setEditBookingData({ ...selectedBooking });
                           setIsEditingSelectedBooking(true);
                         }}
-                        className="text-xs text-[#5e2be2] font-extrabold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                        className="text-xs text-[#450bc8] font-extrabold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
                       >
                         <Edit className="w-3 h-3" /> Edit
                       </button>
@@ -1090,13 +1090,13 @@ export const BookingsView: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500 font-semibold">Booking ID:</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="px-2.5 py-1 bg-[#f4f0ff] text-[#5e2be2] font-mono font-extrabold text-xs rounded-xl shadow-2xs inline-block">
+                      <span className="px-2.5 py-1 bg-[#f4f0ff] text-[#450bc8] font-mono font-extrabold text-xs rounded-xl shadow-2xs inline-block">
                         {selectedBooking.bookingCode}
                       </span>
                       <button
                         type="button"
                         onClick={(e) => handleCopyCode(selectedBooking.bookingCode, e)}
-                        className="p-1 text-slate-400 hover:text-[#5e2be2] rounded-md transition-colors"
+                        className="p-1 text-slate-400 hover:text-[#450bc8] rounded-md transition-colors"
                         title="Copy Booking ID"
                       >
                         {copiedId === selectedBooking.bookingCode ? (
@@ -1172,7 +1172,7 @@ export const BookingsView: React.FC = () => {
                     required
                     value={editBookingData?.clientName || ''}
                     onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, clientName: e.target.value } : null))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                   />
                 </div>
 
@@ -1190,7 +1190,7 @@ export const BookingsView: React.FC = () => {
                           return { ...prev, therapistName: name, service: offered ? prev.service : firstServiceOf(name).service || prev.service };
                         });
                       }}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                     >
                       {therapists.map((t) => (
                         <option key={t.id} value={t.name}>
@@ -1204,7 +1204,7 @@ export const BookingsView: React.FC = () => {
                     <select
                       value={editBookingData?.service || ''}
                       onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, service: e.target.value } : null))}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                     >
                       {(() => {
                         // The therapist's offered services, plus the booking's own service if it is no longer offered
@@ -1230,7 +1230,7 @@ export const BookingsView: React.FC = () => {
                       required={!editBookingData?.toBeScheduled}
                       value={editBookingData ? scheduledDateOf(editBookingData) : ''}
                       onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, date: e.target.value, toBeScheduled: false } : null))}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1243,7 +1243,7 @@ export const BookingsView: React.FC = () => {
                       unscheduledOption
                       required={!editBookingData?.toBeScheduled}
                       onChange={(time) => setEditBookingData((prev) => (prev ? { ...prev, time, ...(prev.toBeScheduled ? { date: '', toBeScheduled: false } : {}) } : null))}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                     />
                   </div>
                 </div>
@@ -1256,7 +1256,7 @@ export const BookingsView: React.FC = () => {
                       required
                       value={editBookingData?.amount || 0}
                       onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, amount: Number(e.target.value) } : null))}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1264,7 +1264,7 @@ export const BookingsView: React.FC = () => {
                     <select
                       value={editBookingData?.paymentStatus || 'Paid'}
                       onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, paymentStatus: e.target.value as any } : null))}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                     >
                       <option value="Paid">Paid</option>
                       <option value="Pending Payout">Pending Payout</option>
@@ -1277,7 +1277,7 @@ export const BookingsView: React.FC = () => {
                     <select
                       value={editBookingData?.status || 'Scheduled'}
                       onChange={(e) => setEditBookingData((prev) => (prev ? { ...prev, status: e.target.value as any } : null))}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] focus:ring-2 focus:ring-[#5e2be2]/10 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] focus:ring-2 focus:ring-[#450bc8]/10 transition-all"
                     >
                       <option value="Scheduled">Scheduled</option>
                       <option value="Completed">Completed</option>
@@ -1301,7 +1301,7 @@ export const BookingsView: React.FC = () => {
                       setEditBookingData({ ...selectedBooking });
                       setIsEditingSelectedBooking(true);
                     }}
-                    className="px-3.5 py-2 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 bg-purple-50 hover:bg-[#5e2be2] hover:text-white text-[#5e2be2] border border-purple-200/80 shadow-2xs active:scale-95"
+                    className="px-3.5 py-2 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 bg-purple-50 hover:bg-[#450bc8] hover:text-white text-[#450bc8] border border-purple-200/80 shadow-2xs active:scale-95"
                   >
                     <Edit className="w-3.5 h-3.5" />
                     <span>Edit Booking</span>
@@ -1341,7 +1341,7 @@ export const BookingsView: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setSelectedBooking(null)}
-                  className="px-5 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-bold text-xs shadow-md"
+                  className="px-5 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-bold text-xs shadow-md"
                 >
                   Close
                 </button>
@@ -1361,7 +1361,7 @@ export const BookingsView: React.FC = () => {
                 <button
                   type="submit"
                   form="edit-booking-form"
-                  className="px-6 py-2 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#5e2be2]/20 transition-all active:scale-95 flex items-center gap-1.5"
+                  className="px-6 py-2 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold text-xs shadow-md shadow-[#450bc8]/20 transition-all active:scale-95 flex items-center gap-1.5"
                 >
                   <Save className="w-4 h-4" />
                   <span>Save Changes</span>
@@ -1532,7 +1532,7 @@ export const BookingsView: React.FC = () => {
       {/* INTERACTIVE DELETE BOOKING CONFIRMATION MODAL */}
       {deletingBookingTarget && createPortal(
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 my-auto animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 my-auto max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <AlertCircle className="w-6 h-6" />
             </div>
@@ -1568,7 +1568,7 @@ export const BookingsView: React.FC = () => {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[94vh] sm:max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-[#4f28d9] to-[#5e2be2] p-4 sm:p-5 text-white flex items-center justify-between shrink-0">
+            <div className="bg-gradient-to-r from-[#3a0aa8] to-[#450bc8] p-4 sm:p-5 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
                   <Plus className="w-4 h-4" />
@@ -1598,7 +1598,7 @@ export const BookingsView: React.FC = () => {
                   placeholder="e.g. Rahul Verma or search client"
                   value={newBooking.clientName}
                   onChange={(e) => setNewBooking({ ...newBooking, clientName: e.target.value })}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                 />
                 <datalist id="clients-datalist">
                   {clients.map((c) => (
@@ -1622,7 +1622,7 @@ export const BookingsView: React.FC = () => {
                         ...firstServiceOf(e.target.value)
                       });
                     }}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                   >
                     {therapists.map((t) => (
                       <option key={t.id} value={t.name}>
@@ -1645,7 +1645,7 @@ export const BookingsView: React.FC = () => {
                         amount: Number(selected?.sessionFee) || newBooking.amount
                       });
                     }}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                   >
                     {servicesOf(newBooking.therapistName).length === 0 ? (
                       <option value="" disabled>No services offered by this therapist</option>
@@ -1668,7 +1668,7 @@ export const BookingsView: React.FC = () => {
                     required
                     value={newBooking.date}
                     onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                   />
                 </div>
 
@@ -1680,7 +1680,7 @@ export const BookingsView: React.FC = () => {
                     value={newBooking.time}
                     onChange={(time) => setNewBooking((prev) => ({ ...prev, time }))}
                     autoSelect
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                   />
                 </div>
               </div>
@@ -1700,7 +1700,7 @@ export const BookingsView: React.FC = () => {
                   <select
                     value={newBooking.paymentStatus}
                     onChange={(e) => setNewBooking({ ...newBooking, paymentStatus: e.target.value })}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#5e2be2] transition-all"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold text-slate-800 focus:bg-white focus:border-[#450bc8] transition-all"
                   >
                     <option value="Paid">Paid</option>
                     <option value="Pending Payout">Pending Payout</option>
@@ -1728,7 +1728,7 @@ export const BookingsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#5e2be2] hover:bg-[#4f28d9] text-white rounded-xl font-extrabold shadow-md shadow-[#5e2be2]/20 transition-all active:scale-95 flex items-center gap-1.5"
+                  className="px-6 py-2.5 bg-[#450bc8] hover:bg-[#3a0aa8] text-white rounded-xl font-extrabold shadow-md shadow-[#450bc8]/20 transition-all active:scale-95 flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Create Booking</span>

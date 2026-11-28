@@ -79,7 +79,7 @@ export const LogsView: React.FC = () => {
   const page = Math.min(currentPage, totalPages);
   const pageLogs = filteredLogs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const selectClass =
-    'w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20 focus:border-[#5e2be2]';
+    'w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20 focus:border-[#450bc8]';
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -103,8 +103,8 @@ export const LogsView: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="grid grid-cols-2 md:flex md:flex-row gap-3">
+        <div className="relative col-span-2 md:flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -114,11 +114,11 @@ export const LogsView: React.FC = () => {
               setCurrentPage(1);
             }}
             placeholder="Search by person, action or details…"
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5e2be2]/20 focus:border-[#5e2be2]"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#450bc8]/20 focus:border-[#450bc8]"
           />
         </div>
 
-        <div className="relative w-full md:w-56">
+        <div className="relative min-w-0 w-full md:w-56">
           <select
             value={selectedModule}
             onChange={(e) => {
@@ -137,7 +137,7 @@ export const LogsView: React.FC = () => {
           <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
 
-        <div className="relative w-full md:w-44">
+        <div className="relative min-w-0 w-full md:w-44">
           <select
             value={selectedSeverity}
             onChange={(e) => {
@@ -159,7 +159,7 @@ export const LogsView: React.FC = () => {
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full min-w-[720px] text-left border-collapse text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-900 font-bold">
                 <th className="py-3.5 px-5 whitespace-nowrap">When</th>
@@ -194,7 +194,7 @@ export const LogsView: React.FC = () => {
                           {(log.module || 'System').toLowerCase()}
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-slate-800">
+                      <td className="py-4 px-5 text-slate-800 min-w-[240px] break-words">
                         <div>{log.action}</div>
                         {extra && <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">{extra}</div>}
                       </td>
@@ -207,7 +207,7 @@ export const LogsView: React.FC = () => {
         </div>
 
         {filteredLogs.length > 0 && (
-          <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+          <div className="px-4 sm:px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
             <span>
               Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredLogs.length)} of{' '}
               {filteredLogs.length}
@@ -217,18 +217,18 @@ export const LogsView: React.FC = () => {
                 type="button"
                 onClick={() => setCurrentPage(Math.max(page - 1, 1))}
                 disabled={page === 1}
-                className="p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100"
+                className="p-2.5 sm:p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-2 text-slate-700">
+              <span className="px-2 text-slate-700 whitespace-nowrap">
                 Page {page} of {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setCurrentPage(Math.min(page + 1, totalPages))}
                 disabled={page === totalPages}
-                className="p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100"
+                className="p-2.5 sm:p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-100"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

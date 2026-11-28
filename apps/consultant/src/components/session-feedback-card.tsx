@@ -44,13 +44,31 @@ function formatDate(value?: string) {
 
 export function SessionFeedbackCard() {
   const [feedback, setFeedback] = useState<Feedback[] | null>(null);
+  // Set when loading failed, so the card says so instead of "No feedback yet"
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    setLoadError(null);
     fetch("/api/session-feedback")
-      .then((r) => (r.ok ? r.json() : { feedback: [] }))
-      .then((data) => setFeedback(Array.isArray(data?.feedback) ? data.feedback : []))
-      .catch(() => setFeedback([]));
-  }, []);
+      .then(async (r) => {
+        if (r.status === 401 || r.status === 403) throw new Error("Your sign-in could not be confirmed, so feedback can't be shown. Sign in again to see it.");
+        if (!r.ok) throw new Error("Couldn't load session feedback.");
+        return r.json();
+      })
+      .then((data) => {
+        if (active) setFeedback(Array.isArray(data?.feedback) ? data.feedback : []);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setFeedback([]);
+        setLoadError(err instanceof Error && err.message !== "Failed to fetch" ? err.message : "Couldn't load session feedback.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [attempt]);
 
   const items = feedback || [];
   const attention = items.filter((f) => f.level === "attention").length;
@@ -62,7 +80,7 @@ export function SessionFeedbackCard() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-              <MessageSquareQuote className="w-5 h-5 text-[#5e2be2]" />
+              <MessageSquareQuote className="w-5 h-5 text-[#450bc8]" />
               Session Feedback
             </CardTitle>
             <CardDescription>How clients rated their recent sessions (score out of 30)</CardDescription>
@@ -74,7 +92,18 @@ export function SessionFeedbackCard() {
         </div>
       </CardHeader>
       <CardContent>
-        {feedback === null ? (
+        {loadError ? (
+          <div className="py-6 text-center space-y-2">
+            <p className="text-sm text-amber-700 font-medium">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => setAttempt((n) => n + 1)}
+              className="text-xs font-bold text-[#450bc8] hover:underline cursor-pointer"
+            >
+              Try again
+            </button>
+          </div>
+        ) : feedback === null ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Loading feedback…</p>
         ) : items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">

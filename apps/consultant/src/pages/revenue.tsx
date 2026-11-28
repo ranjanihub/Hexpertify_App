@@ -38,43 +38,63 @@ export default function Revenue() {
   // Therapists are paid in bulk: one invoice per payout released by the admin, not one per session
   const [payoutInvoices, setPayoutInvoices] = useState<any[]>([]);
   const [awaitingPayout, setAwaitingPayout] = useState<{ sessions: number; amount: number }>({ sessions: 0, amount: 0 });
+  // Why the numbers may be empty: no matching profile, or the earnings request failed (never shown as silent ₹0)
+  const [loadProblem, setLoadProblem] = useState<"unlinked" | "failed" | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     async function loadRevenue() {
       try {
         setLoading(true);
-        // Revenue is keyed by the therapist's Consultant _id (matched by email; the login id is a User id)
-        const consultantsRes = await fetch('/api/consultants');
-        const cData = consultantsRes.ok ? await consultantsRes.json() : null;
-        const consultants: any[] = Array.isArray(cData?.consultants) ? cData.consultants : Array.isArray(cData) ? cData : [];
-        const mine = authEmail ? consultants.find((c) => String(c.email || '').toLowerCase().trim() === authEmail) : undefined;
-        if (!mine) {
+        setLoadProblem(null);
+        // Revenue is keyed by the signed-in therapist's Consultant id; older sessions may lack it, so the
+        // profile is then looked up by the sign-in email
+        let consultantId = String(authUser?.id || '').trim();
+        if (!consultantId && authEmail) {
+          const consultantsRes = await fetch('/api/consultants');
+          const cData = consultantsRes.ok ? await consultantsRes.json() : null;
+          const consultants: any[] = Array.isArray(cData?.consultants) ? cData.consultants : Array.isArray(cData) ? cData : [];
+          const mine = consultants.find((c) => String(c.email || '').toLowerCase().trim() === authEmail);
+          if (mine) consultantId = String(mine._id || mine.id);
+        }
+        if (!consultantId) {
           if (isMounted) {
             setAnalytics([]);
             setPayoutInvoices([]);
             setAwaitingPayout({ sessions: 0, amount: 0 });
+            setLoadProblem("unlinked");
           }
           return;
         }
-        const consultantId = String(mine._id || mine.id);
-        const res = await fetch(`/api/revenue?consultantId=${encodeURIComponent(consultantId)}&period=${period}`);
-        if (res.ok && isMounted) {
-          const data = await res.json();
-          if (data.success) {
-            setSummary(data.summary || {});
-            // The Backend sends monthlyAnalytics: [{ month, revenue, consultations, hours }]
-            const monthly = Array.isArray(data.monthlyAnalytics) ? data.monthlyAnalytics : [];
-            setAnalytics(monthly.map((m: any) => ({ ...m, label: m.label || m.month })));
-            setPayoutInvoices(Array.isArray(data.payoutInvoices) ? data.payoutInvoices : []);
-            setAwaitingPayout({
-              sessions: Number(data.awaitingPayout?.sessions) || 0,
-              amount: Number(data.awaitingPayout?.amount) || 0
-            });
-          }
+        // The revenue API answers ₹0 for an id it doesn't know, so first confirm the profile exists
+        const profileRes = await fetch(`/api/consultants/${encodeURIComponent(consultantId)}`).catch(() => null);
+        if (!isMounted) return;
+        if (profileRes && profileRes.status === 404) {
+          setAnalytics([]);
+          setPayoutInvoices([]);
+          setAwaitingPayout({ sessions: 0, amount: 0 });
+          setLoadProblem("unlinked");
+          return;
         }
+        const res = await fetch(`/api/revenue?consultantId=${encodeURIComponent(consultantId)}&period=${period}`);
+        if (!isMounted) return;
+        const data = res.ok ? await res.json().catch(() => null) : null;
+        if (!data?.success) {
+          setLoadProblem(res.status === 404 ? "unlinked" : "failed");
+          return;
+        }
+        setSummary(data.summary || {});
+        // The Backend sends monthlyAnalytics: [{ month, revenue, consultations, hours }]
+        const monthly = Array.isArray(data.monthlyAnalytics) ? data.monthlyAnalytics : [];
+        setAnalytics(monthly.map((m: any) => ({ ...m, label: m.label || m.month })));
+        setPayoutInvoices(Array.isArray(data.payoutInvoices) ? data.payoutInvoices : []);
+        setAwaitingPayout({
+          sessions: Number(data.awaitingPayout?.sessions) || 0,
+          amount: Number(data.awaitingPayout?.amount) || 0
+        });
       } catch (err) {
         console.error('Failed to load revenue data:', err);
+        if (isMounted) setLoadProblem("failed");
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -82,7 +102,7 @@ export default function Revenue() {
 
     loadRevenue();
     return () => { isMounted = false; };
-  }, [authEmail, period]);
+  }, [authEmail, authUser?.id, period]);
 
   // Downloads the period summary and the payout invoices as a CSV file
   const handleExport = () => {
@@ -139,7 +159,7 @@ export default function Revenue() {
             type="button"
             onClick={handleExport}
             disabled={loading}
-            className="disabled:opacity-60 inline-flex items-center justify-center gap-2 bg-white text-[#5e2be2] hover:bg-white/90 font-extrabold text-xs px-4 py-2.5 rounded-full shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+            className="disabled:opacity-60 inline-flex items-center justify-center gap-2 bg-white text-[#450bc8] hover:bg-white/90 font-extrabold text-xs px-4 py-2.5 rounded-full shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export</span>
@@ -147,7 +167,15 @@ export default function Revenue() {
         </div>
       </PageHeader>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {!loading && loadProblem && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          {loadProblem === "unlinked"
+            ? "We couldn't match your earnings to your profile — contact support. The figures below aren't your real earnings."
+            : "We couldn't load your earnings right now. Please refresh the page; if it keeps happening, contact support."}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Card className="shadow-sm border-border bg-gradient-to-br from-primary/5 to-white border-primary/10">
           <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start mb-4">
@@ -166,13 +194,13 @@ export default function Revenue() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-1">Total Earnings</p>
-              {loading ? <Skeleton className="h-8 w-32" /> : <h4 className="text-3xl font-bold">₹{(summary?.totalRevenue || 0).toLocaleString()}</h4>}
+              {loading ? <Skeleton className="h-8 w-32" /> : <h4 className="text-2xl sm:text-3xl font-bold break-words">₹{(summary?.totalRevenue || 0).toLocaleString()}</h4>}
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm border-border">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start mb-4">
               <div className="p-2 bg-amber-50 rounded-lg text-amber-600"><FileText className="w-5 h-5" /></div>
             </div>
@@ -181,7 +209,7 @@ export default function Revenue() {
               <p className="text-sm font-medium text-muted-foreground mb-1">Pending Payments</p>
               {loading ? <Skeleton className="h-8 w-24" /> : (
                 <>
-                  <h4 className="text-3xl font-bold">₹{awaitingPayout.amount.toLocaleString()}</h4>
+                  <h4 className="text-2xl sm:text-3xl font-bold break-words">₹{awaitingPayout.amount.toLocaleString()}</h4>
                   <p className="text-xs text-muted-foreground mt-1">
                     {awaitingPayout.sessions > 0
                       ? `${awaitingPayout.sessions} session${awaitingPayout.sessions === 1 ? '' : 's'} awaiting payout`
@@ -194,25 +222,25 @@ export default function Revenue() {
         </Card>
 
         <Card className="shadow-sm border-border">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start mb-4">
               <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Video className="w-5 h-5" /></div>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-1">Completed Sessions</p>
-              {loading ? <Skeleton className="h-8 w-16" /> : <h4 className="text-3xl font-bold">{summary?.completedConsultations || 0}</h4>}
+              {loading ? <Skeleton className="h-8 w-16" /> : <h4 className="text-2xl sm:text-3xl font-bold break-words">{summary?.completedConsultations || 0}</h4>}
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm border-border">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start mb-4">
               <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><Clock className="w-5 h-5" /></div>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-1">Therapy Hours</p>
-              {loading ? <Skeleton className="h-8 w-16" /> : <h4 className="text-3xl font-bold">{summary?.therapyHours || 0}h</h4>}
+              {loading ? <Skeleton className="h-8 w-16" /> : <h4 className="text-2xl sm:text-3xl font-bold break-words">{summary?.therapyHours || 0}h</h4>}
             </div>
           </CardContent>
         </Card>
@@ -250,7 +278,7 @@ export default function Revenue() {
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     formatter={(value: number) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Earnings']}
                   />
-                  <Bar dataKey="revenue" fill="#5e2be2" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                  <Bar dataKey="revenue" fill="#450bc8" radius={[4, 4, 0, 0]} maxBarSize={48} />
                 </BarChart>
               </ResponsiveContainer>
             )}

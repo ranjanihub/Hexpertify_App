@@ -13,9 +13,13 @@ function isDataUri(value: unknown): value is string {
   return typeof value === "string" && value.startsWith("data:image/");
 }
 
+/** The content hash in a media URL (?v=...) */
+export function pageMediaVersion(dataUri: string): string {
+  return crypto.createHash("sha1").update(dataUri).digest("hex").slice(0, 12);
+}
+
 export function pageMediaUrl(identifier: string, slot: PageMediaSlot, index: number, dataUri: string): string {
-  const version = crypto.createHash("sha1").update(dataUri).digest("hex").slice(0, 12);
-  return `/media/page/${encodeURIComponent(identifier)}/${slot}/${index}?v=${version}`;
+  return `/media/page/${encodeURIComponent(identifier)}/${slot}/${index}?v=${pageMediaVersion(dataUri)}`;
 }
 
 /** The stored data URI for a slot of a Page document (null when that slot is not an inline image) */
