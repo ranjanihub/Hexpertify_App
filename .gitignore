@@ -45,3 +45,6 @@ backups/
 
 # Local archive of the old nested panel repos (git bundles + leftover folders), not part of the project
 /.archive/
+
+# QA test workbooks and screenshots stay local: they contain test passwords, client data and security notes
+docs/
